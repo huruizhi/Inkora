@@ -1,0 +1,2 @@
+tests/fixtures/crlf.md -diff -merge -text
+tests/fixtures/no-final-newline.md -text
