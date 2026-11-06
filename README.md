@@ -5,3 +5,7 @@
 - 状态：Phase 0（技术选型验证）
 - 平台：macOS 14+，计划上架 Mac App Store（App Sandbox）
 - 架构：原生 AppKit 外壳 + WKWebView 编辑内核（见 `docs/adr/`）
+
+## 规范
+
+- [Markdown 1.0 支持矩阵与数据保真规则](docs/markdown-support.md)
