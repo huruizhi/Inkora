@@ -11,12 +11,19 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@types/jsdom": "30.0.0",
     "@types/node": "26.6.6",
+    "jsdom": "31.0.0",
     "typescript": "7.0.2",
     "vite": "8.3.6",
     "vitest": "5.1.0"
   },
   "dependencies": {
-    "prosemirror-model": "1.25.12"
+    "prosemirror-commands": "1.7.2",
+    "prosemirror-inputrules": "1.5.1",
+    "prosemirror-keymap": "1.2.3",
+    "prosemirror-model": "1.25.12",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-view": "1.42.9"
   }
 }

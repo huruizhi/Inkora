@@ -2,6 +2,7 @@ import {
   type DOMOutputSpec,
   type Node as ProseMirrorNode,
   type NodeSpec,
+  type MarkSpec,
   Schema,
   type TagParseRule,
 } from "prosemirror-model";
@@ -13,6 +14,8 @@ export type InkoraNodeName =
   | "text"
   | "hard_break"
   | "horizontal_rule";
+
+export type InkoraMarkName = "strong" | "em" | "strike" | "code" | "link";
 
 export type DocumentRecoveryReason = "empty_input" | "invalid_document";
 
@@ -38,6 +41,29 @@ function validateHeadingLevel(value: unknown): asserts value is number {
 function headingToDOM(node: ProseMirrorNode): DOMOutputSpec {
   validateHeadingLevel(node.attrs.level);
   return [`h${node.attrs.level}`, 0];
+}
+
+function validateLinkHref(value: unknown): asserts value is string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new RangeError("Link href must be a non-empty string");
+  }
+}
+
+function validateLinkTitle(value: unknown): asserts value is string | null {
+  if (value !== null && typeof value !== "string") {
+    throw new RangeError("Link title must be a string or null");
+  }
+}
+
+function linkAttrsFromDOM(dom: Node | string): false | { href: string; title: string | null } {
+  if (typeof dom === "string") return false;
+  const element = dom as HTMLElement;
+  const href = element.getAttribute?.("href");
+  if (!href) return false;
+  return {
+    href,
+    title: element.getAttribute("title"),
+  };
 }
 
 const headingParseRules: TagParseRule[] = headingLevels.map((level) => ({
@@ -85,8 +111,47 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
   },
 };
 
-export const inkoraSchema = new Schema<InkoraNodeName>({
+export const inkoraMarkSpecs: Record<InkoraMarkName, MarkSpec> = {
+  strong: {
+    parseDOM: [{ tag: "strong" }, { tag: "b" }],
+    toDOM: (): DOMOutputSpec => ["strong", 0],
+  },
+  em: {
+    parseDOM: [{ tag: "em" }, { tag: "i" }],
+    toDOM: (): DOMOutputSpec => ["em", 0],
+  },
+  strike: {
+    parseDOM: [{ tag: "del" }, { tag: "s" }, { tag: "strike" }],
+    toDOM: (): DOMOutputSpec => ["del", 0],
+  },
+  code: {
+    code: true,
+    excludes: "_",
+    parseDOM: [{ tag: "code" }],
+    toDOM: (): DOMOutputSpec => ["code", 0],
+  },
+  link: {
+    attrs: {
+      href: { validate: validateLinkHref },
+      title: { default: null, validate: validateLinkTitle },
+    },
+    inclusive: false,
+    parseDOM: [{ tag: "a[href]", getAttrs: linkAttrsFromDOM }],
+    toDOM: (mark): DOMOutputSpec => {
+      validateLinkHref(mark.attrs.href);
+      validateLinkTitle(mark.attrs.title);
+      return [
+        "a",
+        { href: mark.attrs.href, title: mark.attrs.title },
+        0,
+      ];
+    },
+  },
+};
+
+export const inkoraSchema = new Schema<InkoraNodeName, InkoraMarkName>({
   nodes: inkoraNodeSpecs,
+  marks: inkoraMarkSpecs,
 });
 
 export function createEmptyDocument(): ProseMirrorNode {
