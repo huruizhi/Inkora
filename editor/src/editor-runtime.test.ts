@@ -39,4 +39,29 @@ describe("editor runtime", () => {
     expect(states).toHaveLength(3);
     runtime.destroy();
   });
+
+  it("keeps edits after a persisted source snapshot dirty", () => {
+    const dom = new JSDOM("<!doctype html><main id='app'></main>");
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: dom.window.document,
+    });
+    const parent = dom.window.document.querySelector<HTMLElement>("#app");
+    if (!parent) throw new Error("Missing test parent");
+    const runtime = createEditorRuntime(parent, "<x>one</x>\n", () => {});
+    const textArea = parent.querySelector<HTMLTextAreaElement>("textarea");
+    if (!textArea) throw new Error("Expected source mode");
+
+    textArea.value = "<x>two</x>\n";
+    textArea.dispatchEvent(new dom.window.Event("input"));
+    const persisted = runtime.getText();
+    textArea.value = "<x>three</x>\n";
+    textArea.dispatchEvent(new dom.window.Event("input"));
+
+    runtime.markSaved(persisted);
+
+    expect(runtime.getText()).toBe("<x>three</x>\n");
+    expect(runtime.status.dirty).toBe(true);
+    runtime.destroy();
+  });
 });

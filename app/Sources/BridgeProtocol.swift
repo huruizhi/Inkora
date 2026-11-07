@@ -8,6 +8,7 @@ enum BridgeProtocolV1 {
 enum BridgeCommandType: String, Codable {
   case loadDocument
   case createSnapshot
+  case markSaved
   case executeCommand
   case queryState
 }
@@ -97,6 +98,23 @@ struct BridgeNativeCommand: Codable, Equatable {
     )
   }
 
+  static func markSaved(
+    requestID: String,
+    documentID: String,
+    revision: Int,
+    text: String
+  ) -> Self {
+    Self(
+      protocolVersion: BridgeProtocolV1.version,
+      type: .markSaved,
+      requestID: requestID,
+      documentID: documentID,
+      revision: revision,
+      text: text,
+      command: nil
+    )
+  }
+
   static func queryState(requestID: String) -> Self {
     Self(
       protocolVersion: BridgeProtocolV1.version,
@@ -123,6 +141,9 @@ struct BridgeNativeCommand: Codable, Equatable {
       guard text != nil else { throw BridgeProtocolValidationError.missingField("text") }
     case .createSnapshot:
       try validateDocumentRevision()
+    case .markSaved:
+      try validateDocumentRevision()
+      guard text != nil else { throw BridgeProtocolValidationError.missingField("text") }
     case .executeCommand:
       try validateDocumentRevision()
       guard command != nil else { throw BridgeProtocolValidationError.missingField("command") }

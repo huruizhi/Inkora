@@ -18,19 +18,45 @@ enum InkoraDocumentError: LocalizedError {
 
 @objc(InkoraDocument)
 final class InkoraDocument: NSDocument {
+  typealias SnapshotRequester = (@escaping (Result<BridgeSnapshot, Error>) -> Void) -> Void
+
+  private struct PendingSave {
+    let url: URL
+    let typeName: String
+    let operation: NSDocument.SaveOperationType
+    let completion: (Error?) -> Void
+  }
+
   let bridgeDocumentID = UUID().uuidString
   private let editorResourceBundle: Bundle
+  private let dataWriter: any DocumentDataWriting
   private let revisionStorage = DocumentRevisionStorage()
   private let textStorage = DocumentTextStorage()
   private weak var editorViewController: EditorViewController?
+  private var snapshotRequester: SnapshotRequester?
+  private var pendingSaves: [PendingSave] = []
+  private var saveInProgress = false
 
   override init() {
     editorResourceBundle = .main
+    dataWriter = AtomicDocumentDataWriter()
     super.init()
   }
 
   init(editorResourceBundle: Bundle) {
     self.editorResourceBundle = editorResourceBundle
+    dataWriter = AtomicDocumentDataWriter()
+    super.init()
+  }
+
+  init(
+    editorResourceBundle: Bundle = .main,
+    snapshotRequester: @escaping SnapshotRequester,
+    dataWriter: any DocumentDataWriting = AtomicDocumentDataWriter()
+  ) {
+    self.editorResourceBundle = editorResourceBundle
+    self.snapshotRequester = snapshotRequester
+    self.dataWriter = dataWriter
     super.init()
   }
 
@@ -59,6 +85,7 @@ final class InkoraDocument: NSDocument {
     let windowController = NSWindowController(window: window)
     addWindowController(windowController)
     self.editorViewController = editorViewController
+    snapshotRequester = editorViewController.requestSnapshot
   }
 
   override func read(from data: Data, ofType typeName: String) throws {
@@ -95,12 +122,7 @@ final class InkoraDocument: NSDocument {
         url.stopAccessingSecurityScopedResource()
       }
     }
-    try super.write(
-      to: url,
-      ofType: typeName,
-      for: saveOperation,
-      originalContentsURL: absoluteOriginalContentsURL
-    )
+    try dataWriter.write(Data(textStorage.get().utf8), to: url)
   }
 
   override func save(
@@ -109,26 +131,15 @@ final class InkoraDocument: NSDocument {
     for saveOperation: NSDocument.SaveOperationType,
     completionHandler: @escaping (Error?) -> Void
   ) {
-    guard let editorViewController else {
-      completionHandler(EditorBridgeError.editorUnavailable)
-      return
-    }
-
-    editorViewController.requestText { [weak self] result in
-      guard let self else { return }
-      switch result {
-      case .success(let text):
-        self.textStorage.set(text)
-        self.saveSnapshot(
-          to: url,
-          ofType: typeName,
-          for: saveOperation,
-          completionHandler: completionHandler
-        )
-      case .failure(let error):
-        completionHandler(error)
-      }
-    }
+    pendingSaves.append(
+      PendingSave(
+        url: url,
+        typeName: typeName,
+        operation: saveOperation,
+        completion: completionHandler
+      )
+    )
+    processNextSave()
   }
 
   func editorDidChangeState(_ state: BridgeEditorState) {
@@ -140,18 +151,46 @@ final class InkoraDocument: NSDocument {
     }
   }
 
-  private func saveSnapshot(
-    to url: URL,
-    ofType typeName: String,
-    for saveOperation: NSDocument.SaveOperationType,
-    completionHandler: @escaping (Error?) -> Void
-  ) {
+  private func processNextSave() {
+    guard !saveInProgress, let save = pendingSaves.first else { return }
+    guard let snapshotRequester else {
+      finishCurrentSave(EditorBridgeError.editorUnavailable)
+      return
+    }
+
+    saveInProgress = true
+    snapshotRequester { [weak self] result in
+      guard let self else { return }
+      switch result {
+      case .success(let snapshot):
+        self.textStorage.set(snapshot.text)
+        self.persist(snapshot, for: save)
+      case .failure(let error):
+        self.finishCurrentSave(error)
+      }
+    }
+  }
+
+  private func persist(_ snapshot: BridgeSnapshot, for save: PendingSave) {
     super.save(
-      to: url,
-      ofType: typeName,
-      for: saveOperation,
-      completionHandler: completionHandler
-    )
+      to: save.url,
+      ofType: save.typeName,
+      for: save.operation
+    ) { [weak self] error in
+      guard let self else { return }
+      if error == nil {
+        self.editorViewController?.confirmSaved(snapshot)
+      }
+      self.finishCurrentSave(error)
+    }
+  }
+
+  private func finishCurrentSave(_ error: Error?) {
+    guard !pendingSaves.isEmpty else { return }
+    let save = pendingSaves.removeFirst()
+    saveInProgress = false
+    save.completion(error)
+    processNextSave()
   }
 }
 

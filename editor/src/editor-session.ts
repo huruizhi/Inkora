@@ -127,8 +127,9 @@ export class InkoraEditorSession {
     this.publishDocumentChange();
   }
 
-  markSaved(): void {
-    this.savedDocument = this.currentState.doc;
+  markSaved(document: ProseMirrorNode = this.currentState.doc): void {
+    document.check();
+    this.savedDocument = document;
     this.currentState = this.currentState.apply(closeHistory(this.currentState.tr));
     this.publishStatus();
   }

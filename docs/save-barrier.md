@@ -12,7 +12,17 @@
 4. 返回后发生的编辑只产生更高 revision，不会改变已返回的字符串；
 5. 原生只完成 request ID、document ID 匹配且 revision 不低于门槛的请求，不用旧 snapshot 回写编辑器状态。
 
-这消除了“输入事件已在 Web 端提交，但 stateChanged 尚未到达原生端”时的快速保存竞态。连续保存各自持有独立 request ID 和不可变文本。
+这消除了“输入事件已在 Web 端提交，但 stateChanged 尚未到达原生端”时的快速保存竞态。连续保存各自持有独立 request ID 和不可变文本，并由 `InkoraDocument` 串行提交，后发保存不会越过先发保存。
+
+## 磁盘提交与 saved baseline
+
+`InkoraDocument` 取得带 `(documentID, revision, text)` 的 snapshot 后，交给 `NSDocument` safe-save 流程；实际数据写入使用 `Data.write(..., .atomic)`。只有提交成功才向编辑器发送 `markSaved`：
+
+- `Save As` 成功后由 `NSDocument` 切换 `fileURL`，后续 `Save` 写入新路径；
+- 系统保存面板负责覆盖确认与取消，取消不会进入写入阶段；
+- permission、空间不足或其他写入失败不发送 `markSaved`，旧文件与 dirty 状态保持不变；
+- 保存期间继续编辑时，已提交 revision 成为 saved baseline，更高 revision 仍保持 dirty；
+- 保存请求按入队顺序逐一执行，因此连续 `Cmd+S` 最终落盘最新成功 snapshot。
 
 ## 超时与重试
 

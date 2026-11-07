@@ -33,12 +33,17 @@ describe("Bridge protocol v1 contracts", () => {
     });
   });
 
-  it("decodes snapshot, command, and state queries", () => {
+  it("decodes snapshot, saved-state, command, and state queries", () => {
     expect(
       decodeNativeCommand(
         '{"protocolVersion":1,"type":"createSnapshot","requestID":"snap-1","documentID":"doc-1","revision":4}',
       ),
     ).toMatchObject({ type: "createSnapshot", revision: 4 });
+    expect(
+      decodeNativeCommand(
+        '{"protocolVersion":1,"type":"markSaved","requestID":"saved-1","documentID":"doc-1","revision":4,"text":"exact\\r\\n"}',
+      ),
+    ).toMatchObject({ type: "markSaved", revision: 4, text: "exact\r\n" });
     expect(
       decodeNativeCommand(
         '{"protocolVersion":1,"type":"executeCommand","requestID":"cmd-1","documentID":"doc-1","revision":4,"command":"undo"}',
@@ -213,6 +218,50 @@ describe("Bridge protocol v1 contracts", () => {
       revision: 0,
       text: "before",
     });
+  });
+
+  it("marks an accepted historical revision saved without advancing revision", () => {
+    const session = new EditorProtocolSession();
+    session.loadDocument({
+      protocolVersion: 1,
+      type: "loadDocument",
+      requestID: "load-save",
+      documentID: "doc-save",
+      revision: 3,
+      text: "before",
+    });
+    session.recordChange({ dirty: true, canUndo: true, canRedo: false });
+    session.recordChange({ dirty: true, canUndo: true, canRedo: false });
+
+    expect(
+      session.markSaved(
+        {
+          protocolVersion: 1,
+          type: "markSaved",
+          requestID: "saved-historical",
+          documentID: "doc-save",
+          revision: 4,
+          text: "snapshot",
+        },
+        { dirty: true, canUndo: true, canRedo: false },
+      ),
+    ).toMatchObject({
+      type: "stateChanged",
+      state: { revision: 5, dirty: true, canUndo: true, canRedo: false },
+    });
+    expect(
+      session.markSaved(
+        {
+          protocolVersion: 1,
+          type: "markSaved",
+          requestID: "saved-ahead",
+          documentID: "doc-save",
+          revision: 6,
+          text: "future",
+        },
+        { dirty: false, canUndo: true, canRedo: false },
+      ),
+    ).toMatchObject({ type: "editorError", code: "stale_revision" });
   });
 
   it("classifies errors into retry, notify, and stop-saving actions", () => {

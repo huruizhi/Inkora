@@ -84,6 +84,18 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
     bridge.requestSnapshot(completion: completion)
   }
 
+  func requestSnapshot(completion: @escaping (Result<BridgeSnapshot, Error>) -> Void) {
+    guard let bridge else {
+      completion(.failure(EditorBridgeError.editorUnavailable))
+      return
+    }
+    bridge.requestVersionedSnapshot(completion: completion)
+  }
+
+  func confirmSaved(_ snapshot: BridgeSnapshot) {
+    bridge?.confirmSaved(snapshot)
+  }
+
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {
     automaticRecoveryAttempts = 0
   }
