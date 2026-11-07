@@ -17,10 +17,10 @@ final class EditorWebViewTests: XCTestCase {
 
     let value = try await waitForJavaScriptValue(
       in: webView,
-      script: "document.querySelector('#editor')?.value ?? null"
-    ) { $0 as? String == initialText }
+      script: editorTextScript
+    ) { ($0 as? String)?.contains("中文 🚀") == true }
 
-    XCTAssertEqual(value as? String, initialText)
+    XCTAssertTrue((value as? String)?.contains("中文 🚀") == true)
     XCTAssertEqual(webView.url?.scheme, "inkora-editor")
   }
 
@@ -49,7 +49,7 @@ final class EditorWebViewTests: XCTestCase {
   @MainActor
   func testReloadReplaysTheQueuedDocumentAfterASecondReadyHandshake() async throws {
     let bundle = Bundle(for: Self.self)
-    let initialText = "# Reloaded\n"
+    let initialText = "<custom-tag>Reloaded</custom-tag>\n"
     let document = InkoraDocument()
     try document.read(from: Data(initialText.utf8), ofType: "net.daringfireball.markdown")
     let controller = EditorViewController(document: document, resourceBundle: bundle)
@@ -58,17 +58,114 @@ final class EditorWebViewTests: XCTestCase {
 
     _ = try await waitForJavaScriptValue(
       in: webView,
-      script: "document.querySelector('#editor')?.value ?? null"
+      script: editorTextScript
     ) { $0 as? String == initialText }
     _ = try await webView.evaluateJavaScript("document.querySelector('#editor').value = 'stale'")
 
     webView.reload()
     let reloaded = try await waitForJavaScriptValue(
       in: webView,
-      script: "document.querySelector('#editor')?.value ?? null"
+      script: editorTextScript
     ) { $0 as? String == initialText }
 
     XCTAssertEqual(reloaded as? String, initialText)
+  }
+
+  @MainActor
+  func testFastInputAndConcurrentSnapshotsCaptureTheCurrentRevision() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "before")
+    try await replaceEditorText(in: webView, with: "快速保存")
+
+    let snapshots = try await requestTexts(count: 2, from: controller)
+
+    XCTAssertEqual(snapshots, ["快速保存", "快速保存"])
+    XCTAssertGreaterThanOrEqual(document.bridgeRevision, 1)
+  }
+
+  @MainActor
+  func testEditingAfterSnapshotRequestDoesNotMutateCapturedText() async throws {
+    let (_, controller, webView) = try await loadedEditor(initialText: "before")
+    try await replaceEditorText(in: webView, with: "save point")
+
+    let snapshotTask = Task { @MainActor in
+      try await self.requestText(from: controller)
+    }
+    await Task.yield()
+    try await replaceEditorText(in: webView, with: "later edit")
+    let snapshot = try await snapshotTask.value
+
+    XCTAssertEqual(snapshot, "save point")
+    let later = try await requestText(from: controller)
+    XCTAssertEqual(later, "later edit")
+  }
+
+  @MainActor
+  func testUndoThenSnapshotReturnsTheSavedDocumentVersion() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "before")
+    try await replaceEditorText(in: webView, with: "after")
+    _ = try await requestText(from: controller)
+    let revision = document.bridgeRevision
+    XCTAssertGreaterThanOrEqual(revision, 1)
+
+    let command = BridgeNativeCommand(
+      protocolVersion: BridgeProtocolV1.version,
+      type: .executeCommand,
+      requestID: "undo-integration",
+      documentID: document.bridgeDocumentID,
+      revision: revision,
+      text: nil,
+      command: .undo
+    )
+    let commandData = try JSONEncoder().encode(command)
+    let serialized = try XCTUnwrap(String(data: commandData, encoding: .utf8))
+    let literalData = try JSONEncoder().encode(serialized)
+    let literal = try XCTUnwrap(String(data: literalData, encoding: .utf8))
+    _ = try await webView.evaluateJavaScript("window.inkora.receive(\(literal))")
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == "before"
+    }
+
+    let snapshot = try await requestText(from: controller)
+    XCTAssertEqual(snapshot, "before")
+  }
+
+  @MainActor
+  func testSnapshotBarrierTimesOutWhenTheEditorStopsReplying() async throws {
+    let delegate = SilentBridgeDelegate()
+    let bridge = EditorBridge(
+      delegate: delegate,
+      requestTimeout: .milliseconds(50),
+      evaluator: { _, _ in }
+    )
+    bridge.loadDocument(documentID: "timeout-doc", revision: 0, text: "timeout")
+    bridge.receiveEditorEvent(
+      BridgeEditorEvent(
+        protocolVersion: BridgeProtocolV1.version,
+        type: .ready,
+        requestID: nil,
+        documentID: nil,
+        revision: nil,
+        state: nil,
+        text: nil,
+        code: nil,
+        action: nil,
+        message: nil
+      )
+    )
+
+    let result = await withCheckedContinuation { continuation in
+      bridge.requestSnapshot { snapshotResult in
+        continuation.resume(returning: snapshotResult)
+      }
+    }
+
+    guard case .failure(let error) = result else {
+      return XCTFail("Expected snapshot timeout")
+    }
+    XCTAssertEqual(
+      error.localizedDescription,
+      EditorBridgeError.requestTimedOut.localizedDescription
+    )
   }
 
   @MainActor
@@ -224,6 +321,90 @@ final class EditorWebViewTests: XCTestCase {
       try await Task.sleep(for: interval)
     }
     return lastValue
+  }
+
+  @MainActor
+  private func loadedEditor(
+    initialText: String
+  ) async throws -> (InkoraDocument, EditorViewController, WKWebView) {
+    let bundle = Bundle(for: Self.self)
+    let document = InkoraDocument()
+    try document.read(from: Data(initialText.utf8), ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(document: document, resourceBundle: bundle)
+    controller.loadViewIfNeeded()
+    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == initialText
+    }
+    return (document, controller, webView)
+  }
+
+  @MainActor
+  private func replaceEditorText(in webView: WKWebView, with text: String) async throws {
+    let data = try JSONEncoder().encode(text)
+    let literal = try XCTUnwrap(String(data: data, encoding: .utf8))
+    let script = """
+      (() => {
+        const editor = document.querySelector('#editor');
+        editor.focus();
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return document.execCommand('insertText', false, \(literal));
+      })()
+      """
+    _ = try await webView.evaluateJavaScript(script)
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == text
+    }
+  }
+
+  @MainActor
+  private func requestText(from controller: EditorViewController) async throws -> String {
+    try await withCheckedThrowingContinuation { continuation in
+      controller.requestText { result in
+        continuation.resume(with: result)
+      }
+    }
+  }
+
+  @MainActor
+  private func requestTexts(
+    count: Int,
+    from controller: EditorViewController
+  ) async throws -> [String] {
+    try await withCheckedThrowingContinuation { continuation in
+      var results: [String] = []
+      var finished = false
+      for _ in 0..<count {
+        controller.requestText { result in
+          guard !finished else { return }
+          switch result {
+          case .success(let text):
+            results.append(text)
+            if results.count == count {
+              finished = true
+              continuation.resume(returning: results)
+            }
+          case .failure(let error):
+            finished = true
+            continuation.resume(throwing: error)
+          }
+        }
+      }
+    }
+  }
+
+  private var editorTextScript: String {
+    """
+    (() => {
+      const editor = document.querySelector('#editor');
+      if (!editor) return null;
+      return editor instanceof HTMLTextAreaElement ? editor.value : editor.textContent;
+    })()
+    """
   }
 }
 

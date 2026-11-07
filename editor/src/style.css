@@ -24,4 +24,10 @@ body,
   background: transparent;
   color: inherit;
   font: 16px/1.65 ui-monospace, "SFMono-Regular", Menlo, monospace;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+div#editor {
+  min-height: 100%;
 }

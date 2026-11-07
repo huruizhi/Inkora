@@ -16,8 +16,8 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 1. `revision` 属于一个 `documentID`，从原生加载值开始，只能单调递增。
 2. 每次已经提交的用户编辑或 history transaction 恰好增加一次 revision；IME composition 中间态不增加。
 3. 相同文档的旧 `stateChanged` 不得覆盖较新状态；不同 `documentID` 的事件不得改变当前文档。
-4. `createSnapshot` 只接受当前 revision。不同 revision 返回 `stale_revision`，调用方查询状态后重试。
-5. `snapshotReady` 固定表示请求时的 revision。之后发生的新编辑不会改变该 snapshot，也不得被旧 snapshot 反向覆盖。
+4. `createSnapshot.revision` 是原生已确认的最低 revision；编辑器原子捕获不低于该值的当前 revision 与文本。文档不一致或请求 revision 超前时返回 `stale_revision`。
+5. `snapshotReady` 固定表示编辑器处理请求时捕获的 revision。之后发生的新编辑不会改变该 snapshot，也不得被旧 snapshot 反向覆盖。
 
 ## Native → Editor
 
@@ -48,7 +48,7 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 }
 ```
 
-请求当前 revision 的不可变 Markdown snapshot。成功返回 `snapshotReady`；文档或 revision 不一致返回 `stale_revision`。磁盘写入与 Save barrier 属于 #13，不在 v1 协议任务中实现。
+请求不可变 Markdown snapshot。`revision` 表示调用方已知的最低版本；成功响应可携带相同或更高的当前 revision。文档不一致或请求版本高于编辑器当前版本时返回 `stale_revision`。
 
 ### `executeCommand`
 
@@ -63,7 +63,7 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 }
 ```
 
-v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过 `stateChanged` 表达新 revision；当前内核尚未实现时返回 `command_rejected`，不得静默忽略。
+v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 request ID 的 `stateChanged` 表达新 revision；当前历史中无法执行时返回 `command_rejected`，不得静默忽略。
 
 ### `queryState`
 
@@ -119,7 +119,7 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过 `stateChang
 }
 ```
 
-原生层只完成相同 `requestID`、`documentID`、`revision` 的等待请求。未知 request ID 被忽略；字段不匹配导致该请求失败，不得使用返回正文覆盖当前状态。
+原生层只完成相同 `requestID`、`documentID` 且响应 revision 不低于请求门槛的等待请求。未知 request ID 被忽略；字段不匹配导致该请求失败，不得使用返回正文覆盖当前状态。
 
 ### `editorError`
 
@@ -141,7 +141,7 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过 `stateChang
 | code | action | 调用方行为 |
 | --- | --- | --- |
 | `editor_not_ready` | `retry` | 等待 ready 或重新加载后重试 |
-| `stale_revision` | `retry` | queryState 后以最新 revision 重试 |
+| `stale_revision` | `retry` | 以最近确认的 revision 重试，达到次数上限后失败 |
 | `request_conflict` | `retry` | 使用新的 request ID 重试 |
 | `command_rejected` | `notify` | 保持文档状态并向用户说明命令未执行 |
 | `invalid_message` | `stop_saving` | 停止保存，记录协议错误 |

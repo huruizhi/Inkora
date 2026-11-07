@@ -8,13 +8,19 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
   weak var document: InkoraDocument?
 
   private let resourceBundle: Bundle
+  private let requestTimeout: Duration
   private var bridge: EditorBridge?
   private var resourceSchemeHandler: EditorResourceSchemeHandler?
   private var webView: WKWebView?
 
-  init(document: InkoraDocument, resourceBundle: Bundle = .main) {
+  init(
+    document: InkoraDocument,
+    resourceBundle: Bundle = .main,
+    requestTimeout: Duration = .seconds(5)
+  ) {
     self.document = document
     self.resourceBundle = resourceBundle
+    self.requestTimeout = requestTimeout
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -38,7 +44,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
       forURLScheme: EditorResourceSchemeHandler.scheme
     )
 
-    let bridge = EditorBridge(delegate: self)
+    let bridge = EditorBridge(delegate: self, requestTimeout: requestTimeout)
     configuration.userContentController.add(bridge, name: "inkora")
 
     let webView = WKWebView(frame: .zero, configuration: configuration)
