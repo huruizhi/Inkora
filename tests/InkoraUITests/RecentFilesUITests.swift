@@ -137,11 +137,19 @@ final class RecentFilesUITests: XCTestCase {
     let fileURL = temporaryDirectory.appendingPathComponent(fileName)
     try Data("# restore\n".utf8).write(to: fileURL)
     let app = launchApplication(defaultsSuite: suite)
+    // Close the default untitled window first: both windows share one frame
+    // autosave name, so the file window must be the last one to save.
+    let untitled = app.windows["Untitled"]
+    if untitled.waitForExistence(timeout: 5) {
+      untitled.typeKey("w", modifierFlags: .command)
+    }
     try openViaLaunchServices(fileURL, in: app)
     let window = app.windows[fileName]
     XCTAssertTrue(window.waitForExistence(timeout: 10))
     Thread.sleep(forTimeInterval: 1)
     let frame = window.frame
+    window.typeKey("w", modifierFlags: .command)
+    XCTAssertTrue(window.waitForNonExistence(timeout: 5))
     app.terminate()
 
     let relaunched = launchApplication(defaultsSuite: suite)
