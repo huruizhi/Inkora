@@ -13,7 +13,7 @@ Agent 本地只运行非 UI 目标，UI 目标由 CI 执行，以避免占用开
 | `make test-editor` | Bridge 以外的编辑器模型与行为测试 |
 | `make test-bridge` | TypeScript + Swift Bridge v1 contract tests |
 | `make test-native` | 全部 XCTest 单元与 WKWebView 集成测试 |
-| `make test-document-open-ui` | 文档打开、菜单状态、菜单点击及 Cmd+O/S/Shift+S/Z/Shift+Z；实际打开与另存后验证磁盘内容；需已解锁桌面和 Automation Mode |
+| `make test-document-open-ui` | 文档打开、菜单状态、菜单点击及 Cmd+O/S/Shift+S/Z/Shift+Z；Open Recent、冷/热启动打开、失效路径与重启恢复；实际打开与另存后验证磁盘内容；需已解锁桌面和 Automation Mode |
 | `make test-ui-release` | Release 离线资源检查与 App 启动烟测 |
 | `make test-ui` | 无辅助功能权限依赖的 Debug App 启动烟测；CI 通过 `INKORA_CAPTURE_SCREEN=1` 尽力截图 |
 | `make test-ci` | 验证命令包装器、快照归档及 UI 锁的获取/排队/超时/回收/退出清理 |
