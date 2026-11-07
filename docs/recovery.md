@@ -17,7 +17,7 @@ INK-021 不启用 NSDocument 就地自动保存，草稿与源文件分离。存
 
 每份有效草稿提示「恢复 / 放弃草稿 / 另存为」。若源文件指纹变化、已删除或无法访问，明确使用 INK-020 的「文件已在应用外修改」冲突提示。默认策略始终恢复成新的未命名 dirty 副本；原文件即使未变化也不自动写回。用户保存必须通过 Save As 选择路径，系统负责覆盖确认。
 
-恢复保留草稿 UUID 和 revision，使用新的 Bridge document ID、新编辑会话和空 history。编辑器初始化的 clean 状态不能清除原生的恢复 dirty 标记；首次成功保存后恢复正常 dirty 投影。恢复过程中源文件和草稿均保持原样；选择另存后取消面板仍保留 dirty 窗口和草稿。
+恢复保留草稿 UUID 和 revision，使用新的 Bridge document ID、新编辑会话和空 history。编辑器初始化的 clean 状态不能清除原生的恢复 dirty 标记；首次成功保存后恢复正常 dirty 投影。Web Content 进程重启重放未保存 snapshot 时也保留 dirty 和磁盘草稿，避免同 revision 的初始化 clean 被当作已保存。恢复过程中源文件和草稿均保持原样；选择另存后取消面板仍保留 dirty 窗口和草稿。
 
 ## 清理与故障
 

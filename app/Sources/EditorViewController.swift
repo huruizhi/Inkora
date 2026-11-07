@@ -210,6 +210,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   }
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+    document?.preserveDirtyForEditorRecovery()
     bridge?.webContentProcessDidTerminate()
     if automaticRecoveryAttempts < maximumAutomaticRecoveryAttempts {
       automaticRecoveryAttempts += 1

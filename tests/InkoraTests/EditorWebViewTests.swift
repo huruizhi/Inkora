@@ -378,10 +378,22 @@ final class EditorWebViewTests: XCTestCase {
 
   @MainActor
   func testProcessTerminationReloadsTheMostRecentConfirmedSnapshot() async throws {
-    let (_, controller, webView) = try await loadedEditor(initialText: "initial")
+    let (document, controller, webView) = try await loadedEditor(initialText: "initial")
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "web-recovery-\(UUID())")
+    let store = RecoveryStore(directory: root)
+    document.configureRecovery(store: store)
+    defer {
+      document.close()
+      try? FileManager.default.removeItem(at: root)
+    }
     try await replaceEditorText(in: webView, with: "confirmed")
     let confirmedSnapshot = try await requestText(from: controller)
     XCTAssertEqual(confirmedSnapshot, "confirmed")
+    try document.writeRecovery(
+      BridgeSnapshot(
+        documentID: document.bridgeDocumentID,
+        revision: document.bridgeRevision, text: confirmedSnapshot))
     try await replaceEditorText(in: webView, with: "not confirmed")
 
     controller.webViewWebContentProcessDidTerminate(webView)
@@ -391,6 +403,46 @@ final class EditorWebViewTests: XCTestCase {
     }
     let recoveredSnapshot = try await requestText(from: controller)
     XCTAssertEqual(recoveredSnapshot, "confirmed")
+    XCTAssertTrue(document.isDocumentEdited, "Replaying an unsaved snapshot cannot mark it saved")
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("confirmed".utf8))
+  }
+
+  @MainActor
+  func testProcessReplayOfLatestUnsavedSnapshotKeepsDirtyAndDraft() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "initial")
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "latest-recovery-\(UUID())")
+    let store = RecoveryStore(directory: root)
+    document.configureRecovery(store: store)
+    defer {
+      document.close()
+      try? FileManager.default.removeItem(at: root)
+    }
+    try await replaceEditorText(in: webView, with: "unsaved")
+    let text = try await requestText(from: controller)
+    try document.writeRecovery(
+      BridgeSnapshot(
+        documentID: document.bridgeDocumentID,
+        revision: document.bridgeRevision, text: text))
+    _ = try await webView.evaluateJavaScript("window.inkoraRecoveryOldPage = true")
+    controller.webViewWebContentProcessDidTerminate(webView)
+    var reloaded = false
+    for _ in 0..<100 {
+      let ready = try? await webView.evaluateJavaScript(
+        "window.inkoraRecoveryOldPage !== true && document.querySelector('#editor') !== null")
+      if ready as? Bool == true {
+        reloaded = true
+        break
+      }
+      try await Task.sleep(for: .milliseconds(50))
+    }
+    XCTAssertTrue(reloaded, "A new Web page must load before checking recovered dirty")
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == "unsaved"
+    }
+    _ = try await requestText(from: controller)
+    XCTAssertTrue(document.isDocumentEdited)
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("unsaved".utf8))
   }
 
   @MainActor

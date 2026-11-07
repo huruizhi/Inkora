@@ -109,6 +109,11 @@ final class InkoraDocument: NSDocument {
     synchronizeEditedState(true)
   }
 
+  func preserveDirtyForEditorRecovery() {
+    // A replayed snapshot initializes a clean Web session, but it is not a disk save.
+    recoveredUnsaved = recoveredUnsaved || isDocumentEdited
+  }
+
   func configureRecovery(store: RecoveryStore, snapshotRequester: SnapshotRequester? = nil) {
     recoveryStore = store
     recoverySnapshotRequester = snapshotRequester
