@@ -9,18 +9,23 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
 
   private let resourceBundle: Bundle
   private let requestTimeout: Duration
+  private let diagnostics: BridgeDiagnostics
   private var bridge: EditorBridge?
   private var resourceSchemeHandler: EditorResourceSchemeHandler?
   private var webView: WKWebView?
+  private var automaticRecoveryAttempts = 0
+  private let maximumAutomaticRecoveryAttempts = 1
 
   init(
     document: InkoraDocument,
     resourceBundle: Bundle = .main,
-    requestTimeout: Duration = .seconds(5)
+    requestTimeout: Duration = .seconds(5),
+    diagnostics: BridgeDiagnostics = BridgeDiagnostics()
   ) {
     self.document = document
     self.resourceBundle = resourceBundle
     self.requestTimeout = requestTimeout
+    self.diagnostics = diagnostics
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -44,7 +49,11 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
       forURLScheme: EditorResourceSchemeHandler.scheme
     )
 
-    let bridge = EditorBridge(delegate: self, requestTimeout: requestTimeout)
+    let bridge = EditorBridge(
+      delegate: self,
+      requestTimeout: requestTimeout,
+      diagnostics: diagnostics
+    )
     configuration.userContentController.add(bridge, name: "inkora")
 
     let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -76,6 +85,12 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
   }
 
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {
+    automaticRecoveryAttempts = 0
+  }
+
+  func editorBridge(_ bridge: EditorBridge, didReceiveRecoverableError error: Error) {
+    guard let window = view.window else { return }
+    NSAlert(error: error).beginSheetModal(for: window)
   }
 
   func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error) {
@@ -113,7 +128,11 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
   }
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    bridge?.becomeUnavailable(EditorBridgeError.editorUnavailable)
+    bridge?.webContentProcessDidTerminate()
+    if automaticRecoveryAttempts < maximumAutomaticRecoveryAttempts {
+      automaticRecoveryAttempts += 1
+      recoverEditor()
+    }
   }
 
   func webView(
@@ -142,10 +161,59 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
     webView.load(URLRequest(url: indexURL))
   }
 
+  @objc
+  func recoverEditor() {
+    guard let bridge, let webView else {
+      presentResourceError(message: EditorBridgeError.editorUnavailable.localizedDescription)
+      return
+    }
+    bridge.prepareForRecovery()
+    view = webView
+    loadEditor(into: webView)
+  }
+
   private func presentResourceError(message: String) {
-    let label = NSTextField(labelWithString: "Inkora could not load the editor: \(message)")
-    label.alignment = .center
-    view = label
+    let recoveryView = EditorRecoveryView(
+      message: message,
+      target: self,
+      action: #selector(recoverEditor)
+    )
+    view = recoveryView
+  }
+}
+
+@MainActor
+final class EditorRecoveryView: NSView {
+  let messageLabel: NSTextField
+  let retryButton: NSButton
+
+  init(message: String, target: AnyObject, action: Selector) {
+    messageLabel = NSTextField(
+      labelWithString: "Inkora could not load the editor: \(message)"
+    )
+    retryButton = NSButton(title: "Reload Editor", target: target, action: action)
+    super.init(frame: .zero)
+
+    messageLabel.alignment = .center
+    messageLabel.maximumNumberOfLines = 0
+
+    let stack = NSStackView(views: [messageLabel, retryButton])
+    stack.orientation = .vertical
+    stack.alignment = .centerX
+    stack.spacing = 12
+    stack.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(stack)
+    NSLayoutConstraint.activate([
+      stack.centerXAnchor.constraint(equalTo: centerXAnchor),
+      stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+      stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 24),
+      stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -24),
+    ])
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) is not supported")
   }
 }
 

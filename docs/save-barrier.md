@@ -21,6 +21,8 @@
 - 导航、进程终止或协议错误会失败所有等待请求；
 - 迟到或未知 request ID 被忽略。
 
+每次通过校验的 `snapshotReady` 也成为原生层的最近确认恢复点。Web Content process 终止后只重放该恢复点；snapshot 请求中或其后尚未确认的编辑不会参与保存。超时、非法消息、初始化或恢复失败均把当前保存操作以错误结束，绝不继续调用磁盘写入。
+
 ## 实际编辑器
 
 受支持 Markdown 由 ProseMirror runtime 承载，并使用 INK-011 的 history、dirty、IME 与 paste 会话。未知/延后 Markdown 自动进入源码 textarea，保存始终返回完整缓冲区；其 Undo/Redo 也通过 revisioned Bridge 上报。未修改文档无论使用哪种模式都返回原始字节对应字符串。
