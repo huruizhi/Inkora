@@ -9,12 +9,22 @@ final class EditorResourceSchemeHandler: NSObject, WKURLSchemeHandler {
   init?(bundle: Bundle) {
     guard let resourceURL = bundle.resourceURL else { return nil }
     let resourceDirectory = resourceURL.appendingPathComponent("editor", isDirectory: true)
-    guard FileManager.default.fileExists(atPath: resourceDirectory.path) else { return nil }
+    var isDirectory: ObjCBool = false
+    guard
+      FileManager.default.fileExists(
+        atPath: resourceDirectory.path,
+        isDirectory: &isDirectory
+      ),
+      isDirectory.boolValue
+    else { return nil }
     self.resourceDirectory = resourceDirectory.standardizedFileURL
   }
 
   func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
     do {
+      guard urlSchemeTask.request.httpMethod == "GET" else {
+        throw EditorResourceError.invalidURL
+      }
       let fileURL = try resolve(urlSchemeTask.request.url)
       let data = try Data(contentsOf: fileURL)
       let response = URLResponse(
@@ -33,9 +43,17 @@ final class EditorResourceSchemeHandler: NSObject, WKURLSchemeHandler {
 
   func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
 
-  private func resolve(_ url: URL?) throws -> URL {
+  func resolve(_ url: URL?) throws -> URL {
     let url = try requiredURL(url)
-    guard url.scheme == Self.scheme, url.host == "app" else {
+    guard
+      url.scheme == Self.scheme,
+      url.host == "app",
+      url.user == nil,
+      url.password == nil,
+      url.port == nil,
+      url.query == nil,
+      url.fragment == nil
+    else {
       throw EditorResourceError.invalidURL
     }
 
@@ -44,12 +62,18 @@ final class EditorResourceSchemeHandler: NSObject, WKURLSchemeHandler {
       throw EditorResourceError.invalidURL
     }
 
-    let fileURL = resourceDirectory.appendingPathComponent(relativePath).standardizedFileURL
-    let allowedPrefix = resourceDirectory.path + "/"
+    let fileURL =
+      resourceDirectory
+      .appendingPathComponent(relativePath)
+      .standardizedFileURL
+      .resolvingSymlinksInPath()
+    let resolvedDirectory = resourceDirectory.resolvingSymlinksInPath()
+    let allowedPrefix = resolvedDirectory.path + "/"
     guard fileURL.path.hasPrefix(allowedPrefix) else {
       throw EditorResourceError.invalidURL
     }
-    guard FileManager.default.fileExists(atPath: fileURL.path) else {
+    let values = try fileURL.resourceValues(forKeys: [.isRegularFileKey])
+    guard values.isRegularFile == true else {
       throw EditorResourceError.resourceNotFound
     }
     return fileURL
@@ -87,7 +111,7 @@ final class EditorResourceSchemeHandler: NSObject, WKURLSchemeHandler {
   }
 }
 
-private enum EditorResourceError: LocalizedError {
+enum EditorResourceError: LocalizedError {
   case invalidURL
   case resourceNotFound
 

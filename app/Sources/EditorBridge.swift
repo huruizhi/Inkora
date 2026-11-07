@@ -5,10 +5,16 @@ import WebKit
 protocol EditorBridgeDelegate: AnyObject {
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge)
   func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState)
+  func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error)
+}
+
+extension EditorBridgeDelegate {
+  func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error) {}
 }
 
 enum EditorBridgeError: LocalizedError {
   case editorUnavailable
+  case editorNotReady
   case invalidMessage
   case javaScriptEvaluation(String)
   case protocolMismatch
@@ -20,6 +26,8 @@ enum EditorBridgeError: LocalizedError {
     switch self {
     case .editorUnavailable:
       "The editor is unavailable, so Inkora cannot save this document."
+    case .editorNotReady:
+      "The editor is still loading. Try again after it becomes ready."
     case .invalidMessage:
       "The editor sent an invalid Bridge message."
     case .javaScriptEvaluation(let message):
@@ -38,6 +46,18 @@ enum EditorBridgeError: LocalizedError {
 
 @MainActor
 final class EditorBridge: NSObject, WKScriptMessageHandler {
+  private enum Lifecycle: Equatable {
+    case loading
+    case ready
+    case unavailable
+  }
+
+  private struct LoadedDocument {
+    let documentID: String
+    let revision: Int
+    let text: String
+  }
+
   private struct SnapshotRequest {
     let documentID: String
     let revision: Int
@@ -47,6 +67,8 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   weak var delegate: EditorBridgeDelegate?
   private let requestTimeout: Duration
   private weak var webView: WKWebView?
+  private var lifecycle = Lifecycle.loading
+  private var currentDocument: LoadedDocument?
   private var revisionTracker = BridgeRevisionTracker()
   private var snapshotRequests: [String: SnapshotRequest] = [:]
 
@@ -57,21 +79,32 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
   func attach(webView: WKWebView) {
     self.webView = webView
+    lifecycle = .loading
+  }
+
+  func prepareForNavigation() {
+    lifecycle = .loading
+    failPendingRequests(EditorBridgeError.editorNotReady)
   }
 
   func loadDocument(documentID: String, revision: Int, text: String) {
     revisionTracker.beginDocument(documentID: documentID, revision: revision)
-    send(
-      .loadDocument(
-        requestID: UUID().uuidString,
-        documentID: documentID,
-        revision: revision,
-        text: text
-      )
-    )
+    currentDocument = LoadedDocument(documentID: documentID, revision: revision, text: text)
+    if lifecycle == .ready {
+      sendCurrentDocument()
+    }
   }
 
   func requestSnapshot(completion: @escaping (Result<String, Error>) -> Void) {
+    guard lifecycle == .ready else {
+      completion(
+        .failure(
+          lifecycle == .loading
+            ? EditorBridgeError.editorNotReady : EditorBridgeError.editorUnavailable
+        )
+      )
+      return
+    }
     guard
       let documentID = revisionTracker.documentID,
       let revision = revisionTracker.latestRevision
@@ -87,7 +120,9 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       completion: completion
     )
     scheduleTimeout(for: requestID)
-    send(.createSnapshot(requestID: requestID, documentID: documentID, revision: revision)) {
+    sendImmediately(
+      .createSnapshot(requestID: requestID, documentID: documentID, revision: revision)
+    ) {
       [weak self] error in
       guard let self, let error else { return }
       self.snapshotRequests.removeValue(forKey: requestID)?.completion(.failure(error))
@@ -99,6 +134,14 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     didReceive message: WKScriptMessage
   ) {
     guard message.name == "inkora" else { return }
+    guard
+      message.frameInfo.isMainFrame,
+      message.frameInfo.securityOrigin.protocol == EditorResourceSchemeHandler.scheme,
+      message.frameInfo.securityOrigin.host == "app"
+    else {
+      becomeUnavailable(EditorBridgeError.invalidMessage)
+      return
+    }
     guard
       let serialized = message.body as? String,
       let data = serialized.data(using: .utf8),
@@ -120,6 +163,8 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
     switch editorEvent.type {
     case .ready:
+      lifecycle = .ready
+      sendCurrentDocument()
       delegate?.editorBridgeDidBecomeReady(self)
     case .stateChanged:
       handleStateChanged(editorEvent)
@@ -136,6 +181,12 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     for request in requests {
       request.completion(.failure(error))
     }
+  }
+
+  func becomeUnavailable(_ error: Error) {
+    lifecycle = .unavailable
+    failPendingRequests(error)
+    delegate?.editorBridge(self, didBecomeUnavailable: error)
   }
 
   private func handleStateChanged(_ event: BridgeEditorEvent) {
@@ -189,7 +240,19 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     }
   }
 
-  private func send(
+  private func sendCurrentDocument() {
+    guard let currentDocument else { return }
+    sendImmediately(
+      .loadDocument(
+        requestID: UUID().uuidString,
+        documentID: currentDocument.documentID,
+        revision: currentDocument.revision,
+        text: currentDocument.text
+      )
+    )
+  }
+
+  private func sendImmediately(
     _ command: BridgeNativeCommand,
     completion: ((Error?) -> Void)? = nil
   ) {

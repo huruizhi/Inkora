@@ -2,7 +2,9 @@ import AppKit
 import WebKit
 
 @MainActor
-final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavigationDelegate {
+final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavigationDelegate,
+  WKUIDelegate
+{
   weak var document: InkoraDocument?
 
   private let resourceBundle: Bundle
@@ -29,6 +31,8 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
 
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = .nonPersistent()
+    configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+    configuration.mediaTypesRequiringUserActionForPlayback = .all
     configuration.setURLSchemeHandler(
       resourceSchemeHandler,
       forURLScheme: EditorResourceSchemeHandler.scheme
@@ -39,7 +43,15 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
 
     let webView = WKWebView(frame: .zero, configuration: configuration)
     webView.navigationDelegate = self
+    webView.uiDelegate = self
     bridge.attach(webView: webView)
+    if let document {
+      bridge.loadDocument(
+        documentID: document.bridgeDocumentID,
+        revision: document.bridgeRevision,
+        text: document.text
+      )
+    }
 
     self.bridge = bridge
     self.resourceSchemeHandler = resourceSchemeHandler
@@ -58,12 +70,10 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
   }
 
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {
-    guard let document else { return }
-    bridge.loadDocument(
-      documentID: document.bridgeDocumentID,
-      revision: document.bridgeRevision,
-      text: document.text
-    )
+  }
+
+  func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error) {
+    presentResourceError(message: error.localizedDescription)
   }
 
   func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState) {
@@ -78,8 +88,14 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
       return .cancel
     }
 
-    return url.scheme == EditorResourceSchemeHandler.scheme || url.scheme == "about"
-      ? .allow : .cancel
+    return EditorNavigationPolicy.allows(url) ? .allow : .cancel
+  }
+
+  func webView(
+    _ webView: WKWebView,
+    didStartProvisionalNavigation navigation: WKNavigation!
+  ) {
+    bridge?.prepareForNavigation()
   }
 
   func webView(
@@ -87,12 +103,11 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
     didFail navigation: WKNavigation!,
     withError error: Error
   ) {
-    presentResourceError(message: error.localizedDescription)
+    bridge?.becomeUnavailable(error)
   }
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-    bridge?.failPendingRequests(EditorBridgeError.editorUnavailable)
-    presentResourceError(message: "The editor process stopped unexpectedly.")
+    bridge?.becomeUnavailable(EditorBridgeError.editorUnavailable)
   }
 
   func webView(
@@ -100,7 +115,16 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
     didFailProvisionalNavigation navigation: WKNavigation!,
     withError error: Error
   ) {
-    presentResourceError(message: error.localizedDescription)
+    bridge?.becomeUnavailable(error)
+  }
+
+  func webView(
+    _ webView: WKWebView,
+    createWebViewWith configuration: WKWebViewConfiguration,
+    for navigationAction: WKNavigationAction,
+    windowFeatures: WKWindowFeatures
+  ) -> WKWebView? {
+    nil
   }
 
   private func loadEditor(into webView: WKWebView) {
@@ -116,5 +140,13 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
     let label = NSTextField(labelWithString: "Inkora could not load the editor: \(message)")
     label.alignment = .center
     view = label
+  }
+}
+
+@MainActor
+enum EditorNavigationPolicy {
+  static func allows(_ url: URL) -> Bool {
+    return url.scheme == EditorResourceSchemeHandler.scheme && url.host == "app"
+      && url.user == nil && url.password == nil && url.port == nil
   }
 }
