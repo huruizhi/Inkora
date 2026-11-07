@@ -5,6 +5,8 @@ DOCUMENT_UI_SCHEME := InkoraDocumentOpenUI
 DERIVED_DATA := $(CURDIR)/build/DerivedData
 ARTIFACTS_DIR ?= $(CURDIR)/artifacts
 CAPTURE := $(CURDIR)/scripts/ci/run-and-capture.sh
+UI_LOCK := $(CURDIR)/scripts/ci/with-ui-lock.sh
+UI_PREFLIGHT := $(CURDIR)/scripts/ci/ui-preflight.sh
 PNPM_VERSION := 11.25.0
 PNPM := $(CURDIR)/.tools/node_modules/.bin/pnpm
 NATIVE_RESULT := $(ARTIFACTS_DIR)/test-results/native.xcresult
@@ -52,6 +54,7 @@ test-native: editor-build generate require-xcode prepare-artifacts
 test-document-open-ui: editor-build generate require-xcode prepare-artifacts
 	rm -rf "$(DOCUMENT_UI_RESULT)"
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) document-open-ui \
+		$(UI_LOCK) $(UI_PREFLIGHT) xcuitest \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(DOCUMENT_UI_SCHEME) \
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(DOCUMENT_UI_RESULT)" \
@@ -59,6 +62,7 @@ test-document-open-ui: editor-build generate require-xcode prepare-artifacts
 
 test-ui: build prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) ui \
+		$(UI_LOCK) $(UI_PREFLIGHT) desktop \
 		tests/ci/ui-launch-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Debug/Inkora.app"
 
@@ -67,11 +71,13 @@ test-ui-release: build-release prepare-artifacts
 		tests/ci/editor-bundle-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Release/Inkora.app"
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) ui-release \
+		$(UI_LOCK) $(UI_PREFLIGHT) desktop \
 		tests/ci/ui-launch-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Release/Inkora.app"
 
 test-ci: prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" tests/ci/entrypoint-smoke.sh
+	tests/ci/ui-lock-smoke.sh
 
 test-all: test-editor test-bridge test-native test-document-open-ui test-ui test-ci
 
@@ -86,7 +92,7 @@ build-release: editor-build generate require-xcode prepare-artifacts
 		-configuration Release -derivedDataPath $(DERIVED_DATA) build
 
 run: build
-	open "$(DERIVED_DATA)/Build/Products/Debug/Inkora.app"
+	$(UI_LOCK) $(UI_PREFLIGHT) desktop "$(DERIVED_DATA)/Build/Products/Debug/Inkora.app/Contents/MacOS/Inkora"
 
 editor-build:
 	$(PNPM) --dir editor build

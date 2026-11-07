@@ -21,6 +21,8 @@ jobs:
         run: make setup
       - name: Lint
         run: make lint
+      - name: Test CI helpers
+        run: make test-ci
       - name: Test all layers
         run: make test-all
       - name: Build and launch release offline
