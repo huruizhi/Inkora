@@ -75,7 +75,7 @@ class StructuredEditorRuntime implements EditorRuntime {
   markSaved(text: string): void {
     this.savedText = text;
     this.session.markSaved(parseMarkdown(text));
-    this.view.updateState(this.session.state);
+    if (!this.composing) this.view.updateState(this.session.state);
   }
 
   undo(): boolean {

@@ -103,7 +103,9 @@ export class InkoraEditorSession {
   get status(): EditorSessionStatus {
     return {
       revision: this.revision,
-      dirty: !this.currentState.doc.eq(this.savedDocument),
+      // A save acknowledgement may arrive during a newer IME composition.
+      // Report the last committed document, never its candidate-text model.
+      dirty: !(this.compositionStartDocument ?? this.currentState.doc).eq(this.savedDocument),
       canUndo: undoDepth(this.currentState) > 0,
       canRedo: redoDepth(this.currentState) > 0,
       composing: this.composing,
@@ -130,7 +132,9 @@ export class InkoraEditorSession {
   markSaved(document: ProseMirrorNode = this.currentState.doc): void {
     document.check();
     this.savedDocument = document;
-    this.currentState = this.currentState.apply(closeHistory(this.currentState.tr));
+    if (!this.composing) {
+      this.currentState = this.currentState.apply(closeHistory(this.currentState.tr));
+    }
     this.publishStatus();
   }
 
