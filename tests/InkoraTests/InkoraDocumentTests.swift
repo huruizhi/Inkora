@@ -444,6 +444,23 @@ final class InkoraDocumentTests: XCTestCase {
   }
 
   @MainActor
+  func testFileStateSubtitlePreservesAccessibleFilename() throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("accessible.md")
+    try Data("original".utf8).write(to: url)
+    let document = try InkoraDocument(contentsOf: url, ofType: markdownType)
+    let window = NSWindow()
+    document.addWindowController(NSWindowController(window: window))
+    defer { document.close() }
+    try FileManager.default.setAttributes([.posixPermissions: 0o444], ofItemAtPath: url.path)
+    document.refreshFileState()
+    XCTAssertEqual(document.fileState, .readOnly)
+    XCTAssertEqual(window.accessibilityTitle(), document.displayName)
+    XCTAssertEqual(window.subtitle, DocumentFileState.readOnly.localizedDescription)
+  }
+
+  @MainActor
   func testLockedFlagIsReadOnlyUntilUnlocked() throws {
     let directory = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }

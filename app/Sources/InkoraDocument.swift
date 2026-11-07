@@ -312,6 +312,8 @@ final class InkoraDocument: NSDocument {
 
   func refreshFileState() {
     guard let url = fileURL else { return }
+    let accessed = url.startAccessingSecurityScopedResource()
+    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
     do {
       let exists: Bool
       do {
@@ -327,7 +329,7 @@ final class InkoraDocument: NSDocument {
       } else if let diskVersion, try DocumentDiskVersion(url: url) != diskVersion {
         fileState = .externalChange
       } else if try !DocumentFileState.isWritable(url)
-        || !DocumentFileState.isWritable(url.deletingLastPathComponent())
+        || !DocumentFileState.isWritable(url.deletingLastPathComponent(), checkAccess: false)
       {
         fileState = .readOnly
       } else {
@@ -342,6 +344,7 @@ final class InkoraDocument: NSDocument {
   private func updateFileStateSubtitle() {
     for controller in windowControllers {
       controller.window?.subtitle = fileState == .current ? "" : fileState.localizedDescription
+      controller.window?.setAccessibilityTitle(displayName)
     }
   }
 

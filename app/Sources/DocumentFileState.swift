@@ -7,6 +7,8 @@ struct DocumentDiskVersion: Equatable, Sendable {
   let modified: Date?
 
   init(url: URL) throws {
+    let accessed = url.startAccessingSecurityScopedResource()
+    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
     data = try Data(contentsOf: url)
     modified = try url.resourceValues(forKeys: [.contentModificationDateKey])
       .contentModificationDate
@@ -26,12 +28,13 @@ enum DocumentFileState: String, Error, LocalizedError {
     }
   }
 
-  static func isWritable(_ url: URL) throws -> Bool {
+  static func isWritable(_ url: URL, checkAccess: Bool = true) throws -> Bool {
     let manager = FileManager.default
-    let values = try url.resourceValues(forKeys: [.isUserImmutableKey, .volumeIsReadOnlyKey])
+    let values = try? url.resourceValues(forKeys: [.volumeIsReadOnlyKey])
     let attributes = try manager.attributesOfItem(atPath: url.path)
     let mode = (attributes[.posixPermissions] as? NSNumber)?.intValue ?? 0
-    return values.isUserImmutable != true && values.volumeIsReadOnly != true
-      && mode & 0o222 != 0 && manager.isWritableFile(atPath: url.path)
+    return (attributes[.immutable] as? NSNumber)?.boolValue != true
+      && values?.volumeIsReadOnly != true && mode & 0o222 != 0
+      && (!checkAccess || manager.isWritableFile(atPath: url.path))
   }
 }
