@@ -112,9 +112,24 @@ export class TextAreaEditorKernel implements EditorKernel {
 
     this.lineEndings = [
       ...this.lineEndings.slice(0, preservedPrefixCount),
-      ...Array<string>(insertedCount).fill(this.defaultLineEnding),
+      ...Array<string>(insertedCount).fill(
+        this.insertedLineEnding(previousText, prefixLength),
+      ),
       ...this.lineEndings.slice(preservedSuffixStart),
     ];
+  }
+
+  // EOL-002: an inserted newline inherits the ending of the line the caret is
+  // on, falling back to the nearest previous line, the document's first
+  // ending, and finally LF.
+  private insertedLineEnding(previousText: string, insertionOffset: number): string {
+    const line = countNewlines(previousText.slice(0, insertionOffset));
+    const afterBoundary =
+      insertionOffset > 0 && previousText[insertionOffset - 1] === "\n";
+    const current = afterBoundary
+      ? this.lineEndings[line - 1]
+      : this.lineEndings[line];
+    return current ?? this.lineEndings[line - 1] ?? this.defaultLineEnding;
   }
 }
 

@@ -1,2 +1,6 @@
 tests/fixtures/crlf.md -diff -merge -text
 tests/fixtures/no-final-newline.md -text
+tests/fixtures/utf8-bom.md -diff -merge -text
+tests/fixtures/mixed-eol.md -diff -merge -text
+editor/test/fixtures/markdown/crlf.input.md -diff -merge -text
+editor/test/fixtures/markdown/crlf.expected.md -diff -merge -text

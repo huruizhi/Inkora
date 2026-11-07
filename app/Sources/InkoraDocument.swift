@@ -2,13 +2,25 @@ import AppKit
 
 enum InkoraDocumentError: LocalizedError {
   case invalidUTF8
+  case utf16Detected
+  case utf32Detected
 
   var errorDescription: String? {
-    "Inkora currently supports UTF-8 Markdown files only."
+    switch self {
+    case .invalidUTF8, .utf16Detected, .utf32Detected:
+      "Inkora currently supports UTF-8 Markdown files only."
+    }
   }
 
   var failureReason: String? {
-    "The selected file is not valid UTF-8 text."
+    switch self {
+    case .invalidUTF8:
+      "The selected file is not valid UTF-8 text."
+    case .utf16Detected:
+      "The selected file starts with a UTF-16 byte-order mark."
+    case .utf32Detected:
+      "The selected file starts with a UTF-32 byte-order mark."
+    }
   }
 
   var recoverySuggestion: String? {
@@ -27,11 +39,18 @@ final class InkoraDocument: NSDocument {
     let completion: (Error?) -> Void
   }
 
+  private static let utf8BOM = Data([0xEF, 0xBB, 0xBF])
+  private static let utf32LEBOM = Data([0xFF, 0xFE, 0x00, 0x00])
+  private static let utf32BEBOM = Data([0x00, 0x00, 0xFE, 0xFF])
+  private static let utf16LEBOM = Data([0xFF, 0xFE])
+  private static let utf16BEBOM = Data([0xFE, 0xFF])
+
   let bridgeDocumentID = UUID().uuidString
   private let editorResourceBundle: Bundle
   private let dataWriter: any DocumentDataWriting
   private let revisionStorage = DocumentRevisionStorage()
   private let textStorage = DocumentTextStorage()
+  private let bomStorage = DocumentBOMStorage()
   private weak var editorViewController: EditorViewController?
   private var snapshotRequester: SnapshotRequester?
   private var pendingSaves: [PendingSave] = []
@@ -89,10 +108,21 @@ final class InkoraDocument: NSDocument {
   }
 
   override func read(from data: Data, ofType typeName: String) throws {
-    guard let decoded = String(data: data, encoding: .utf8) else {
+    if data.starts(with: Self.utf32LEBOM) || data.starts(with: Self.utf32BEBOM) {
+      throw InkoraDocumentError.utf32Detected
+    }
+    if data.starts(with: Self.utf16LEBOM) || data.starts(with: Self.utf16BEBOM) {
+      throw InkoraDocumentError.utf16Detected
+    }
+    // ENC-001: a leading UTF-8 BOM is allowed; its presence is document state.
+    // Strip it before decoding and re-emit it on every write path.
+    let hasBOM = data.starts(with: Self.utf8BOM)
+    let body = hasBOM ? data.dropFirst(Self.utf8BOM.count) : data[...]
+    guard let decoded = String(data: body, encoding: .utf8) else {
       throw InkoraDocumentError.invalidUTF8
     }
     textStorage.set(decoded)
+    bomStorage.set(hasBOM)
     revisionStorage.set(0)
   }
 
@@ -107,7 +137,7 @@ final class InkoraDocument: NSDocument {
   }
 
   override func data(ofType typeName: String) throws -> Data {
-    Data(textStorage.get().utf8)
+    encodedDocumentData()
   }
 
   override func write(
@@ -122,7 +152,13 @@ final class InkoraDocument: NSDocument {
         url.stopAccessingSecurityScopedResource()
       }
     }
-    try dataWriter.write(Data(textStorage.get().utf8), to: url)
+    try dataWriter.write(encodedDocumentData(), to: url)
+  }
+
+  private func encodedDocumentData() -> Data {
+    let body = Data(textStorage.get().utf8)
+    guard bomStorage.get() else { return body }
+    return Self.utf8BOM + body
   }
 
   override func save(
@@ -205,6 +241,21 @@ private final class DocumentTextStorage: @unchecked Sendable {
   func set(_ updatedText: String) {
     lock.withLock {
       text = updatedText
+    }
+  }
+}
+
+private final class DocumentBOMStorage: @unchecked Sendable {
+  private let lock = NSLock()
+  private var present = false
+
+  func get() -> Bool {
+    lock.withLock { present }
+  }
+
+  func set(_ updatedPresent: Bool) {
+    lock.withLock {
+      present = updatedPresent
     }
   }
 }

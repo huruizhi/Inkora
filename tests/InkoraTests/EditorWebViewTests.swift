@@ -430,7 +430,7 @@ final class EditorWebViewTests: XCTestCase {
   @MainActor
   func testUnmodifiedMarkdownSavesThroughBridgeByteForByte() async throws {
     let bundle = Bundle(for: Self.self)
-    for fixture in ["crlf", "no-final-newline", "unicode"] {
+    for fixture in ["crlf", "no-final-newline", "unicode", "utf8-bom", "mixed-eol"] {
       let fixtureURL = try XCTUnwrap(
         bundle.url(
           forResource: fixture,
@@ -484,6 +484,35 @@ final class EditorWebViewTests: XCTestCase {
       )
       document.close()
     }
+  }
+
+  @MainActor
+  func testEditedSnapshotKeepsCRLFLineEndingsAndUnicode() async throws {
+    let (_, controller, webView) = try await loadedEditor(
+      initialText: "# 标题\r\n正文 e\u{0301} 👩‍💻\r\n"
+    )
+
+    // Source-mode documents edit through a textarea; set its value directly
+    // and dispatch a real input event so the kernel observes the change.
+    let replacement = "第一行\n第二行 组合 e\u{0301}"
+    let data = try JSONEncoder().encode(replacement)
+    let literal = try XCTUnwrap(String(data: data, encoding: .utf8))
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const editor = document.querySelector('#editor');
+        editor.value = \(literal);
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      })()
+      """
+    )
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == replacement
+    }
+
+    let snapshot = try await requestText(from: controller)
+
+    XCTAssertEqual(snapshot, "第一行\r\n第二行 组合 e\u{0301}")
   }
 
   @MainActor
