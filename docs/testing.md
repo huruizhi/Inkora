@@ -83,6 +83,23 @@ sudo /usr/bin/automationmodetool enable-automationmode-without-authentication
 runner 应运行于登录用户的 LaunchAgent。当前检查已确认它属于 `gui/501`，
 不需重装。若检查发现只有 LaunchDaemon，应由管理员停掉该服务，再在已登录账户下
 按 runner 的 `svc.sh` 安装 LaunchAgent；不要同时启动两个 Listener。
+本次 CI 进一步确认：虽然服务位于 GUI 域，`SessionCreate=true` 的 runsvc 与测试子进程
+处于 audit session 102590，而桌面为 100014。仅判断 plist 位于 LaunchAgents 不足以验收。
+预检会输出两个编号；发现不同则停止。由用户在 rayhu 的已登录桌面终端中，确认无 CI
+正在运行后执行以下命令（不要 sudo 启动用户 LaunchAgent）：
+
+```sh
+runner_plist="$HOME/Library/LaunchAgents/actions.runner.huruizhi-Inkora.inkora-rayhu-mac-arm64.plist"
+runner_label=actions.runner.huruizhi-Inkora.inkora-rayhu-mac-arm64
+cp "$runner_plist" "$runner_plist.before-ink-infra-002"
+launchctl bootout "gui/$(id -u)/$runner_label"
+/usr/libexec/PlistBuddy -c 'Set :SessionCreate false' "$runner_plist"
+launchctl bootstrap "gui/$(id -u)" "$runner_plist"
+launchctl print "gui/$(id -u)/$runner_label"
+```
+
+这一步修改 runner 的系统会话配置，仓库脚本不会代为执行；需重跑 CI 确认测试进程与桌面
+编号相同，才能认定会话问题修复。后续重新安装 runner 可能重新生成 plist，需再次核对。
 若桌面锁定，请在本机解锁；不要通过脚本绕过锁屏。
 
 若预检通过但 XCUITest 仍报告权限错误，在“系统设置 → 隐私与安全性”中检查
