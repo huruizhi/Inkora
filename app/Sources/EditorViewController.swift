@@ -2,8 +2,8 @@ import AppKit
 import WebKit
 
 @MainActor
-final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavigationDelegate,
-  WKUIDelegate
+final class EditorViewController: NSViewController, EditorBridgeDelegate,
+  NSUserInterfaceValidations, WKNavigationDelegate, WKUIDelegate
 {
   weak var document: InkoraDocument?
 
@@ -13,6 +13,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
   private var bridge: EditorBridge?
   private var resourceSchemeHandler: EditorResourceSchemeHandler?
   private var webView: WKWebView?
+  private var editorState: BridgeEditorState?
   private var automaticRecoveryAttempts = 0
   private let maximumAutomaticRecoveryAttempts = 1
 
@@ -96,21 +97,68 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
     bridge?.confirmSaved(snapshot)
   }
 
+  func canPerformEditorCommand(_ command: BridgeEditorCommand) -> Bool {
+    guard let editorState else { return false }
+    switch command {
+    case .undo:
+      return editorState.canUndo
+    case .redo:
+      return editorState.canRedo
+    }
+  }
+
+  func performEditorCommand(_ command: BridgeEditorCommand) {
+    guard canPerformEditorCommand(command) else { return }
+    bridge?.executeEditorCommand(command)
+  }
+
+  @objc
+  func inkoraUndo(_ sender: Any?) {
+    performEditorCommand(.undo)
+  }
+
+  @objc
+  func inkoraRedo(_ sender: Any?) {
+    performEditorCommand(.redo)
+  }
+
+  func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+    switch item.action {
+    case #selector(inkoraUndo(_:)):
+      canPerformEditorCommand(.undo)
+    case #selector(inkoraRedo(_:)):
+      canPerformEditorCommand(.redo)
+    default:
+      true
+    }
+  }
+
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {
     automaticRecoveryAttempts = 0
   }
 
   func editorBridge(_ bridge: EditorBridge, didReceiveRecoverableError error: Error) {
+    if let bridgeError = error as? EditorBridgeError,
+      case .remote(.commandRejected, .notify, _) = bridgeError
+    {
+      // A rejected history command must not steal focus from an active IME session.
+      NSSound.beep()
+      return
+    }
     guard let window = view.window else { return }
     NSAlert(error: error).beginSheetModal(for: window)
   }
 
   func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error) {
+    editorState = nil
+    NSApplication.shared.mainMenu?.update()
     presentResourceError(message: error.localizedDescription)
   }
 
   func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState) {
+    editorState = state
     document?.editorDidChangeState(state)
+    NSApplication.shared.mainMenu?.update()
   }
 
   func webView(
@@ -208,6 +256,10 @@ final class EditorRecoveryView: NSView {
 
     messageLabel.alignment = .center
     messageLabel.maximumNumberOfLines = 0
+    messageLabel.lineBreakMode = .byWordWrapping
+    messageLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    messageLabel.setAccessibilityIdentifier("EditorRecoveryMessage")
+    messageLabel.setAccessibilityValue(messageLabel.stringValue)
 
     let stack = NSStackView(views: [messageLabel, retryButton])
     stack.orientation = .vertical
@@ -220,6 +272,7 @@ final class EditorRecoveryView: NSView {
       stack.centerYAnchor.constraint(equalTo: centerYAnchor),
       stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 24),
       stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -24),
+      messageLabel.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -48),
     ])
   }
 

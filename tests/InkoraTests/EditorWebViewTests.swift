@@ -130,6 +130,90 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testNativeUndoAndRedoFollowEditorState() async throws {
+    let (_, controller, webView) = try await loadedEditor(initialText: "before")
+    XCTAssertFalse(controller.canPerformEditorCommand(.undo))
+    XCTAssertFalse(controller.canPerformEditorCommand(.redo))
+
+    try await replaceEditorText(in: webView, with: "after")
+    try await waitForEditorCommand(.undo, enabled: true, in: controller)
+
+    controller.inkoraUndo(nil)
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == "before"
+    }
+    try await waitForEditorCommand(.redo, enabled: true, in: controller)
+
+    controller.inkoraRedo(nil)
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == "after"
+    }
+    try await waitForEditorCommand(.undo, enabled: true, in: controller)
+  }
+
+  @MainActor
+  func testNativeEditorCommandsAreSerializedAtCurrentRevision() throws {
+    let delegate = RecordingBridgeDelegate()
+    var scripts: [String] = []
+    let bridge = EditorBridge(
+      delegate: delegate,
+      evaluator: { script, completion in
+        scripts.append(script)
+        completion(nil)
+      }
+    )
+    bridge.loadDocument(documentID: "command-doc", revision: 0, text: "before")
+    bridge.receiveEditorEvent(readyEvent())
+    bridge.receiveEditorEvent(
+      stateEvent(documentID: "command-doc", revision: 0, canUndo: true, canRedo: false)
+    )
+    var completions: [String] = []
+
+    bridge.executeEditorCommand(.undo) { error in
+      XCTAssertNil(error)
+      completions.append("undo")
+    }
+    bridge.executeEditorCommand(.redo) { error in
+      XCTAssertNil(error)
+      completions.append("redo")
+    }
+
+    var commands = try scripts.compactMap(decodeBridgeCommand).filter {
+      $0.type == .executeCommand
+    }
+    XCTAssertEqual(commands.count, 1)
+    XCTAssertEqual(commands[0].command, .undo)
+    let undoRequestID = commands[0].requestID
+
+    bridge.receiveEditorEvent(
+      stateEvent(
+        requestID: undoRequestID,
+        documentID: "command-doc",
+        revision: 1,
+        canUndo: false,
+        canRedo: true
+      )
+    )
+
+    commands = try scripts.compactMap(decodeBridgeCommand).filter {
+      $0.type == .executeCommand
+    }
+    XCTAssertEqual(commands.count, 2)
+    XCTAssertEqual(commands[1].command, .redo)
+    XCTAssertEqual(commands[1].revision, 1)
+    bridge.receiveEditorEvent(
+      stateEvent(
+        requestID: commands[1].requestID,
+        documentID: "command-doc",
+        revision: 2,
+        canUndo: true,
+        canRedo: false
+      )
+    )
+    XCTAssertEqual(completions, ["undo", "redo"])
+  }
+
+  @MainActor
   func testSnapshotBarrierTimesOutWhenTheEditorStopsReplying() async throws {
     let delegate = SilentBridgeDelegate()
     let bridge = EditorBridge(
@@ -531,6 +615,7 @@ final class EditorWebViewTests: XCTestCase {
       }
       try await Task.sleep(for: interval)
     }
+    XCTFail("Timed out waiting for JavaScript value; last value: \(String(describing: lastValue))")
     return lastValue
   }
 
@@ -608,6 +693,21 @@ final class EditorWebViewTests: XCTestCase {
     }
   }
 
+  @MainActor
+  private func waitForEditorCommand(
+    _ command: BridgeEditorCommand,
+    enabled: Bool,
+    in controller: EditorViewController
+  ) async throws {
+    for _ in 0..<40 {
+      if controller.canPerformEditorCommand(command) == enabled {
+        return
+      }
+      try await Task.sleep(for: .milliseconds(50))
+    }
+    XCTFail("Editor command state did not update: \(command)")
+  }
+
   private var editorTextScript: String {
     """
     (() => {
@@ -651,6 +751,41 @@ private func errorEvent(
     action: action,
     message: "Fixed diagnostic message"
   )
+}
+
+private func stateEvent(
+  requestID: String? = nil,
+  documentID: String,
+  revision: Int,
+  canUndo: Bool,
+  canRedo: Bool
+) -> BridgeEditorEvent {
+  BridgeEditorEvent(
+    protocolVersion: BridgeProtocolV1.version,
+    type: .stateChanged,
+    requestID: requestID,
+    documentID: nil,
+    revision: nil,
+    state: BridgeEditorState(
+      documentID: documentID,
+      revision: revision,
+      dirty: canUndo,
+      canUndo: canUndo,
+      canRedo: canRedo
+    ),
+    text: nil,
+    code: nil,
+    action: nil,
+    message: nil
+  )
+}
+
+private func decodeBridgeCommand(from script: String) throws -> BridgeNativeCommand? {
+  let prefix = "window.inkora.receive("
+  guard script.hasPrefix(prefix), script.hasSuffix(")") else { return nil }
+  let literal = String(script.dropFirst(prefix.count).dropLast())
+  let serialized = try JSONDecoder().decode(String.self, from: Data(literal.utf8))
+  return try JSONDecoder().decode(BridgeNativeCommand.self, from: Data(serialized.utf8))
 }
 
 private struct InjectedBridgeFailure: LocalizedError {

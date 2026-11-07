@@ -30,8 +30,8 @@ if grep -Eq 'https?://' "$index"; then
 fi
 
 signed_entitlements=$(codesign -d --entitlements :- "$app_bundle" 2>/dev/null)
-if print -r -- "$signed_entitlements" | grep -q 'com.apple.security.network.client'; then
-  print -u2 "Release app unexpectedly has network client entitlement"
+if ! print -r -- "$signed_entitlements" | grep -q 'com.apple.security.network.client'; then
+  print -u2 "Release app is missing the entitlement required by WKWebView child processes"
   exit 65
 fi
 

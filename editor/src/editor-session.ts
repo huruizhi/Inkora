@@ -135,10 +135,12 @@ export class InkoraEditorSession {
   }
 
   undo(): boolean {
+    if (this.composing) return false;
     return undo(this.currentState, (transaction) => this.dispatch(transaction));
   }
 
   redo(): boolean {
+    if (this.composing) return false;
     return redo(this.currentState, (transaction) => this.dispatch(transaction));
   }
 

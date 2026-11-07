@@ -88,6 +88,17 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     }
   }
 
+  private struct EditorCommandRequest {
+    let command: BridgeEditorCommand
+    let attempt: Int
+    let completion: (Error?) -> Void
+  }
+
+  private struct ActiveEditorCommand {
+    let requestID: String
+    let request: EditorCommandRequest
+  }
+
   weak var delegate: EditorBridgeDelegate?
   private let requestTimeout: Duration
   private let evaluator: JavaScriptEvaluator?
@@ -97,7 +108,10 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   private var currentDocument: LoadedDocument?
   private var revisionTracker = BridgeRevisionTracker()
   private var snapshotRequests: [String: SnapshotRequest] = [:]
+  private var editorCommandQueue: [EditorCommandRequest] = []
+  private var activeEditorCommand: ActiveEditorCommand?
   private let maximumSnapshotAttempts = 3
+  private let maximumEditorCommandAttempts = 3
 
   init(
     delegate: EditorBridgeDelegate,
@@ -196,6 +210,27 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     }
   }
 
+  func executeEditorCommand(
+    _ command: BridgeEditorCommand,
+    completion: @escaping (Error?) -> Void = { _ in }
+  ) {
+    guard lifecycle == .ready else {
+      completion(
+        lifecycle == .loading
+          ? EditorBridgeError.editorNotReady : EditorBridgeError.editorUnavailable
+      )
+      return
+    }
+    guard revisionTracker.documentID != nil, revisionTracker.latestRevision != nil else {
+      completion(EditorBridgeError.editorUnavailable)
+      return
+    }
+    editorCommandQueue.append(
+      EditorCommandRequest(command: command, attempt: 1, completion: completion)
+    )
+    processNextEditorCommand()
+  }
+
   func userContentController(
     _ userContentController: WKUserContentController,
     didReceive message: WKScriptMessage
@@ -250,6 +285,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     for request in requests {
       request.completion(.failure(error))
     }
+    failEditorCommands(error)
   }
 
   func becomeUnavailable(_ error: Error, recordsDiagnostic: Bool = true) {
@@ -273,6 +309,14 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     if revisionTracker.accept(state) {
       delegate?.editorBridge(self, didChangeState: state)
     }
+    guard
+      let requestID = event.requestID,
+      let activeEditorCommand,
+      activeEditorCommand.requestID == requestID
+    else { return }
+    self.activeEditorCommand = nil
+    activeEditorCommand.request.completion(nil)
+    processNextEditorCommand()
   }
 
   private func handleSnapshotReady(_ event: BridgeEditorEvent) {
@@ -339,6 +383,33 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       return
     }
 
+    if let requestID = event.requestID,
+      let activeEditorCommand,
+      activeEditorCommand.requestID == requestID
+    {
+      self.activeEditorCommand = nil
+      if action == .retry,
+        activeEditorCommand.request.attempt < maximumEditorCommandAttempts
+      {
+        if let documentID = event.documentID, let revision = event.revision {
+          revisionTracker.observeSnapshot(documentID: documentID, revision: revision)
+        }
+        editorCommandQueue.insert(
+          EditorCommandRequest(
+            command: activeEditorCommand.request.command,
+            attempt: activeEditorCommand.request.attempt + 1,
+            completion: activeEditorCommand.request.completion
+          ),
+          at: 0
+        )
+      } else {
+        activeEditorCommand.request.completion(error)
+        delegate?.editorBridge(self, didReceiveRecoverableError: error)
+      }
+      processNextEditorCommand()
+      return
+    }
+
     if let requestID = event.requestID {
       guard let request = snapshotRequests.removeValue(forKey: requestID) else { return }
       if action == .retry && request.attempt < maximumSnapshotAttempts {
@@ -375,6 +446,69 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
         )
       )
       request.completion(.failure(EditorBridgeError.requestTimedOut))
+    }
+  }
+
+  private func processNextEditorCommand() {
+    guard activeEditorCommand == nil, !editorCommandQueue.isEmpty else { return }
+    guard
+      lifecycle == .ready,
+      let documentID = revisionTracker.documentID,
+      let revision = revisionTracker.latestRevision
+    else {
+      failEditorCommands(EditorBridgeError.editorUnavailable)
+      return
+    }
+
+    let request = editorCommandQueue.removeFirst()
+    let requestID = UUID().uuidString
+    activeEditorCommand = ActiveEditorCommand(requestID: requestID, request: request)
+    scheduleEditorCommandTimeout(for: requestID)
+    sendImmediately(
+      .execute(
+        requestID: requestID,
+        documentID: documentID,
+        revision: revision,
+        command: request.command
+      )
+    ) { [weak self] error in
+      guard let self, let error else { return }
+      guard self.activeEditorCommand?.requestID == requestID else { return }
+      self.activeEditorCommand = nil
+      request.completion(error)
+      self.delegate?.editorBridge(self, didReceiveRecoverableError: error)
+      self.processNextEditorCommand()
+    }
+  }
+
+  private func scheduleEditorCommandTimeout(for requestID: String) {
+    let requestTimeout = self.requestTimeout
+    Task { @MainActor [weak self] in
+      do {
+        try await Task.sleep(for: requestTimeout)
+      } catch {
+        return
+      }
+      guard let self, self.activeEditorCommand?.requestID == requestID else { return }
+      let request = self.activeEditorCommand?.request
+      self.activeEditorCommand = nil
+      request?.completion(EditorBridgeError.requestTimedOut)
+      self.delegate?.editorBridge(
+        self,
+        didReceiveRecoverableError: EditorBridgeError.requestTimedOut
+      )
+      self.processNextEditorCommand()
+    }
+  }
+
+  private func failEditorCommands(_ error: Error) {
+    let queued = editorCommandQueue
+    editorCommandQueue.removeAll()
+    let active = activeEditorCommand
+    activeEditorCommand = nil
+    active?.request.completion(error)
+    for request in queued {
+      request.completion(error)
     }
   }
 

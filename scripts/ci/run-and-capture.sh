@@ -41,4 +41,35 @@ if [[ -n ${INKORA_MARKDOWN_SNAPSHOT_SOURCE:-} && -f $INKORA_MARKDOWN_SNAPSHOT_SO
   cp -- "$INKORA_MARKDOWN_SNAPSHOT_SOURCE" "$snapshot_dir/$label.md"
 fi
 
+if [[ -n ${INKORA_XCRESULT_PATH:-} && -d $INKORA_XCRESULT_PATH ]]; then
+  result_bundles=("$INKORA_XCRESULT_PATH")
+else
+  result_bundles=("$artifact_root"/test-results/*.xcresult(N.om))
+fi
+if (( ${#result_bundles} > 0 )); then
+  result_summary="$failure_dir/$label-xcresult.json"
+  xcrun xcresulttool get test-results summary \
+    --path "$result_bundles[1]" --compact | tee "$result_summary" || true
+fi
+
+if [[ $OSTYPE == darwin* ]]; then
+  system_log="$log_dir/$label-system.log"
+  /usr/bin/log show --last 10m --style compact --info \
+    --predicate 'process == "Inkora" OR process CONTAINS[c] "WebKit" OR subsystem == "com.apple.WebKit"' \
+    > "$system_log" 2>&1 || true
+
+  diagnostic_source="$HOME/Library/Logs/DiagnosticReports"
+  diagnostic_dir="$artifact_root/diagnostic-reports"
+  reports=(
+    "$diagnostic_source"/Inkora*.crash(N)
+    "$diagnostic_source"/Inkora*.ips(N)
+    "$diagnostic_source"/*WebKit*.crash(N)
+    "$diagnostic_source"/*WebKit*.ips(N)
+  )
+  if (( ${#reports} > 0 )); then
+    mkdir -p "$diagnostic_dir"
+    cp -- $reports "$diagnostic_dir/" || true
+  fi
+fi
+
 exit "$exit_code"

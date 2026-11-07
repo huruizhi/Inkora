@@ -2,7 +2,7 @@ import AppKit
 
 @main
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   static func main() {
     let application = NSApplication.shared
     let delegate = AppDelegate()
@@ -11,10 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
-    Task { @MainActor [weak self] in
-      guard let self else { return }
-      NSApplication.shared.mainMenu = self.makeMainMenu()
-    }
+    NSApplication.shared.mainMenu = makeMainMenu()
   }
 
   func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
@@ -84,12 +81,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let editMenu = NSMenu(title: "Edit")
     editMenu.addItem(
       withTitle: "Undo",
-      action: Selector(("undo:")),
+      action: #selector(EditorViewController.inkoraUndo(_:)),
       keyEquivalent: "z"
     )
     editMenu.addItem(
       withTitle: "Redo",
-      action: Selector(("redo:")),
+      action: #selector(EditorViewController.inkoraRedo(_:)),
       keyEquivalent: "Z"
     )
     editMenu.addItem(.separator())
@@ -116,6 +113,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     editItem.submenu = editMenu
 
     return mainMenu
+  }
+
+  func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    switch menuItem.action {
+    case #selector(saveCurrentDocument(_:)), #selector(saveCurrentDocumentAs(_:)):
+      NSDocumentController.shared.currentDocument != nil
+    default:
+      true
+    }
   }
 
   @objc private func saveCurrentDocument(_ sender: Any?) {
