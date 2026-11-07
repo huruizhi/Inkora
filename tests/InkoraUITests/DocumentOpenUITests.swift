@@ -88,25 +88,40 @@ final class DocumentOpenUITests: XCTestCase {
     )
 
     replaceText(in: editor, with: "changed")
-    XCTAssertTrue(waitForValue(editor, containing: "changed"))
+    XCTAssertTrue(
+      waitForValue(editor, containing: "changed"),
+      "Initial editor replacement did not complete"
+    )
 
     openMenu("Edit", in: app)
     let undoItem = app.menuItems["Undo"]
-    XCTAssertTrue(undoItem.isEnabled)
+    XCTAssertTrue(undoItem.isEnabled, "Undo menu item did not become enabled")
     undoItem.click()
-    XCTAssertTrue(waitForValue(editor, containing: "original"))
+    XCTAssertTrue(
+      waitForValue(editor, containing: "original"),
+      "Edit > Undo did not restore the original text"
+    )
 
     editor.click()
     editor.typeKey("z", modifierFlags: [.command, .shift])
-    XCTAssertTrue(waitForValue(editor, containing: "changed"))
+    XCTAssertTrue(
+      waitForValue(editor, containing: "changed"),
+      "Cmd+Shift+Z did not redo the edit"
+    )
     editor.typeKey("z", modifierFlags: .command)
-    XCTAssertTrue(waitForValue(editor, containing: "original"))
+    XCTAssertTrue(
+      waitForValue(editor, containing: "original"),
+      "Cmd+Z did not undo the edit"
+    )
 
     openMenu("Edit", in: app)
     let redoItem = app.menuItems["Redo"]
-    XCTAssertTrue(redoItem.isEnabled)
+    XCTAssertTrue(redoItem.isEnabled, "Redo menu item did not become enabled")
     redoItem.click()
-    XCTAssertTrue(waitForValue(editor, containing: "changed"))
+    XCTAssertTrue(
+      waitForValue(editor, containing: "changed"),
+      "Edit > Redo did not restore the changed text"
+    )
   }
 
   @MainActor
@@ -133,13 +148,6 @@ final class DocumentOpenUITests: XCTestCase {
       "Cmd+S did not persist the focused editor"
     )
 
-    editor.click()
-    editor.typeKey("s", modifierFlags: [.command, .shift])
-    try cancelFilePanel(in: app)
-    editor.click()
-    editor.typeKey("o", modifierFlags: .command)
-    try cancelFilePanel(in: app)
-
     replaceText(in: editor, with: "menu-save")
     openMenu("File", in: app)
     app.menuItems["Save"].click()
@@ -148,6 +156,13 @@ final class DocumentOpenUITests: XCTestCase {
       menuSaved,
       "File > Save did not persist the focused editor"
     )
+
+    editor.click()
+    editor.typeKey("s", modifierFlags: [.command, .shift])
+    try cancelFilePanel(in: app)
+    editor.click()
+    editor.typeKey("o", modifierFlags: .command)
+    try cancelFilePanel(in: app)
 
     openMenu("File", in: app)
     app.menuItems["Save As…"].click()
@@ -221,15 +236,22 @@ final class DocumentOpenUITests: XCTestCase {
 
   @MainActor
   private func cancelFilePanel(in app: XCUIApplication) throws {
-    let cancelButton = app.buttons["Cancel"].firstMatch
-    guard cancelButton.waitForExistence(timeout: 5) else {
+    let panel = app.sheets.firstMatch
+    guard panel.waitForExistence(timeout: 5) else {
       throw NSError(
         domain: "InkoraUITests",
         code: 2,
         userInfo: [NSLocalizedDescriptionKey: "File panel did not appear"]
       )
     }
-    cancelButton.click()
+    app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
+    guard panel.waitForNonExistence(timeout: 5) else {
+      throw NSError(
+        domain: "InkoraUITests",
+        code: 3,
+        userInfo: [NSLocalizedDescriptionKey: "File panel did not close"]
+      )
+    }
   }
 
   @MainActor
