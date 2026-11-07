@@ -97,6 +97,18 @@ struct BridgeNativeCommand: Codable, Equatable {
     )
   }
 
+  static func queryState(requestID: String) -> Self {
+    Self(
+      protocolVersion: BridgeProtocolV1.version,
+      type: .queryState,
+      requestID: requestID,
+      documentID: nil,
+      revision: nil,
+      text: nil,
+      command: nil
+    )
+  }
+
   func validate() throws {
     guard protocolVersion == BridgeProtocolV1.version else {
       throw BridgeProtocolValidationError.unsupportedVersion
@@ -208,5 +220,10 @@ struct BridgeRevisionTracker {
     guard state.revision >= (latestRevision ?? -1) else { return false }
     latestRevision = state.revision
     return true
+  }
+
+  mutating func observeSnapshot(documentID: String, revision: Int) {
+    guard documentID == self.documentID else { return }
+    latestRevision = max(latestRevision ?? revision, revision)
   }
 }

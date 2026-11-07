@@ -130,25 +130,27 @@ describe("Bridge protocol v1 contracts", () => {
     });
     expect(loaded).toMatchObject({ type: "stateChanged", state: { revision: 4 } });
 
-    expect(session.recordChange()).toMatchObject({
+    expect(
+      session.recordChange({ dirty: true, canUndo: true, canRedo: false }),
+    ).toMatchObject({
       type: "stateChanged",
-      state: { revision: 5, dirty: true },
+      state: { revision: 5, dirty: true, canUndo: true, canRedo: false },
     });
     expect(
       session.createSnapshot(
         {
           protocolVersion: 1,
           type: "createSnapshot",
-          requestID: "snap-stale",
+          requestID: "snap-minimum",
           documentID: "doc-1",
           revision: 4,
         },
-        "stale",
+        "current after fast input",
       ),
     ).toMatchObject({
-      type: "editorError",
-      code: "stale_revision",
-      action: "retry",
+      type: "snapshotReady",
+      revision: 5,
+      text: "current after fast input",
     });
     const currentCommand = {
       protocolVersion: 1 as const,
@@ -167,6 +169,12 @@ describe("Bridge protocol v1 contracts", () => {
       code: "request_conflict",
     });
     expect(
+      session.createSnapshot(
+        { ...currentCommand, requestID: "snap-ahead", revision: 6 },
+        "future",
+      ),
+    ).toMatchObject({ type: "editorError", code: "stale_revision" });
+    expect(
       session.loadDocument({
         protocolVersion: 1,
         type: "loadDocument",
@@ -176,6 +184,35 @@ describe("Bridge protocol v1 contracts", () => {
         text: "old",
       }),
     ).toMatchObject({ type: "editorError", code: "stale_revision" });
+  });
+
+  it("keeps an accepted snapshot immutable across later edits", () => {
+    const session = new EditorProtocolSession();
+    session.loadDocument({
+      protocolVersion: 1,
+      type: "loadDocument",
+      requestID: "load-snapshot",
+      documentID: "doc-snapshot",
+      revision: 0,
+      text: "before",
+    });
+    const snapshot = session.createSnapshot(
+      {
+        protocolVersion: 1,
+        type: "createSnapshot",
+        requestID: "snapshot-before-edit",
+        documentID: "doc-snapshot",
+        revision: 0,
+      },
+      "before",
+    );
+    session.recordChange({ dirty: true, canUndo: true, canRedo: false });
+
+    expect(snapshot).toMatchObject({
+      type: "snapshotReady",
+      revision: 0,
+      text: "before",
+    });
   });
 
   it("classifies errors into retry, notify, and stop-saving actions", () => {
@@ -201,6 +238,42 @@ describe("Bridge protocol v1 contracts", () => {
     });
   });
 
+  it("applies undo and redo as revisioned command responses", () => {
+    const session = new EditorProtocolSession();
+    session.loadDocument({
+      protocolVersion: 1,
+      type: "loadDocument",
+      requestID: "load-command",
+      documentID: "doc-command",
+      revision: 2,
+      text: "edited",
+    });
+
+    expect(
+      session.executeCommand(
+        {
+          protocolVersion: 1,
+          type: "executeCommand",
+          requestID: "undo-1",
+          documentID: "doc-command",
+          revision: 2,
+          command: "undo",
+        },
+        () => true,
+        () => ({ dirty: false, canUndo: false, canRedo: true }),
+      ),
+    ).toMatchObject({
+      type: "stateChanged",
+      requestID: "undo-1",
+      state: {
+        revision: 3,
+        dirty: false,
+        canUndo: false,
+        canRedo: true,
+      },
+    });
+  });
+
   it("stops instead of overflowing the safe revision range", () => {
     const session = new EditorProtocolSession();
     session.loadDocument({
@@ -212,7 +285,9 @@ describe("Bridge protocol v1 contracts", () => {
       text: "max",
     });
 
-    expect(session.recordChange()).toMatchObject({
+    expect(
+      session.recordChange({ dirty: true, canUndo: true, canRedo: false }),
+    ).toMatchObject({
       type: "editorError",
       code: "internal_error",
       action: "stop_saving",

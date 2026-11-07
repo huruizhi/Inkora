@@ -19,6 +19,12 @@ export interface EditorState {
   canRedo: boolean;
 }
 
+export interface EditableState {
+  dirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
 export type NativeCommand =
   | {
       protocolVersion: 1;
@@ -152,7 +158,10 @@ export class EditorProtocolSession {
   private state: EditorState | undefined;
   private readonly usedRequestIDs = new Set<string>();
 
-  loadDocument(command: Extract<NativeCommand, { type: "loadDocument" }>): EditorMessage {
+  loadDocument(
+    command: Extract<NativeCommand, { type: "loadDocument" }>,
+    editable: EditableState = { dirty: false, canUndo: false, canRedo: false },
+  ): EditorMessage {
     const duplicate = this.claimRequest(command.requestID);
     if (duplicate) return duplicate;
     if (
@@ -164,14 +173,12 @@ export class EditorProtocolSession {
     this.state = {
       documentID: command.documentID,
       revision: command.revision,
-      dirty: false,
-      canUndo: false,
-      canRedo: false,
+      ...editable,
     };
     return this.stateChanged(command.requestID);
   }
 
-  recordChange(): EditorMessage | undefined {
+  recordChange(editable: EditableState): EditorMessage | undefined {
     if (!this.state) return undefined;
     if (this.state.revision >= Number.MAX_SAFE_INTEGER) {
       return this.error("internal_error", undefined, "Revision limit reached");
@@ -179,11 +186,36 @@ export class EditorProtocolSession {
     this.state = {
       ...this.state,
       revision: this.state.revision + 1,
-      dirty: true,
-      canUndo: false,
-      canRedo: false,
+      ...editable,
     };
     return this.stateChanged();
+  }
+
+  executeCommand(
+    command: Extract<NativeCommand, { type: "executeCommand" }>,
+    execute: () => boolean,
+    getEditableState: () => EditableState,
+  ): EditorMessage {
+    const duplicate = this.claimRequest(command.requestID);
+    if (duplicate) return duplicate;
+    const mismatch = this.validateDocumentRevision(command);
+    if (mismatch) return mismatch;
+    if (!this.state || this.state.revision >= Number.MAX_SAFE_INTEGER) {
+      return this.error("internal_error", command.requestID, "Revision limit reached");
+    }
+    if (!execute()) {
+      return this.error(
+        "command_rejected",
+        command.requestID,
+        `Command cannot be applied: ${command.command}`,
+      );
+    }
+    this.state = {
+      ...this.state,
+      revision: this.state.revision + 1,
+      ...getEditableState(),
+    };
+    return this.stateChanged(command.requestID);
   }
 
   createSnapshot(
@@ -192,14 +224,21 @@ export class EditorProtocolSession {
   ): EditorMessage {
     const duplicate = this.claimRequest(command.requestID);
     if (duplicate) return duplicate;
-    const mismatch = this.validateDocumentRevision(command);
-    if (mismatch) return mismatch;
+    if (!this.state) {
+      return this.error("editor_not_ready", command.requestID, "No document is loaded");
+    }
+    if (
+      command.documentID !== this.state.documentID ||
+      command.revision > this.state.revision
+    ) {
+      return this.error("stale_revision", command.requestID, "Revision is ahead or mismatched");
+    }
     return {
       protocolVersion: BRIDGE_PROTOCOL_VERSION,
       type: "snapshotReady",
       requestID: command.requestID,
       documentID: command.documentID,
-      revision: command.revision,
+      revision: this.state.revision,
       text,
     };
   }
@@ -211,20 +250,6 @@ export class EditorProtocolSession {
       return this.error("editor_not_ready", command.requestID, "No document is loaded");
     }
     return this.stateChanged(command.requestID);
-  }
-
-  rejectCommand(
-    command: Extract<NativeCommand, { type: "executeCommand" }>,
-  ): EditorMessage {
-    const duplicate = this.claimRequest(command.requestID);
-    if (duplicate) return duplicate;
-    const mismatch = this.validateDocumentRevision(command);
-    if (mismatch) return mismatch;
-    return this.error(
-      "command_rejected",
-      command.requestID,
-      `Command is not implemented: ${command.command}`,
-    );
   }
 
   private validateDocumentRevision(command: {

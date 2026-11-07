@@ -46,6 +46,11 @@ enum EditorBridgeError: LocalizedError {
 
 @MainActor
 final class EditorBridge: NSObject, WKScriptMessageHandler {
+  typealias JavaScriptEvaluator = (
+    _ script: String,
+    _ completion: @escaping (Error?) -> Void
+  ) -> Void
+
   private enum Lifecycle: Equatable {
     case loading
     case ready
@@ -58,23 +63,34 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     let text: String
   }
 
+  private enum SnapshotPhase {
+    case snapshot(documentID: String, minimumRevision: Int)
+  }
+
   private struct SnapshotRequest {
-    let documentID: String
-    let revision: Int
+    let phase: SnapshotPhase
+    let attempt: Int
     let completion: (Result<String, Error>) -> Void
   }
 
   weak var delegate: EditorBridgeDelegate?
   private let requestTimeout: Duration
+  private let evaluator: JavaScriptEvaluator?
   private weak var webView: WKWebView?
   private var lifecycle = Lifecycle.loading
   private var currentDocument: LoadedDocument?
   private var revisionTracker = BridgeRevisionTracker()
   private var snapshotRequests: [String: SnapshotRequest] = [:]
+  private let maximumSnapshotAttempts = 3
 
-  init(delegate: EditorBridgeDelegate, requestTimeout: Duration = .seconds(5)) {
+  init(
+    delegate: EditorBridgeDelegate,
+    requestTimeout: Duration = .seconds(5),
+    evaluator: JavaScriptEvaluator? = nil
+  ) {
     self.delegate = delegate
     self.requestTimeout = requestTimeout
+    self.evaluator = evaluator
   }
 
   func attach(webView: WKWebView) {
@@ -105,28 +121,11 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       )
       return
     }
-    guard
-      let documentID = revisionTracker.documentID,
-      let revision = revisionTracker.latestRevision
-    else {
+    guard revisionTracker.documentID != nil else {
       completion(.failure(EditorBridgeError.editorUnavailable))
       return
     }
-
-    let requestID = UUID().uuidString
-    snapshotRequests[requestID] = SnapshotRequest(
-      documentID: documentID,
-      revision: revision,
-      completion: completion
-    )
-    scheduleTimeout(for: requestID)
-    sendImmediately(
-      .createSnapshot(requestID: requestID, documentID: documentID, revision: revision)
-    ) {
-      [weak self] error in
-      guard let self, let error else { return }
-      self.snapshotRequests.removeValue(forKey: requestID)?.completion(.failure(error))
-    }
+    beginSnapshotBarrier(completion: completion, attempt: 1)
   }
 
   func userContentController(
@@ -161,6 +160,10 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       return
     }
 
+    receiveEditorEvent(editorEvent)
+  }
+
+  func receiveEditorEvent(_ editorEvent: BridgeEditorEvent) {
     switch editorEvent.type {
     case .ready:
       lifecycle = .ready
@@ -191,8 +194,9 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
   private func handleStateChanged(_ event: BridgeEditorEvent) {
     guard let state = event.state else { return }
-    guard revisionTracker.accept(state) else { return }
-    delegate?.editorBridge(self, didChangeState: state)
+    if revisionTracker.accept(state) {
+      delegate?.editorBridge(self, didChangeState: state)
+    }
   }
 
   private func handleSnapshotReady(_ event: BridgeEditorEvent) {
@@ -200,17 +204,22 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       failPendingRequests(EditorBridgeError.invalidMessage)
       return
     }
-    guard let request = snapshotRequests.removeValue(forKey: requestID) else {
+    guard
+      let request = snapshotRequests.removeValue(forKey: requestID),
+      case .snapshot(let documentID, let minimumRevision) = request.phase
+    else {
       return
     }
     guard
-      event.documentID == request.documentID,
-      event.revision == request.revision,
+      event.documentID == documentID,
+      let revision = event.revision,
+      revision >= minimumRevision,
       let text = event.text
     else {
       request.completion(.failure(EditorBridgeError.staleRevision))
       return
     }
+    revisionTracker.observeSnapshot(documentID: documentID, revision: revision)
     request.completion(.success(text))
   }
 
@@ -221,7 +230,12 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     }
     let error = EditorBridgeError.remote(code, action, message)
     if let requestID = event.requestID {
-      snapshotRequests.removeValue(forKey: requestID)?.completion(.failure(error))
+      guard let request = snapshotRequests.removeValue(forKey: requestID) else { return }
+      if action == .retry && request.attempt < maximumSnapshotAttempts {
+        beginSnapshotBarrier(completion: request.completion, attempt: request.attempt + 1)
+      } else {
+        request.completion(.failure(error))
+      }
     } else {
       failPendingRequests(error)
     }
@@ -237,6 +251,36 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       }
       guard let request = self?.snapshotRequests.removeValue(forKey: requestID) else { return }
       request.completion(.failure(EditorBridgeError.requestTimedOut))
+    }
+  }
+
+  private func beginSnapshotBarrier(
+    completion: @escaping (Result<String, Error>) -> Void,
+    attempt: Int
+  ) {
+    guard
+      let documentID = revisionTracker.documentID,
+      let revision = revisionTracker.latestRevision
+    else {
+      completion(.failure(EditorBridgeError.editorUnavailable))
+      return
+    }
+    let requestID = UUID().uuidString
+    snapshotRequests[requestID] = SnapshotRequest(
+      phase: .snapshot(documentID: documentID, minimumRevision: revision),
+      attempt: attempt,
+      completion: completion
+    )
+    scheduleTimeout(for: requestID)
+    sendImmediately(
+      .createSnapshot(
+        requestID: requestID,
+        documentID: documentID,
+        revision: revision
+      )
+    ) { [weak self] error in
+      guard let self, let error else { return }
+      self.snapshotRequests.removeValue(forKey: requestID)?.completion(.failure(error))
     }
   }
 
@@ -256,11 +300,6 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     _ command: BridgeNativeCommand,
     completion: ((Error?) -> Void)? = nil
   ) {
-    guard let webView else {
-      completion?(EditorBridgeError.javaScriptEvaluation("Web view is unavailable"))
-      return
-    }
-
     do {
       try command.validate()
       let data = try JSONEncoder().encode(command)
@@ -272,12 +311,19 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
         throw EditorBridgeError.invalidMessage
       }
 
-      webView.evaluateJavaScript("window.inkora.receive(\(literal))") { _, error in
-        if let error {
-          completion?(EditorBridgeError.javaScriptEvaluation(error.localizedDescription))
-        } else {
-          completion?(nil)
+      let script = "window.inkora.receive(\(literal))"
+      if let evaluator {
+        evaluator(script, { error in completion?(error) })
+      } else if let webView {
+        webView.evaluateJavaScript(script) { _, error in
+          if let error {
+            completion?(EditorBridgeError.javaScriptEvaluation(error.localizedDescription))
+          } else {
+            completion?(nil)
+          }
         }
+      } else {
+        completion?(EditorBridgeError.javaScriptEvaluation("Web view is unavailable"))
       }
     } catch {
       completion?(error)

@@ -77,6 +77,11 @@ final class BridgeProtocolTests: XCTestCase {
       )
     )
     XCTAssertEqual(tracker.latestRevision, 5)
+
+    tracker.observeSnapshot(documentID: "doc-1", revision: 7)
+    tracker.observeSnapshot(documentID: "doc-1", revision: 6)
+    tracker.observeSnapshot(documentID: "doc-2", revision: 9)
+    XCTAssertEqual(tracker.latestRevision, 7)
   }
 
   func testErrorCodesHaveDeterministicRecoveryActions() {
