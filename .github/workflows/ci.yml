@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    env:
+      INKORA_CAPTURE_SCREEN: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up toolchain
+        run: make setup
+      - name: Lint
+        run: make lint
+      - name: Test all layers
+        run: make test-all
+      - name: Build release
+        run: make build-release
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: inkora-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 14
