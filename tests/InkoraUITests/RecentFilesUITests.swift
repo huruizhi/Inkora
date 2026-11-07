@@ -65,11 +65,11 @@ final class RecentFilesUITests: XCTestCase {
 
     clearOpenRecent(in: app)
     openMenu("File", in: app)
-    let openRecent = app.menuItems["Open Recent"]
+    let openRecent = app.menuBars.menuBarItems["File"].menuItems["Open Recent"]
     XCTAssertTrue(openRecent.waitForExistence(timeout: 5))
     openRecent.hover()
     XCTAssertFalse(
-      app.menuItems[fileName].waitForExistence(timeout: 2),
+      openRecent.menuItems[fileName].waitForExistence(timeout: 2),
       "Clear Menu did not remove the recent entry"
     )
     app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
@@ -147,7 +147,7 @@ final class RecentFilesUITests: XCTestCase {
     XCTAssertTrue(window.waitForExistence(timeout: 10))
     let initialFrame = window.frame
     let titleBar = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
-    titleBar.press(forDuration: 0.2, thenDragTo: titleBar.withOffset(CGVector(dx: 80, dy: 60)))
+    titleBar.click(forDuration: 0.2, thenDragTo: titleBar.withOffset(CGVector(dx: -80, dy: 60)))
     Thread.sleep(forTimeInterval: 1)
     let frame = window.frame
     XCTAssertGreaterThan(
@@ -272,22 +272,22 @@ final class RecentFilesUITests: XCTestCase {
   @MainActor
   private func openRecentEntry(_ title: String, in app: XCUIApplication) -> XCUIElement {
     openMenu("File", in: app)
-    let openRecent = app.menuItems["Open Recent"]
+    let openRecent = app.menuBars.menuBarItems["File"].menuItems["Open Recent"]
     XCTAssertTrue(openRecent.waitForExistence(timeout: 5))
     openRecent.hover()
-    return app.menuItems[title]
+    return openRecent.menuItems[title]
   }
 
   @MainActor
   private func clearOpenRecent(in app: XCUIApplication) {
     openMenu("File", in: app)
-    let openRecent = app.menuItems["Open Recent"]
+    let openRecent = app.menuBars.menuBarItems["File"].menuItems["Open Recent"]
     guard openRecent.waitForExistence(timeout: 5) else {
       app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
       return
     }
     openRecent.hover()
-    let clearItem = app.menuItems["Clear Menu"]
+    let clearItem = openRecent.menuItems["Clear Menu"]
     if clearItem.waitForExistence(timeout: 3), clearItem.isEnabled {
       clearItem.click()
     } else {
