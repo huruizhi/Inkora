@@ -92,7 +92,7 @@ build-release: editor-build generate require-xcode prepare-artifacts
 		-configuration Release -derivedDataPath $(DERIVED_DATA) build
 
 run: build
-	$(UI_LOCK) $(UI_PREFLIGHT) desktop "$(DERIVED_DATA)/Build/Products/Debug/Inkora.app/Contents/MacOS/Inkora"
+	open "$(DERIVED_DATA)/Build/Products/Debug/Inkora.app"
 
 editor-build:
 	$(PNPM) --dir editor build

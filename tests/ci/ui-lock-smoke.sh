@@ -37,6 +37,20 @@ mkdir "$lock"
 result=0
 INKORA_UI_LOCK_TIMEOUT=0 "$wrapper" touch "$test_root/unexpected" || result=$?
 [[ $result == 75 && -d $lock && ! -e $test_root/unexpected ]]
+# With the override unset, expose the default wait budget without waiting 25 min.
+env -u INKORA_UI_LOCK_TIMEOUT "$wrapper" touch "$test_root/unexpected" > "$test_root/default-wait.log" 2>&1 &
+waiting=$!
+workers+=($waiting)
+for attempt in {1..100}; do
+  grep -q 'timeout=1500s' "$test_root/default-wait.log" && break
+  sleep 0.1
+done
+grep -q 'timeout=1500s' "$test_root/default-wait.log"
+kill -TERM "$waiting"
+result=0
+wait "$waiting" || result=$?
+workers=()
+[[ $result == 143 && -d $lock && ! -e $test_root/unexpected ]]
 rmdir "$lock"
 # Use a real exited PID rather than assuming an arbitrary PID is unused.
 /bin/zsh -c 'exit 0' &
@@ -76,4 +90,4 @@ for signal_name expected in TERM 143 INT 130; do
   [[ $result == $expected && ! -e $lock ]]
   ! kill -0 "$command_pid" 2>/dev/null
 done
-print 'UI lock smoke passed: acquisition, failure, manual timeout, stale owner, waiting, TERM/INT'
+print 'UI lock smoke passed: acquisition, failure, default budget, manual timeout, stale owner, waiting, TERM/INT'

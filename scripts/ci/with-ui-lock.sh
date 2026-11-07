@@ -7,7 +7,7 @@ if [[ ${INKORA_UI_LOCK_TESTING:-0} == 1 ]]; then
   lock=${INKORA_UI_LOCK_TEST_PATH:?}
   [[ $lock == /private/tmp/inkora-ui-lock-test.*/lock ]] || exit 64
 fi
-timeout=${INKORA_UI_LOCK_TIMEOUT:-600}
+timeout=${INKORA_UI_LOCK_TIMEOUT:-1500}
 [[ $timeout == <-> ]] && (( $# > 0 )) || { print -u2 'Usage: INKORA_UI_LOCK_TIMEOUT=<seconds> with-ui-lock.sh <command> [args...]'; exit 64; }
 start=$SECONDS
 owned=0
@@ -56,7 +56,7 @@ while ! mkdir "$lock" 2>/dev/null; do
     exit 75
   fi
   if (( SECONDS == start )); then
-    print -u2 "Waiting for UI lock: $lock"
+    print -u2 "Waiting for UI lock: $lock (timeout=${timeout}s)"
   fi
   sleep 1
 done

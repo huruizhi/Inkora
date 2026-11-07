@@ -2,6 +2,8 @@
 
 本地与 GitHub Actions 使用同一组 Make 目标。测试本身不得读取用户目录、个人配置或公网；`make setup` 仅负责安装和解析开发依赖。
 
+Agent 本地只运行非 UI 目标，UI 目标由 CI 执行，以避免占用开发者桌面。
+
 `make setup` 将固定版本的 pnpm 安装到被忽略的 `.tools/`，避免 Homebrew 滚动版本或 Intel/Apple Silicon 架构差异改变构建结果。
 
 ## 命令
@@ -34,16 +36,17 @@ CI 无论成功失败都会上传整个目录，保留 14 天。正式签名、�
 
 CI 和本地 agent 共用 `scripts/ci/with-ui-lock.sh`，生产锁路径固定为
 `/tmp/inkora-ui-tests.lock`。`test-document-open-ui`、`test-ui`、`test-ui-release`
-及 `run` 的屏幕操作均持锁；构建和 hostless 单元测试不占用屏幕锁。
-`make run` 以前台子进程直接运行 App，直到该 App 退出才释放锁。
-直接执行 XCUITest 或启动 App 时也必须使用包装器，避免绕过队列：
+的屏幕操作均持锁；构建和 hostless 单元测试不占用屏幕锁。
+`make run` 使用 `open` 启动 Debug App，启动后返回终端，不占用 UI 测试锁；
+手动使用 App 可能干扰正在运行的 UI 测试，应避开测试时段。
+直接执行 XCUITest 或自动化 App 启动测试时也必须使用包装器，避免绕过队列：
 
 ```sh
 scripts/ci/with-ui-lock.sh scripts/ci/ui-preflight.sh xcuitest xcodebuild ...
-INKORA_UI_LOCK_TIMEOUT=1200 make test-document-open-ui test-ui
+INKORA_UI_LOCK_TIMEOUT=900 make test-document-open-ui test-ui
 ```
 
-默认等待 600 秒，超时返回 75，日志输出占用者。owner 文件是 `pid=...`、`branch=...`、
+默认等待 1500 秒（25 分钟；CI job 总超时为 30 分钟），超时返回 75，日志输出占用者。owner 文件是 `pid=...`、`branch=...`、
 `time=...` 三行；PID 已不存在时自动回收。没有 owner 或 PID 无效的目录视为手工占用，
 不会按目录年龄删除。确认没有其他测试/进程使用后，由持有者清理手工锁；不要直接删除活动锁。
 正常退出、命令失败、INT/TERM 都释放锁；取消时先终止命令树并等待，再释放。
@@ -53,8 +56,18 @@ SIGKILL/掉电无法触发清理，下次凭 owner PID 回收；PID 复用、own
 
 ## self-hosted runner 的 UI 预检与恢复
 
+### 本机已修复状态（2026-11-08）
+
+用户已执行 `sudo automationmodetool enable-automationmode-without-authentication`，
+将 runner LaunchAgent 的 `SessionCreate` 设为 `false` 并重启服务。
+[验证 run 42402574810](https://github.com/huruizhi/Inkora/actions/runs/42402574810)
+已全绿，包含 XCUITest；此前的系统会话与认证阻塞已完成验证。
+下列步骤保留用于以后恢复或撤销配置，重新安装 runner 后也需核对。
+
+### 预检与恢复步骤
+
 锁获取后才执行 `ui-preflight.sh`，避免排队期间桌面状态变化。
-所有 UI 入口检查控制台用户、GUI 登录域、活动且未锁定的桌面；XCUITest 额外检查
+UI 测试入口检查控制台用户、GUI 登录域、活动且未锁定的桌面；XCUITest 额外检查
 `automationmodetool`。预检失败返回 78，并在对应 `artifacts/logs/` 中保留操作提示。
 通过后用系统 `caffeinate -dimsu` 防止执行期间空闲睡眠；这无法解锁已锁定的屏幕。
 
@@ -83,7 +96,7 @@ sudo /usr/bin/automationmodetool enable-automationmode-without-authentication
 runner 应运行于登录用户的 LaunchAgent。当前检查已确认它属于 `gui/501`，
 不需重装。若检查发现只有 LaunchDaemon，应由管理员停掉该服务，再在已登录账户下
 按 runner 的 `svc.sh` 安装 LaunchAgent；不要同时启动两个 Listener。
-本次 CI 进一步确认：虽然服务位于 GUI 域，`SessionCreate=true` 的 runsvc 与测试子进程
+修复前的 CI 曾确认：虽然服务位于 GUI 域，`SessionCreate=true` 的 runsvc 与测试子进程
 处于 audit session 102590，而桌面为 100014。仅判断 plist 位于 LaunchAgents 不足以验收。
 预检会输出两个编号；发现不同则停止。由用户在 rayhu 的已登录桌面终端中，确认无 CI
 正在运行后执行以下命令（不要 sudo 启动用户 LaunchAgent）：
@@ -98,8 +111,17 @@ launchctl bootstrap "gui/$(id -u)" "$runner_plist"
 launchctl print "gui/$(id -u)/$runner_label"
 ```
 
-这一步修改 runner 的系统会话配置，仓库脚本不会代为执行；需重跑 CI 确认测试进程与桌面
-编号相同，才能认定会话问题修复。后续重新安装 runner 可能重新生成 plist，需再次核对。
+这一步修改 runner 的系统会话配置，仓库脚本不会代为执行；以后再次应用配置时，需重跑 CI
+确认测试进程与桌面编号相同。后续重新安装 runner 可能重新生成 plist，需再次核对。
+如需撤销 SessionCreate 修改，确认没有 CI 正在运行后，在同一桌面终端执行：
+
+```sh
+launchctl bootout "gui/$(id -u)/$runner_label"
+cp "$runner_plist.before-ink-infra-002" "$runner_plist"
+launchctl bootstrap "gui/$(id -u)" "$runner_plist"
+```
+
+恢复备份可能再次造成 UI 会话隔离；撤销无人值守 Automation Mode 的命令见上文。
 若桌面锁定，请在本机解锁；不要通过脚本绕过锁屏。
 
 若预检通过但 XCUITest 仍报告权限错误，在“系统设置 → 隐私与安全性”中检查
