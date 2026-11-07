@@ -137,8 +137,7 @@ final class RecentFilesUITests: XCTestCase {
     let fileURL = temporaryDirectory.appendingPathComponent(fileName)
     try Data("# restore\n".utf8).write(to: fileURL)
     let app = launchApplication(defaultsSuite: suite)
-    // Close the default untitled window first: both windows share one frame
-    // autosave name, so the file window must be the last one to save.
+    // Close Untitled so the relaunch assertion only observes the file window.
     let untitled = app.windows["Untitled"]
     if untitled.waitForExistence(timeout: 5) {
       untitled.typeKey("w", modifierFlags: .command)

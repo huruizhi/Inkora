@@ -483,6 +483,28 @@ final class RecentFilesRestoreTests: XCTestCase {
   }
 
   @MainActor
+  func testDocumentFrameAutosaveDoesNotCollideWithUntitledWindow() throws {
+    let untitled = InkoraDocument()
+    untitled.makeWindowControllers()
+    let url = try makeTemporaryFile()
+    let document = InkoraDocument()
+    document.fileURL = url
+    document.makeWindowControllers()
+    defer {
+      untitled.close()
+      document.close()
+    }
+
+    let untitledWindow = try XCTUnwrap(untitled.windowControllers.first?.window)
+    let documentWindow = try XCTUnwrap(document.windowControllers.first?.window)
+    XCTAssertEqual(untitledWindow.frameAutosaveName, "InkoraDocumentWindow")
+    XCTAssertEqual(
+      documentWindow.frameAutosaveName,
+      "InkoraDocumentWindow-" + url.resolvingSymlinksInPath().absoluteString)
+    XCTAssertNotEqual(documentWindow.frameAutosaveName, untitledWindow.frameAutosaveName)
+  }
+
+  @MainActor
   func testDocumentWindowUsesFrameAutosaveAndOptsOutOfAutomaticRestoration() {
     let document = InkoraDocument(
       editorResourceBundle: .main,
@@ -491,6 +513,7 @@ final class RecentFilesRestoreTests: XCTestCase {
 
     document.makeWindowControllers()
 
+    defer { document.close() }
     let window = document.windowControllers.first?.window
     XCTAssertNotNil(window)
     XCTAssertEqual(window?.frameAutosaveName, "InkoraDocumentWindow")

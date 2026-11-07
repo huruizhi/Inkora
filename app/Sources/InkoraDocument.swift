@@ -150,7 +150,13 @@ final class InkoraDocument: NSDocument {
     // opened document instead of every window that existed at quit. Window
     // geometry still survives relaunches via the frame autosave name.
     window.isRestorable = false
-    window.setFrameAutosaveName("InkoraDocumentWindow")
+    // AppKit permits only one live window per autosave name. A per-file
+    // name lets a document retain its frame even while Untitled stays open.
+    let frameName =
+      fileURL.map { "InkoraDocumentWindow-" + $0.resolvingSymlinksInPath().absoluteString }
+      ?? "InkoraDocumentWindow"
+    window.setFrameUsingName(frameName)
+    window.setFrameAutosaveName(frameName)
 
     let windowController = NSWindowController(window: window)
     addWindowController(windowController)
