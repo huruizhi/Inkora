@@ -15,7 +15,7 @@ jobs:
     env:
       INKORA_CAPTURE_SCREEN: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up toolchain
         run: make setup
       - name: Lint
@@ -26,7 +26,7 @@ jobs:
         run: make build-release
       - name: Upload diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: inkora-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/
