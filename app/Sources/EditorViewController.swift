@@ -249,6 +249,10 @@ final class EditorRecoveryView: NSView {
 
     messageLabel.alignment = .center
     messageLabel.maximumNumberOfLines = 0
+    messageLabel.lineBreakMode = .byWordWrapping
+    messageLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    messageLabel.setAccessibilityIdentifier("EditorRecoveryMessage")
+    messageLabel.setAccessibilityValue(messageLabel.stringValue)
 
     let stack = NSStackView(views: [messageLabel, retryButton])
     stack.orientation = .vertical
@@ -261,6 +265,7 @@ final class EditorRecoveryView: NSView {
       stack.centerYAnchor.constraint(equalTo: centerYAnchor),
       stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 24),
       stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -24),
+      messageLabel.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -48),
     ])
   }
 

@@ -202,6 +202,10 @@ final class DocumentOpenUITests: XCTestCase {
 
   @MainActor
   private func editorRecoveryMessage(in app: XCUIApplication) -> String {
+    let recoveryMessage = app.staticTexts["EditorRecoveryMessage"]
+    if recoveryMessage.exists {
+      return (recoveryMessage.value as? String) ?? recoveryMessage.label
+    }
     let messages = app.staticTexts.allElementsBoundByIndex.compactMap { element in
       (element.value as? String) ?? (element.label.isEmpty ? nil : element.label)
     }
