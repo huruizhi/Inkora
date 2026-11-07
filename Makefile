@@ -38,7 +38,8 @@ test-bridge: editor-build generate require-xcode prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bridge-editor \
 		$(PNPM) --dir editor exec vitest run src/bridge.test.ts
 	rm -rf "$(BRIDGE_RESULT)"
-	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bridge-native \
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" INKORA_XCRESULT_PATH="$(BRIDGE_RESULT)" \
+		$(CAPTURE) bridge-native \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(BRIDGE_RESULT)" \
@@ -46,14 +47,16 @@ test-bridge: editor-build generate require-xcode prepare-artifacts
 
 test-native: editor-build generate require-xcode prepare-artifacts
 	rm -rf "$(NATIVE_RESULT)"
-	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) native \
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" INKORA_XCRESULT_PATH="$(NATIVE_RESULT)" \
+		$(CAPTURE) native \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(NATIVE_RESULT)" -only-testing:InkoraTests test
 
 test-document-open-ui: editor-build generate require-xcode prepare-artifacts
 	rm -rf "$(DOCUMENT_UI_RESULT)"
-	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) document-open-ui \
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" INKORA_XCRESULT_PATH="$(DOCUMENT_UI_RESULT)" \
+		$(CAPTURE) document-open-ui \
 		$(UI_LOCK) $(UI_PREFLIGHT) xcuitest \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(DOCUMENT_UI_SCHEME) \
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \

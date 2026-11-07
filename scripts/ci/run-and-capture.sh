@@ -41,7 +41,11 @@ if [[ -n ${INKORA_MARKDOWN_SNAPSHOT_SOURCE:-} && -f $INKORA_MARKDOWN_SNAPSHOT_SO
   cp -- "$INKORA_MARKDOWN_SNAPSHOT_SOURCE" "$snapshot_dir/$label.md"
 fi
 
-result_bundles=("$artifact_root"/test-results/*.xcresult(N.om))
+if [[ -n ${INKORA_XCRESULT_PATH:-} && -d $INKORA_XCRESULT_PATH ]]; then
+  result_bundles=("$INKORA_XCRESULT_PATH")
+else
+  result_bundles=("$artifact_root"/test-results/*.xcresult(N.om))
+fi
 if (( ${#result_bundles} > 0 )); then
   result_summary="$failure_dir/$label-xcresult.json"
   xcrun xcresulttool get test-results summary \

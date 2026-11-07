@@ -84,7 +84,7 @@ final class DocumentOpenUITests: XCTestCase {
     let editor = sourceEditor(in: app)
     XCTAssertTrue(
       editor.waitForExistence(timeout: 10),
-      "Could not locate the source editor in the accessibility hierarchy"
+      "Could not locate the source editor in the accessibility hierarchy:\n\(app.debugDescription)"
     )
 
     replaceText(in: editor, with: "<custom-tag>changed</custom-tag>")
@@ -122,7 +122,7 @@ final class DocumentOpenUITests: XCTestCase {
     let editor = sourceEditor(in: app)
     XCTAssertTrue(
       editor.waitForExistence(timeout: 10),
-      "Could not locate the source editor in the accessibility hierarchy"
+      "Could not locate the source editor in the accessibility hierarchy:\n\(app.debugDescription)"
     )
 
     replaceText(in: editor, with: "<custom-tag>shortcut-save</custom-tag>")
