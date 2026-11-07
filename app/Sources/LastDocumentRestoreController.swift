@@ -53,7 +53,10 @@ final class LastDocumentRestoreController {
       history.clear()
       return false
     }
+    // Keep the sandbox grant alive until the asynchronous open completes.
+    let scoped = url.startAccessingSecurityScopedResource()
     openDocument(url) { [weak self] error in
+      defer { if scoped { url.stopAccessingSecurityScopedResource() } }
       self?.handleRestoreResult(error)
     }
     return true

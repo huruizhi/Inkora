@@ -128,6 +128,13 @@ launchctl bootstrap "gui/$(id -u)" "$runner_plist"
 “开发者工具”、以及系统实际提示的“辅助功能/自动化”授权，并允许实际运行测试的宿主。
 先运行一次 UI 目标观察系统提示；不批量授予权限、不修改 TCC 数据库。
 `SACSetScreenSaverCanRun returned 22` 单独不足以证明锁屏或 TCC 拒绝，需结合会话和测试日志诊断。
+## UI 测试数据隔离
+
+`test-document-open-ui`、`test-ui` 和 `test-ui-release` 构建使用独立 bundle ID
+`com.huruizhi.Inkora.UITesting`，与用户正式 App 的最近文件、Sandbox 容器、窗口偏好隔离。
+XCUITest 另以 `-INKTestDefaultsSuite` 隔离每个用例的恢复历史；冷启动经 Launch Services
+传入相同参数。普通 `make build` / `make run` 仍使用正式 bundle ID。
+
 ## 原生菜单验收
 
 `DocumentOpenUITests` 将编辑器查询限定到目标文档窗口，兼容独立窗口与 Sheet 两种系统文件面板。历史场景用一次粘贴建立单个编辑事件并恢复原剪贴板，避免逐字合成键盘事件的时间间隔改变 history 分组；Undo/Redo 本身仍通过菜单点击及真实快捷键执行。

@@ -48,7 +48,10 @@ final class DocumentOpenHistory {
         relativeTo: nil,
         bookmarkDataIsStale: &plainStale
       ))
-    guard let url = resolved else { return nil }
+    guard let url = resolved else {
+      clear()
+      return nil
+    }
     if scopedStale || plainStale {
       // The file moved but the bookmark tracked it; refresh the stored
       // bookmark so future launches resolve without the stale flag.

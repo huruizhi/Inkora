@@ -146,8 +146,15 @@ final class RecentFilesUITests: XCTestCase {
     try openViaLaunchServices(fileURL, in: app)
     let window = app.windows[fileName]
     XCTAssertTrue(window.waitForExistence(timeout: 10))
+    let initialFrame = window.frame
+    let titleBar = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
+    titleBar.press(forDuration: 0.2, thenDragTo: titleBar.withOffset(CGVector(dx: 80, dy: 60)))
     Thread.sleep(forTimeInterval: 1)
     let frame = window.frame
+    XCTAssertGreaterThan(
+      abs(frame.origin.x - initialFrame.origin.x) + abs(frame.origin.y - initialFrame.origin.y),
+      20, "Move the window before verifying frame restoration"
+    )
     window.typeKey("w", modifierFlags: .command)
     XCTAssertTrue(window.waitForNonExistence(timeout: 5))
     app.terminate()
@@ -221,10 +228,15 @@ final class RecentFilesUITests: XCTestCase {
   /// running) and attaches XCUITest to the relaunched instance.
   @MainActor
   private func coldLaunchViaLaunchServices(_ fileURL: URL) throws -> XCUIApplication {
+    XCUIApplication().terminate()
     let applicationURL = try builtApplicationURL()
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-    process.arguments = ["-a", applicationURL.path, fileURL.path]
+    process.arguments = [
+      "-a", applicationURL.path, fileURL.path, "--args",
+      "-ApplePersistenceIgnoreState", "YES",
+      "-INKTestDefaultsSuite", isolatedDefaultsSuite(),
+    ]
     try process.run()
     process.waitUntilExit()
     XCTAssertEqual(process.terminationStatus, 0, "open -a did not launch the app")

@@ -2,6 +2,7 @@ SHELL := /bin/zsh
 PROJECT := Inkora.xcodeproj
 SCHEME := Inkora
 DOCUMENT_UI_SCHEME := InkoraDocumentOpenUI
+APP_BUNDLE_IDENTIFIER ?= com.huruizhi.Inkora
 DERIVED_DATA := $(CURDIR)/build/DerivedData
 ARTIFACTS_DIR ?= $(CURDIR)/artifacts
 CAPTURE := $(CURDIR)/scripts/ci/run-and-capture.sh
@@ -59,17 +60,20 @@ test-document-open-ui: editor-build generate require-xcode prepare-artifacts
 		$(CAPTURE) document-open-ui \
 		$(UI_LOCK) $(UI_PREFLIGHT) xcuitest \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(DOCUMENT_UI_SCHEME) \
+		INKORA_BUNDLE_IDENTIFIER=com.huruizhi.Inkora.UITesting \
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(DOCUMENT_UI_RESULT)" \
 		-only-testing:InkoraUITests/DocumentOpenUITests \
 		-only-testing:InkoraUITests/RecentFilesUITests test
 
+test-ui: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
 test-ui: build prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) ui \
 		$(UI_LOCK) $(UI_PREFLIGHT) desktop \
 		tests/ci/ui-launch-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Debug/Inkora.app"
 
+test-ui-release: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
 test-ui-release: build-release prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) release-bundle \
 		tests/ci/editor-bundle-smoke.sh \
@@ -88,11 +92,13 @@ test-all: test-editor test-bridge test-native test-document-open-ui test-ui test
 build: editor-build generate require-xcode prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) build-debug \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(SCHEME) \
+		INKORA_BUNDLE_IDENTIFIER=$(APP_BUNDLE_IDENTIFIER) \
 		-configuration Debug -derivedDataPath $(DERIVED_DATA) build
 
 build-release: editor-build generate require-xcode prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) build-release \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(SCHEME) \
+		INKORA_BUNDLE_IDENTIFIER=$(APP_BUNDLE_IDENTIFIER) \
 		-configuration Release -derivedDataPath $(DERIVED_DATA) build
 
 run: build

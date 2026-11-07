@@ -105,6 +105,7 @@ final class RecentFilesRestoreTests: XCTestCase {
     let history = DocumentOpenHistory(defaults: defaults)
 
     XCTAssertNil(history.resolveLastOpenedDocumentURL())
+    XCTAssertNil(defaults.data(forKey: "LastOpenedDocumentBookmark"))
   }
 
   // MARK: - LaunchDefaultsResolver

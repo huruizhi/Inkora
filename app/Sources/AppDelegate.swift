@@ -24,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
   )
 
-  func applicationDidFinishLaunching(_ notification: Notification) {
+  func applicationWillFinishLaunching(_ notification: Notification) {
     DocumentOpenHistory.shared.configure(
       defaults: LaunchDefaultsResolver.defaults(arguments: ProcessInfo.processInfo.arguments)
     )
