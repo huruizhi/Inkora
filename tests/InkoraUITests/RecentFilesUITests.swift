@@ -93,10 +93,13 @@ final class RecentFilesUITests: XCTestCase {
     XCTAssertTrue(window.waitForExistence(timeout: 10))
     window.typeKey("w", modifierFlags: .command)
     XCTAssertTrue(window.waitForNonExistence(timeout: 5))
-    try FileManager.default.removeItem(at: fileURL)
-
+    // NSDocumentController filters missing files when the menu is built.
+    // Delete after expansion to exercise a visible entry becoming stale.
     let entry = openRecentEntry(fileName, in: app)
     XCTAssertTrue(entry.waitForExistence(timeout: 5))
+    try FileManager.default.removeItem(at: fileURL)
+    XCTAssertTrue(
+      entry.exists, "The displayed entry must remain available for the stale-file click")
     entry.click()
 
     let dialog = app.dialogs.firstMatch
@@ -106,7 +109,7 @@ final class RecentFilesUITests: XCTestCase {
     )
     XCTAssertTrue(
       dialog.staticTexts
-        .matching(NSPredicate(format: "label CONTAINS %@", "removed from Open Recent"))
+        .matching(NSPredicate(format: "value CONTAINS %@", "removed from Open Recent"))
         .firstMatch.exists,
       "The alert must say the entry was removed from Open Recent"
     )

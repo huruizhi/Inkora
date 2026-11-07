@@ -109,6 +109,7 @@ final class OpenRecentMenuController: NSObject, NSMenuDelegate, NSMenuItemValida
     alert.messageText = "Can’t Open “\(url.lastPathComponent)”"
     alert.informativeText =
       "The file no longer exists at its original location. It has been removed from Open Recent."
+    alert.addButton(withTitle: "OK")
     _ = alert.runModal()
   }
 }
