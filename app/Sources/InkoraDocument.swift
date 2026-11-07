@@ -70,14 +70,17 @@ final class InkoraDocument: NSDocument {
   private var recoverySourceFingerprint: RecoveryFingerprint?
   private var lastRecoveryData: Data?
   private(set) var recoveryError: Error?
+  private let openHistory: DocumentOpenHistory
 
   override init() {
+    openHistory = .shared
     editorResourceBundle = .main
     dataWriter = AtomicDocumentDataWriter()
     super.init()
   }
 
   init(editorResourceBundle: Bundle) {
+    openHistory = .shared
     self.editorResourceBundle = editorResourceBundle
     dataWriter = AtomicDocumentDataWriter()
     super.init()
@@ -86,11 +89,13 @@ final class InkoraDocument: NSDocument {
   init(
     editorResourceBundle: Bundle = .main,
     snapshotRequester: @escaping SnapshotRequester,
-    dataWriter: any DocumentDataWriting = AtomicDocumentDataWriter()
+    dataWriter: any DocumentDataWriting = AtomicDocumentDataWriter(),
+    openHistory: DocumentOpenHistory = .shared
   ) {
     self.editorResourceBundle = editorResourceBundle
     self.snapshotRequester = snapshotRequester
     self.dataWriter = dataWriter
+    self.openHistory = openHistory
     super.init()
   }
 
@@ -140,6 +145,12 @@ final class InkoraDocument: NSDocument {
     window.setContentSize(NSSize(width: 900, height: 700))
     window.minSize = NSSize(width: 480, height: 320)
     window.title = displayName
+    // Automatic NSDocument state restoration is off: the launch policy
+    // (LastDocumentRestoreController) reopens exactly the last successfully
+    // opened document instead of every window that existed at quit. Window
+    // geometry still survives relaunches via the frame autosave name.
+    window.isRestorable = false
+    window.setFrameAutosaveName("InkoraDocumentWindow")
 
     let windowController = NSWindowController(window: window)
     addWindowController(windowController)
@@ -178,6 +189,10 @@ final class InkoraDocument: NSDocument {
     try read(from: version.data, ofType: typeName)
     diskVersion = version
     fileModificationDate = version.modified
+    MainActor.assumeIsolated {
+      openHistory.noteDocumentOpened(url)
+      RecentDocumentNoter.shared.noteDocumentOpened(url)
+    }
   }
 
   override func data(ofType typeName: String) throws -> Data {

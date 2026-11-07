@@ -10,13 +10,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     application.run()
   }
 
+  private let openRecentMenu = OpenRecentMenuController(
+    list: DocumentControllerRecentDocumentList(),
+    openDocument: AppDelegate.openDocumentFromURL
+  )
+
+  private lazy var restoreController = LastDocumentRestoreController(
+    history: DocumentOpenHistory.shared,
+    documentsAreOpen: { !NSDocumentController.shared.documents.isEmpty },
+    openDocument: AppDelegate.openDocumentFromURL,
+    openUntitledDocument: {
+      _ = try? NSDocumentController.shared.openUntitledDocumentAndDisplay(true)
+    }
+  )
+
   func applicationDidFinishLaunching(_ notification: Notification) {
+    DocumentOpenHistory.shared.configure(
+      defaults: LaunchDefaultsResolver.defaults(arguments: ProcessInfo.processInfo.arguments)
+    )
+    RecentDocumentNoter.shared.configure(list: DocumentControllerRecentDocumentList())
     NSApplication.shared.mainMenu = makeMainMenu()
     DispatchQueue.main.async { RecoveryCoordinator.shared.reviewDrafts() }
   }
 
   func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
-    true
+    if restoreController.restoreLastDocumentIfNeeded() {
+      return false
+    }
+    return true
   }
 
   func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
@@ -71,6 +92,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     NSApplication.shared.reply(toApplicationShouldTerminate: didReviewAll)
   }
 
+  /// Opens `url` through NSDocumentController and keeps the entry at the
+  /// front of Open Recent on success.
+  private static func openDocumentFromURL(
+    _ url: URL, completion: @escaping (Error?) -> Void
+  ) {
+    NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
+      if error == nil {
+        NSDocumentController.shared.noteNewRecentDocumentURL(url)
+      }
+      completion(error)
+    }
+  }
+
   private func makeMainMenu() -> NSMenu {
     let mainMenu = NSMenu()
 
@@ -105,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
       keyEquivalent: "o"
     )
     openItem.target = NSDocumentController.shared
+    fileMenu.addItem(openRecentMenu.menuItem)
     fileMenu.addItem(.separator())
     fileMenu.addItem(
       withTitle: "Close",
