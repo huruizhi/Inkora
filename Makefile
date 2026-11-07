@@ -4,6 +4,8 @@ SCHEME := Inkora
 DERIVED_DATA := $(CURDIR)/build/DerivedData
 ARTIFACTS_DIR ?= $(CURDIR)/artifacts
 CAPTURE := $(CURDIR)/scripts/ci/run-and-capture.sh
+PNPM_VERSION := 11.25.0
+PNPM := $(CURDIR)/.tools/node_modules/.bin/pnpm
 NATIVE_RESULT := $(ARTIFACTS_DIR)/test-results/native.xcresult
 BRIDGE_RESULT := $(ARTIFACTS_DIR)/test-results/bridge-native.xcresult
 
@@ -12,23 +14,24 @@ BRIDGE_RESULT := $(ARTIFACTS_DIR)/test-results/bridge-native.xcresult
 
 setup: require-xcode
 	HOMEBREW_NO_AUTO_UPDATE=1 brew bundle install --no-upgrade
-	pnpm --dir editor install --frozen-lockfile
+	npm install --prefix "$(CURDIR)/.tools" --no-save --no-package-lock pnpm@$(PNPM_VERSION)
+	$(PNPM) --dir editor install --frozen-lockfile
 	$(MAKE) editor-build
 	xcodegen generate
 
 lint:
 	xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests
-	pnpm --dir editor lint
+	$(PNPM) --dir editor lint
 
 test: test-all
 
 test-editor: editor-build prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) editor \
-		pnpm --dir editor exec vitest run src/editor-kernel.test.ts
+		$(PNPM) --dir editor exec vitest run src/editor-kernel.test.ts
 
 test-bridge: editor-build generate require-xcode prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bridge-editor \
-		pnpm --dir editor exec vitest run src/bridge.test.ts
+		$(PNPM) --dir editor exec vitest run src/bridge.test.ts
 	rm -rf "$(BRIDGE_RESULT)"
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bridge-native \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(SCHEME) \
@@ -67,7 +70,7 @@ run: build
 	open "$(DERIVED_DATA)/Build/Products/Debug/Inkora.app"
 
 editor-build:
-	pnpm --dir editor build
+	$(PNPM) --dir editor build
 
 generate:
 	xcodegen generate

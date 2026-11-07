@@ -2,6 +2,7 @@
 # Xcode
 build/
 artifacts/
+.tools/
 DerivedData/
 Inkora.xcodeproj/
 *.xcuserstate
