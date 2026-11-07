@@ -434,7 +434,8 @@ final class DocumentOpenUITests: AcceptanceTestCase {
       : ["--inkora-test-recovery-session", UUID().uuidString]
     app.launchArguments =
       [
-        "-ApplePersistenceIgnoreState", "YES",
+        "-ApplePersistenceIgnoreState", "YES", "-AppleInterfaceStyle", "Light",
+        "--inkora-test-fixed-presentation",
         "-INKTestDefaultsSuite", "InkoraUITests-\(UUID().uuidString)",
       ] + isolation + arguments
     app.launch()

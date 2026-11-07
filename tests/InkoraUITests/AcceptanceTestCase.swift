@@ -3,6 +3,7 @@ import XCTest
 
 /// Capture at record-time, before test defers terminate the application.
 class AcceptanceTestCase: XCTestCase {
+  nonisolated(unsafe) private var recordingDiagnostics = false
   @MainActor private var diagnosticApp: XCUIApplication?
   @MainActor private var snapshotURL: URL?
 
@@ -27,14 +28,21 @@ class AcceptanceTestCase: XCTestCase {
   }
 
   override func record(_ issue: XCTIssue) {
-    if Thread.isMainThread {
+    if Thread.isMainThread && !recordingDiagnostics {
+      recordingDiagnostics = true
+      defer { recordingDiagnostics = false }
       // XCTestCase is not Sendable. This synchronous borrow stays on the
       // checked main thread and never escapes the record callback.
       nonisolated(unsafe) let testCase = self
       MainActor.assumeIsolated {
         if let app = testCase.diagnosticApp {
-          testCase.capture("failure-screen", app: app)
-          testCase.attach(app.debugDescription, name: "failure-accessibility-tree")
+          let screen = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+          screen.name = "acceptance-failure-screen"
+          screen.lifetime = .keepAlways
+          testCase.add(screen)
+          if app.state != .notRunning {
+            testCase.attach(app.debugDescription, name: "failure-accessibility-tree")
+          }
         }
         if let snapshotURL = testCase.snapshotURL,
           let log = try? String(

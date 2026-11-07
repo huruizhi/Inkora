@@ -12,7 +12,7 @@ final class InkoraDocumentTests: XCTestCase {
     XCTAssertEqual(window.accessibilityRole(), .window)
     let editor = try XCTUnwrap(window.contentViewController?.view)
     XCTAssertEqual(editor.accessibilityIdentifier(), "MarkdownEditor")
-    XCTAssertEqual(editor.accessibilityLabel(), "Markdown editor")
+    XCTAssertEqual(editor.accessibilityLabel(), "Markdown document content")
   }
 
   private let markdownType = "net.daringfireball.markdown"

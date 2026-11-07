@@ -60,7 +60,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
 
     let webView = WKWebView(frame: .zero, configuration: configuration)
     webView.setAccessibilityIdentifier("MarkdownEditor")
-    webView.setAccessibilityLabel("Markdown editor")
+    webView.setAccessibilityLabel("Markdown document content")
     webView.navigationDelegate = self
     webView.uiDelegate = self
     bridge.attach(webView: webView)
