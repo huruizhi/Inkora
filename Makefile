@@ -61,7 +61,8 @@ test-document-open-ui: editor-build generate require-xcode prepare-artifacts
 		xcodebuild -quiet -project $(PROJECT) -scheme $(DOCUMENT_UI_SCHEME) \
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(DOCUMENT_UI_RESULT)" \
-		-only-testing:InkoraUITests/DocumentOpenUITests test
+		-only-testing:InkoraUITests/DocumentOpenUITests \
+		-only-testing:InkoraUITests/RecentFilesUITests test
 
 test-ui: build prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) ui \

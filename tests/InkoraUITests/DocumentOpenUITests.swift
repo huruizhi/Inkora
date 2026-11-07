@@ -428,7 +428,10 @@ final class DocumentOpenUITests: XCTestCase {
       arguments.contains("--inkora-test-recovery-session")
       ? []
       : ["--inkora-test-recovery-session", UUID().uuidString]
-    app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"] + isolation + arguments
+    app.launchArguments = [
+      "-ApplePersistenceIgnoreState", "YES",
+      "-INKTestDefaultsSuite", "InkoraUITests-\(UUID().uuidString)",
+    ] + isolation + arguments
     app.launch()
     let isRunning = app.wait(for: .runningForeground, timeout: 10)
     XCTAssertTrue(isRunning)
