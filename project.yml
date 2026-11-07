@@ -19,7 +19,8 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.huruizhi.Inkora
+        INKORA_BUNDLE_IDENTIFIER: com.huruizhi.Inkora
+        PRODUCT_BUNDLE_IDENTIFIER: $(INKORA_BUNDLE_IDENTIFIER)
         PRODUCT_NAME: Inkora
         INFOPLIST_FILE: app/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: app/Resources/Inkora.entitlements

@@ -205,7 +205,9 @@ final class RecoveryStore {
 
   static func applicationStore() -> RecoveryStore? {
     // Hostless XCTest never writes real user recovery data.
-    guard Bundle.main.bundleIdentifier == "com.huruizhi.Inkora" else { return nil }
+    guard let identifier = Bundle.main.bundleIdentifier,
+      ["com.huruizhi.Inkora", "com.huruizhi.Inkora.UITesting"].contains(identifier)
+    else { return nil }
     var url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
       .appendingPathComponent("Inkora/Recovery", isDirectory: true)
     let args = ProcessInfo.processInfo.arguments

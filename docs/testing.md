@@ -13,7 +13,7 @@ Agent 本地只运行非 UI 目标，UI 目标由 CI 执行，以避免占用开
 | `make test-editor` | Bridge 以外的编辑器模型与行为测试 |
 | `make test-bridge` | TypeScript + Swift Bridge v1 contract tests |
 | `make test-native` | 全部 XCTest 单元与 WKWebView 集成测试 |
-| `make test-document-open-ui` | 文档打开、菜单状态、菜单点击及 Cmd+O/S/Shift+S/Z/Shift+Z；实际打开与另存后验证磁盘内容；需已解锁桌面和 Automation Mode |
+| `make test-document-open-ui` | 文档打开、菜单状态、菜单点击及 Cmd+O/S/Shift+S/Z/Shift+Z；Open Recent、冷/热启动打开、失效路径与重启恢复；实际打开与另存后验证磁盘内容；需已解锁桌面和 Automation Mode |
 | `make test-ui-release` | Release 离线资源检查与 App 启动烟测 |
 | `make test-ui` | 无辅助功能权限依赖的 Debug App 启动烟测；CI 通过 `INKORA_CAPTURE_SCREEN=1` 尽力截图 |
 | `make test-ci` | 验证命令包装器、快照归档及 UI 锁的获取/排队/超时/回收/退出清理 |
@@ -132,6 +132,15 @@ launchctl bootstrap "gui/$(id -u)" "$runner_plist"
 “开发者工具”、以及系统实际提示的“辅助功能/自动化”授权，并允许实际运行测试的宿主。
 先运行一次 UI 目标观察系统提示；不批量授予权限、不修改 TCC 数据库。
 `SACSetScreenSaverCanRun returned 22` 单独不足以证明锁屏或 TCC 拒绝，需结合会话和测试日志诊断。
+## UI 测试数据隔离
+
+`test-document-open-ui`、`test-ui` 和 `test-ui-release` 构建使用独立 bundle ID
+`com.huruizhi.Inkora.UITesting`，与用户正式 App 的最近文件、Sandbox 容器、窗口偏好隔离。
+XCUITest 另以 `-INKTestDefaultsSuite` 隔离每个用例的恢复历史；冷启动经 Launch Services
+传入相同参数。恢复草稿另以 `--inkora-test-recovery-session` 隔离；测试 bundle
+启用与正式 App 相同的草稿恢复流程，Hostless XCTest 不启用真实存储。
+普通 `make build` / `make run` 仍使用正式 bundle ID。
+
 ## 原生菜单验收
 
 `DocumentOpenUITests` 将编辑器查询限定到目标文档窗口，兼容独立窗口与 Sheet 两种系统文件面板。历史场景用一次粘贴建立单个编辑事件并恢复原剪贴板，避免逐字合成键盘事件的时间间隔改变 history 分组；Undo/Redo 本身仍通过菜单点击及真实快捷键执行。

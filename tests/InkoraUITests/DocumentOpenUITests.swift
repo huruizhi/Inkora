@@ -372,7 +372,7 @@ final class DocumentOpenUITests: XCTestCase {
     XCTAssertTrue(
       app.wait(for: .notRunning, timeout: 15), "App exits only after persisting an actual draft")
     XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original on disk")
-    app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"] + arguments
+    app.launchArguments.removeAll { $0 == "--inkora-test-crash-after-draft" }
     app.launch()
     let recover = app.buttons["恢复"]
     XCTAssertTrue(recover.waitForExistence(timeout: 10))
@@ -428,7 +428,11 @@ final class DocumentOpenUITests: XCTestCase {
       arguments.contains("--inkora-test-recovery-session")
       ? []
       : ["--inkora-test-recovery-session", UUID().uuidString]
-    app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"] + isolation + arguments
+    app.launchArguments =
+      [
+        "-ApplePersistenceIgnoreState", "YES",
+        "-INKTestDefaultsSuite", "InkoraUITests-\(UUID().uuidString)",
+      ] + isolation + arguments
     app.launch()
     let isRunning = app.wait(for: .runningForeground, timeout: 10)
     XCTAssertTrue(isRunning)
