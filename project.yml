@@ -1,0 +1,64 @@
+name: Inkora
+options:
+  bundleIdPrefix: com.huruizhi
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+targets:
+  Inkora:
+    type: application
+    platform: macOS
+    sources:
+      - path: app/Sources
+      - path: build/editor
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.huruizhi.Inkora
+        PRODUCT_NAME: Inkora
+        INFOPLIST_FILE: app/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: app/Resources/Inkora.entitlements
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+    preBuildScripts:
+      - name: Build Editor
+        script: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          cd "$SRCROOT/editor"
+          pnpm build
+        basedOnDependencyAnalysis: false
+  InkoraTests:
+    type: bundle.unit-test
+    platform: macOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    sources:
+      - path: tests/InkoraTests
+      - path: tests/fixtures
+        type: folder
+        buildPhase: resources
+      - path: build/editor
+        type: folder
+        buildPhase: resources
+      - path: app/Sources
+        excludes:
+          - AppDelegate.swift
+schemes:
+  Inkora:
+    build:
+      targets:
+        Inkora: all
+        InkoraTests: [test]
+    test:
+      targets:
+        - InkoraTests

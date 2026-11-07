@@ -2,6 +2,7 @@
 # Xcode
 build/
 DerivedData/
+Inkora.xcodeproj/
 *.xcuserstate
 xcuserdata/
 *.xcscmblueprint
