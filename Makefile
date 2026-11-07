@@ -27,7 +27,7 @@ test: test-all
 
 test-editor: editor-build prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) editor \
-		$(PNPM) --dir editor exec vitest run src/editor-kernel.test.ts
+		$(PNPM) --dir editor exec vitest run --exclude src/bridge.test.ts
 
 test-bridge: editor-build generate require-xcode prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bridge-editor \

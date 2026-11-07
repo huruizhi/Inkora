@@ -8,7 +8,7 @@
 
 | 命令 | 作用 |
 | --- | --- |
-| `make test-editor` | textarea editor kernel 行为测试 |
+| `make test-editor` | Bridge 以外的编辑器模型与行为测试 |
 | `make test-bridge` | TypeScript + Swift Bridge v1 contract tests |
 | `make test-native` | 全部 XCTest 单元与 WKWebView 集成测试 |
 | `make test-ui` | 无辅助功能权限依赖的 Debug App 启动烟测；CI 通过 `INKORA_CAPTURE_SCREEN=1` 尽力截图 |
