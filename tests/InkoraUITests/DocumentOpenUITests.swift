@@ -75,19 +75,19 @@ final class DocumentOpenUITests: XCTestCase {
   func testUndoRedoMenusAndShortcutsWhileWebEditorHasFocus() async throws {
     let temporaryDirectory = try makeTemporaryDirectory()
     let fileURL = temporaryDirectory.appendingPathComponent("History Commands.md")
-    try Data("<custom-tag>original</custom-tag>".utf8).write(to: fileURL)
+    try Data("original".utf8).write(to: fileURL)
     let app = try openDocumentInControlledApplication(fileURL)
     defer {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
     }
-    let editor = sourceEditor(in: app)
+    let editor = webEditor(in: app)
     XCTAssertTrue(
       editor.waitForExistence(timeout: 10),
-      "Could not locate the source editor. \(editorRecoveryMessage(in: app))"
+      "Could not locate the web editor. \(editorRecoveryMessage(in: app))"
     )
 
-    replaceText(in: editor, with: "<custom-tag>changed</custom-tag>")
+    replaceText(in: editor, with: "changed")
     XCTAssertTrue(waitForValue(editor, containing: "changed"))
 
     openMenu("Edit", in: app)
@@ -113,19 +113,19 @@ final class DocumentOpenUITests: XCTestCase {
   func testFileMenusAndShortcutsWhileWebEditorHasFocus() async throws {
     let temporaryDirectory = try makeTemporaryDirectory()
     let fileURL = temporaryDirectory.appendingPathComponent("File Commands.md")
-    try Data("<custom-tag>original</custom-tag>".utf8).write(to: fileURL)
+    try Data("original".utf8).write(to: fileURL)
     let app = try openDocumentInControlledApplication(fileURL)
     defer {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
     }
-    let editor = sourceEditor(in: app)
+    let editor = webEditor(in: app)
     XCTAssertTrue(
       editor.waitForExistence(timeout: 10),
-      "Could not locate the source editor. \(editorRecoveryMessage(in: app))"
+      "Could not locate the web editor. \(editorRecoveryMessage(in: app))"
     )
 
-    replaceText(in: editor, with: "<custom-tag>shortcut-save</custom-tag>")
+    replaceText(in: editor, with: "shortcut-save")
     editor.typeKey("s", modifierFlags: .command)
     let shortcutSaved = await waitForFile(fileURL, containing: "shortcut-save")
     XCTAssertTrue(
@@ -140,7 +140,7 @@ final class DocumentOpenUITests: XCTestCase {
     editor.typeKey("o", modifierFlags: .command)
     try cancelFilePanel(in: app)
 
-    replaceText(in: editor, with: "<custom-tag>menu-save</custom-tag>")
+    replaceText(in: editor, with: "menu-save")
     openMenu("File", in: app)
     app.menuItems["Save"].click()
     let menuSaved = await waitForFile(fileURL, containing: "menu-save")
@@ -185,13 +185,13 @@ final class DocumentOpenUITests: XCTestCase {
   }
 
   @MainActor
-  private func sourceEditor(in app: XCUIApplication) -> XCUIElement {
-    let accessibleName = "Markdown source editor"
+  private func webEditor(in app: XCUIApplication) -> XCUIElement {
+    let accessibleNames = ["Markdown editor", "Markdown source editor"]
     let labeledEditor = app.descendants(matching: .any).matching(
       NSPredicate(
-        format: "identifier == %@ OR label == %@",
-        accessibleName,
-        accessibleName
+        format: "identifier IN %@ OR label IN %@",
+        accessibleNames,
+        accessibleNames
       )
     ).firstMatch
     if labeledEditor.waitForExistence(timeout: 3) {
