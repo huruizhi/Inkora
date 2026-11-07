@@ -81,8 +81,11 @@ final class DocumentOpenUITests: XCTestCase {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
     }
-    let editor = app.descendants(matching: .any)["Markdown source editor"]
-    XCTAssertTrue(editor.waitForExistence(timeout: 10))
+    let editor = sourceEditor(in: app)
+    XCTAssertTrue(
+      editor.waitForExistence(timeout: 10),
+      "Could not locate the source editor in the accessibility hierarchy"
+    )
 
     replaceText(in: editor, with: "<custom-tag>changed</custom-tag>")
     XCTAssertTrue(waitForValue(editor, containing: "changed"))
@@ -116,8 +119,11 @@ final class DocumentOpenUITests: XCTestCase {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
     }
-    let editor = app.descendants(matching: .any)["Markdown source editor"]
-    XCTAssertTrue(editor.waitForExistence(timeout: 10))
+    let editor = sourceEditor(in: app)
+    XCTAssertTrue(
+      editor.waitForExistence(timeout: 10),
+      "Could not locate the source editor in the accessibility hierarchy"
+    )
 
     replaceText(in: editor, with: "<custom-tag>shortcut-save</custom-tag>")
     editor.typeKey("s", modifierFlags: .command)
@@ -179,6 +185,22 @@ final class DocumentOpenUITests: XCTestCase {
   }
 
   @MainActor
+  private func sourceEditor(in app: XCUIApplication) -> XCUIElement {
+    let accessibleName = "Markdown source editor"
+    let labeledEditor = app.descendants(matching: .any).matching(
+      NSPredicate(
+        format: "identifier == %@ OR label == %@",
+        accessibleName,
+        accessibleName
+      )
+    ).firstMatch
+    if labeledEditor.waitForExistence(timeout: 3) {
+      return labeledEditor
+    }
+    return app.descendants(matching: .textView).firstMatch
+  }
+
+  @MainActor
   private func openMenu(_ title: String, in app: XCUIApplication) {
     let menu = app.menuBars.menuBarItems[title]
     XCTAssertTrue(menu.waitForExistence(timeout: 5))
@@ -222,6 +244,7 @@ final class DocumentOpenUITests: XCTestCase {
   private func openWithLaunchServices(_ fileURL: URL) throws -> XCUIApplication {
     let app = XCUIApplication(bundleIdentifier: "com.huruizhi.Inkora")
     app.terminate()
+    _ = app.wait(for: .notRunning, timeout: 5)
     let applicationURL = try builtApplicationURL()
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
