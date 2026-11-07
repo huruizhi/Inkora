@@ -225,6 +225,99 @@ final class DocumentOpenUITests: XCTestCase {
   }
 
   @MainActor
+  func testCloseEntrypointsOfferSaveDiscardAndCancel() async throws {
+    let directory = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    for entry in ["button", "shortcut", "menu", "quit"] {
+      let app = launchApplication()
+      defer { app.terminate() }
+      let url = directory.appendingPathComponent("Close-\(entry).md")
+      try Data("original".utf8).write(to: url)
+      openMenu("File", in: app)
+      app.menuItems["Open…"].click()
+      try chooseFilePath(url, button: "Open", in: app)
+      let editor = webEditor(in: app, windowTitle: url.lastPathComponent)
+      replaceText(in: editor, with: "changed-\(entry)")
+      requestClose(entry, in: app, window: app.windows[url.lastPathComponent])
+      let cancel = app.buttons["Cancel"]
+      XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+      cancel.click()
+      XCTAssertTrue(waitForValue(editor, containing: "changed-\(entry)"))
+      XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "original")
+      requestClose(entry, in: app, window: app.windows[url.lastPathComponent])
+      let save = app.buttons["Save"]
+      XCTAssertTrue(save.waitForExistence(timeout: 5))
+      save.click()
+      let saved = await waitForFile(url, containing: "changed-\(entry)")
+      XCTAssertTrue(saved)
+      if entry == "quit" {
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+        app.launch()
+      } else {
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+      }
+      openMenu("File", in: app)
+      app.menuItems["Open…"].click()
+      try chooseFilePath(url, button: "Open", in: app)
+      let reopened = webEditor(in: app, windowTitle: url.lastPathComponent)
+      replaceText(in: reopened, with: "discarded")
+      requestClose(entry, in: app, window: app.windows[url.lastPathComponent])
+      let discard = app.buttons["Don’t Save"]
+      let asciiDiscard = app.buttons["Don't Save"]
+      if discard.waitForExistence(timeout: 3) {
+        discard.click()
+      } else {
+        XCTAssertTrue(asciiDiscard.waitForExistence(timeout: 3))
+        asciiDiscard.click()
+      }
+      if entry == "quit" {
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+      } else {
+        XCTAssertTrue(reopened.waitForNonExistence(timeout: 5))
+      }
+      XCTAssertTrue(try String(contentsOf: url, encoding: .utf8).contains("changed-\(entry)"))
+    }
+  }
+
+  @MainActor
+  func testFailedSaveDuringClosePreservesWindowAndContent() throws {
+    let directory = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("Failed close.md")
+    try Data("original".utf8).write(to: url)
+    let app = launchApplication(arguments: ["--inkora-test-write-failure"])
+    defer { app.terminate() }
+    openMenu("File", in: app)
+    app.menuItems["Open…"].click()
+    try chooseFilePath(url, button: "Open", in: app)
+    let editor = webEditor(in: app, windowTitle: url.lastPathComponent)
+    replaceText(in: editor, with: "keep after failure")
+    app.typeKey("w", modifierFlags: .command)
+    XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 5))
+    app.buttons["Save"].click()
+    let errorButton = app.buttons["OK"]
+    XCTAssertTrue(errorButton.waitForExistence(timeout: 10), "Write error must be visible")
+    errorButton.click()
+    XCTAssertTrue(waitForValue(editor, containing: "keep after failure"))
+    XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "original")
+    app.typeKey("w", modifierFlags: .command)
+    XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5), "Document remains dirty")
+    app.buttons["Cancel"].click()
+  }
+
+  @MainActor
+  private func requestClose(_ entry: String, in app: XCUIApplication, window: XCUIElement) {
+    switch entry {
+    case "button": window.buttons[XCUIIdentifierCloseWindow].click()
+    case "shortcut": app.typeKey("w", modifierFlags: .command)
+    case "quit": app.typeKey("q", modifierFlags: .command)
+    default:
+      openMenu("File", in: app)
+      app.menuItems["Close"].click()
+    }
+  }
+
+  @MainActor
   private func chooseFilePath(_ url: URL, button: String, in app: XCUIApplication) throws {
     let panel = filePanel(in: app)
     XCTAssertTrue(panel.waitForExistence(timeout: 5))
@@ -240,9 +333,9 @@ final class DocumentOpenUITests: XCTestCase {
   }
 
   @MainActor
-  private func launchApplication() -> XCUIApplication {
+  private func launchApplication(arguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
+    app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"] + arguments
     app.launch()
     let isRunning = app.wait(for: .runningForeground, timeout: 10)
     XCTAssertTrue(isRunning)

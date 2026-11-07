@@ -114,6 +114,24 @@ describe("IME composition", () => {
     expect(session.status).toMatchObject({ revision: 1, dirty: true, composing: false });
   });
 
+  it("keeps save acknowledgement tied to committed text during composition", () => {
+    const session = sessionFrom("saved");
+    const persisted = session.state.doc;
+    session.beginComposition();
+    session.dispatch(session.state.tr.insertText("candidate"));
+    const selection = session.state.selection;
+    const states: boolean[] = [];
+    session.onStateChange((state) => states.push(state.dirty));
+    session.markSaved(persisted);
+    expect(states).toEqual([false]);
+    expect(session.state.selection.eq(selection)).toBe(true);
+    expect(session.status.revision).toBe(0);
+    session.endComposition();
+    expect(states).toEqual([false, true]);
+    expect(session.undo()).toBe(true);
+    expect(session.status.dirty).toBe(false);
+  });
+
   it("preserves text, selection and revision when history is requested during composition", () => {
     const session = sessionFrom("original");
     session.dispatch(session.state.tr.insertText("before"));

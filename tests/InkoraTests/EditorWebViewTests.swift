@@ -600,6 +600,34 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testSnapshotRejectsUncommittedCompositionAndKeepsContent() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "<x>before</x>")
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const editor = document.querySelector('#editor');
+        editor.dispatchEvent(new Event('compositionstart'));
+        editor.value = '<x>中文</x>';
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      })()
+      """
+    )
+    XCTAssertFalse(document.isDocumentEdited, "Composition intermediate state is not published")
+    do {
+      _ = try await requestText(from: controller)
+      XCTFail("Uncommitted composition must not produce a snapshot")
+    } catch {
+      XCTAssertFalse(document.isDocumentEdited)
+    }
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('#editor').dispatchEvent(new Event('compositionend'))"
+    )
+    let snapshot = try await requestText(from: controller)
+    XCTAssertEqual(snapshot, "<x>中文</x>")
+    XCTAssertTrue(document.isDocumentEdited)
+  }
+
+  @MainActor
   private func waitForJavaScriptValue(
     in webView: WKWebView,
     script: String,
@@ -630,7 +658,11 @@ final class EditorWebViewTests: XCTestCase {
     controller.loadViewIfNeeded()
     let webView = try XCTUnwrap(controller.view as? WKWebView)
     _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
-      $0 as? String == initialText
+      // HTML textarea.value normalizes CRLF/CR to LF; disk/snapshot assertions
+      // below still require the original line endings byte for byte.
+      $0 as? String
+        == initialText.replacingOccurrences(of: "\r\n", with: "\n")
+        .replacingOccurrences(of: "\r", with: "\n")
     }
     return (document, controller, webView)
   }

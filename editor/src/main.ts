@@ -69,7 +69,27 @@ window.inkora = {
           }
           break;
         case "createSnapshot":
-          postToNative(session.createSnapshot(command, runtime?.getText() ?? ""));
+          // Native has resigned first responder. Drain compositionend (including
+          // ProseMirror's final DOM transaction) before sampling text and revision.
+          {
+            const capture = (): void => {
+              if (runtime?.composing) {
+                postToNative({
+                  protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+                  requestID: command.requestID, code: "editor_not_ready", action: "retry",
+                  message: "Finish text composition before saving or closing",
+                });
+                return;
+              }
+              postToNative(session.queryState({
+                protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "queryState",
+                requestID: `${command.requestID}-state`,
+              }));
+              postToNative(session.createSnapshot(command, runtime?.getText() ?? ""));
+            };
+            if (runtime?.composing) window.setTimeout(capture, 0);
+            else capture();
+          }
           break;
         case "markSaved":
           executingCommand = true;
