@@ -54,15 +54,20 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
       completion(.failure(EditorBridgeError.editorUnavailable))
       return
     }
-    bridge.requestText(completion: completion)
+    bridge.requestSnapshot(completion: completion)
   }
 
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {
-    bridge.load(text: document?.text ?? "")
+    guard let document else { return }
+    bridge.loadDocument(
+      documentID: document.bridgeDocumentID,
+      revision: document.bridgeRevision,
+      text: document.text
+    )
   }
 
-  func editorBridge(_ bridge: EditorBridge, didChangeText text: String) {
-    document?.editorDidChangeText(text)
+  func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState) {
+    document?.editorDidChangeState(state)
   }
 
   func webView(

@@ -10,7 +10,9 @@ enum InkoraDocumentError: LocalizedError {
 
 @objc(InkoraDocument)
 final class InkoraDocument: NSDocument {
+  let bridgeDocumentID = UUID().uuidString
   private let editorResourceBundle: Bundle
+  private let revisionStorage = DocumentRevisionStorage()
   private let textStorage = DocumentTextStorage()
   private weak var editorViewController: EditorViewController?
 
@@ -26,6 +28,10 @@ final class InkoraDocument: NSDocument {
 
   var text: String {
     textStorage.get()
+  }
+
+  var bridgeRevision: Int {
+    revisionStorage.get()
   }
 
   override class var autosavesInPlace: Bool {
@@ -52,6 +58,7 @@ final class InkoraDocument: NSDocument {
       throw InkoraDocumentError.invalidUTF8
     }
     textStorage.set(decoded)
+    revisionStorage.set(0)
   }
 
   override func read(from url: URL, ofType typeName: String) throws {
@@ -116,10 +123,13 @@ final class InkoraDocument: NSDocument {
     }
   }
 
-  func editorDidChangeText(_ updatedText: String) {
-    guard updatedText != text else { return }
-    textStorage.set(updatedText)
-    updateChangeCount(.changeDone)
+  func editorDidChangeState(_ state: BridgeEditorState) {
+    guard state.documentID == bridgeDocumentID else { return }
+    guard state.revision > revisionStorage.get() else { return }
+    revisionStorage.set(state.revision)
+    if state.dirty {
+      updateChangeCount(.changeDone)
+    }
   }
 
   private func saveSnapshot(
@@ -148,6 +158,21 @@ private final class DocumentTextStorage: @unchecked Sendable {
   func set(_ updatedText: String) {
     lock.withLock {
       text = updatedText
+    }
+  }
+}
+
+private final class DocumentRevisionStorage: @unchecked Sendable {
+  private let lock = NSLock()
+  private var revision = 0
+
+  func get() -> Int {
+    lock.withLock { revision }
+  }
+
+  func set(_ updatedRevision: Int) {
+    lock.withLock {
+      revision = updatedRevision
     }
   }
 }
