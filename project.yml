@@ -57,6 +57,7 @@ targets:
     platform: macOS
     sources:
       - path: tests/InkoraUITests
+      - path: tests/InkoraTests/PerfTestSupport.swift
     dependencies:
       - target: Inkora
     settings:

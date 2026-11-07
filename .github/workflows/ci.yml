@@ -2,6 +2,11 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      full-bench:
+        description: Run make bench-full (adds launch benchmarks; needs unlocked desktop)
+        type: boolean
+        default: false
   push:
     branches:
       - main
@@ -27,9 +32,13 @@ jobs:
         run: make test-all
       - name: Build and launch release offline
         run: make test-ui-release
+      - name: Performance baseline (light, warn-only)
+        run: make bench
+      - name: Full performance baseline
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.full-bench }}
+        run: make bench-full
       - name: Upload diagnostics
         if: always()
-        uses: actions/upload-artifact@v7
         with:
           name: inkora-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/

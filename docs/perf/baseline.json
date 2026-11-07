@@ -1,0 +1,230 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-11-08",
+  "environment": {
+    "model": "Mac18,5",
+    "chip": "Apple M6",
+    "memoryGB": 32,
+    "macOS": "27.2",
+    "xcode": "Xcode 27.2 (27B52)",
+    "node": "v26.13.0",
+    "runner": "self-hosted inkora-rayhu-mac-arm64"
+  },
+  "samples": {
+    "small": {
+      "bytes": 12026,
+      "lines": 321,
+      "blocks": 57,
+      "sha256": "9f9cc548a855e8676abc858262e6f3c94dd08d1d64a0ac03e09dca4e32740881"
+    },
+    "medium": {
+      "bytes": 150510,
+      "lines": 3778,
+      "blocks": 770,
+      "sha256": "537de771ad9fbbf21c35c3573fa6ffd3e6276c21e1ad0b966c2fbcc867963018"
+    },
+    "large": {
+      "bytes": 1000064,
+      "lines": 24601,
+      "blocks": 5061,
+      "sha256": "6036a7aee026f60a96581c686e0fc8c0ef50cf0d7ec12ad74a1d5e6eeb53f9f0"
+    },
+    "large-crlf": {
+      "bytes": 1024664,
+      "lines": 24601,
+      "blocks": 1,
+      "sha256": "d0ee2ab272e06fd6b5349ada7824bb352b24b3433b14f9094f508f6104481128"
+    }
+  },
+  "threshold": {
+    "relative": 0.2
+  },
+  "metrics": {
+    "editor.parse/small": {
+      "unit": "ms",
+      "value": 0.2374,
+      "cv": 0.3409,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.serialize/small": {
+      "unit": "ms",
+      "value": 0.1167,
+      "cv": 0.534,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.parse/medium": {
+      "unit": "ms",
+      "value": 2.4773,
+      "cv": 0.1755,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.serialize/medium": {
+      "unit": "ms",
+      "value": 14.8818,
+      "cv": 0.0358,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.parse/large": {
+      "unit": "ms",
+      "value": 13.4691,
+      "cv": 0.1552,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.serialize/large": {
+      "unit": "ms",
+      "value": 674.3793,
+      "cv": 0.0948,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.state-create/medium": {
+      "unit": "ms",
+      "value": 0.136,
+      "cv": 0.2964,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.input-typing/medium": {
+      "unit": "ms",
+      "value": 0.0039,
+      "cv": 0.4475,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.snapshot-serialize/medium": {
+      "unit": "ms",
+      "value": 16.2916,
+      "cv": 0.0371,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.state-create/large": {
+      "unit": "ms",
+      "value": 0.8118,
+      "cv": 0.0551,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.input-typing/large": {
+      "unit": "ms",
+      "value": 0.016,
+      "cv": 0.2708,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "editor.snapshot-serialize/large": {
+      "unit": "ms",
+      "value": 793.6056,
+      "cv": 0.3417,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "native.document-open/small": {
+      "unit": "ms",
+      "value": 0.2102,
+      "cv": 0.1116,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "native.document-open/medium": {
+      "unit": "ms",
+      "value": 0.2665,
+      "cv": 0.1061,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "native.document-open/large": {
+      "unit": "ms",
+      "value": 0.628,
+      "cv": 0.0842,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "native.document-save/medium": {
+      "unit": "ms",
+      "value": 0.2015,
+      "cv": 0.2473,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "native.document-save/large": {
+      "unit": "ms",
+      "value": 0.3296,
+      "cv": 0.3174,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "native.document-memory/large": {
+      "unit": "MB",
+      "value": 1,
+      "cv": 0.7668,
+      "profiles": [
+        "light",
+        "full"
+      ]
+    },
+    "webview.webview-load/medium": {
+      "unit": "ms",
+      "value": 110.391,
+      "cv": 0.0187,
+      "profiles": [
+        "full"
+      ]
+    },
+    "webview.webview-load/large": {
+      "unit": "ms",
+      "value": 385.6328,
+      "cv": 0.0108,
+      "profiles": [
+        "full"
+      ]
+    },
+    "webview.bridge-snapshot-roundtrip/large": {
+      "unit": "ms",
+      "value": 4.5091,
+      "cv": 0.0204,
+      "profiles": [
+        "full"
+      ]
+    }
+  }
+}

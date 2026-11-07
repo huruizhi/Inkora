@@ -12,10 +12,17 @@ PNPM := $(CURDIR)/.tools/node_modules/.bin/pnpm
 NATIVE_RESULT := $(ARTIFACTS_DIR)/test-results/native.xcresult
 DOCUMENT_UI_RESULT := $(ARTIFACTS_DIR)/test-results/document-open-ui.xcresult
 BRIDGE_RESULT := $(ARTIFACTS_DIR)/test-results/bridge-native.xcresult
+PERF_SAMPLES_DIR := $(CURDIR)/build/perf-samples
+PERF_RESULTS_DIR := $(CURDIR)/build/perf-results
+NATIVE_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/native-perf.xcresult
+WEBVIEW_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/webview-perf.xcresult
+LAUNCH_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/launch-perf.xcresult
+PERF_STRICT := $(if $(INKORA_PERF_STRICT),--fail,)
 
 .PHONY: setup lint test test-editor test-bridge test-native test-document-open-ui test-ui \
 	test-ui-release test-ci test-all \
-	build build-release run clean generate editor-build prepare-artifacts require-xcode
+	build build-release run clean generate editor-build prepare-artifacts require-xcode \
+	perf-samples bench bench-full
 
 setup: require-xcode
 	HOMEBREW_NO_AUTO_UPDATE=1 brew bundle install --no-upgrade
@@ -116,5 +123,69 @@ require-xcode:
 		exit 1; \
 	}
 
-clean:
-	rm -rf "$(CURDIR)/build" "$(ARTIFACTS_DIR)" editor/dist Inkora.xcodeproj
+# Performance baselines (INK-023). `make bench` is light, deterministic and
+# CI-safe: it never launches the app UI. `make bench-full` adds the WKWebView
+# load benchmarks and app launch benchmarks and requires a logged-in desktop
+# (CI runner only). Set INKORA_PERF_STRICT=1 to fail on regression instead of
+# warning.
+perf-samples:
+	node scripts/perf/generate-samples.mjs --output "$(PERF_SAMPLES_DIR)"
+
+perf-compare:
+	mkdir -p "$(ARTIFACTS_DIR)/perf"
+	node scripts/perf/compare-baseline.mjs --results-dir "$(PERF_RESULTS_DIR)" \
+		--report "$(ARTIFACTS_DIR)/perf/comparison.md" $(PERF_STRICT)
+
+bench: perf-samples editor-build generate require-xcode prepare-artifacts
+	mkdir -p "$(PERF_RESULTS_DIR)"
+	node scripts/perf/env-info.mjs --output "$(PERF_RESULTS_DIR)/environment.json"
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bench-editor \
+		env INKORA_PERF_PROFILE=light INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
+		INKORA_PERF_OUTPUT="$(PERF_RESULTS_DIR)/editor.json" \
+		$(PNPM) --dir editor exec vitest run --config vite.perf.config.ts
+	rm -f "$(PERF_RESULTS_DIR)/native.json"
+	rm -rf "$(NATIVE_PERF_RESULT)"
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bench-native \
+		env INKORA_PERF=1 TEST_RUNNER_INKORA_PERF=1 \
+		INKORA_PERF_PROFILE=light TEST_RUNNER_INKORA_PERF_PROFILE=light \
+		INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
+		TEST_RUNNER_INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
+		INKORA_PERF_OUTPUT="$(PERF_RESULTS_DIR)/native.json" \
+		TEST_RUNNER_INKORA_PERF_OUTPUT="$(PERF_RESULTS_DIR)/native.json" \
+		xcodebuild -quiet -project $(PROJECT) -scheme $(SCHEME) \
+		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
+		-resultBundlePath "$(NATIVE_PERF_RESULT)" \
+		-only-testing:InkoraTests/PerformanceBaselineTests test
+	$(MAKE) perf-compare
+
+bench-full: bench
+	rm -f "$(PERF_RESULTS_DIR)/editor.json"
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bench-editor-full \
+		env INKORA_PERF_PROFILE=full INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
+		INKORA_PERF_OUTPUT="$(PERF_RESULTS_DIR)/editor.json" \
+		$(PNPM) --dir editor exec vitest run --config vite.perf.config.ts
+	rm -f "$(PERF_RESULTS_DIR)/webview.json"
+	rm -rf "$(WEBVIEW_PERF_RESULT)"
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bench-webview \
+		env INKORA_PERF=1 TEST_RUNNER_INKORA_PERF=1 \
+		INKORA_PERF_PROFILE=full TEST_RUNNER_INKORA_PERF_PROFILE=full \
+		INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
+		TEST_RUNNER_INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
+		INKORA_PERF_OUTPUT="$(PERF_RESULTS_DIR)/webview.json" \
+		TEST_RUNNER_INKORA_PERF_OUTPUT="$(PERF_RESULTS_DIR)/webview.json" \
+		xcodebuild -quiet -project $(PROJECT) -scheme $(SCHEME) \
+		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
+		-resultBundlePath "$(WEBVIEW_PERF_RESULT)" \
+		-only-testing:InkoraTests/PerformanceWebViewTests test
+	rm -f "$(PERF_RESULTS_DIR)/launch.json"
+	rm -rf "$(LAUNCH_PERF_RESULT)"
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bench-launch \
+		$(UI_LOCK) $(UI_PREFLIGHT) xcuitest \
+		env TEST_RUNNER_INKORA_PERF=1 \
+		TEST_RUNNER_INKORA_PERF_PROFILE=full \
+		TEST_RUNNER_INKORA_PERF_OUTPUT="$(PERF_RESULTS_DIR)/launch.json" \
+		xcodebuild -quiet -project $(PROJECT) -scheme $(DOCUMENT_UI_SCHEME) \
+		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
+		-resultBundlePath "$(LAUNCH_PERF_RESULT)" \
+		-only-testing:InkoraUITests/PerformanceBaselineUITests test
+	$(MAKE) perf-compare
