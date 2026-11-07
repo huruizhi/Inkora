@@ -114,6 +114,39 @@ describe("IME composition", () => {
     expect(session.status).toMatchObject({ revision: 1, dirty: true, composing: false });
   });
 
+  it("preserves text, selection and revision when history is requested during composition", () => {
+    const session = sessionFrom("original");
+    session.dispatch(session.state.tr.insertText("before"));
+    session.beginComposition();
+    session.dispatch(session.state.tr.insertText("中"));
+    const state = session.state;
+    const revision = session.status.revision;
+
+    expect(session.undo()).toBe(false);
+    expect(session.redo()).toBe(false);
+    expect(session.state).toBe(state);
+    expect(session.status.revision).toBe(revision);
+
+    session.endComposition();
+    expect(session.undo()).toBe(true);
+    expect(session.state.doc.textContent).toBe("beforeoriginal");
+    expect(session.redo()).toBe(true);
+    expect(session.state.doc.textContent).toBe("before中original");
+  });
+
+  it("does not replay available redo history during composition", () => {
+    const session = sessionFrom("original");
+    session.dispatch(session.state.tr.insertText("changed"));
+    expect(session.undo()).toBe(true);
+    expect(session.status.canRedo).toBe(true);
+    session.beginComposition();
+    const state = session.state;
+    expect(session.redo()).toBe(false);
+    expect(session.state).toBe(state);
+    session.endComposition();
+    expect(session.redo()).toBe(true);
+  });
+
   it("undoes one completed composition as one history event", () => {
     const session = sessionFrom("");
     session.beginComposition();

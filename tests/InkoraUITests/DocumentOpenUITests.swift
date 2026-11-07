@@ -87,6 +87,11 @@ final class DocumentOpenUITests: XCTestCase {
       "Could not locate the web editor. \(editorRecoveryMessage(in: app))"
     )
 
+    openMenu("Edit", in: app)
+    XCTAssertFalse(app.menuItems["Undo"].isEnabled)
+    XCTAssertFalse(app.menuItems["Redo"].isEnabled)
+    app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
+
     replaceText(in: editor, with: "x")
     XCTAssertTrue(
       waitForValue(editor, containing: "x"),
@@ -96,6 +101,7 @@ final class DocumentOpenUITests: XCTestCase {
     openMenu("Edit", in: app)
     let undoItem = app.menuItems["Undo"]
     XCTAssertTrue(undoItem.isEnabled, "Undo menu item did not become enabled")
+    XCTAssertFalse(app.menuItems["Redo"].isEnabled)
     undoItem.click()
     XCTAssertTrue(
       waitForValue(editor, containing: "original"),
@@ -170,6 +176,65 @@ final class DocumentOpenUITests: XCTestCase {
     openMenu("File", in: app)
     app.menuItems["Open…"].click()
     try cancelFilePanel(in: app)
+  }
+
+  @MainActor
+  func testOpenAndSaveAsPersistDocumentsFromMenusAndShortcuts() async throws {
+    let directory = try makeTemporaryDirectory()
+    let app = launchApplication()
+    defer {
+      app.terminate()
+      try? FileManager.default.removeItem(at: directory)
+    }
+
+    for useShortcut in [false, true] {
+      let suffix = useShortcut ? "Shortcut" : "Menu"
+      let source = directory.appendingPathComponent("Open \(suffix) 中文.md")
+      let destination = directory.appendingPathComponent("Saved \(suffix) 中文.md")
+      try Data("original-\(suffix)".utf8).write(to: source)
+      if useShortcut {
+        app.typeKey("o", modifierFlags: .command)
+      } else {
+        openMenu("File", in: app)
+        app.menuItems["Open…"].click()
+      }
+      try chooseFilePath(source, button: "Open", in: app)
+      XCTAssertTrue(app.windows[source.lastPathComponent].waitForExistence(timeout: 5))
+      let editor = webEditor(in: app)
+      XCTAssertTrue(waitForValue(editor, containing: "original-\(suffix)"))
+      replaceText(in: editor, with: "saved-\(suffix)")
+      if useShortcut {
+        editor.typeKey("s", modifierFlags: [.command, .shift])
+      } else {
+        openMenu("File", in: app)
+        app.menuItems["Save As…"].click()
+      }
+      try chooseFilePath(destination, button: "Save", in: app)
+      let saved = await waitForFile(destination, containing: "saved-\(suffix)")
+      XCTAssertTrue(saved)
+      XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original-\(suffix)")
+      replaceText(in: editor, with: "subsequent-\(suffix)")
+      editor.typeKey("s", modifierFlags: .command)
+      let savedAgain = await waitForFile(destination, containing: "subsequent-\(suffix)")
+      XCTAssertTrue(savedAgain, "Save after Save As must use the new URL")
+      XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original-\(suffix)")
+    }
+  }
+
+  @MainActor
+  private func chooseFilePath(_ url: URL, button: String, in app: XCUIApplication) throws {
+    let panel = app.sheets.firstMatch
+    XCTAssertTrue(panel.waitForExistence(timeout: 5))
+    app.typeKey("g", modifierFlags: [.command, .shift])
+    let pathField = app.sheets.textFields.firstMatch
+    XCTAssertTrue(pathField.waitForExistence(timeout: 5))
+    pathField.typeKey("a", modifierFlags: .command)
+    pathField.typeText(url.path)
+    app.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
+    let confirm = panel.buttons[button]
+    XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+    confirm.click()
+    XCTAssertTrue(panel.waitForNonExistence(timeout: 5))
   }
 
   @MainActor

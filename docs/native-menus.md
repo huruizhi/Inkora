@@ -17,3 +17,7 @@ Undo/Redo 使用 Inkora 专用 selector，避免 WKWebView 的浏览器原生 hi
 ## Revision 与连续命令
 
 原生层一次只发送一个编辑器命令。收到带相同 request ID 的 `stateChanged` 后，Bridge 更新 revision，再发送队列中的下一条命令。这样快速连续按键不会让多个 Undo/Redo 共用旧 revision。命令超时、JavaScript 执行失败或最终重试失败会结束对应请求并向用户报告，不会绕过编辑器 history。
+
+## 中文输入保护
+
+编辑器在 composition 期间拒绝 Undo/Redo，不创建 history transaction，不改动文本、选区或 revision。composition 完成后，仍可将该次输入作为一个 history event 撤销和重做。
