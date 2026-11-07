@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApplication.shared.mainMenu = makeMainMenu()
+    DispatchQueue.main.async { RecoveryCoordinator.shared.reviewDrafts() }
   }
 
   func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
@@ -62,6 +63,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     contextInfo: UnsafeMutableRawPointer?
   ) {
     terminationReviewInProgress = false
+    if didReviewAll {
+      for document in NSDocumentController.shared.documents {
+        (document as? InkoraDocument)?.finishRecoveryForNormalTermination()
+      }
+    }
     NSApplication.shared.reply(toApplicationShouldTerminate: didReviewAll)
   }
 

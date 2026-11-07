@@ -102,6 +102,11 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     }
   }
 
+  func requestRecoverySnapshot(completion: @escaping (Result<BridgeSnapshot, Error>) -> Void) {
+    guard let bridge else { return }
+    bridge.requestVersionedSnapshot(completion: completion)
+  }
+
   func reloadDocument() {
     guard let document else { return }
     editorState = nil
@@ -205,6 +210,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   }
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+    document?.preserveDirtyForEditorRecovery()
     bridge?.webContentProcessDidTerminate()
     if automaticRecoveryAttempts < maximumAutomaticRecoveryAttempts {
       automaticRecoveryAttempts += 1

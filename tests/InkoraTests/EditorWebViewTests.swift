@@ -378,10 +378,22 @@ final class EditorWebViewTests: XCTestCase {
 
   @MainActor
   func testProcessTerminationReloadsTheMostRecentConfirmedSnapshot() async throws {
-    let (_, controller, webView) = try await loadedEditor(initialText: "initial")
+    let (document, controller, webView) = try await loadedEditor(initialText: "initial")
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "web-recovery-\(UUID())")
+    let store = RecoveryStore(directory: root)
+    document.configureRecovery(store: store)
+    defer {
+      document.close()
+      try? FileManager.default.removeItem(at: root)
+    }
     try await replaceEditorText(in: webView, with: "confirmed")
     let confirmedSnapshot = try await requestText(from: controller)
     XCTAssertEqual(confirmedSnapshot, "confirmed")
+    try document.writeRecovery(
+      BridgeSnapshot(
+        documentID: document.bridgeDocumentID,
+        revision: document.bridgeRevision, text: confirmedSnapshot))
     try await replaceEditorText(in: webView, with: "not confirmed")
 
     controller.webViewWebContentProcessDidTerminate(webView)
@@ -391,6 +403,46 @@ final class EditorWebViewTests: XCTestCase {
     }
     let recoveredSnapshot = try await requestText(from: controller)
     XCTAssertEqual(recoveredSnapshot, "confirmed")
+    XCTAssertTrue(document.isDocumentEdited, "Replaying an unsaved snapshot cannot mark it saved")
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("confirmed".utf8))
+  }
+
+  @MainActor
+  func testProcessReplayOfLatestUnsavedSnapshotKeepsDirtyAndDraft() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "initial")
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "latest-recovery-\(UUID())")
+    let store = RecoveryStore(directory: root)
+    document.configureRecovery(store: store)
+    defer {
+      document.close()
+      try? FileManager.default.removeItem(at: root)
+    }
+    try await replaceEditorText(in: webView, with: "unsaved")
+    let text = try await requestText(from: controller)
+    try document.writeRecovery(
+      BridgeSnapshot(
+        documentID: document.bridgeDocumentID,
+        revision: document.bridgeRevision, text: text))
+    _ = try await webView.evaluateJavaScript("window.inkoraRecoveryOldPage = true")
+    controller.webViewWebContentProcessDidTerminate(webView)
+    var reloaded = false
+    for _ in 0..<100 {
+      let ready = try? await webView.evaluateJavaScript(
+        "window.inkoraRecoveryOldPage !== true && document.querySelector('#editor') !== null")
+      if ready as? Bool == true {
+        reloaded = true
+        break
+      }
+      try await Task.sleep(for: .milliseconds(50))
+    }
+    XCTAssertTrue(reloaded, "A new Web page must load before checking recovered dirty")
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == "unsaved"
+    }
+    _ = try await requestText(from: controller)
+    XCTAssertTrue(document.isDocumentEdited)
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("unsaved".utf8))
   }
 
   @MainActor
@@ -648,6 +700,76 @@ final class EditorWebViewTests: XCTestCase {
     let snapshot = try await requestText(from: controller)
     XCTAssertEqual(snapshot, "<x>中文</x>")
     XCTAssertTrue(document.isDocumentEdited)
+  }
+
+  @MainActor
+  func testDebouncedRecoveryPersistsThroughTheRealBridgeStateQuery() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "before")
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "real-recovery-\(UUID())")
+    let store = RecoveryStore(directory: root)
+    document.configureRecovery(store: store, snapshotRequester: controller.requestRecoverySnapshot)
+    defer {
+      document.close()
+      try? FileManager.default.removeItem(at: root)
+    }
+    try await replaceEditorText(in: webView, with: "durable real bridge")
+    for _ in 0..<40 {
+      if !store.discover().drafts.isEmpty { break }
+      try await Task.sleep(for: .milliseconds(100))
+    }
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("durable real bridge".utf8))
+    XCTAssertTrue(document.isDocumentEdited)
+  }
+
+  @MainActor
+  func testBackgroundRecoveryRejectsCompositionWithoutBlurOrHistoryChanges() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "<x>before</x>")
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "recovery-ime-\(UUID())")
+    defer {
+      document.close()
+      try? FileManager.default.removeItem(at: root)
+    }
+    let store = RecoveryStore(directory: root)
+    document.configureRecovery(store: store)
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const editor = document.querySelector('#editor');
+        editor.focus();
+        editor.value = '<x>committed</x>';
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        window.recoveryBlurCount = 0;
+        editor.addEventListener('blur', () => window.recoveryBlurCount++);
+        editor.dispatchEvent(new Event('compositionstart'));
+        editor.value = '<x>中间态</x>';
+        editor.setSelectionRange(5, 5);
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      })()
+      """)
+    do {
+      let snapshot: BridgeSnapshot = try await withCheckedThrowingContinuation { continuation in
+        controller.requestRecoverySnapshot { continuation.resume(with: $0) }
+      }
+      try document.writeRecovery(snapshot)
+      XCTFail("Composition must not yield a recovery snapshot")
+    } catch { XCTAssertTrue(store.discover().drafts.isEmpty) }
+    let blur = try await webView.evaluateJavaScript("window.recoveryBlurCount") as? Int
+    XCTAssertEqual(blur, 0)
+    let selection =
+      try await webView.evaluateJavaScript("document.querySelector('#editor').selectionStart")
+      as? Int
+    XCTAssertEqual(selection, 5)
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('#editor').dispatchEvent(new Event('compositionend'))")
+    let snapshot: BridgeSnapshot = try await withCheckedThrowingContinuation { continuation in
+      controller.requestRecoverySnapshot { continuation.resume(with: $0) }
+    }
+    try document.writeRecovery(snapshot)
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("<x>中间态</x>".utf8))
+    XCTAssertTrue(controller.canPerformEditorCommand(.undo))
+    XCTAssertFalse(controller.canPerformEditorCommand(.redo))
   }
 
   @MainActor
