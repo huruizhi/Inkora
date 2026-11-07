@@ -1,6 +1,6 @@
 // Exercise exit policy with synthetic data; never measures wall clock or starts UI.
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -27,6 +27,21 @@ try {
   assert.equal(run(metric(10, 'MB'), true).status, 1);
   assert.equal(run(metric(null), true).status, 1);
   assert.equal(run(metric(10), true, 'full').status, 1);
+  const launch = join(directory, 'launch.fixture');
+  writeFileSync(launch, JSON.stringify({ metrics: {} }));
+  const metricResults = [{ testIdentifier: 'PerformanceBaselineUITests/testApplicationMemoryMetric()',
+    testRuns: [{ metrics: [{ identifier: 'com.apple.dt.XCTMetric_Memory.physical_peak',
+      unitOfMeasurement: 'kB', measurements: [100000, 120000, 110000] }] }] }];
+  const stub = join(directory, 'xcrun');
+  writeFileSync(stub, '#!/usr/bin/env node\nprocess.stdout.write(' +
+    JSON.stringify(JSON.stringify(metricResults)) + ');\n', { mode: 0o755 });
+  const extract = () => spawnSync(process.execPath, ['scripts/perf/extract-launch-memory.mjs',
+    'unused.xcresult', launch], { encoding: 'utf8', env: { ...process.env, PATH: directory + ':' + process.env.PATH } });
+  assert.equal(extract().status, 0);
+  assert.equal(JSON.parse(readFileSync(launch, 'utf8')).metrics['launch/peak-physical-memory'].value, 110);
+  writeFileSync(stub, '#!/usr/bin/env node\nprocess.stdout.write("[]");\n');
+  assert.notEqual(extract().status, 0);
+  console.log('Launch memory extraction: median, unit conversion and missing metric checks passed.');
   console.log('Performance comparison: threshold, warn/strict, missing, invalid and profile checks passed.');
 } finally {
   rmSync(directory, { recursive: true, force: true });

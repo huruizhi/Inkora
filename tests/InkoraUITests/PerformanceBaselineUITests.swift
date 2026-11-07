@@ -7,8 +7,7 @@ import XCTest
 // Reported metrics:
 //   * launch/first  — wall clock of the first launch in the run;
 //   * launch/warm   — median wall clock of the subsequent launches;
-//   * launch/rss    — median resident set of the Inkora app process (WebKit service
-//     processes are not included) shortly after each warm launch.
+//   * launch/peak-physical-memory — XCTest physical memory peak of the app.
 // XCTApplicationLaunchMetric additionally records system launch timings in
 // the .xcresult bundle.
 final class PerformanceBaselineUITests: XCTestCase {
@@ -26,7 +25,6 @@ final class PerformanceBaselineUITests: XCTestCase {
     let app = XCUIApplication()
     var first: Double?
     var warm: [Double] = []
-    var residentSizes: [Double] = []
 
     for index in 0..<launchCount {
       let start = ContinuousClock.now
@@ -39,12 +37,6 @@ final class PerformanceBaselineUITests: XCTestCase {
         warm.append(elapsed)
       }
 
-      Thread.sleep(forTimeInterval: 0.5)
-      if let tree = try Self.applicationResidentMegabytes() {
-        if index > 0 {
-          residentSizes.append(tree)
-        }
-      }
       app.terminate()
     }
 
@@ -57,15 +49,6 @@ final class PerformanceBaselineUITests: XCTestCase {
       value: perfMedian(warm),
       cv: perfCoefficientOfVariation(warm)
     )
-    XCTAssertFalse(residentSizes.isEmpty, "App RSS samples are required")
-    if !residentSizes.isEmpty {
-      PerfRecorder.shared.record(
-        name: "launch/rss",
-        unit: "MB",
-        value: perfMedian(residentSizes),
-        cv: perfCoefficientOfVariation(residentSizes)
-      )
-    }
     try PerfRecorder.shared.write(layer: "launch")
   }
 
@@ -85,30 +68,15 @@ final class PerformanceBaselineUITests: XCTestCase {
     return Double(components.seconds) * 1_000 + Double(components.attoseconds) / 1e15
   }
 
-  /// App RSS only: WebKit services may be parented by launchd, so a process
-  /// tree walk cannot reliably attribute their memory to this application.
-  private static func applicationResidentMegabytes() throws -> Double? {
-    let output = try runProcess("/bin/ps", arguments: ["-axo", "rss=,ucomm="])
-    for line in output.split(separator: "\n") {
-      let columns = line.split(whereSeparator: { $0 == " " }).map(String.init)
-      if columns.count == 2, columns[1] == "Inkora", let kilobytes = Double(columns[0]) {
-        return kilobytes / 1024
-      }
+  /// XCTest samples the target process without spawning restricted tools.
+  @MainActor
+  func testApplicationMemoryMetric() {
+    let app = XCUIApplication()
+    app.launch()
+    XCTAssertTrue(app.waitForExistence(timeout: 10), "app did not launch")
+    defer { app.terminate() }
+    measure(metrics: [XCTMemoryMetric(application: app)]) {
+      Thread.sleep(forTimeInterval: 0.5)
     }
-    return nil
-  }
-
-  private static func runProcess(_ path: String, arguments: [String]) throws -> String {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: path)
-    process.arguments = arguments
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    process.standardError = FileHandle.nullDevice
-    try process.run()
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    process.waitUntilExit()
-    guard process.terminationStatus == 0 else { return "" }
-    return String(data: data, encoding: .utf8) ?? ""
   }
 }

@@ -153,7 +153,7 @@ bench: perf-samples editor-build generate require-xcode prepare-artifacts
 		$(PNPM) --dir editor exec vitest run --config vite.perf.config.ts
 	rm -f "$(PERF_RESULTS_DIR)/native.json"
 	rm -rf "$(NATIVE_PERF_RESULT)"
-	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bench-native \
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" INKORA_XCRESULT_PATH="$(NATIVE_PERF_RESULT)" $(CAPTURE) bench-native \
 		env INKORA_PERF=1 TEST_RUNNER_INKORA_PERF=1 \
 		INKORA_PERF_PROFILE=light TEST_RUNNER_INKORA_PERF_PROFILE=light \
 		INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
@@ -174,7 +174,7 @@ bench-full: bench
 		$(PNPM) --dir editor exec vitest run --config vite.perf.config.ts
 	rm -f "$(PERF_RESULTS_DIR)/webview.json"
 	rm -rf "$(WEBVIEW_PERF_RESULT)"
-	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bench-webview \
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" INKORA_XCRESULT_PATH="$(WEBVIEW_PERF_RESULT)" $(CAPTURE) bench-webview \
 		env INKORA_PERF=1 TEST_RUNNER_INKORA_PERF=1 \
 		INKORA_PERF_PROFILE=full TEST_RUNNER_INKORA_PERF_PROFILE=full \
 		INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
@@ -187,7 +187,7 @@ bench-full: bench
 		-only-testing:InkoraTests/PerformanceWebViewTests test
 	rm -f "$(PERF_RESULTS_DIR)/launch.json"
 	rm -rf "$(LAUNCH_PERF_RESULT)"
-	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bench-launch \
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" INKORA_XCRESULT_PATH="$(LAUNCH_PERF_RESULT)" $(CAPTURE) bench-launch \
 		$(UI_LOCK) $(UI_PREFLIGHT) xcuitest \
 		env TEST_RUNNER_INKORA_PERF=1 \
 		TEST_RUNNER_INKORA_PERF_PROFILE=full \
@@ -196,4 +196,5 @@ bench-full: bench
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(LAUNCH_PERF_RESULT)" \
 		-only-testing:InkoraUITests/PerformanceBaselineUITests test
+	node scripts/perf/extract-launch-memory.mjs "$(LAUNCH_PERF_RESULT)" "$(PERF_RESULTS_DIR)/launch.json"
 	$(MAKE) perf-compare

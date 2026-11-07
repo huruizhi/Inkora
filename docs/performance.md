@@ -42,7 +42,7 @@ CI 默认在 `make test-all` 后运行 `make bench`（仅警告，避免环境�
 
 WKWebView 层（full profile，`tests/InkoraTests/PerformanceWebViewTests.swift`，hostless 离屏 webview）：`webview-load/{medium,large}`（资源 scheme handler + bridge 握手 + markdown 解析 + ProseMirror 挂载，到 `#editor` 出现；1 次预热吸收 WebContent 进程启动 + 3 样本）、`webview.bridge-snapshot-roundtrip/large`（源码模式 1MB 快照经 WKScriptMessage 往返；2 预热 + 9 样本）。
 
-启动层（`tests/InkoraUITests/PerformanceBaselineUITests.swift`，仅 bench-full）：`launch/first`（首次启动墙钟）、`launch/warm`（后续启动中位数）、`launch/rss`（Inkora App 主进程 RSS 中位数，不含由系统托管的 WebKit 服务）；`XCTApplicationLaunchMetric` 结果进 xcresult。
+启动层（`tests/InkoraUITests/PerformanceBaselineUITests.swift`，仅 bench-full）：`launch/first`（首次启动墙钟）、`launch/warm`（后续启动中位数）、`launch/peak-physical-memory`（Inkora XCTest App physical memory peak 中位数，单位为十进制 MB；不含由系统托管的 WebKit 服务）；`XCTApplicationLaunchMetric` 结果进 xcresult。
 
 ## 阈值与回归策略
 
@@ -78,7 +78,7 @@ WKWebView 层（full profile，`tests/InkoraTests/PerformanceWebViewTests.swift`
 3. **WKWebView 载入主导文档打开的可见延迟**：`webview-load/large` ≈ 386 ms，其中编辑器层解析仅 ~13 ms、状态装配 ~1 ms，剩余为 WebKit 资源加载、bridge 握手与 ProseMirror DOM 挂载。载入大文档时载入路径中解析以外的成本约为 Node 解析成本的 25 倍以上（不同运行环境，仅作定位线索），是「打开大文档慢」的主要来源。
 4. **桥接通道可控**：1 MB 文本快照经 JSON 编解码 + WKScriptMessage 往返仅 ~4.5 ms，说明 Bridge 协议本身不是大文档瓶颈；保存慢来自 JS 侧序列化而非消息通道。
 5. **原生文件层不是瓶颈**：打开（读 + UTF-8 解码 + BOM 策略）与保存（编码 + 原子写）都在 1 ms 以内（页面缓存暖）。注意：基线测量的是暖缓存路径，冷盘首次读未覆盖。
-6. **内存**：1 MB 文档在原生侧 resident 增量约 1 MB（基本等于文本存储）；编辑器 JS/WebContent 进程的文档内存未单独测量，`launch/rss` 也仅覆盖 App 主进程，后续需补充能正确归属 WebKit 服务的内存测量。
+6. **内存**：1 MB 文档在原生侧 resident 增量约 1 MB（基本等于文本存储）；编辑器 JS/WebContent 进程的文档内存未单独测量，`launch/peak-physical-memory` 也仅覆盖 App 主进程，后续需补充能正确归属 WebKit 服务的内存测量。
 
 ## 已知局限
 
@@ -86,4 +86,4 @@ WKWebView 层（full profile，`tests/InkoraTests/PerformanceWebViewTests.swift`
 - CI 与本地共机时，并发任务会放大短指标噪声；判断回归优先看长耗时指标与多次运行中位数。
 - 编辑器层基准在 node（非真实 WKWebView JIT 环境）中测量 parse/serialize，绝对值偏保守，用于回归趋势而非用户可感延迟。
 - `document-open` 未覆盖冷页缓存；`launch/first` 也不是严格意义的冷启动（系统缓存仍在），仅首次启动近似。
-- 内存指标（`document-memory`、`launch/rss`）受分配器与系统状态影响，cv 高，仅作量级参考。
+- 内存指标（`document-memory`、`launch/peak-physical-memory`）受分配器与系统状态影响，cv 高，仅作量级参考。
