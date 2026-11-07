@@ -30,6 +30,10 @@ export class TextAreaEditorKernel implements EditorKernel {
     });
   }
 
+  get composing(): boolean {
+    return this.isComposing;
+  }
+
   setText(text: string): void {
     this.originalText = text;
     this.lineEndings = text.match(/\r\n|\r|\n/g) ?? [];

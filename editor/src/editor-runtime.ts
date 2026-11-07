@@ -151,6 +151,7 @@ class SourceEditorRuntime implements EditorRuntime {
   }
 
   undo(): boolean {
+    if (this.kernel.composing) return false;
     const previous = this.undoStack.pop();
     if (previous === undefined) return false;
     this.redoStack.push(this.currentText);
@@ -159,6 +160,7 @@ class SourceEditorRuntime implements EditorRuntime {
   }
 
   redo(): boolean {
+    if (this.kernel.composing) return false;
     const next = this.redoStack.pop();
     if (next === undefined) return false;
     this.undoStack.push(this.currentText);
