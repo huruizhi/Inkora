@@ -5,7 +5,7 @@ final class InkoraDocumentTests: XCTestCase {
 
   @MainActor
   func testUnmodifiedMarkdownRoundTripsByteForByte() throws {
-    for fixture in ["crlf", "no-final-newline", "unicode"] {
+    for fixture in ["crlf", "no-final-newline", "unicode", "utf8-bom", "mixed-eol"] {
       let original = try fixtureData(named: fixture)
       let document = InkoraDocument()
 
@@ -24,6 +24,103 @@ final class InkoraDocumentTests: XCTestCase {
     XCTAssertThrowsError(
       try document.read(from: invalidUTF8, ofType: "net.daringfireball.markdown")
     )
+  }
+
+  @MainActor
+  func testGBKEncodedFileIsRejectedAsInvalidUTF8() throws {
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent("gbk-\(UUID().uuidString).md")
+    // "中文" encoded as GBK: no BOM, but not valid UTF-8 either.
+    try Data([0xD6, 0xD0, 0xCE, 0xC4]).write(to: url)
+    defer { try? FileManager.default.removeItem(at: url) }
+
+    XCTAssertThrowsError(
+      try InkoraDocument(contentsOf: url, ofType: "net.daringfireball.markdown")
+    ) { error in
+      XCTAssertEqual(
+        error.localizedDescription,
+        InkoraDocumentError.invalidUTF8.localizedDescription
+      )
+    }
+  }
+
+  @MainActor
+  func testUTF16AndUTF32ByteOrderMarksAreRejectedWithExplicitErrors() throws {
+    let encodings: [(data: Data, error: InkoraDocumentError)] = [
+      // UTF-16LE with "hi", UTF-16BE with "hi", UTF-32LE/BE BOMs only.
+      (Data([0xFF, 0xFE, 0x68, 0x00, 0x69, 0x00]), .utf16Detected),
+      (Data([0xFE, 0xFF, 0x00, 0x68, 0x00, 0x69]), .utf16Detected),
+      (Data([0xFF, 0xFE, 0x00, 0x00]), .utf32Detected),
+      (Data([0x00, 0x00, 0xFE, 0xFF]), .utf32Detected),
+    ]
+
+    for (payload, expected) in encodings {
+      let document = InkoraDocument()
+      XCTAssertThrowsError(
+        try document.read(from: payload, ofType: "net.daringfireball.markdown")
+      ) { error in
+        XCTAssertEqual(
+          error.localizedDescription,
+          expected.localizedDescription,
+          "Wrong error for \(payload.map { String(format: "%02X", $0) })"
+        )
+        XCTAssertEqual(
+          (error as? LocalizedError)?.failureReason,
+          expected.failureReason,
+          "Wrong failure reason for \(payload.map { String(format: "%02X", $0) })"
+        )
+      }
+    }
+  }
+
+  @MainActor
+  func testUTF8BOMIsStrippedFromTextAndPreservedInEveryWrite() throws {
+    let bom = Data([0xEF, 0xBB, 0xBF])
+    let body = Data("# 标题 👩‍💻\n".utf8)
+    let document = InkoraDocument()
+
+    try document.read(from: bom + body, ofType: "net.daringfireball.markdown")
+
+    XCTAssertEqual(document.text, "# 标题 👩‍💻\n")
+    XCTAssertEqual(try document.data(ofType: "net.daringfireball.markdown"), bom + body)
+  }
+
+  @MainActor
+  func testBOMOnlyFileRoundTripsToTheBOMBytes() throws {
+    let bom = Data([0xEF, 0xBB, 0xBF])
+    let document = InkoraDocument()
+
+    try document.read(from: bom, ofType: "net.daringfireball.markdown")
+
+    XCTAssertEqual(document.text, "")
+    XCTAssertEqual(try document.data(ofType: "net.daringfireball.markdown"), bom)
+  }
+
+  @MainActor
+  func testEditedSnapshotSaveKeepsTheOriginalBOM() async throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("bom-edited.md")
+    let bom = Data([0xEF, 0xBB, 0xBF])
+    let edited = "# 已编辑 🖋️\n"
+    let document = document(snapshots: [edited])
+    try document.read(from: bom + Data("# 原文\n".utf8), ofType: markdownType)
+
+    let error = await save(document, to: url, operation: .saveAsOperation)
+
+    XCTAssertNil(error)
+    XCTAssertEqual(try Data(contentsOf: url), bom + Data(edited.utf8))
+  }
+
+  @MainActor
+  func testMidFileByteOrderMarkCharacterIsPreservedAsText() throws {
+    let body = Data("before\u{FEFF}after\n".utf8)
+    let document = InkoraDocument()
+
+    try document.read(from: body, ofType: markdownType)
+
+    XCTAssertEqual(document.text, "before\u{FEFF}after\n")
+    XCTAssertEqual(try document.data(ofType: markdownType), body)
   }
 
   @MainActor
@@ -46,6 +143,41 @@ final class InkoraDocumentTests: XCTestCase {
     XCTAssertEqual(document.text, markdown)
     XCTAssertEqual(document.fileURL, url)
     XCTAssertEqual(document.windowControllers.first?.window?.title, "打开测试.md")
+  }
+
+  @MainActor
+  func testFilenamesWithEmojiZWJAndCombiningCharactersRoundTrip() throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    // ZWJ family emoji, a decomposed e-acute (e + U+0301), CJK, and a space.
+    let originalName = "👩‍💻 e\u{0301}组合 路径.md"
+    let originalURL = directory.appendingPathComponent(originalName)
+    let markdown = "# 特殊文件名 👩‍💻\n"
+    try Data(markdown.utf8).write(to: originalURL)
+
+    let document = try InkoraDocument(
+      contentsOf: originalURL,
+      ofType: markdownType
+    )
+    document.makeWindowControllers()
+    defer { document.close() }
+
+    XCTAssertEqual(document.text, markdown)
+    XCTAssertEqual(document.fileURL, originalURL)
+    XCTAssertEqual(document.windowControllers.first?.window?.title, originalName)
+
+    let savedName = "新 名称 ✏\u{FE0F}.md"
+    let savedURL = directory.appendingPathComponent(savedName)
+    try document.write(
+      to: savedURL,
+      ofType: markdownType,
+      for: .saveAsOperation,
+      originalContentsURL: nil
+    )
+
+    XCTAssertEqual(try String(contentsOf: savedURL, encoding: .utf8), markdown)
+    let reopened = try InkoraDocument(contentsOf: savedURL, ofType: markdownType)
+    XCTAssertEqual(reopened.text, markdown)
   }
 
   @MainActor

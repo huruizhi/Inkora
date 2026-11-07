@@ -73,4 +73,49 @@ describe("textarea editor kernel", () => {
     textArea.dispatchEvent(new Event("input"));
     expect(kernel.getText()).toBe(original);
   });
+
+  it("inherits the current line's ending for inserted newlines in mixed files", () => {
+    const textArea = new NormalizingTextArea();
+    const kernel = new TextAreaEditorKernel(
+      textArea as unknown as HTMLTextAreaElement,
+    );
+    kernel.setText("crlf line\r\nlf line\n");
+
+    // Splitting the LF line yields an LF boundary, not the document default.
+    textArea.value = "crlf line\nlf\nline\n";
+    textArea.dispatchEvent(new Event("input"));
+    expect(kernel.getText()).toBe("crlf line\r\nlf\nline\n");
+
+    // Splitting the CRLF line yields a CRLF boundary.
+    textArea.value = "crlf\nline\nlf\nline\n";
+    textArea.dispatchEvent(new Event("input"));
+    expect(kernel.getText()).toBe("crlf\r\nline\r\nlf\nline\n");
+  });
+
+  it("inserts a boundary at the end of a file without a final newline", () => {
+    const textArea = new NormalizingTextArea();
+    const kernel = new TextAreaEditorKernel(
+      textArea as unknown as HTMLTextAreaElement,
+    );
+    kernel.setText("only line\r\ntrailing");
+
+    textArea.value = "only line\ntrailing\nadded";
+    textArea.dispatchEvent(new Event("input"));
+
+    // EOL-002: the last line has no ending, so inherit the nearest previous one.
+    expect(kernel.getText()).toBe("only line\r\ntrailing\r\nadded");
+  });
+
+  it("uses LF for the first newline of an empty document", () => {
+    const textArea = new NormalizingTextArea();
+    const kernel = new TextAreaEditorKernel(
+      textArea as unknown as HTMLTextAreaElement,
+    );
+    kernel.setText("");
+
+    textArea.value = "first\n";
+    textArea.dispatchEvent(new Event("input"));
+
+    expect(kernel.getText()).toBe("first\n");
+  });
 });

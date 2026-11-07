@@ -55,7 +55,16 @@ class StructuredEditorRuntime implements EditorRuntime {
   }
 
   getText(): string {
-    return this.status.dirty ? serializeMarkdown(this.session.state.doc) : this.savedText;
+    if (!this.status.dirty) {
+      return this.savedText;
+    }
+    const output = serializeMarkdown(this.session.state.doc);
+    // EOL-004: the presence of a final newline is document state; restore it
+    // when the serializer's LF-only output dropped it.
+    if (this.savedText.endsWith("\n") && !output.endsWith("\n")) {
+      return `${output}\n`;
+    }
+    return output;
   }
 
   markSaved(text: string): void {
@@ -182,7 +191,10 @@ export function createEditorRuntime(
   onChange: RuntimeChangeListener,
 ): EditorRuntime {
   parent.replaceChildren();
-  if (analyzeMarkdownSafety(text).structuredSaveAllowed) {
+  // EOL-001/EOL-003: the structured serializer emits LF only, so documents
+  // containing any CR stay in source mode where the kernel preserves every
+  // original line boundary.
+  if (!text.includes("\r") && analyzeMarkdownSafety(text).structuredSaveAllowed) {
     try {
       return new StructuredEditorRuntime(parent, text, onChange);
     } catch {

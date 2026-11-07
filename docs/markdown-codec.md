@@ -15,6 +15,8 @@
 
 - 文档块之间使用稳定空行，序列化结果不自动添加文件末尾换行；
 - 保留解析得到的 ATX/Setext、列表 marker/delimiter/start/tightness、围栏/缩进代码风格；
+- 序列化输出只使用 LF。含 CRLF 或 bare CR 的文档在应用层进入源码模式而非结构化模式，
+  读写路径的完整策略见 `docs/text-format.md`；
 - hard break 统一输出反斜杠形式；新建结构使用 `# `、`- `、`1. ` 和三个反引号默认值；
 - 围栏代码仅当内容包含可被误认成 closing fence 的独占行时增长，永不因普通行内 marker 增长；
 - 原输入为未闭合 fence 时，序列化不会凭空补 closing fence；

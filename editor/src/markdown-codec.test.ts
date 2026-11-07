@@ -15,14 +15,48 @@ function golden(name: string): string {
 }
 
 describe("Markdown golden fixtures", () => {
-  it.each(["basic", "nested", "code", "unclosed"])("normalizes %s deterministically", (name) => {
-    const input = fixture(`${name}.input.md`);
+  it.each(["basic", "nested", "code", "unclosed", "unicode"])(
+    "normalizes %s deterministically",
+    (name) => {
+      const input = fixture(`${name}.input.md`);
+      const document = parseMarkdown(input);
+      const output = serializeMarkdown(document);
+
+      expect(output).toBe(golden(name));
+      expect(parseMarkdown(output).eq(document)).toBe(true);
+      expect(normalizeMarkdown(output)).toBe(output);
+    },
+  );
+
+  it("normalizes CRLF input to LF without adding a final newline", () => {
+    const input = fixture("crlf.input.md");
     const document = parseMarkdown(input);
     const output = serializeMarkdown(document);
 
-    expect(output).toBe(golden(name));
+    expect(output).toBe(golden("crlf"));
+    expect(input).toContain("\r\n");
+    expect(output).not.toContain("\r");
+    expect(output).not.toMatch(/\n$/);
     expect(parseMarkdown(output).eq(document)).toBe(true);
     expect(normalizeMarkdown(output)).toBe(output);
+  });
+
+  it("round-trips Unicode code points byte for byte without normalization", () => {
+    // The fixture carries the repository storage newline; the codec's
+    // documented EOL-004 behavior never emits a trailing newline itself.
+    const input = fixture("unicode.input.md").replace(/\n$/, "");
+    const output = normalizeMarkdown(input);
+
+    expect(output).toBe(input);
+    // ENC-003: decomposed and precomposed accents must survive next to each other.
+    expect(output).toContain("cafe\u0301");
+    expect(output).toContain("caf\u00e9");
+    // ZWJ family sequence, variation selector, NBSP, ZWSP, and ideographic space.
+    expect(output).toContain("\u{1F469}\u200D\u{1F4BB}");
+    expect(output).toContain("\u270F\uFE0F");
+    expect(output).toContain("a\u00A0b");
+    expect(output).toContain("a\u200Bb");
+    expect(output).toContain("a\u3000b");
   });
 
   it("preserves Unicode code points, soft breaks, and hard breaks", () => {
