@@ -71,6 +71,19 @@ function validateListOrder(value: unknown): asserts value is number {
   }
 }
 
+function validateOneOf(name: string, allowed: readonly string[]) {
+  return (value: unknown): void => {
+    if (typeof value !== "string" || !allowed.includes(value)) {
+      throw new RangeError(`${name} must be one of: ${allowed.join(", ")}`);
+    }
+  };
+}
+
+const validateHeadingStyle = validateOneOf("Heading style", ["atx", "setext"]);
+const validateCodeStyle = validateOneOf("Code block style", ["fenced", "indented"]);
+const validateOrderedDelimiter = validateOneOf("Ordered list delimiter", [".", ")"]);
+const validateBullet = validateOneOf("Bullet marker", ["-", "+", "*"]);
+
 function linkAttrsFromDOM(dom: Node | string): false | { href: string; title: string | null } {
   if (typeof dom === "string") return false;
   const element = dom as HTMLElement;
@@ -109,11 +122,18 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
         default: 1,
         validate: validateHeadingLevel,
       },
+      style: {
+        default: "atx",
+        validate: validateHeadingStyle,
+      },
     },
     content: "inline*",
     defining: true,
     group: "block",
-    parseDOM: headingParseRules,
+    parseDOM: headingParseRules.map((rule) => ({
+      ...rule,
+      attrs: { ...rule.attrs, style: "atx" },
+    })),
     toDOM: headingToDOM,
   },
   text: {
@@ -141,6 +161,9 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
   code_block: {
     attrs: {
       language: { default: null, validate: "string|null" },
+      style: { default: "fenced", validate: validateCodeStyle },
+      fence: { default: "```", validate: "string" },
+      closed: { default: true, validate: "boolean" },
     },
     code: true,
     content: "text*",
@@ -167,12 +190,18 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
     ...baseOrderedList,
     attrs: {
       order: { default: 1, validate: validateListOrder },
+      delimiter: { default: ".", validate: validateOrderedDelimiter },
+      tight: { default: false, validate: "boolean" },
     },
     content: "list_item+",
     group: "block",
   },
   bullet_list: {
     ...baseBulletList,
+    attrs: {
+      bullet: { default: "-", validate: validateBullet },
+      tight: { default: false, validate: "boolean" },
+    },
     content: "list_item+",
     group: "block",
   },

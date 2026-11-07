@@ -120,7 +120,7 @@ describe("Inkora ProseMirror schema", () => {
     expect(inkoraNodeSpecs.heading.parseDOM).toEqual(
       [1, 2, 3, 4, 5, 6].map((level) => ({
         tag: `h${level}`,
-        attrs: { level },
+        attrs: { level, style: "atx" },
       })),
     );
 
