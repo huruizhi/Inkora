@@ -182,13 +182,11 @@ final class DocumentOpenUITests: XCTestCase {
   @MainActor
   func testOpenAndSaveAsPersistDocumentsFromMenusAndShortcuts() async throws {
     let directory = try makeTemporaryDirectory()
-    let app = launchApplication()
-    defer {
-      app.terminate()
-      try? FileManager.default.removeItem(at: directory)
-    }
+    defer { try? FileManager.default.removeItem(at: directory) }
 
     for useShortcut in [false, true] {
+      let app = launchApplication()
+      defer { app.terminate() }
       let suffix = useShortcut ? "Shortcut" : "Menu"
       let source = directory.appendingPathComponent("Open \(suffix) 中文.md")
       let destination = directory.appendingPathComponent("Saved \(suffix) 中文.md")
@@ -205,7 +203,8 @@ final class DocumentOpenUITests: XCTestCase {
       XCTAssertTrue(waitForValue(editor, containing: "original-\(suffix)"))
       replaceText(in: editor, with: "saved-\(suffix)")
       if useShortcut {
-        editor.typeKey("s", modifierFlags: [.command, .shift])
+        editor.click()
+        app.typeKey("s", modifierFlags: [.command, .shift])
       } else {
         openMenu("File", in: app)
         app.menuItems["Save As…"].click()
