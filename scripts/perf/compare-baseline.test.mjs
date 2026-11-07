@@ -28,7 +28,12 @@ try {
   assert.equal(run(metric(null), true).status, 1);
   assert.equal(run(metric(10), true, 'full').status, 1);
   const launch = join(directory, 'launch.fixture');
-  writeFileSync(launch, JSON.stringify({ metrics: {} }));
+  writeFileSync(launch, JSON.stringify({ metrics: {
+    'launch/first': { unit: 'ms', value: 500 }, 'launch/warm': { unit: 'ms', value: 400 },
+  } }));
+  writeFileSync(join(directory, 'manifest.json'), JSON.stringify([{ attachments: [{
+    suggestedHumanReadableName: 'inkora-launch.json', exportedFileName: 'launch.fixture',
+  }] }]));
   const metricResults = [{ testIdentifier: 'PerformanceBaselineUITests/testApplicationMemoryMetric()',
     testRuns: [{ metrics: [{ identifier: 'com.apple.dt.XCTMetric_Memory.physical_peak',
       unitOfMeasurement: 'kB', measurements: [100000, 120000, 110000] }] }] }];
@@ -36,7 +41,7 @@ try {
   writeFileSync(stub, '#!/usr/bin/env node\nprocess.stdout.write(' +
     JSON.stringify(JSON.stringify(metricResults)) + ');\n', { mode: 0o755 });
   const extract = () => spawnSync(process.execPath, ['scripts/perf/extract-launch-memory.mjs',
-    'unused.xcresult', launch], { encoding: 'utf8', env: { ...process.env, PATH: directory + ':' + process.env.PATH } });
+    'unused.xcresult', launch, directory], { encoding: 'utf8', env: { ...process.env, PATH: directory + ':' + process.env.PATH } });
   assert.equal(extract().status, 0);
   assert.equal(JSON.parse(readFileSync(launch, 'utf8')).metrics['launch/peak-physical-memory'].value, 110);
   writeFileSync(stub, '#!/usr/bin/env node\nprocess.stdout.write("[]");\n');

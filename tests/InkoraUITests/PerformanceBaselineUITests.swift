@@ -49,7 +49,7 @@ final class PerformanceBaselineUITests: XCTestCase {
       value: perfMedian(warm),
       cv: perfCoefficientOfVariation(warm)
     )
-    try PerfRecorder.shared.write(layer: "launch")
+    add(try PerfRecorder.shared.attachment(layer: "launch"))
   }
 
   /// System launch metric evidence recorded into the .xcresult bundle.

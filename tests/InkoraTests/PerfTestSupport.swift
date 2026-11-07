@@ -72,6 +72,17 @@ final class PerfRecorder: @unchecked Sendable {
     }
   }
 
+  func attachment(layer: String) throws -> XCTAttachment {
+    let payload: [String: Any] = lock.withLock {
+      ["schema": 1, "layer": layer, "profile": PerfEnvironment.profile, "metrics": metrics]
+    }
+    let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
+    let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+    attachment.name = "inkora-launch.json"
+    attachment.lifetime = .keepAlways
+    return attachment
+  }
+
   /// Merges recorded metrics into the results JSON, preserving metrics from
   /// other test classes that share the same output file.
   func write(layer: String) throws {

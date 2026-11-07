@@ -196,5 +196,7 @@ bench-full: bench
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(LAUNCH_PERF_RESULT)" \
 		-only-testing:InkoraUITests/PerformanceBaselineUITests test
-	node scripts/perf/extract-launch-memory.mjs "$(LAUNCH_PERF_RESULT)" "$(PERF_RESULTS_DIR)/launch.json"
+	xcrun xcresulttool export attachments --path "$(LAUNCH_PERF_RESULT)" \
+		--output-path "$(PERF_RESULTS_DIR)/launch-attachments" --filter 'inkora-launch*'
+	node scripts/perf/extract-launch-memory.mjs "$(LAUNCH_PERF_RESULT)" "$(PERF_RESULTS_DIR)/launch.json" "$(PERF_RESULTS_DIR)/launch-attachments"
 	$(MAKE) perf-compare

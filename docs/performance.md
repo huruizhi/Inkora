@@ -42,7 +42,7 @@ CI 默认在 `make test-all` 后运行 `make bench`（仅警告，避免环境�
 
 WKWebView 层（full profile，`tests/InkoraTests/PerformanceWebViewTests.swift`，hostless 离屏 webview）：`webview-load/{medium,large}`（资源 scheme handler + bridge 握手 + markdown 解析 + ProseMirror 挂载，到 `#editor` 出现；1 次预热吸收 WebContent 进程启动 + 3 样本）、`webview.bridge-snapshot-roundtrip/large`（源码模式 1MB 快照经 WKScriptMessage 往返；2 预热 + 9 样本）。
 
-启动层（`tests/InkoraUITests/PerformanceBaselineUITests.swift`，仅 bench-full）：`launch/first`（首次启动墙钟）、`launch/warm`（后续启动中位数）、`launch/peak-physical-memory`（Inkora XCTest App physical memory peak 中位数，单位为十进制 MB；不含由系统托管的 WebKit 服务）；`XCTApplicationLaunchMetric` 结果进 xcresult。
+启动层（`tests/InkoraUITests/PerformanceBaselineUITests.swift`，仅 bench-full）：`launch/first`（首次启动墙钟）、`launch/warm`（后续启动中位数）、`launch/peak-physical-memory`（Inkora XCTest App physical memory peak 中位数，单位为十进制 MB；不含由系统托管的 WebKit 服务）；`XCTApplicationLaunchMetric` 与 `XCTMemoryMetric(application:)` 结果进 xcresult。启动 JSON 通过 XCTest attachment 保存，再由外层脚本导出；不要求测试沙盒执行 ps 或写仓库目录。
 
 ## 阈值与回归策略
 
