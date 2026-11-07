@@ -2,8 +2,8 @@ import AppKit
 import WebKit
 
 @MainActor
-final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavigationDelegate,
-  WKUIDelegate
+final class EditorViewController: NSViewController, EditorBridgeDelegate,
+  NSUserInterfaceValidations, WKNavigationDelegate, WKUIDelegate
 {
   weak var document: InkoraDocument?
 
@@ -13,6 +13,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
   private var bridge: EditorBridge?
   private var resourceSchemeHandler: EditorResourceSchemeHandler?
   private var webView: WKWebView?
+  private var editorState: BridgeEditorState?
   private var automaticRecoveryAttempts = 0
   private let maximumAutomaticRecoveryAttempts = 1
 
@@ -96,6 +97,42 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
     bridge?.confirmSaved(snapshot)
   }
 
+  func canPerformEditorCommand(_ command: BridgeEditorCommand) -> Bool {
+    guard let editorState else { return false }
+    switch command {
+    case .undo:
+      return editorState.canUndo
+    case .redo:
+      return editorState.canRedo
+    }
+  }
+
+  func performEditorCommand(_ command: BridgeEditorCommand) {
+    guard canPerformEditorCommand(command) else { return }
+    bridge?.executeEditorCommand(command)
+  }
+
+  @objc
+  func inkoraUndo(_ sender: Any?) {
+    performEditorCommand(.undo)
+  }
+
+  @objc
+  func inkoraRedo(_ sender: Any?) {
+    performEditorCommand(.redo)
+  }
+
+  func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+    switch item.action {
+    case #selector(inkoraUndo(_:)):
+      canPerformEditorCommand(.undo)
+    case #selector(inkoraRedo(_:)):
+      canPerformEditorCommand(.redo)
+    default:
+      true
+    }
+  }
+
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {
     automaticRecoveryAttempts = 0
   }
@@ -106,11 +143,15 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate, WKNavi
   }
 
   func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error) {
+    editorState = nil
+    NSApplication.shared.mainMenu?.update()
     presentResourceError(message: error.localizedDescription)
   }
 
   func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState) {
+    editorState = state
     document?.editorDidChangeState(state)
+    NSApplication.shared.mainMenu?.update()
   }
 
   func webView(

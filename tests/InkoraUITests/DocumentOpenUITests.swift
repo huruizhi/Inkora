@@ -72,6 +72,86 @@ final class DocumentOpenUITests: XCTestCase {
   }
 
   @MainActor
+  func testUndoRedoMenusAndShortcutsWhileWebEditorHasFocus() async throws {
+    let temporaryDirectory = try makeTemporaryDirectory()
+    let fileURL = temporaryDirectory.appendingPathComponent("History Commands.md")
+    try Data("<custom-tag>original</custom-tag>".utf8).write(to: fileURL)
+    let app = try openWithLaunchServices(fileURL)
+    defer {
+      app.terminate()
+      try? FileManager.default.removeItem(at: temporaryDirectory)
+    }
+    let editor = app.descendants(matching: .any)["Markdown source editor"]
+    XCTAssertTrue(editor.waitForExistence(timeout: 10))
+
+    replaceText(in: editor, with: "<custom-tag>changed</custom-tag>")
+    XCTAssertTrue(waitForValue(editor, containing: "changed"))
+
+    openMenu("Edit", in: app)
+    let undoItem = app.menuItems["Undo"]
+    XCTAssertTrue(undoItem.isEnabled)
+    undoItem.click()
+    XCTAssertTrue(waitForValue(editor, containing: "original"))
+
+    editor.click()
+    editor.typeKey("z", modifierFlags: [.command, .shift])
+    XCTAssertTrue(waitForValue(editor, containing: "changed"))
+    editor.typeKey("z", modifierFlags: .command)
+    XCTAssertTrue(waitForValue(editor, containing: "original"))
+
+    openMenu("Edit", in: app)
+    let redoItem = app.menuItems["Redo"]
+    XCTAssertTrue(redoItem.isEnabled)
+    redoItem.click()
+    XCTAssertTrue(waitForValue(editor, containing: "changed"))
+  }
+
+  @MainActor
+  func testFileMenusAndShortcutsWhileWebEditorHasFocus() async throws {
+    let temporaryDirectory = try makeTemporaryDirectory()
+    let fileURL = temporaryDirectory.appendingPathComponent("File Commands.md")
+    try Data("<custom-tag>original</custom-tag>".utf8).write(to: fileURL)
+    let app = try openWithLaunchServices(fileURL)
+    defer {
+      app.terminate()
+      try? FileManager.default.removeItem(at: temporaryDirectory)
+    }
+    let editor = app.descendants(matching: .any)["Markdown source editor"]
+    XCTAssertTrue(editor.waitForExistence(timeout: 10))
+
+    replaceText(in: editor, with: "<custom-tag>shortcut-save</custom-tag>")
+    editor.typeKey("s", modifierFlags: .command)
+    let shortcutSaved = await waitForFile(fileURL, containing: "shortcut-save")
+    XCTAssertTrue(
+      shortcutSaved,
+      "Cmd+S did not persist the focused editor"
+    )
+
+    editor.click()
+    editor.typeKey("s", modifierFlags: [.command, .shift])
+    try cancelFilePanel(in: app)
+    editor.click()
+    editor.typeKey("o", modifierFlags: .command)
+    try cancelFilePanel(in: app)
+
+    replaceText(in: editor, with: "<custom-tag>menu-save</custom-tag>")
+    openMenu("File", in: app)
+    app.menuItems["Save"].click()
+    let menuSaved = await waitForFile(fileURL, containing: "menu-save")
+    XCTAssertTrue(
+      menuSaved,
+      "File > Save did not persist the focused editor"
+    )
+
+    openMenu("File", in: app)
+    app.menuItems["Save As…"].click()
+    try cancelFilePanel(in: app)
+    openMenu("File", in: app)
+    app.menuItems["Open…"].click()
+    try cancelFilePanel(in: app)
+  }
+
+  @MainActor
   private func launchApplication() -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
@@ -89,6 +169,53 @@ final class DocumentOpenUITests: XCTestCase {
       withIntermediateDirectories: true
     )
     return temporaryDirectory
+  }
+
+  @MainActor
+  private func replaceText(in editor: XCUIElement, with text: String) {
+    editor.click()
+    editor.typeKey("a", modifierFlags: .command)
+    editor.typeText(text)
+  }
+
+  @MainActor
+  private func openMenu(_ title: String, in app: XCUIApplication) {
+    let menu = app.menuBars.menuBarItems[title]
+    XCTAssertTrue(menu.waitForExistence(timeout: 5))
+    menu.click()
+  }
+
+  @MainActor
+  private func cancelFilePanel(in app: XCUIApplication) throws {
+    let cancelButton = app.buttons["Cancel"].firstMatch
+    guard cancelButton.waitForExistence(timeout: 5) else {
+      throw NSError(
+        domain: "InkoraUITests",
+        code: 2,
+        userInfo: [NSLocalizedDescriptionKey: "File panel did not appear"]
+      )
+    }
+    cancelButton.click()
+  }
+
+  @MainActor
+  private func waitForValue(_ element: XCUIElement, containing text: String) -> Bool {
+    let predicate = NSPredicate(format: "value CONTAINS %@", text)
+    let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+    return XCTWaiter.wait(for: [expectation], timeout: 5) == .completed
+  }
+
+  @MainActor
+  private func waitForFile(_ url: URL, containing text: String) async -> Bool {
+    for _ in 0..<50 {
+      if let contents = try? String(contentsOf: url, encoding: .utf8),
+        contents.contains(text)
+      {
+        return true
+      }
+      try? await Task.sleep(for: .milliseconds(100))
+    }
+    return false
   }
 
   @MainActor

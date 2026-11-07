@@ -115,6 +115,23 @@ struct BridgeNativeCommand: Codable, Equatable {
     )
   }
 
+  static func execute(
+    requestID: String,
+    documentID: String,
+    revision: Int,
+    command: BridgeEditorCommand
+  ) -> Self {
+    Self(
+      protocolVersion: BridgeProtocolV1.version,
+      type: .executeCommand,
+      requestID: requestID,
+      documentID: documentID,
+      revision: revision,
+      text: nil,
+      command: command
+    )
+  }
+
   static func queryState(requestID: String) -> Self {
     Self(
       protocolVersion: BridgeProtocolV1.version,

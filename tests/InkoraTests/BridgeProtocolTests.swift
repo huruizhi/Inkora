@@ -58,6 +58,21 @@ final class BridgeProtocolTests: XCTestCase {
     XCTAssertEqual(decoded.text, markdown)
   }
 
+  func testEditorCommandFactoryCarriesDocumentRevision() throws {
+    let command = BridgeNativeCommand.execute(
+      requestID: "undo-1",
+      documentID: "doc-1",
+      revision: 8,
+      command: .undo
+    )
+
+    try command.validate()
+    XCTAssertEqual(command.type, .executeCommand)
+    XCTAssertEqual(command.documentID, "doc-1")
+    XCTAssertEqual(command.revision, 8)
+    XCTAssertEqual(command.command, .undo)
+  }
+
   func testRevisionTrackerRejectsWrongDocumentAndOlderRevision() {
     var tracker = BridgeRevisionTracker()
     tracker.beginDocument(documentID: "doc-1", revision: 4)
