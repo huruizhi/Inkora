@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - task/INK-INFRA-001-self-hosted-runner
 
 permissions:
   contents: read
