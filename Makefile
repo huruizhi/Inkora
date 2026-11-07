@@ -9,7 +9,7 @@ PNPM := $(CURDIR)/.tools/node_modules/.bin/pnpm
 NATIVE_RESULT := $(ARTIFACTS_DIR)/test-results/native.xcresult
 BRIDGE_RESULT := $(ARTIFACTS_DIR)/test-results/bridge-native.xcresult
 
-.PHONY: setup lint test test-editor test-bridge test-native test-ui test-ci test-all \
+.PHONY: setup lint test test-editor test-bridge test-native test-ui test-ui-release test-ci test-all \
 	build build-release run clean generate editor-build prepare-artifacts require-xcode
 
 setup: require-xcode
@@ -50,6 +50,14 @@ test-ui: build prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) ui \
 		tests/ci/ui-launch-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Debug/Inkora.app"
+
+test-ui-release: build-release prepare-artifacts
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) release-bundle \
+		tests/ci/editor-bundle-smoke.sh \
+		"$(DERIVED_DATA)/Build/Products/Release/Inkora.app"
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) ui-release \
+		tests/ci/ui-launch-smoke.sh \
+		"$(DERIVED_DATA)/Build/Products/Release/Inkora.app"
 
 test-ci: prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" tests/ci/entrypoint-smoke.sh

@@ -22,8 +22,8 @@ jobs:
         run: make lint
       - name: Test all layers
         run: make test-all
-      - name: Build release
-        run: make build-release
+      - name: Build and launch release offline
+        run: make test-ui-release
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v7
