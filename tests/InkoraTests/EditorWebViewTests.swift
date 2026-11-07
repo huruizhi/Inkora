@@ -703,6 +703,26 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testDebouncedRecoveryPersistsThroughTheRealBridgeStateQuery() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "before")
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "real-recovery-\(UUID())")
+    let store = RecoveryStore(directory: root)
+    document.configureRecovery(store: store, snapshotRequester: controller.requestRecoverySnapshot)
+    defer {
+      document.close()
+      try? FileManager.default.removeItem(at: root)
+    }
+    try await replaceEditorText(in: webView, with: "durable real bridge")
+    for _ in 0..<40 {
+      if !store.discover().drafts.isEmpty { break }
+      try await Task.sleep(for: .milliseconds(100))
+    }
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("durable real bridge".utf8))
+    XCTAssertTrue(document.isDocumentEdited)
+  }
+
+  @MainActor
   func testBackgroundRecoveryRejectsCompositionWithoutBlurOrHistoryChanges() async throws {
     let (document, controller, webView) = try await loadedEditor(initialText: "<x>before</x>")
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(

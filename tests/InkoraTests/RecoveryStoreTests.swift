@@ -279,6 +279,32 @@ final class RecoveryStoreTests: XCTestCase {
   }
 
   @MainActor
+  func testDeletedUneditedFileSchedulesARecoverableCopy() async throws {
+    let root = try directory()
+    let source = root.appendingPathComponent("deleted.md")
+    try Data("retained after deletion".utf8).write(to: source)
+    let document = try InkoraDocument(contentsOf: source, ofType: "net.daringfireball.markdown")
+    let store = RecoveryStore(directory: root.appendingPathComponent("drafts"))
+    let captured = expectation(description: "deleted document snapshot")
+    document.configureRecovery(
+      store: store,
+      snapshotRequester: { completion in
+        completion(
+          .success(
+            BridgeSnapshot(documentID: document.bridgeDocumentID, revision: 0, text: document.text))
+        )
+        captured.fulfill()
+      })
+    try FileManager.default.removeItem(at: source)
+    document.refreshFileState()
+    await fulfillment(of: [captured], timeout: 3)
+    XCTAssertTrue(document.isDocumentEdited)
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("retained after deletion".utf8))
+    XCTAssertEqual(store.discover().drafts.first?.sourceURL, source)
+    document.close()
+  }
+
+  @MainActor
   func testLateSnapshotAfterCleanStateCannotResurrectDraft() throws {
     let root = try directory()
     let store = RecoveryStore(directory: root)

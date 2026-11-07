@@ -232,9 +232,11 @@ final class InkoraDocument: NSDocument {
   func editorDidChangeState(_ state: BridgeEditorState) {
     guard state.documentID == bridgeDocumentID else { return }
     guard state.revision >= revisionStorage.get() else { return }
+    let dirty = state.dirty || missingOriginal || recoveredUnsaved
+    let recoveryChanged = state.revision > revisionStorage.get() || dirty != isDocumentEdited
     revisionStorage.set(state.revision)
-    synchronizeEditedState(state.dirty || missingOriginal || recoveredUnsaved)
-    scheduleRecovery()
+    synchronizeEditedState(dirty)
+    if recoveryChanged { scheduleRecovery() }
 
   }
 
@@ -353,6 +355,7 @@ final class InkoraDocument: NSDocument {
 
   func refreshFileState() {
     guard let url = fileURL else { return }
+    let wasEdited = isDocumentEdited
     let accessed = url.startAccessingSecurityScopedResource()
     defer { if accessed { url.stopAccessingSecurityScopedResource() } }
     do {
@@ -380,6 +383,7 @@ final class InkoraDocument: NSDocument {
       fileState = .readOnly  // Fail closed if metadata or contents cannot be inspected.
     }
     updateFileStateSubtitle()
+    if !wasEdited && isDocumentEdited { scheduleRecovery() }
   }
 
   private func updateFileStateSubtitle() {

@@ -4,7 +4,7 @@ INK-021 不启用 NSDocument 就地自动保存，草稿与源文件分离。存
 
 ## 采集与保存
 
-- editor 的已提交 dirty 状态触发 1 秒 debounce，连续编辑重新计时；内容未变化不重写。
+- revision 或有效 dirty 变化触发 1 秒 debounce，snapshot 自身的相同 queryState 回传不重置调度；源文件删除使 clean 文档变为 dirty 时也采集保留内容。连续编辑重新计时；内容未变化不重写。
 - 后台调用 Bridge 的 revisioned snapshot，不切换 first responder、不结束 IME。Web runtime 在 composition 期间拒绝 snapshot；下一次 compositionend 的已提交状态重新调度；若组合取消且没有产生新 revision，也会延迟重试，以保存更早的已提交编辑。拒绝、超时和失效响应不写草稿。
 - 保存/关闭/重新加载使后台请求的 epoch 失效；迟到结果不能复活已经清理的草稿。关闭后禁止调度新的恢复写入。
 - JSON 草稿经现有 atomic writer 替换，包含 schema、UUID、editor revision、原始 UTF-8 字节和 SHA-256、源文件 URL/security-scoped bookmark、源文件修改时间/大小/SHA-256、BOM、换行样式、写入时间和 App 版本。
