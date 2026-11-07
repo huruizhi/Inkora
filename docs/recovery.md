@@ -1,6 +1,6 @@
 # 崩溃恢复草稿
 
-INK-021 不启用 NSDocument 就地自动保存，草稿与源文件分离。存储位置为 App Sandbox 容器内 `Library/Application Support/Inkora/Recovery`。无网络请求，无新依赖。
+INK-021 不启用 NSDocument 就地自动保存，草稿与源文件分离。存储位置为 App Sandbox 容器内 `Library/Application Support/Inkora/Recovery`。无网络请求，无新依赖。按 [Apple 的 security-scoped bookmark 说明](https://developer.apple.com/documentation/professional-video-applications/enabling-security-scoped-bookmark-and-url-access)，启用 app-scope bookmark entitlement；恢复草稿中的 bookmark 仅请求持久化读取权限，用于重启后的源指纹检查，保存仍走用户选择路径。
 
 ## 采集与保存
 

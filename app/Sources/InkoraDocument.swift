@@ -547,7 +547,7 @@ final class InkoraDocument: NSDocument {
     let accessed = source?.startAccessingSecurityScopedResource() ?? false
     defer { if accessed { source?.stopAccessingSecurityScopedResource() } }
     let bookmark = try? source?.bookmarkData(
-      options: [.withSecurityScope],
+      options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
       includingResourceValuesForKeys: nil, relativeTo: nil)
     let draft = RecoveryDraft(
       id: recoveryID, revision: snapshot.revision, data: data,
