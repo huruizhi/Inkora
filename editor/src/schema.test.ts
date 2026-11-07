@@ -17,7 +17,13 @@ describe("Inkora ProseMirror schema", () => {
       "hard_break",
       "horizontal_rule",
     ]);
-    expect(Object.keys(inkoraSchema.marks)).toEqual([]);
+    expect(Object.keys(inkoraSchema.marks)).toEqual([
+      "strong",
+      "em",
+      "strike",
+      "code",
+      "link",
+    ]);
   });
 
   it("accepts the supported base block and inline structures", () => {
