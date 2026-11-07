@@ -33,8 +33,11 @@ jobs:
       - name: Build and launch release offline
         run: make test-ui-release
       - name: Performance baseline (light, warn-only)
+        if: ${{ !inputs.full-bench }}
+        timeout-minutes: 4
         run: make bench
       - name: Full performance baseline
+        timeout-minutes: 8
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.full-bench }}
         run: make bench-full
       - name: Upload diagnostics

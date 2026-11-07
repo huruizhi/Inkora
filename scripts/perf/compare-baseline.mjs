@@ -34,13 +34,6 @@ function parseArgs(argv) {
   return args;
 }
 
-function median(values) {
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 1) return sorted[middle];
-  return (sorted[middle - 1] + sorted[middle]) / 2;
-}
-
 function loadResults(resultsDir) {
   const results = [];
   const dir = resolve(resultsDir);
@@ -87,6 +80,7 @@ for (const result of results) {
 const threshold = baseline.threshold?.relative ?? 0.2;
 const rows = [];
 let regressions = 0;
+let invalid = 0;
 
 for (const [name, entry] of Object.entries(baseline.metrics)) {
   const metric = current.get(name);
@@ -96,12 +90,18 @@ for (const [name, entry] of Object.entries(baseline.metrics)) {
       rows.push({ name, status: "skipped", note: `not measured (needs profile: ${profiles.join("+")})` });
       continue;
     }
+    invalid += 1;
     rows.push({ name, status: "missing", note: "expected from baseline but absent in results" });
+    continue;
+  }
+  if (!Number.isFinite(metric.value) || metric.value < 0 || metric.unit !== entry.unit) {
+    invalid += 1;
+    rows.push({ name, status: "invalid", note: "non-finite/negative value or unit mismatch" });
     continue;
   }
   const base = entry.value;
   const value = metric.value;
-  const ratio = base > 0 ? value / base : Number.POSITIVE_INFINITY;
+  const ratio = base > 0 ? value / base : value === 0 ? 1 : Number.POSITIVE_INFINITY;
   const delta = (ratio - 1) * 100;
   if (ratio > 1 + threshold) {
     regressions += 1;
@@ -157,6 +157,21 @@ function formatRow(row) {
   return `| ${row.name} | ${row.status} | ${base} | ${value} | ${row.unit ?? "-"} | ${delta} | ${cv} |`;
 }
 
+const environmentPath = join(resolve(args.resultsDir), "environment.json");
+const environment = existsSync(environmentPath)
+  ? JSON.parse(readFileSync(environmentPath, "utf8")) : {};
+const manifestPath = resolve("build/perf-samples/manifest.json");
+const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : null;
+const sampleWarnings = Object.entries(baseline.samples ?? {}).flatMap(([name, sample]) => {
+  if (manifest?.files?.[name]?.sha256 === sample.sha256) return [];
+  invalid += 1;
+  return [`WARNING: sample ${name} missing or changed; regenerate/rebaseline before comparing.`];
+});
+
+const environmentWarnings = ["model", "chip", "memoryGB", "macOS", "node"].filter(
+  (key) => environment[key] !== baseline.environment?.[key],
+).map((key) => `WARNING: environment ${key}: baseline=${baseline.environment?.[key]}, current=${environment[key]}; cross-machine comparisons are advisory.`);
+
 const lines = [
   "# Performance baseline comparison",
   "",
@@ -168,6 +183,9 @@ const lines = [
   "| metric | status | baseline | current | unit | delta | cv |",
   "| --- | --- | --- | --- | --- | --- | --- |",
   ...rows.map(formatRow),
+  ...rows.filter((row) => row.note).map((row) => `${row.status}: ${row.name}: ${row.note}`),
+  ...environmentWarnings,
+  ...sampleWarnings,
   "",
 ];
 
@@ -176,6 +194,7 @@ for (const row of rows) {
     lines.push(`WARNING: ${row.name} is noisy (cv=${row.cv.toFixed(3)} > 0.25); treat with caution.`);
   }
 }
+if (invalid > 0) lines.push(`INVALID: ${invalid} missing/invalid metrics or changed samples.`);
 if (regressions > 0) {
   lines.push(
     `REGRESSIONS: ${regressions} metric(s) exceeded the +${(threshold * 100).toFixed(0)}% threshold.`,
@@ -193,6 +212,6 @@ if (args.report) {
   writeFileSync(reportPath, `${report}\n`, "utf8");
 }
 
-if (args.fail && regressions > 0) {
+if (args.fail && (regressions > 0 || invalid > 0)) {
   process.exit(1);
 }

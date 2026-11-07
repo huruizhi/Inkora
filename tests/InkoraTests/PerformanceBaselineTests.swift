@@ -55,11 +55,13 @@ final class PerformanceBaselineTests: XCTestCase {
     let url = try PerfEnvironment.sampleURL(named: "large")
     var deltas: [Double] = []
     for _ in 0..<5 {
-      let before = perfResidentBytes() ?? 0
+      let before = try XCTUnwrap(perfResidentBytes())
       // The document stays alive while sampling so the delta reflects the
       // retained text storage rather than transient allocator churn.
       let document = try InkoraDocument(contentsOf: url, ofType: markdownType)
-      let during = perfResidentBytes() ?? 0
+      let during = try withExtendedLifetime(document) {
+        try XCTUnwrap(perfResidentBytes())
+      }
       deltas.append(Double(during - before) / 1024 / 1024)
       _ = document
     }
@@ -80,7 +82,11 @@ final class PerformanceBaselineTests: XCTestCase {
     let url = try PerfEnvironment.sampleURL(named: "large")
     measure(metrics: [XCTClockMetric(), XCTMemoryMetric()]) {
       MainActor.assumeIsolated {
-        _ = try? InkoraDocument(contentsOf: url, ofType: markdownType)
+        do {
+          _ = try InkoraDocument(contentsOf: url, ofType: markdownType)
+        } catch {
+          XCTFail("Open failed: \(error)")
+        }
       }
     }
   }
@@ -94,12 +100,16 @@ final class PerformanceBaselineTests: XCTestCase {
     let document = try InkoraDocument(contentsOf: url, ofType: markdownType)
     measure(metrics: [XCTClockMetric()]) {
       MainActor.assumeIsolated {
-        try? document.write(
-          to: target,
-          ofType: markdownType,
-          for: .saveOperation,
-          originalContentsURL: nil
-        )
+        do {
+          try document.write(
+            to: target,
+            ofType: markdownType,
+            for: .saveOperation,
+            originalContentsURL: nil
+          )
+        } catch {
+          XCTFail("Save failed: \(error)")
+        }
       }
     }
   }

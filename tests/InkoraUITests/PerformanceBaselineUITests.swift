@@ -7,8 +7,8 @@ import XCTest
 // Reported metrics:
 //   * launch/first  — wall clock of the first launch in the run;
 //   * launch/warm   — median wall clock of the subsequent launches;
-//   * launch/rss    — median resident set of the app process tree (Inkora
-//     plus its WebContent children) shortly after each warm launch.
+//   * launch/rss    — median resident set of the Inkora app process (WebKit service
+//     processes are not included) shortly after each warm launch.
 // XCTApplicationLaunchMetric additionally records system launch timings in
 // the .xcresult bundle.
 final class PerformanceBaselineUITests: XCTestCase {
@@ -40,7 +40,7 @@ final class PerformanceBaselineUITests: XCTestCase {
       }
 
       Thread.sleep(forTimeInterval: 0.5)
-      if let tree = try Self.applicationTreeResidentMegabytes() {
+      if let tree = try Self.applicationResidentMegabytes() {
         if index > 0 {
           residentSizes.append(tree)
         }
@@ -57,6 +57,7 @@ final class PerformanceBaselineUITests: XCTestCase {
       value: perfMedian(warm),
       cv: perfCoefficientOfVariation(warm)
     )
+    XCTAssertFalse(residentSizes.isEmpty, "App RSS samples are required")
     if !residentSizes.isEmpty {
       PerfRecorder.shared.record(
         name: "launch/rss",
@@ -84,40 +85,17 @@ final class PerformanceBaselineUITests: XCTestCase {
     return Double(components.seconds) * 1_000 + Double(components.attoseconds) / 1e15
   }
 
-  /// Resident memory (MB) of the Inkora app process plus all descendants,
-  /// sampled through `ps`; WKWebView's WebContent processes are children and
-  /// are therefore included.
-  private static func applicationTreeResidentMegabytes() throws -> Double? {
-    let output = try runProcess("/bin/ps", arguments: ["-axo", "pid=,ppid=,rss=,ucomm="])
-    var parents: [Int: Int] = [:]
-    var names: [Int: String] = [:]
-    var rss: [Int: Double] = [:]
+  /// App RSS only: WebKit services may be parented by launchd, so a process
+  /// tree walk cannot reliably attribute their memory to this application.
+  private static func applicationResidentMegabytes() throws -> Double? {
+    let output = try runProcess("/bin/ps", arguments: ["-axo", "rss=,ucomm="])
     for line in output.split(separator: "\n") {
       let columns = line.split(whereSeparator: { $0 == " " }).map(String.init)
-      guard columns.count >= 4,
-        let pid = Int(columns[0]),
-        let ppid = Int(columns[1]),
-        let kilobytes = Double(columns[2])
-      else { continue }
-      parents[pid] = ppid
-      names[pid] = columns[3]
-      rss[pid] = kilobytes / 1024
-    }
-    guard
-      let root = names.first(where: { $0.value == "Inkora" && parents[$0.key] != $0.key })?.key
-    else {
-      return nil
-    }
-    var total = 0.0
-    var queue = [root]
-    var visited: Set<Int> = [root]
-    while let pid = queue.popLast() {
-      total += rss[pid] ?? 0
-      for (child, parent) in parents where parent == pid && visited.insert(child).inserted {
-        queue.append(child)
+      if columns.count == 2, columns[1] == "Inkora", let kilobytes = Double(columns[0]) {
+        return kilobytes / 1024
       }
     }
-    return total
+    return nil
   }
 
   private static func runProcess(_ path: String, arguments: [String]) throws -> String {
@@ -128,8 +106,9 @@ final class PerformanceBaselineUITests: XCTestCase {
     process.standardOutput = pipe
     process.standardError = FileHandle.nullDevice
     try process.run()
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
     process.waitUntilExit()
     guard process.terminationStatus == 0 else { return "" }
-    return String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    return String(data: data, encoding: .utf8) ?? ""
   }
 }

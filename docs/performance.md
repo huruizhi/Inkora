@@ -11,7 +11,7 @@
 | `make bench-full` | 完整基准：`make bench` 之上叠加 full profile 编辑器测量、WKWebView 载入/桥接往返基准（仍 hostless），以及 App 冷启动 XCUITest 基准。**会启动 App UI，只能在 macOS runner / 人工触发** |
 | `INKORA_PERF_STRICT=1 make bench` | 严格模式：任何指标超过阈值即失败（默认仅警告） |
 
-CI 默认在 `make test-all` 后运行 `make bench`（仅警告，避免环境噪声导致红灯）。手动 `workflow_dispatch` 触发时可勾选 `full-bench` 输入运行 `make bench-full`。比较报告写入 `artifacts/perf/comparison.md`，原始结果在 `build/perf-results/*.json`。
+CI 默认在 `make test-all` 后运行 `make bench`（仅警告，避免环境噪声导致红灯）。手动 `workflow_dispatch` 触发时可勾选 `full-bench` 输入运行 `make bench-full`。比较报告写入 `artifacts/perf/comparison.md`，原始结果、环境和样本 manifest 同时复制到 `artifacts/perf/` 随 CI 归档。每次运行先清理旧结果，避免混入上次 full 数据。轻量步骤上限 4 分钟；完整步骤上限 8 分钟（已含 light，不重复执行），保留原有测试和产物上传步骤，job 总超时仍为 30 分钟。
 
 ## 样本
 
@@ -42,7 +42,7 @@ CI 默认在 `make test-all` 后运行 `make bench`（仅警告，避免环境�
 
 WKWebView 层（full profile，`tests/InkoraTests/PerformanceWebViewTests.swift`，hostless 离屏 webview）：`webview-load/{medium,large}`（资源 scheme handler + bridge 握手 + markdown 解析 + ProseMirror 挂载，到 `#editor` 出现；1 次预热吸收 WebContent 进程启动 + 3 样本）、`webview.bridge-snapshot-roundtrip/large`（源码模式 1MB 快照经 WKScriptMessage 往返；2 预热 + 9 样本）。
 
-启动层（`tests/InkoraUITests/PerformanceBaselineUITests.swift`，仅 bench-full）：`launch/first`（首次启动墙钟）、`launch/warm`（后续启动中位数）、`launch/rss`（App 进程树含 WebContent 子进程的常驻内存中位数）；`XCTApplicationLaunchMetric` 结果进 xcresult。
+启动层（`tests/InkoraUITests/PerformanceBaselineUITests.swift`，仅 bench-full）：`launch/first`（首次启动墙钟）、`launch/warm`（后续启动中位数）、`launch/rss`（Inkora App 主进程 RSS 中位数，不含由系统托管的 WebKit 服务）；`XCTApplicationLaunchMetric` 结果进 xcresult。
 
 ## 阈值与回归策略
 
@@ -50,7 +50,7 @@ WKWebView 层（full profile，`tests/InkoraTests/PerformanceWebViewTests.swift`
 - `make bench` / CI 默认**仅警告**：报告中标 `REGRESSION`，不失败。
 - `INKORA_PERF_STRICT=1 make bench`（或 `scripts/perf/compare-baseline.mjs --fail`）时，任何超过阈值的指标让命令以非零退出。
 - 比较脚本对 cv > 0.25 的指标输出噪声警告；短耗时指标（`parse/small`、`input-typing/*`、`document-memory`）天然噪声大，判断回归时应结合多次运行。
-- 基线中每个指标标注了所属 profile（light/full）；未测量的 profile 对应指标自动跳过比较。
+- 基线中每个指标标注了所属 profile（light/full）；未测量的 profile 对应指标自动跳过比较；已测 profile 缺失指标、非法数值或单位不匹配在严格模式下失败。样本 SHA 不匹配会警告，严格模式下失败。环境差异单独警告，不能直接归因为代码回归。
 - 更新基线：在安静机器上运行 `make bench`（及需要的 `make bench-full`），把 `build/perf-results/*.json` 中对应指标的 `value`（保留 cv）回填进 `baseline.json`，并在 commit message 中注明机器与环境。
 
 ## 当前基线数据（2026-11-08，Apple M6 / Mac18,5，macOS 27.2，Xcode 27.2）
@@ -73,16 +73,16 @@ WKWebView 层（full profile，`tests/InkoraTests/PerformanceWebViewTests.swift`
 
 按上述基线数据，各路径成本排序与初步归因：
 
-1. **序列化是编辑器层最重热点**：`serialize/large`（~670 ms）约为 `parse/large`（~13 ms）的 50 倍。`prosemirror-markdown` 的 `MarkdownSerializer` 对整棵文档树递归渲染，逐节点拼接字符串；`markdown-codec.ts` 中 `safeFence` 对每个代码块再做一次 `matchAll` 正则扫描，`renderHeading`（setext）需要 `node.textContent.length`。保存/快照路径（`snapshot-serialize/large` ≈ `serialize/large`）每次都全量序列化，意味着大文档上每次快照请求都阻塞主线程约 0.7 s。后续优化候选：脏子树增量序列化、按块缓存序列化结果、`safeFence` 仅在代码块内容变化时重扫。
+1. **序列化是编辑器层最重热点**：`serialize/large`（~670 ms）约为 `parse/large`（~13 ms）的 50 倍。`prosemirror-markdown` 的 `MarkdownSerializer` 对整棵文档树递归渲染，逐节点拼接字符串；`markdown-codec.ts` 中 `safeFence` 对每个代码块再做一次 `matchAll` 正则扫描，`renderHeading`（setext）需要 `node.textContent.length`。保存/快照路径（`snapshot-serialize/large` ≈ `serialize/large`）每次都全量序列化，说明 Node 测量中该工作量约需 0.7 s；真实 WebKit 主线程延迟仍需单独测量。后续优化候选：脏子树增量序列化、按块缓存序列化结果、`safeFence` 仅在代码块内容变化时重扫。
 2. **输入事务本身便宜**：`input-typing/large` ≈ 0.02 ms/笔（含 dispatch、`previousDocument.eq` 脏检查、状态发布）。ProseMirror 结构共享让 `doc.eq` 在未变化子树上走引用相等短路，输入路径不构成瓶颈；瓶颈在输入触发后的快照/保存序列化。
-3. **WKWebView 载入主导文档打开的可见延迟**：`webview-load/large` ≈ 386 ms，其中编辑器层解析仅 ~13 ms、状态装配 ~1 ms，剩余为 WebKit 资源加载、bridge 握手与 ProseMirror DOM 挂载。载入大文档时挂载成本约为解析成本的 25 倍以上，是「打开大文档慢」的主要来源。
+3. **WKWebView 载入主导文档打开的可见延迟**：`webview-load/large` ≈ 386 ms，其中编辑器层解析仅 ~13 ms、状态装配 ~1 ms，剩余为 WebKit 资源加载、bridge 握手与 ProseMirror DOM 挂载。载入大文档时载入路径中解析以外的成本约为 Node 解析成本的 25 倍以上（不同运行环境，仅作定位线索），是「打开大文档慢」的主要来源。
 4. **桥接通道可控**：1 MB 文本快照经 JSON 编解码 + WKScriptMessage 往返仅 ~4.5 ms，说明 Bridge 协议本身不是大文档瓶颈；保存慢来自 JS 侧序列化而非消息通道。
 5. **原生文件层不是瓶颈**：打开（读 + UTF-8 解码 + BOM 策略）与保存（编码 + 原子写）都在 1 ms 以内（页面缓存暖）。注意：基线测量的是暖缓存路径，冷盘首次读未覆盖。
-6. **内存**：1 MB 文档在原生侧 resident 增量约 1 MB（基本等于文本存储）；编辑器 JS/WebContent 进程的文档内存未单独测量，由 `launch/rss`（App 进程树）间接覆盖，后续可补充按文档规模分层的 webview 内存指标。
+6. **内存**：1 MB 文档在原生侧 resident 增量约 1 MB（基本等于文本存储）；编辑器 JS/WebContent 进程的文档内存未单独测量，`launch/rss` 也仅覆盖 App 主进程，后续需补充能正确归属 WebKit 服务的内存测量。
 
 ## 已知局限
 
-- 基线来自单台 runner（Apple M6）；跨机器比较无意义，换机器必须重采基线。
+- 基线来自单台机器（Apple M6）；跨机器比较无意义，换机器必须重采基线。
 - CI 与本地共机时，并发任务会放大短指标噪声；判断回归优先看长耗时指标与多次运行中位数。
 - 编辑器层基准在 node（非真实 WKWebView JIT 环境）中测量 parse/serialize，绝对值偏保守，用于回归趋势而非用户可感延迟。
 - `document-open` 未覆盖冷页缓存；`launch/first` 也不是严格意义的冷启动（系统缓存仍在），仅首次启动近似。

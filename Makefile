@@ -17,12 +17,12 @@ PERF_RESULTS_DIR := $(CURDIR)/build/perf-results
 NATIVE_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/native-perf.xcresult
 WEBVIEW_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/webview-perf.xcresult
 LAUNCH_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/launch-perf.xcresult
-PERF_STRICT := $(if $(INKORA_PERF_STRICT),--fail,)
+PERF_STRICT := $(if $(filter 1,$(INKORA_PERF_STRICT)),--fail,)
 
 .PHONY: setup lint test test-editor test-bridge test-native test-document-open-ui test-ui \
 	test-ui-release test-ci test-all \
 	build build-release run clean generate editor-build prepare-artifacts require-xcode \
-	perf-samples bench bench-full
+	perf-samples perf-compare bench bench-full
 
 setup: require-xcode
 	HOMEBREW_NO_AUTO_UPDATE=1 brew bundle install --no-upgrade
@@ -88,6 +88,7 @@ test-ui-release: build-release prepare-artifacts
 test-ci: prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" tests/ci/entrypoint-smoke.sh
 	tests/ci/ui-lock-smoke.sh
+	node scripts/perf/compare-baseline.test.mjs
 
 test-all: test-editor test-bridge test-native test-document-open-ui test-ui test-ci
 
@@ -123,6 +124,9 @@ require-xcode:
 		exit 1; \
 	}
 
+clean:
+	rm -rf "$(CURDIR)/build" "$(ARTIFACTS_DIR)" editor/dist Inkora.xcodeproj
+
 # Performance baselines (INK-023). `make bench` is light, deterministic and
 # CI-safe: it never launches the app UI. `make bench-full` adds the WKWebView
 # load benchmarks and app launch benchmarks and requires a logged-in desktop
@@ -132,11 +136,15 @@ perf-samples:
 	node scripts/perf/generate-samples.mjs --output "$(PERF_SAMPLES_DIR)"
 
 perf-compare:
+	mkdir -p "$(ARTIFACTS_DIR)/perf/raw"
+	cp "$(PERF_RESULTS_DIR)"/*.json "$(ARTIFACTS_DIR)/perf/raw/"
+	cp "$(PERF_SAMPLES_DIR)/manifest.json" "$(ARTIFACTS_DIR)/perf/manifest.json"
 	mkdir -p "$(ARTIFACTS_DIR)/perf"
 	node scripts/perf/compare-baseline.mjs --results-dir "$(PERF_RESULTS_DIR)" \
 		--report "$(ARTIFACTS_DIR)/perf/comparison.md" $(PERF_STRICT)
 
 bench: perf-samples editor-build generate require-xcode prepare-artifacts
+	rm -rf "$(PERF_RESULTS_DIR)" "$(ARTIFACTS_DIR)/perf"
 	mkdir -p "$(PERF_RESULTS_DIR)"
 	node scripts/perf/env-info.mjs --output "$(PERF_RESULTS_DIR)/environment.json"
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) bench-editor \
