@@ -387,12 +387,10 @@ final class DocumentOpenUITests: XCTestCase {
       app.buttons["Cancel"].waitForExistence(timeout: 5), "Recovered document remains dirty")
     app.buttons["Cancel"].click()
     app.typeKey("w", modifierFlags: .command)
-    let discard = app.buttons["Don’t Save"]
-    if discard.waitForExistence(timeout: 3) {
-      discard.click()
-    } else {
-      app.buttons["Don't Save"].click()
-    }
+    let discard = app.buttons["DontSaveButton"]
+    XCTAssertTrue(discard.waitForExistence(timeout: 5))
+    discard.click()
+    XCTAssertTrue(recoveredEditor.waitForNonExistence(timeout: 5))
     XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original on disk")
   }
 
