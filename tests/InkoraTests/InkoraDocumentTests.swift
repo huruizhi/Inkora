@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 final class InkoraDocumentTests: XCTestCase {
@@ -318,6 +319,65 @@ final class InkoraDocumentTests: XCTestCase {
     await fulfillment(of: [firstFinished, secondFinished], timeout: 5)
 
     XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "second")
+  }
+
+  @MainActor
+  func testDirtyProjectionTracksUndoRedoAndSameRevisionSaveConfirmation() {
+    let document = InkoraDocument()
+    func state(_ revision: Int, _ dirty: Bool, id: String? = nil) {
+      document.editorDidChangeState(
+        BridgeEditorState(
+          documentID: id ?? document.bridgeDocumentID, revision: revision,
+          dirty: dirty, canUndo: true, canRedo: true
+        ))
+    }
+    state(1, true)
+    XCTAssertTrue(document.isDocumentEdited)
+    state(2, true)
+    state(3, false)  // Undo to saved document, not native count - 1.
+    XCTAssertFalse(document.isDocumentEdited)
+    state(4, true)  // Redo.
+    XCTAssertTrue(document.isDocumentEdited)
+    state(4, false)  // markSaved does not increase revision.
+    XCTAssertFalse(document.isDocumentEdited)
+    state(3, true)
+    state(100, true, id: "another-document")
+    XCTAssertFalse(document.isDocumentEdited)
+    XCTAssertEqual(document.bridgeRevision, 4)
+    state(5, true)
+    state(6, false)
+    XCTAssertFalse(document.isDocumentEdited)
+    XCTAssertFalse(InkoraDocument.autosavesInPlace)
+  }
+
+  @MainActor
+  func testDocumentSynchronizesWindowEditedIndicator() {
+    let document = InkoraDocument()
+    let window = NSWindow()
+    document.addWindowController(NSWindowController(window: window))
+    for (revision, dirty) in [(1, true), (2, false), (3, true), (3, false)] {
+      document.editorDidChangeState(
+        BridgeEditorState(
+          documentID: document.bridgeDocumentID, revision: revision,
+          dirty: dirty, canUndo: true, canRedo: false
+        ))
+      XCTAssertEqual(window.isDocumentEdited, dirty)
+    }
+    document.close()
+  }
+
+  @MainActor
+  func testRepeatedDirtyStatesDoNotAccumulateNativeUndoCount() {
+    let document = InkoraDocument()
+    for revision in 1...3 {
+      document.editorDidChangeState(
+        BridgeEditorState(
+          documentID: document.bridgeDocumentID, revision: revision,
+          dirty: true, canUndo: true, canRedo: false
+        ))
+    }
+    document.updateChangeCount(.changeUndone)
+    XCTAssertFalse(document.isDocumentEdited, "Native state has one dirty transition")
   }
 
   private func fixtureData(named name: String) throws -> Data {

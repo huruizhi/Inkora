@@ -180,11 +180,60 @@ final class InkoraDocument: NSDocument {
 
   func editorDidChangeState(_ state: BridgeEditorState) {
     guard state.documentID == bridgeDocumentID else { return }
-    guard state.revision > revisionStorage.get() else { return }
+    guard state.revision >= revisionStorage.get() else { return }
     revisionStorage.set(state.revision)
-    if state.dirty {
-      updateChangeCount(.changeDone)
+    synchronizeEditedState(state.dirty)
+  }
+
+  // ProseMirror owns history. Native change count is a boolean projection of its
+  // saved baseline, not a second undo stack (revisions also increase on Undo).
+  private func synchronizeEditedState(_ dirty: Bool) {
+    guard dirty != isDocumentEdited else { return }
+    updateChangeCount(dirty ? .changeDone : .changeCleared)
+  }
+
+  func prepareForClose(completion: @escaping (Error?) -> Void) {
+    guard let editorViewController else {
+      completion(nil)
+      return
     }
+    editorViewController.requestSnapshot { result in
+      switch result {
+      case .success:
+        completion(nil)
+      case .failure(let error):
+        completion(error)
+      }
+    }
+  }
+
+  override func canClose(
+    withDelegate delegate: Any?,
+    shouldClose shouldCloseSelector: Selector?,
+    contextInfo: UnsafeMutableRawPointer?
+  ) {
+    prepareForClose { [self] error in
+      if let error {
+        presentError(error)
+        if let target = delegate as? NSObject, let selector = shouldCloseSelector {
+          typealias Callback =
+            @convention(c) (
+              AnyObject, Selector, NSDocument, Bool, UnsafeMutableRawPointer?
+            ) -> Void
+          let callback = unsafeBitCast(target.method(for: selector), to: Callback.self)
+          callback(target, selector, self, false, contextInfo)
+        }
+        return
+      }
+      reviewClose(
+        withDelegate: delegate, shouldClose: shouldCloseSelector, contextInfo: contextInfo)
+    }
+  }
+
+  private func reviewClose(
+    withDelegate delegate: Any?, shouldClose: Selector?, contextInfo: UnsafeMutableRawPointer?
+  ) {
+    super.canClose(withDelegate: delegate, shouldClose: shouldClose, contextInfo: contextInfo)
   }
 
   private func processNextSave() {
@@ -215,6 +264,7 @@ final class InkoraDocument: NSDocument {
     ) { [weak self] error in
       guard let self else { return }
       if error == nil {
+        self.synchronizeEditedState(self.bridgeRevision > snapshot.revision)
         self.editorViewController?.confirmSaved(snapshot)
       }
       self.finishCurrentSave(error)

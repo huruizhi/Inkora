@@ -13,6 +13,7 @@ export interface EditorRuntimeStatus {
 export interface EditorRuntime {
   readonly status: EditorRuntimeStatus;
   getText(): string;
+  readonly composing: boolean;
   markSaved(text: string): void;
   undo(): boolean;
   redo(): boolean;
@@ -47,6 +48,10 @@ class StructuredEditorRuntime implements EditorRuntime {
     this.view.dom.addEventListener("compositionstart", this.handleCompositionStart);
     this.view.dom.addEventListener("compositionend", this.handleCompositionEnd);
     this.session.onStateChange(() => onChange(this.status));
+  }
+
+  get composing(): boolean {
+    return this.session.status.composing;
   }
 
   get status(): EditorRuntimeStatus {
@@ -140,6 +145,10 @@ class SourceEditorRuntime implements EditorRuntime {
       this.currentText = text;
       this.onChange(this.status);
     });
+  }
+
+  get composing(): boolean {
+    return this.kernel.composing;
   }
 
   get status(): EditorRuntimeStatus {

@@ -33,3 +33,9 @@
 - 所有 paste transaction 在 dispatch 前执行 `doc.check()`，非法结构不会进入会话。
 
 插件按 Markdown、HTML、纯文本的顺序选择剪贴板格式。未知 HTML 标签只保留可表达的文本内容，脚本内容不会进入文档。
+
+## 原生 dirty 投影与关闭
+
+原生不按 revision 累加第二套历史：clean → dirty 对应一次 `updateChangeCount(.changeDone)`，dirty → clean 对应 `.changeCleared`。同 revision 的 `markSaved` 状态也必须处理。窗口 edited 标记由 NSDocument 同步。
+
+关闭与退出在检查 dirty 前先提交原生输入法组合，并通过 snapshot 屏障等待最终状态；组合未结束则拒绝保存/关闭，不读取中间态。

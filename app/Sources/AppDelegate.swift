@@ -22,6 +22,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     true
   }
 
+  private var terminationReviewInProgress = false
+
+  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    guard !terminationReviewInProgress else { return .terminateLater }
+    terminationReviewInProgress = true
+    DispatchQueue.main.async { [self] in
+      prepareDocumentsForTermination(NSDocumentController.shared.documents[...])
+    }
+    return .terminateLater
+  }
+
+  private func prepareDocumentsForTermination(_ documents: ArraySlice<NSDocument>) {
+    guard let document = documents.first else {
+      NSDocumentController.shared.reviewUnsavedDocuments(
+        withAlertTitle: "Quit Inkora?", cancellable: true, delegate: self,
+        didReviewAllSelector: #selector(didReviewDocuments(_:didReviewAll:contextInfo:)),
+        contextInfo: nil
+      )
+      return
+    }
+    guard let document = document as? InkoraDocument else {
+      prepareDocumentsForTermination(documents.dropFirst())
+      return
+    }
+    document.prepareForClose { [self] error in
+      if let error {
+        document.presentError(error)
+        terminationReviewInProgress = false
+        NSApplication.shared.reply(toApplicationShouldTerminate: false)
+        return
+      }
+      prepareDocumentsForTermination(documents.dropFirst())
+    }
+  }
+
+  @objc private func didReviewDocuments(
+    _ controller: NSDocumentController, didReviewAll: Bool,
+    contextInfo: UnsafeMutableRawPointer?
+  ) {
+    terminationReviewInProgress = false
+    NSApplication.shared.reply(toApplicationShouldTerminate: didReviewAll)
+  }
+
   private func makeMainMenu() -> NSMenu {
     let mainMenu = NSMenu()
 

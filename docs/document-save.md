@@ -15,3 +15,7 @@ Inkora 使用 AppKit 标准 `NSDocument` 保存入口。File 菜单的 Save（`C
 ## 验证边界
 
 自动化测试覆盖正常保存、覆盖、Save As 后续保存、取消、权限失败、磁盘空间失败和连续保存。AppKit 系统面板本身不复制实现；Inkora 测试它的调用前后不变量，并验证 File 菜单暴露标准保存命令。
+
+## 关闭与退出
+
+关闭按钮、Cmd+W、File > Close 进入 NSDocument `canClose`；退出先准备全部文档，再由 NSDocumentController `reviewUnsavedDocuments` 统一审阅。选择保存沿用上述 snapshot 队列；取消或保存失败保留窗口及内容，放弃不写磁盘。关闭前的准备 snapshot 不等于磁盘保存，也不确认 baseline。
