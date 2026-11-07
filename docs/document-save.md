@@ -19,3 +19,7 @@ Inkora 使用 AppKit 标准 `NSDocument` 保存入口。File 菜单的 Save（`C
 ## 关闭与退出
 
 关闭按钮、Cmd+W、File > Close 进入 NSDocument `canClose`；退出先准备全部文档，再由 NSDocumentController `reviewUnsavedDocuments` 统一审阅。选择保存沿用上述 snapshot 队列；取消或保存失败保留窗口及内容，放弃不写磁盘。关闭前的准备 snapshot 不等于磁盘保存，也不确认 baseline。
+
+## 文件状态
+
+保存前及 coordinated writer 内校验原路径权限和磁盘基线。外部修改、只读、删除不允许直接写回；移动后跟随新路径。选择及状态机见 [文件状态与冲突选择](file-state.md)。

@@ -45,7 +45,11 @@ final class InkoraDocument: NSDocument {
   private static let utf16LEBOM = Data([0xFF, 0xFE])
   private static let utf16BEBOM = Data([0xFE, 0xFF])
 
-  let bridgeDocumentID = UUID().uuidString
+  private(set) var bridgeDocumentID = UUID().uuidString
+  private var diskVersion: DocumentDiskVersion?
+  private var missingOriginal = false
+  private(set) var fileState: DocumentFileState = .current
+  private var reviewingFileState = false
   private let editorResourceBundle: Bundle
   private let dataWriter: any DocumentDataWriting
   private let revisionStorage = DocumentRevisionStorage()
@@ -104,6 +108,7 @@ final class InkoraDocument: NSDocument {
     let windowController = NSWindowController(window: window)
     addWindowController(windowController)
     self.editorViewController = editorViewController
+    refreshFileState()
     snapshotRequester = editorViewController.requestSnapshot
   }
 
@@ -133,7 +138,10 @@ final class InkoraDocument: NSDocument {
         url.stopAccessingSecurityScopedResource()
       }
     }
-    try super.read(from: url, ofType: typeName)
+    let version = try DocumentDiskVersion(url: url)
+    try read(from: version.data, ofType: typeName)
+    diskVersion = version
+    fileModificationDate = version.modified
   }
 
   override func data(ofType typeName: String) throws -> Data {
@@ -151,6 +159,13 @@ final class InkoraDocument: NSDocument {
       if accessed {
         url.stopAccessingSecurityScopedResource()
       }
+    }
+    // NSDocument invokes this inside its coordinated safe-save operation. Check
+    // the original again, after the asynchronous snapshot and before writing.
+    if saveOperation == .saveOperation,
+      let original = absoluteOriginalContentsURL, original == fileURL
+    {
+      try validateOriginalForSaving()
     }
     try dataWriter.write(encodedDocumentData(), to: url)
   }
@@ -182,7 +197,7 @@ final class InkoraDocument: NSDocument {
     guard state.documentID == bridgeDocumentID else { return }
     guard state.revision >= revisionStorage.get() else { return }
     revisionStorage.set(state.revision)
-    synchronizeEditedState(state.dirty)
+    synchronizeEditedState(state.dirty || missingOriginal)
   }
 
   // ProseMirror owns history. Native change count is a boolean projection of its
@@ -249,6 +264,13 @@ final class InkoraDocument: NSDocument {
       switch result {
       case .success(let snapshot):
         self.textStorage.set(snapshot.text)
+        if save.url == self.fileURL {
+          self.refreshFileState()
+          if self.fileState != .current && self.fileState != .moved {
+            self.resolveFileState()
+            return
+          }
+        }
         self.persist(snapshot, for: save)
       case .failure(let error):
         self.finishCurrentSave(error)
@@ -257,6 +279,16 @@ final class InkoraDocument: NSDocument {
   }
 
   private func persist(_ snapshot: BridgeSnapshot, for save: PendingSave) {
+    guard save.operation != .saveOperation || save.url == fileURL else {
+      finishCurrentSave(DocumentFileState.moved)
+      return
+    }
+    if save.url == fileURL {
+      do { try validateOriginalForSaving() } catch {
+        finishCurrentSave(error)
+        return
+      }
+    }
     super.save(
       to: save.url,
       ofType: save.typeName,
@@ -264,10 +296,153 @@ final class InkoraDocument: NSDocument {
     ) { [weak self] error in
       guard let self else { return }
       if error == nil {
+        self.missingOriginal = false
+        if let committed = try? DocumentDiskVersion(url: save.url),
+          committed.data == self.encodedDocumentData()
+        {
+          self.diskVersion = committed
+        }
+        self.refreshFileState()
         self.synchronizeEditedState(self.bridgeRevision > snapshot.revision)
         self.editorViewController?.confirmSaved(snapshot)
       }
       self.finishCurrentSave(error)
+    }
+  }
+
+  func refreshFileState() {
+    guard let url = fileURL else { return }
+    let accessed = url.startAccessingSecurityScopedResource()
+    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+    do {
+      let exists: Bool
+      do {
+        _ = try FileManager.default.attributesOfItem(atPath: url.path)
+        exists = true
+      } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+        exists = false
+      }
+      if missingOriginal || !exists {
+        missingOriginal = true
+        fileState = .deleted
+        synchronizeEditedState(true)
+      } else if let diskVersion, try DocumentDiskVersion(url: url) != diskVersion {
+        fileState = .externalChange
+      } else if try !DocumentFileState.isWritable(url)
+        || !DocumentFileState.isWritable(url.deletingLastPathComponent(), checkAccess: false)
+      {
+        fileState = .readOnly
+      } else {
+        fileState = .current
+      }
+    } catch {
+      fileState = .readOnly  // Fail closed if metadata or contents cannot be inspected.
+    }
+    updateFileStateSubtitle()
+  }
+
+  private func updateFileStateSubtitle() {
+    for controller in windowControllers {
+      controller.window?.subtitle = fileState == .current ? "" : fileState.localizedDescription
+      controller.window?.setAccessibilityTitle(displayName)
+    }
+  }
+
+  private func validateOriginalForSaving() throws {
+    refreshFileState()
+    guard fileState == .current || fileState == .moved else { throw fileState }
+  }
+
+  override func presentedItemDidChange() {
+    // Do not call NSDocument's implicit revert: local edits belong to the editor.
+    DispatchQueue.main.async { [weak self] in
+      guard let self, !self.saveInProgress else { return }
+      self.refreshFileState()
+      guard self.fileState == .externalChange, !self.reviewingFileState,
+        self.editorViewController != nil
+      else { return }
+      self.reviewingFileState = true
+      self.prepareForClose { error in
+        self.reviewingFileState = false
+        guard error == nil, !self.saveInProgress else { return }
+        self.presentFileStateChoices(completion: {})
+      }
+    }
+  }
+
+  override func presentedItemDidMove(to newURL: URL) {
+    super.presentedItemDidMove(to: newURL)
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.fileURL = newURL
+      if newURL.pathComponents.contains(".Trash") || newURL.pathComponents.contains(".Trashes") {
+        self.missingOriginal = true
+        self.refreshFileState()
+      } else {
+        self.refreshFileState()
+        if self.fileState == .current { self.fileState = .moved }
+        self.updateFileStateSubtitle()
+      }
+    }
+  }
+
+  override func accommodatePresentedItemDeletion(completionHandler: @escaping (Error?) -> Void) {
+    DispatchQueue.main.async { [weak self] in
+      self?.missingOriginal = true
+      self?.refreshFileState()
+    }
+    completionHandler(nil)
+  }
+
+  func reloadFromDisk() throws {
+    guard !saveInProgress, let url = fileURL else { throw CocoaError(.userCancelled) }
+    try read(from: url, ofType: fileType ?? "net.daringfireball.markdown")
+    bridgeDocumentID = UUID().uuidString
+    missingOriginal = false
+    synchronizeEditedState(false)
+    editorViewController?.reloadDocument()
+    refreshFileState()
+  }
+
+  private func resolveFileState() {
+    // Headless callers receive a typed error; real windows offer actionable choices.
+    guard editorViewController != nil else {
+      finishCurrentSave(fileState)
+      return
+    }
+    let error = fileState
+    finishCurrentSave(CocoaError(.userCancelled))
+    fileState = error
+    presentFileStateChoices(completion: {})
+  }
+
+  private func presentFileStateChoices(completion: @escaping () -> Void) {
+    guard let window = windowControllers.first?.window, window.attachedSheet == nil else {
+      completion()
+      return
+    }
+    let conflict = fileState == .externalChange
+    let alert = NSAlert()
+    alert.messageText = fileState.localizedDescription
+    alert.informativeText =
+      conflict
+      ? (isDocumentEdited
+        ? "本地编辑与磁盘内容冲突。重新加载会丢弃本地编辑；保留编辑请另存为。"
+        : "磁盘内容已改变。请选择重新加载，或另存当前内容。")
+      : "当前内容仍保留在窗口中，请保存到其他位置。"
+    alert.addButton(withTitle: conflict ? "重新加载" : "另存为…")
+    if conflict { alert.addButton(withTitle: "保留编辑并另存为…") }
+    alert.addButton(withTitle: "取消")
+    alert.beginSheetModal(for: window) { [weak self] response in
+      guard let self else { return }
+      if conflict && response == .alertFirstButtonReturn {
+        do { try self.reloadFromDisk() } catch { self.presentError(error) }
+      } else if (!conflict && response == .alertFirstButtonReturn)
+        || (conflict && response == .alertSecondButtonReturn)
+      {
+        self.saveAs(nil)
+      }
+      completion()
     }
   }
 
