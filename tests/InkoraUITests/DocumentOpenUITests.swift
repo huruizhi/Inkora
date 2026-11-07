@@ -232,8 +232,7 @@ final class DocumentOpenUITests: XCTestCase {
     app.typeKey("g", modifierFlags: [.command, .shift])
     let pathField = app.textFields["PathTextField"]
     XCTAssertTrue(pathField.waitForExistence(timeout: 5))
-    pathField.typeKey("a", modifierFlags: .command)
-    pathField.typeText(url.path)
+    paste(url.path, into: pathField)
     app.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
     let confirm = panel.buttons[button]
     XCTAssertTrue(confirm.waitForExistence(timeout: 5))
@@ -264,7 +263,12 @@ final class DocumentOpenUITests: XCTestCase {
   @MainActor
   private func replaceText(in editor: XCUIElement, with text: String) {
     editor.click()
-    editor.typeKey("a", modifierFlags: .command)
+    paste(text, into: editor)
+  }
+
+  @MainActor
+  private func paste(_ text: String, into element: XCUIElement) {
+    element.typeKey("a", modifierFlags: .command)
     let pasteboard = NSPasteboard.general
     let previousItems = (pasteboard.pasteboardItems ?? []).map { item in
       let copy = NSPasteboardItem()
@@ -279,7 +283,11 @@ final class DocumentOpenUITests: XCTestCase {
     }
     pasteboard.clearContents()
     pasteboard.setString(text, forType: .string)
-    editor.typeKey("v", modifierFlags: .command)
+    element.typeKey("v", modifierFlags: .command)
+    let valueChanged = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "value == %@", text), object: element
+    )
+    XCTAssertEqual(XCTWaiter.wait(for: [valueChanged], timeout: 5), .completed)
   }
 
   @MainActor
