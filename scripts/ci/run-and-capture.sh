@@ -54,7 +54,7 @@ fi
 
 if [[ $OSTYPE == darwin* ]]; then
   system_log="$log_dir/$label-system.log"
-  /usr/bin/log show --last 10m --style compact --info --debug \
+  /usr/bin/log show --last 10m --style compact --info \
     --predicate 'process == "Inkora" OR process CONTAINS[c] "WebKit" OR subsystem == "com.apple.WebKit"' \
     > "$system_log" 2>&1 || true
 

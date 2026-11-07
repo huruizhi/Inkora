@@ -32,7 +32,9 @@ Bridge 错误动作固定映射如下：
 - 新窗口请求始终返回 `nil`；
 - CSP 的 `script-src` 和 `img-src` 固定到 `inkora-editor://app`，`connect-src`、frame、worker、object、form 均关闭；
 - WKWebsiteDataStore 使用 non-persistent 模式；
-- 当前应用不声明网络客户端 entitlement。将来的 AI 模块必须与编辑器进程/接口解耦，并单独说明权限。
+- 应用声明 `com.apple.security.network.client`，仅用于让沙盒 WKWebView 连接系统 WebContent、
+  Networking 与 GPU 子进程；编辑器仍由本地 scheme、导航白名单和 CSP 阻止 HTTP/HTTPS
+  访问。将来的 AI 模块必须与编辑器进程/接口解耦，并单独说明权限与网络边界。
 
 ## 验证
 
