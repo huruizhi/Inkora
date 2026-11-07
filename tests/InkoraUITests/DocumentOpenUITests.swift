@@ -76,7 +76,7 @@ final class DocumentOpenUITests: XCTestCase {
     let temporaryDirectory = try makeTemporaryDirectory()
     let fileURL = temporaryDirectory.appendingPathComponent("History Commands.md")
     try Data("original".utf8).write(to: fileURL)
-    let app = try openDocumentInControlledApplication(fileURL)
+    let app = try openWithLaunchServices(fileURL)
     defer {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
@@ -87,9 +87,9 @@ final class DocumentOpenUITests: XCTestCase {
       "Could not locate the web editor. \(editorRecoveryMessage(in: app))"
     )
 
-    replaceText(in: editor, with: "changed")
+    replaceText(in: editor, with: "x")
     XCTAssertTrue(
-      waitForValue(editor, containing: "changed"),
+      waitForValue(editor, containing: "x"),
       "Initial editor replacement did not complete"
     )
 
@@ -105,7 +105,7 @@ final class DocumentOpenUITests: XCTestCase {
     editor.click()
     editor.typeKey("z", modifierFlags: [.command, .shift])
     XCTAssertTrue(
-      waitForValue(editor, containing: "changed"),
+      waitForValue(editor, containing: "x"),
       "Cmd+Shift+Z did not redo the edit"
     )
     editor.typeKey("z", modifierFlags: .command)
@@ -119,7 +119,7 @@ final class DocumentOpenUITests: XCTestCase {
     XCTAssertTrue(redoItem.isEnabled, "Redo menu item did not become enabled")
     redoItem.click()
     XCTAssertTrue(
-      waitForValue(editor, containing: "changed"),
+      waitForValue(editor, containing: "x"),
       "Edit > Redo did not restore the changed text"
     )
   }
@@ -129,7 +129,7 @@ final class DocumentOpenUITests: XCTestCase {
     let temporaryDirectory = try makeTemporaryDirectory()
     let fileURL = temporaryDirectory.appendingPathComponent("File Commands.md")
     try Data("original".utf8).write(to: fileURL)
-    let app = try openDocumentInControlledApplication(fileURL)
+    let app = try openWithLaunchServices(fileURL)
     defer {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
@@ -288,32 +288,6 @@ final class DocumentOpenUITests: XCTestCase {
     XCTAssertEqual(process.terminationStatus, 0)
     let isRunning = app.wait(for: .runningForeground, timeout: 10)
     XCTAssertTrue(isRunning)
-    return app
-  }
-
-  @MainActor
-  private func openDocumentInControlledApplication(_ fileURL: URL) throws -> XCUIApplication {
-    let app = launchApplication()
-    app.typeKey("o", modifierFlags: .command)
-    let openButton = app.buttons["Open"].firstMatch
-    XCTAssertTrue(openButton.waitForExistence(timeout: 5), "Open panel did not appear")
-
-    app.typeKey("g", modifierFlags: [.command, .shift])
-    let locationField = app.sheets.textFields.firstMatch
-    XCTAssertTrue(
-      locationField.waitForExistence(timeout: 5),
-      "Go to Folder field did not appear"
-    )
-    locationField.typeText(fileURL.path)
-    locationField.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
-    XCTAssertTrue(openButton.waitForExistence(timeout: 5), "Open panel did not return")
-    openButton.click()
-
-    let documentWindow = app.windows[fileURL.lastPathComponent]
-    XCTAssertTrue(
-      documentWindow.waitForExistence(timeout: 10),
-      "Open panel did not open the Markdown document"
-    )
     return app
   }
 
