@@ -28,33 +28,36 @@ class AcceptanceTestCase: XCTestCase {
 
   override func record(_ issue: XCTIssue) {
     if Thread.isMainThread {
+      // XCTestCase is not Sendable. This synchronous borrow stays on the
+      // checked main thread and never escapes the record callback.
+      nonisolated(unsafe) let testCase = self
       MainActor.assumeIsolated {
-        if let app = diagnosticApp {
-          capture("failure-screen", app: app)
-          attach(app.debugDescription, name: "failure-accessibility-tree")
+        if let app = testCase.diagnosticApp {
+          testCase.capture("failure-screen", app: app)
+          testCase.attach(app.debugDescription, name: "failure-accessibility-tree")
         }
-        if let snapshotURL,
+        if let snapshotURL = testCase.snapshotURL,
           let log = try? String(
             contentsOf: snapshotURL.appendingPathExtension("log"), encoding: .utf8)
         {
-          attach(log, name: "failure-app-bridge-log")
+          testCase.attach(log, name: "failure-app-bridge-log")
         } else {
-          attach(
+          testCase.attach(
             "App log unavailable before bridge initialization; see artifacts/logs.",
             name: "failure-app-log-unavailable")
         }
-        if let snapshotURL, let data = try? Data(contentsOf: snapshotURL) {
+        if let snapshotURL = testCase.snapshotURL, let data = try? Data(contentsOf: snapshotURL) {
           let attachment = XCTAttachment(
             data: data, uniformTypeIdentifier: "net.daringfireball.markdown")
           attachment.name = "failure-current-markdown.md"
           attachment.lifetime = .keepAlways
-          add(attachment)
+          testCase.add(attachment)
         } else {
-          attach(
+          testCase.attach(
             "Bridge snapshot unavailable (editor not ready, composition or process failure).",
             name: "failure-snapshot-unavailable")
         }
-        attach(
+        testCase.attach(
           "App/WebKit logs: artifacts/logs/document-open-ui-system.log; XCTest stdout: document-open-ui.log",
           name: "failure-log-location")
       }
