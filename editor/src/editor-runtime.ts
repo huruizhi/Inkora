@@ -61,14 +61,19 @@ class StructuredEditorRuntime implements EditorRuntime {
   markSaved(text: string): void {
     this.savedText = text;
     this.session.markSaved(parseMarkdown(text));
+    this.view.updateState(this.session.state);
   }
 
   undo(): boolean {
-    return this.session.undo();
+    const applied = this.session.undo();
+    if (applied) this.view.updateState(this.session.state);
+    return applied;
   }
 
   redo(): boolean {
-    return this.session.redo();
+    const applied = this.session.redo();
+    if (applied) this.view.updateState(this.session.state);
+    return applied;
   }
 
   focus(): void {

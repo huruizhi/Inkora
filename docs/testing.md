@@ -11,7 +11,7 @@
 | `make test-editor` | Bridge 以外的编辑器模型与行为测试 |
 | `make test-bridge` | TypeScript + Swift Bridge v1 contract tests |
 | `make test-native` | 全部 XCTest 单元与 WKWebView 集成测试 |
-| `make test-document-open-ui` | 文档打开 XCUITest，需已登录且解锁的桌面和 Automation Mode |
+| `make test-document-open-ui` | 文档打开、菜单状态、菜单点击及 Cmd+O/S/Shift+S/Z/Shift+Z；实际打开与另存后验证磁盘内容；需已解锁桌面和 Automation Mode |
 | `make test-ui-release` | Release 离线资源检查与 App 启动烟测 |
 | `make test-ui` | 无辅助功能权限依赖的 Debug App 启动烟测；CI 通过 `INKORA_CAPTURE_SCREEN=1` 尽力截图 |
 | `make test-ci` | 验证命令包装器、快照归档及 UI 锁的获取/排队/超时/回收/退出清理 |
@@ -106,3 +106,8 @@ launchctl print "gui/$(id -u)/$runner_label"
 “开发者工具”、以及系统实际提示的“辅助功能/自动化”授权，并允许实际运行测试的宿主。
 先运行一次 UI 目标观察系统提示；不批量授予权限、不修改 TCC 数据库。
 `SACSetScreenSaverCanRun returned 22` 单独不足以证明锁屏或 TCC 拒绝，需结合会话和测试日志诊断。
+## 原生菜单验收
+
+`DocumentOpenUITests` 将编辑器查询限定到目标文档窗口，兼容独立窗口与 Sheet 两种系统文件面板。历史场景用一次粘贴建立单个编辑事件并恢复原剪贴板，避免逐字合成键盘事件的时间间隔改变 history 分组；Undo/Redo 本身仍通过菜单点击及真实快捷键执行。
+
+同机多个 worktree 或 CI 同时验证时，所有启动 App 的命令须使用 `/tmp/inkora-ui-tests.lock` 互斥。runner 的 automation mode 超时须与测试断言失败分开记录。

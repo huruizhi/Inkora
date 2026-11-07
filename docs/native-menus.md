@@ -20,4 +20,4 @@ Undo/Redo 使用 Inkora 专用 selector，避免 WKWebView 的浏览器原生 hi
 
 ## 中文输入保护
 
-编辑器在 composition 期间拒绝 Undo/Redo，不创建 history transaction，不改动文本、选区或 revision。composition 完成后，仍可将该次输入作为一个 history event 撤销和重做。
+编辑器在 composition 期间拒绝 Undo/Redo，不创建 history transaction，不改动文本、选区或 revision。被拒绝的历史命令仅通过系统提示音反馈，避免错误面板抢走输入焦点。composition 完成后，仍可将该次输入作为一个 history event 撤销和重做。

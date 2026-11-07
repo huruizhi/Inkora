@@ -586,6 +586,7 @@ final class EditorWebViewTests: XCTestCase {
       }
       try await Task.sleep(for: interval)
     }
+    XCTFail("Timed out waiting for JavaScript value; last value: \(String(describing: lastValue))")
     return lastValue
   }
 

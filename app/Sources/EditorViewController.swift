@@ -138,6 +138,13 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   }
 
   func editorBridge(_ bridge: EditorBridge, didReceiveRecoverableError error: Error) {
+    if let bridgeError = error as? EditorBridgeError,
+      case .remote(.commandRejected, .notify, _) = bridgeError
+    {
+      // A rejected history command must not steal focus from an active IME session.
+      NSSound.beep()
+      return
+    }
     guard let window = view.window else { return }
     NSAlert(error: error).beginSheetModal(for: window)
   }

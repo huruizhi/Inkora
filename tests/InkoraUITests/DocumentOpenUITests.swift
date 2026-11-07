@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 final class DocumentOpenUITests: XCTestCase {
@@ -81,7 +82,7 @@ final class DocumentOpenUITests: XCTestCase {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
     }
-    let editor = webEditor(in: app)
+    let editor = webEditor(in: app, windowTitle: fileURL.lastPathComponent)
     XCTAssertTrue(
       editor.waitForExistence(timeout: 10),
       "Could not locate the web editor. \(editorRecoveryMessage(in: app))"
@@ -140,7 +141,7 @@ final class DocumentOpenUITests: XCTestCase {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
     }
-    let editor = webEditor(in: app)
+    let editor = webEditor(in: app, windowTitle: fileURL.lastPathComponent)
     XCTAssertTrue(
       editor.waitForExistence(timeout: 10),
       "Could not locate the web editor. \(editorRecoveryMessage(in: app))"
@@ -200,7 +201,7 @@ final class DocumentOpenUITests: XCTestCase {
       }
       try chooseFilePath(source, button: "Open", in: app)
       XCTAssertTrue(app.windows[source.lastPathComponent].waitForExistence(timeout: 5))
-      let editor = webEditor(in: app)
+      let editor = webEditor(in: app, windowTitle: source.lastPathComponent)
       XCTAssertTrue(waitForValue(editor, containing: "original-\(suffix)"))
       replaceText(in: editor, with: "saved-\(suffix)")
       if useShortcut {
@@ -213,8 +214,11 @@ final class DocumentOpenUITests: XCTestCase {
       let saved = await waitForFile(destination, containing: "saved-\(suffix)")
       XCTAssertTrue(saved)
       XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original-\(suffix)")
-      replaceText(in: editor, with: "subsequent-\(suffix)")
-      editor.typeKey("s", modifierFlags: .command)
+      let savedEditor = webEditor(
+        in: app, windowTitle: destination.lastPathComponent, previousTitle: source.lastPathComponent
+      )
+      replaceText(in: savedEditor, with: "subsequent-\(suffix)")
+      savedEditor.typeKey("s", modifierFlags: .command)
       let savedAgain = await waitForFile(destination, containing: "subsequent-\(suffix)")
       XCTAssertTrue(savedAgain, "Save after Save As must use the new URL")
       XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original-\(suffix)")
@@ -223,10 +227,10 @@ final class DocumentOpenUITests: XCTestCase {
 
   @MainActor
   private func chooseFilePath(_ url: URL, button: String, in app: XCUIApplication) throws {
-    let panel = app.sheets.firstMatch
+    let panel = filePanel(in: app)
     XCTAssertTrue(panel.waitForExistence(timeout: 5))
     app.typeKey("g", modifierFlags: [.command, .shift])
-    let pathField = app.sheets.textFields.firstMatch
+    let pathField = app.textFields["PathTextField"]
     XCTAssertTrue(pathField.waitForExistence(timeout: 5))
     pathField.typeKey("a", modifierFlags: .command)
     pathField.typeText(url.path)
@@ -261,13 +265,32 @@ final class DocumentOpenUITests: XCTestCase {
   private func replaceText(in editor: XCUIElement, with text: String) {
     editor.click()
     editor.typeKey("a", modifierFlags: .command)
-    editor.typeText(text)
+    let pasteboard = NSPasteboard.general
+    let previousItems = (pasteboard.pasteboardItems ?? []).map { item in
+      let copy = NSPasteboardItem()
+      for type in item.types {
+        if let data = item.data(forType: type) { copy.setData(data, forType: type) }
+      }
+      return copy
+    }
+    defer {
+      pasteboard.clearContents()
+      pasteboard.writeObjects(previousItems)
+    }
+    pasteboard.clearContents()
+    pasteboard.setString(text, forType: .string)
+    editor.typeKey("v", modifierFlags: .command)
   }
 
   @MainActor
-  private func webEditor(in app: XCUIApplication) -> XCUIElement {
+  private func webEditor(
+    in app: XCUIApplication, windowTitle: String, previousTitle: String? = nil
+  ) -> XCUIElement {
+    let titles = [windowTitle, previousTitle].compactMap { $0 }
+    let window = app.windows.matching(NSPredicate(format: "title IN %@", titles)).firstMatch
+    XCTAssertTrue(window.waitForExistence(timeout: 10))
     let accessibleNames = ["Markdown editor", "Markdown source editor"]
-    let labeledEditor = app.descendants(matching: .any).matching(
+    let labeledEditor = window.descendants(matching: .any).matching(
       NSPredicate(
         format: "identifier IN %@ OR label IN %@",
         accessibleNames,
@@ -277,7 +300,7 @@ final class DocumentOpenUITests: XCTestCase {
     if labeledEditor.waitForExistence(timeout: 3) {
       return labeledEditor
     }
-    return app.descendants(matching: .textView).firstMatch
+    return window.descendants(matching: .textView).firstMatch
   }
 
   @MainActor
@@ -300,8 +323,17 @@ final class DocumentOpenUITests: XCTestCase {
   }
 
   @MainActor
+  private func filePanel(in app: XCUIApplication) -> XCUIElement {
+    let panel = app.windows.matching(
+      NSPredicate(format: "identifier IN %@", ["open-panel", "save-panel"])
+    ).firstMatch
+    if panel.waitForExistence(timeout: 2) { return panel }
+    return app.sheets.firstMatch
+  }
+
+  @MainActor
   private func cancelFilePanel(in app: XCUIApplication) throws {
-    let panel = app.sheets.firstMatch
+    let panel = filePanel(in: app)
     guard panel.waitForExistence(timeout: 5) else {
       throw NSError(
         domain: "InkoraUITests",
@@ -341,13 +373,11 @@ final class DocumentOpenUITests: XCTestCase {
 
   @MainActor
   private func openWithLaunchServices(_ fileURL: URL) throws -> XCUIApplication {
-    let app = XCUIApplication(bundleIdentifier: "com.huruizhi.Inkora")
-    app.terminate()
-    _ = app.wait(for: .notRunning, timeout: 5)
+    let app = launchApplication()
     let applicationURL = try builtApplicationURL()
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-    process.arguments = ["-n", "-a", applicationURL.path, fileURL.path]
+    process.arguments = ["-a", applicationURL.path, fileURL.path]
     try process.run()
     process.waitUntilExit()
     XCTAssertEqual(process.terminationStatus, 0)
