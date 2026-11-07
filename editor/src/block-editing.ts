@@ -1,0 +1,144 @@
+import {
+  chainCommands,
+  createParagraphNear,
+  deleteSelection,
+  exitCode,
+  joinBackward,
+  lift,
+  liftEmptyBlock,
+  newlineInCode,
+  selectNodeBackward,
+  setBlockType,
+  splitBlockKeepMarks,
+  wrapIn,
+} from "prosemirror-commands";
+import {
+  InputRule,
+  inputRules,
+  textblockTypeInputRule,
+  wrappingInputRule,
+} from "prosemirror-inputrules";
+import { keymap } from "prosemirror-keymap";
+import {
+  liftListItem,
+  sinkListItem,
+  splitListItem,
+  wrapInList,
+} from "prosemirror-schema-list";
+import type { Command, Plugin } from "prosemirror-state";
+import { inkoraSchema } from "./schema";
+
+export function setHeading(level: number): Command {
+  if (!Number.isInteger(level) || level < 1 || level > 6) {
+    throw new RangeError("Heading level must be an integer from 1 through 6");
+  }
+  return setBlockType(inkoraSchema.nodes.heading, { level });
+}
+
+export const setParagraph: Command = setBlockType(inkoraSchema.nodes.paragraph);
+
+export function setCodeBlock(language: string | null = null): Command {
+  return setBlockType(inkoraSchema.nodes.code_block, { language });
+}
+
+export const wrapBlockquote: Command = wrapIn(inkoraSchema.nodes.blockquote);
+export const liftBlock: Command = lift;
+export const wrapBulletList: Command = wrapInList(inkoraSchema.nodes.bullet_list);
+export const wrapOrderedList: Command = wrapInList(inkoraSchema.nodes.ordered_list);
+
+export const insertHorizontalRule: Command = (state, dispatch) => {
+  const rule = inkoraSchema.nodes.horizontal_rule.create();
+  if (dispatch) dispatch(state.tr.replaceSelectionWith(rule).scrollIntoView());
+  return true;
+};
+
+const insertTabInCode: Command = (state, dispatch) => {
+  if (state.selection.$from.parent.type !== inkoraSchema.nodes.code_block) {
+    return false;
+  }
+  if (dispatch) dispatch(state.tr.insertText("\t").scrollIntoView());
+  return true;
+};
+
+export const blockKeyBindings: Record<string, Command> = {
+  Enter: chainCommands(
+    newlineInCode,
+    splitListItem(inkoraSchema.nodes.list_item),
+    createParagraphNear,
+    liftEmptyBlock,
+    splitBlockKeepMarks,
+  ),
+  "Mod-Enter": exitCode,
+  Backspace: chainCommands(deleteSelection, joinBackward, selectNodeBackward),
+  Tab: chainCommands(
+    insertTabInCode,
+    sinkListItem(inkoraSchema.nodes.list_item),
+  ),
+  "Shift-Tab": liftListItem(inkoraSchema.nodes.list_item),
+  "Mod-Alt-0": setParagraph,
+  "Mod-Alt-1": setHeading(1),
+  "Mod-Alt-2": setHeading(2),
+  "Mod-Alt-3": setHeading(3),
+  "Mod-Alt-4": setHeading(4),
+  "Mod-Alt-5": setHeading(5),
+  "Mod-Alt-6": setHeading(6),
+  "Mod-Shift-7": wrapOrderedList,
+  "Mod-Shift-8": wrapBulletList,
+  "Mod-Shift-.": wrapBlockquote,
+};
+
+export function createBlockKeymap(): Plugin {
+  return keymap(blockKeyBindings);
+}
+
+const headingInputRule = textblockTypeInputRule(
+  /^(#{1,6})\s$/,
+  inkoraSchema.nodes.heading,
+  (match) => ({ level: match[1].length }),
+);
+
+const blockquoteInputRule = wrappingInputRule(
+  /^\s*>\s$/,
+  inkoraSchema.nodes.blockquote,
+);
+
+const orderedListInputRule = wrappingInputRule(
+  /^(\d+)\.\s$/,
+  inkoraSchema.nodes.ordered_list,
+  (match) => ({ order: Number(match[1]) }),
+  (match, node) => node.childCount + node.attrs.order === Number(match[1]),
+);
+
+const bulletListInputRule = wrappingInputRule(
+  /^\s*([-+*])\s$/,
+  inkoraSchema.nodes.bullet_list,
+);
+
+const codeBlockInputRule = textblockTypeInputRule(
+  /^```([A-Za-z0-9_-]+)?\s$/,
+  inkoraSchema.nodes.code_block,
+  (match) => ({ language: match[1] ?? null }),
+);
+
+const horizontalRuleInputRule = new InputRule(
+  /^(?:---|___|\*\*\*)$/,
+  (state, _match, start, end) =>
+    state.tr.replaceWith(
+      start - 1,
+      end,
+      inkoraSchema.nodes.horizontal_rule.create(),
+    ),
+);
+
+export const blockInputRules = [
+  headingInputRule,
+  blockquoteInputRule,
+  orderedListInputRule,
+  bulletListInputRule,
+  codeBlockInputRule,
+  horizontalRuleInputRule,
+] as const;
+
+export function createBlockInputRules(): Plugin {
+  return inputRules({ rules: blockInputRules });
+}

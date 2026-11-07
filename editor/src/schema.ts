@@ -6,6 +6,11 @@ import {
   Schema,
   type TagParseRule,
 } from "prosemirror-model";
+import {
+  bulletList as baseBulletList,
+  listItem as baseListItem,
+  orderedList as baseOrderedList,
+} from "prosemirror-schema-list";
 
 export type InkoraNodeName =
   | "doc"
@@ -13,7 +18,12 @@ export type InkoraNodeName =
   | "heading"
   | "text"
   | "hard_break"
-  | "horizontal_rule";
+  | "horizontal_rule"
+  | "blockquote"
+  | "code_block"
+  | "ordered_list"
+  | "bullet_list"
+  | "list_item";
 
 export type InkoraMarkName = "strong" | "em" | "strike" | "code" | "link";
 
@@ -55,6 +65,12 @@ function validateLinkTitle(value: unknown): asserts value is string | null {
   }
 }
 
+function validateListOrder(value: unknown): asserts value is number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new RangeError("Ordered list start must be a positive integer");
+  }
+}
+
 function linkAttrsFromDOM(dom: Node | string): false | { href: string; title: string | null } {
   if (typeof dom === "string") return false;
   const element = dom as HTMLElement;
@@ -64,6 +80,12 @@ function linkAttrsFromDOM(dom: Node | string): false | { href: string; title: st
     href,
     title: element.getAttribute("title"),
   };
+}
+
+function codeBlockAttrsFromDOM(dom: Node | string): { language: string | null } {
+  if (typeof dom === "string") return { language: null };
+  const code = (dom as HTMLElement).querySelector?.("code");
+  return { language: code?.getAttribute("data-language") ?? null };
 }
 
 const headingParseRules: TagParseRule[] = headingLevels.map((level) => ({
@@ -108,6 +130,55 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
     group: "block",
     parseDOM: [{ tag: "hr" }],
     toDOM: (): DOMOutputSpec => ["hr"],
+  },
+  blockquote: {
+    content: "block+",
+    defining: true,
+    group: "block",
+    parseDOM: [{ tag: "blockquote" }],
+    toDOM: (): DOMOutputSpec => ["blockquote", 0],
+  },
+  code_block: {
+    attrs: {
+      language: { default: null, validate: "string|null" },
+    },
+    code: true,
+    content: "text*",
+    defining: true,
+    group: "block",
+    marks: "",
+    parseDOM: [
+      {
+        tag: "pre",
+        preserveWhitespace: "full",
+        getAttrs: codeBlockAttrsFromDOM,
+      },
+    ],
+    toDOM: (node): DOMOutputSpec => [
+      "pre",
+      [
+        "code",
+        node.attrs.language ? { "data-language": node.attrs.language } : {},
+        0,
+      ],
+    ],
+  },
+  ordered_list: {
+    ...baseOrderedList,
+    attrs: {
+      order: { default: 1, validate: validateListOrder },
+    },
+    content: "list_item+",
+    group: "block",
+  },
+  bullet_list: {
+    ...baseBulletList,
+    content: "list_item+",
+    group: "block",
+  },
+  list_item: {
+    ...baseListItem,
+    content: "paragraph block*",
   },
 };
 
