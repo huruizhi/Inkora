@@ -25,6 +25,7 @@ struct RecoveryFingerprint: Codable, Equatable {
 struct RecoveryDraft: Codable, Equatable {
   let schema: Int
   let id: UUID
+  let generation: UUID
   let revision: Int
   let data: Data
   let payloadHash: String
@@ -42,6 +43,7 @@ struct RecoveryDraft: Codable, Equatable {
   ) {
     schema = 1
     self.id = id
+    generation = UUID()
     self.revision = revision
     self.data = data
     payloadHash = RecoveryFingerprint.hash(data)
@@ -102,8 +104,15 @@ final class RecoveryStore {
   }
 
   private struct Receipt: Codable, Equatable {
+    let generation: UUID
     let revision: Int
     let payloadHash: String
+
+    init(_ draft: RecoveryDraft) {
+      generation = draft.generation
+      revision = draft.revision
+      payloadHash = draft.payloadHash
+    }
   }
 
   let directory: URL
@@ -126,7 +135,7 @@ final class RecoveryStore {
     let receipt = try? JSONDecoder().decode(
       Receipt.self, from: Data(contentsOf: receiptURL(draft.id)))
     if let previous = try? decodeDraft(url),
-      receipt != Receipt(revision: previous.revision, payloadHash: previous.payloadHash),
+      receipt != Receipt(previous),
       previous.data == draft.data,
       previous.sourceURL == draft.sourceURL,
       previous.sourceFingerprint == draft.sourceFingerprint
@@ -144,9 +153,7 @@ final class RecoveryStore {
     do {
       try writer.write(
         try JSONEncoder().encode(
-          Receipt(
-            revision: receipt.revision,
-            payloadHash: receipt.payloadHash)), to: receiptURL(id))
+          Receipt(receipt)), to: receiptURL(id))
     } catch {
       try remove(url)
       return
@@ -173,7 +180,7 @@ final class RecoveryStore {
         }
         let receipt = try? JSONDecoder().decode(
           Receipt.self, from: Data(contentsOf: receiptURL(draft.id)))
-        if receipt == Receipt(revision: draft.revision, payloadHash: draft.payloadHash) { continue }
+        if receipt == Receipt(draft) { continue }
         // Covers a crash between the original save and receipt commit.
         if let source = draft.resolvedSourceURL(),
           let current = try? RecoveryFingerprint.read(source), current.sha256 == draft.payloadHash

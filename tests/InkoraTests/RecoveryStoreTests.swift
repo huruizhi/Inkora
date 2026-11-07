@@ -88,6 +88,18 @@ final class RecoveryStoreTests: XCTestCase {
     XCTAssertEqual(try XCTUnwrap(store.discover().drafts.first).revision, 10)
   }
 
+  func testRetiredGenerationDoesNotSuppressNewDraftWithResetRevision() throws {
+    let root = try directory()
+    let record = try draft()
+    let store = RecoveryStore(
+      directory: root, remove: { _ in throw CocoaError(.fileWriteNoPermission) })
+    try store.write(record)
+    try store.retire(record.id)
+    let newGeneration = try draft(id: record.id, revision: record.revision)
+    try store.write(newGeneration)
+    XCTAssertEqual(RecoveryStore(directory: root).discover().drafts, [newGeneration])
+  }
+
   func testReceiptWriteFailureFallsBackToDeletingDraft() throws {
     let root = try directory()
     let record = try draft()
