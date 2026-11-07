@@ -19,6 +19,10 @@ Agent 本地只运行非 UI 目标，UI 目标由 CI 执行，以避免占用开
 | `make test-ci` | 验证命令包装器、快照归档及 UI 锁的获取/排队/超时/回收/退出清理 |
 | `make test-all` / `make test` | 按层运行全部测试 |
 | `make build-release` | 构建 Release App，不配置正式签名凭据 |
+| `make bench` | 轻量性能基准（编辑器 + 原生文档层），不启动 App UI，agent 本地可运行 |
+| `make bench-full` | 完整基准，含 WKWebView 与 App 启动类指标，会启动 App UI，仅 CI runner 执行 |
+
+性能基线的方法论、样本、阈值与数据见 `docs/performance.md`；`make test-native` 中的基准用例在未设置 `INKORA_PERF=1` 时自动跳过。
 
 ## 固定产物目录
 
