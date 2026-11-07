@@ -6,6 +6,14 @@ enum InkoraDocumentError: LocalizedError {
   var errorDescription: String? {
     "Inkora currently supports UTF-8 Markdown files only."
   }
+
+  var failureReason: String? {
+    "The selected file is not valid UTF-8 text."
+  }
+
+  var recoverySuggestion: String? {
+    "Convert the file to UTF-8 in another editor, then open it again."
+  }
 }
 
 @objc(InkoraDocument)

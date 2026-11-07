@@ -52,6 +52,17 @@ targets:
       - path: app/Sources
         excludes:
           - AppDelegate.swift
+  InkoraUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: tests/InkoraUITests
+    dependencies:
+      - target: Inkora
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Inkora
 schemes:
   Inkora:
     build:
@@ -61,3 +72,11 @@ schemes:
     test:
       targets:
         - InkoraTests
+  InkoraDocumentOpenUI:
+    build:
+      targets:
+        Inkora: all
+        InkoraUITests: [test]
+    test:
+      targets:
+        - InkoraUITests

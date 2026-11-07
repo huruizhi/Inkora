@@ -1,15 +1,18 @@
 SHELL := /bin/zsh
 PROJECT := Inkora.xcodeproj
 SCHEME := Inkora
+DOCUMENT_UI_SCHEME := InkoraDocumentOpenUI
 DERIVED_DATA := $(CURDIR)/build/DerivedData
 ARTIFACTS_DIR ?= $(CURDIR)/artifacts
 CAPTURE := $(CURDIR)/scripts/ci/run-and-capture.sh
 PNPM_VERSION := 11.25.0
 PNPM := $(CURDIR)/.tools/node_modules/.bin/pnpm
 NATIVE_RESULT := $(ARTIFACTS_DIR)/test-results/native.xcresult
+DOCUMENT_UI_RESULT := $(ARTIFACTS_DIR)/test-results/document-open-ui.xcresult
 BRIDGE_RESULT := $(ARTIFACTS_DIR)/test-results/bridge-native.xcresult
 
-.PHONY: setup lint test test-editor test-bridge test-native test-ui test-ui-release test-ci test-all \
+.PHONY: setup lint test test-editor test-bridge test-native test-document-open-ui test-ui \
+	test-ui-release test-ci test-all \
 	build build-release run clean generate editor-build prepare-artifacts require-xcode
 
 setup: require-xcode
@@ -20,7 +23,7 @@ setup: require-xcode
 	xcodegen generate
 
 lint:
-	xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests
+	xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests tests/InkoraUITests
 	$(PNPM) --dir editor lint
 
 test: test-all
@@ -46,6 +49,14 @@ test-native: editor-build generate require-xcode prepare-artifacts
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(NATIVE_RESULT)" -only-testing:InkoraTests test
 
+test-document-open-ui: editor-build generate require-xcode prepare-artifacts
+	rm -rf "$(DOCUMENT_UI_RESULT)"
+	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) document-open-ui \
+		xcodebuild -quiet -project $(PROJECT) -scheme $(DOCUMENT_UI_SCHEME) \
+		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
+		-resultBundlePath "$(DOCUMENT_UI_RESULT)" \
+		-only-testing:InkoraUITests/DocumentOpenUITests test
+
 test-ui: build prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) ui \
 		tests/ci/ui-launch-smoke.sh \
@@ -62,7 +73,7 @@ test-ui-release: build-release prepare-artifacts
 test-ci: prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" tests/ci/entrypoint-smoke.sh
 
-test-all: test-editor test-bridge test-native test-ui test-ci
+test-all: test-editor test-bridge test-native test-document-open-ui test-ui test-ci
 
 build: editor-build generate require-xcode prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) build-debug \
