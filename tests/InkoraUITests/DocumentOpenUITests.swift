@@ -286,7 +286,9 @@ final class DocumentOpenUITests: XCTestCase {
   private func webEditor(
     in app: XCUIApplication, windowTitle: String, previousTitle: String? = nil
   ) -> XCUIElement {
-    let titles = [windowTitle, previousTitle].compactMap { $0 }
+    let titles = [windowTitle, previousTitle].compactMap { $0 }.flatMap { title in
+      [title, URL(fileURLWithPath: title).deletingPathExtension().lastPathComponent]
+    }
     let window = app.windows.matching(NSPredicate(format: "title IN %@", titles)).firstMatch
     XCTAssertTrue(window.waitForExistence(timeout: 10))
     let accessibleNames = ["Markdown editor", "Markdown source editor"]
