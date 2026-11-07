@@ -8,7 +8,7 @@ const results = JSON.parse(execFileSync('xcrun', ['xcresulttool', 'get', 'test-r
 const metrics = results.filter((test) => test.testIdentifier ===
   'PerformanceBaselineUITests/testApplicationMemoryMetric()')
   .flatMap((test) => test.testRuns.flatMap((run) => run.metrics));
-const metric = metrics.find((entry) => entry.identifier === 'com.apple.dt.XCTMetric_Memory.physical_peak');
+const metric = metrics.find((entry) => entry.identifier === 'com.apple.dt.XCTMetric_Memory-com.huruizhi.Inkora.physical_peak');
 if (!metric || metric.unitOfMeasurement !== 'kB' || !metric.measurements.length ||
     metric.measurements.some((value) => !Number.isFinite(value) || value <= 0)) {
   throw new Error('Missing or invalid XCTest app peak physical memory samples');

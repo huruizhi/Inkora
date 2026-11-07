@@ -67,7 +67,9 @@ WKWebView 层（full profile，`tests/InkoraTests/PerformanceWebViewTests.swift`
 | editor.state-create/large | 0.81 ms | 0.06 | native.document-save/medium | 0.20 ms | 0.25 |
 | webview.webview-load/medium | 110 ms | 0.02 | native.document-save/large | 0.33 ms | 0.32 |
 | webview.webview-load/large | 386 ms | 0.01 | native.document-memory/large | 1.0 MB | 0.77 |
-| webview.bridge-snapshot-roundtrip/large | 4.5 ms | 0.02 | launch/* | 待 CI 采集 | — |
+| webview.bridge-snapshot-roundtrip/large | 4.5 ms | 0.02 | launch/first | 1533.94 ms | — |
+
+启动暖启中位数 `launch/warm` 为 **1461.59 ms**（cv=0.0078）；App `launch/peak-physical-memory` 为 **17.84 MB**（cv=0，十进制 MB）。三项来自 [CI 42415763301](https://github.com/huruizhi/Inkora/actions/runs/42415763301) 的成功 XCTest 和附件；该 run 的后处理因 identifier 匹配错误失败，修正后已从下载的 xcresult 完整提取。
 
 ## WKWebView 与序列化热点初步分析（只测量与记录，不做优化）
 

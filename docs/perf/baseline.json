@@ -225,6 +225,32 @@
       "profiles": [
         "full"
       ]
+    },
+    "launch.launch/first": {
+      "unit": "ms",
+      "value": 1533.9448,
+      "profiles": [
+        "full"
+      ],
+      "sourceRun": "https://github.com/huruizhi/Inkora/actions/runs/42415763301"
+    },
+    "launch.launch/warm": {
+      "cv": 0.0078,
+      "unit": "ms",
+      "value": 1461.5924,
+      "profiles": [
+        "full"
+      ],
+      "sourceRun": "https://github.com/huruizhi/Inkora/actions/runs/42415763301"
+    },
+    "launch.launch/peak-physical-memory": {
+      "unit": "MB",
+      "value": 17.843087999999998,
+      "cv": 0,
+      "profiles": [
+        "full"
+      ],
+      "sourceRun": "https://github.com/huruizhi/Inkora/actions/runs/42415763301"
     }
   }
 }

@@ -35,7 +35,7 @@ try {
     suggestedHumanReadableName: 'inkora-launch.json', exportedFileName: 'launch.fixture',
   }] }]));
   const metricResults = [{ testIdentifier: 'PerformanceBaselineUITests/testApplicationMemoryMetric()',
-    testRuns: [{ metrics: [{ identifier: 'com.apple.dt.XCTMetric_Memory.physical_peak',
+    testRuns: [{ metrics: [{ identifier: 'com.apple.dt.XCTMetric_Memory-com.huruizhi.Inkora.physical_peak',
       unitOfMeasurement: 'kB', measurements: [100000, 120000, 110000] }] }] }];
   const stub = join(directory, 'xcrun');
   writeFileSync(stub, '#!/usr/bin/env node\nprocess.stdout.write(' +
