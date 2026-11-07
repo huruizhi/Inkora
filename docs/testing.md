@@ -2,6 +2,8 @@
 
 本地与 GitHub Actions 使用同一组 Make 目标。测试本身不得读取用户目录、个人配置或公网；`make setup` 仅负责安装和解析开发依赖。
 
+Agent 本地只运行非 UI 目标，UI 目标由 CI 执行，以避免占用开发者桌面。
+
 `make setup` 将固定版本的 pnpm 安装到被忽略的 `.tools/`，避免 Homebrew 滚动版本或 Intel/Apple Silicon 架构差异改变构建结果。
 
 ## 命令
