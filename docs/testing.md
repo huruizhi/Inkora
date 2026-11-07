@@ -146,3 +146,27 @@ XCUITest 另以 `-INKTestDefaultsSuite` 隔离每个用例的恢复历史；冷�
 `DocumentOpenUITests` 将编辑器查询限定到目标文档窗口，兼容独立窗口与 Sheet 两种系统文件面板。历史场景用一次粘贴建立单个编辑事件并恢复原剪贴板，避免逐字合成键盘事件的时间间隔改变 history 分组；Undo/Redo 本身仍通过菜单点击及真实快捷键执行。
 
 同机多个 worktree 或 CI 同时验证时，所有启动 App 的命令须使用 `/tmp/inkora-ui-tests.lock` 互斥。runner 的 automation mode 超时须与测试断言失败分开记录。
+
+## 1.0 验收套件（INK-024）
+
+逐条覆盖与人工 VoiceOver 清单见 [acceptance.md](acceptance.md)。
+`make test-document-open-ui` 同时运行 AcceptanceUITests：只用键盘打开、编辑、保存、
+取消关闭、放弃关闭、从最近文件重开，并运行 macOS 14+ 原生 AX 审计（描述、操作、父子关系）。
+SDK 的审计 API 自 macOS 14 可用，与项目最低版本一致；不支持的运行环境不作为通过或静默跳过。
+
+截图通过 XCTest keepAlways attachments 保存，入口在成功和失败时均导出附件到
+`artifacts/screenshots/document-open-ui/`（包含 manifest、PNG 与诊断文本；无像素比对）。
+新增键盘场景使用固定 Markdown 样本，900×700 内容区、浅色外观、既有 16px/1.65
+系统等宽字体；不覆盖真实用户的外观/字体偏好。窗口外框会因系统版本有所不同。
+
+全部 UI 类继承 AcceptanceTestCase，在记录失败时、清理 App 前附截图、AX 树、
+App Bridge 日志和当前 Markdown。日志 hook 仅测试 bundle 启用，记录 request/revision/
+category，不含正文。快照 hook 复用 Bridge，不移动焦点、不提交 composition、不修改历史；
+取不到快照时附件明确写 unavailable。原始 App/WebKit unified log 与命令 stdout 仍由
+run-and-capture.sh 失败分支归档。
+
+`TEST_RUNNER_INKORA_MARKDOWN_SNAPSHOT_SOURCE` 将测试专用容器目录传给 runner，
+由每个 XCUIApplication 使用 UUID 文件并向 App 传入 `INKORA_MARKDOWN_SNAPSHOT_SOURCE`。
+快照只用于测试诊断，不能作为生产恢复机制。冷 Launch Services 启动未继承 XCUITest
+环境时快照可能 unavailable，完整日志与截图仍保留。此限制须结合失败附件判断。
+`bench-full` 的启动构建也明确使用 UITesting bundle ID，并使用独立 defaults/recovery 参数。

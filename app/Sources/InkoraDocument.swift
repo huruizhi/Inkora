@@ -145,6 +145,7 @@ final class InkoraDocument: NSDocument {
     window.setContentSize(NSSize(width: 900, height: 700))
     window.minSize = NSSize(width: 480, height: 320)
     window.title = displayName
+    window.setAccessibilityIdentifier("DocumentWindow")
     // Automatic NSDocument state restoration is off: the launch policy
     // (LastDocumentRestoreController) reopens exactly the last successfully
     // opened document instead of every window that existed at quit. Window
@@ -157,6 +158,13 @@ final class InkoraDocument: NSDocument {
       ?? "InkoraDocumentWindow"
     window.setFrameUsingName(frameName)
     window.setFrameAutosaveName(frameName)
+    if Bundle.main.bundleIdentifier == "com.huruizhi.Inkora.UITesting",
+      ProcessInfo.processInfo.arguments.contains("--inkora-test-fixed-presentation")
+    {
+      window.appearance = NSAppearance(named: .aqua)
+      window.setContentSize(NSSize(width: 900, height: 700))
+      window.setFrameOrigin(NSPoint(x: 80, y: 80))
+    }
 
     let windowController = NSWindowController(window: window)
     addWindowController(windowController)
@@ -502,6 +510,10 @@ final class InkoraDocument: NSDocument {
     alert.addButton(withTitle: conflict ? "重新加载" : "另存为…")
     if conflict { alert.addButton(withTitle: "保留编辑并另存为…") }
     alert.addButton(withTitle: "取消")
+    alert.window.setAccessibilityIdentifier("FileStateDialog")
+    for (index, button) in alert.buttons.enumerated() {
+      button.setAccessibilityIdentifier("FileStateButton\(index)")
+    }
     alert.beginSheetModal(for: window) { [weak self] response in
       guard let self else { return }
       if conflict && response == .alertFirstButtonReturn {

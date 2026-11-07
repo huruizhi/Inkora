@@ -24,6 +24,11 @@ set +e
 exit_code=$pipestatus[1]
 set -e
 
+if [[ ${INKORA_EXPORT_UI_ATTACHMENTS:-0} == 1 && -n ${INKORA_XCRESULT_PATH:-} && -d $INKORA_XCRESULT_PATH ]]; then
+  xcrun xcresulttool export attachments --path "$INKORA_XCRESULT_PATH" \
+    --output-path "$artifact_root/screenshots/$label" || true
+fi
+
 if (( exit_code == 0 )); then
   rm -f -- "$status_file" "$summary_file"
   exit 0

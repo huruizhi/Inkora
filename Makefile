@@ -64,6 +64,7 @@ test-native: editor-build generate require-xcode prepare-artifacts
 test-document-open-ui: editor-build generate require-xcode prepare-artifacts
 	rm -rf "$(DOCUMENT_UI_RESULT)"
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" INKORA_XCRESULT_PATH="$(DOCUMENT_UI_RESULT)" \
+		INKORA_EXPORT_UI_ATTACHMENTS=1 TEST_RUNNER_INKORA_MARKDOWN_SNAPSHOT_SOURCE="$(HOME)/Library/Containers/com.huruizhi.Inkora.UITesting/Data/tmp/inkora-acceptance/current.md" \
 		$(CAPTURE) document-open-ui \
 		$(UI_LOCK) $(UI_PREFLIGHT) xcuitest \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(DOCUMENT_UI_SCHEME) \
@@ -71,7 +72,8 @@ test-document-open-ui: editor-build generate require-xcode prepare-artifacts
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(DOCUMENT_UI_RESULT)" \
 		-only-testing:InkoraUITests/DocumentOpenUITests \
-		-only-testing:InkoraUITests/RecentFilesUITests test
+		-only-testing:InkoraUITests/RecentFilesUITests \
+		-only-testing:InkoraUITests/AcceptanceUITests test
 
 test-ui: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
 test-ui: build prepare-artifacts
@@ -200,6 +202,7 @@ bench-full: bench
 		TEST_RUNNER_INKORA_PERF_PROFILE=full \
 		TEST_RUNNER_INKORA_PERF_OUTPUT="$(PERF_RESULTS_DIR)/launch.json" \
 		xcodebuild -quiet -project $(PROJECT) -scheme $(DOCUMENT_UI_SCHEME) \
+		INKORA_BUNDLE_IDENTIFIER=com.huruizhi.Inkora.UITesting \
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(LAUNCH_PERF_RESULT)" \
 		-only-testing:InkoraUITests/PerformanceBaselineUITests test

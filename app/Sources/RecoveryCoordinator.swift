@@ -23,6 +23,10 @@ final class RecoveryCoordinator {
       alert.addButton(withTitle: "恢复")
       alert.addButton(withTitle: "放弃草稿")
       alert.addButton(withTitle: "另存为…")
+      alert.window.setAccessibilityIdentifier("RecoveryDialog")
+      for (index, button) in alert.buttons.enumerated() {
+        button.setAccessibilityIdentifier("RecoveryButton\(index)")
+      }
       let response = alert.runModal()
       do {
         if response == .alertSecondButtonReturn {

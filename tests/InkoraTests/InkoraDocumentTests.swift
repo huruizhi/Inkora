@@ -2,6 +2,19 @@ import AppKit
 import XCTest
 
 final class InkoraDocumentTests: XCTestCase {
+  @MainActor
+  func testDocumentAndEditorExposeStableAccessibilityMetadata() throws {
+    let document = InkoraDocument(editorResourceBundle: Bundle(for: Self.self))
+    document.makeWindowControllers()
+    defer { document.close() }
+    let window = try XCTUnwrap(document.windowControllers.first?.window)
+    XCTAssertEqual(window.accessibilityIdentifier(), "DocumentWindow")
+    XCTAssertEqual(window.accessibilityRole(), .window)
+    let editor = try XCTUnwrap(window.contentViewController?.view)
+    XCTAssertEqual(editor.accessibilityIdentifier(), "MarkdownEditor")
+    XCTAssertEqual(editor.accessibilityLabel(), "Markdown editor")
+  }
+
   private let markdownType = "net.daringfireball.markdown"
 
   @MainActor

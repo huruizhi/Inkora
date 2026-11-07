@@ -14,6 +14,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   private var resourceSchemeHandler: EditorResourceSchemeHandler?
   private var webView: WKWebView?
   private var editorState: BridgeEditorState?
+  private var diagnosticRevision: String?
   private var automaticRecoveryAttempts = 0
   private let maximumAutomaticRecoveryAttempts = 1
 
@@ -58,6 +59,8 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     configuration.userContentController.add(bridge, name: "inkora")
 
     let webView = WKWebView(frame: .zero, configuration: configuration)
+    webView.setAccessibilityIdentifier("MarkdownEditor")
+    webView.setAccessibilityLabel("Markdown editor")
     webView.navigationDelegate = self
     webView.uiDelegate = self
     bridge.attach(webView: webView)
@@ -179,8 +182,30 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
 
   func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState) {
     editorState = state
+    captureTestSnapshot(state, bridge: bridge)
     document?.editorDidChangeState(state)
     NSApplication.shared.mainMenu?.update()
+  }
+
+  // Explicitly enabled only in the isolated UI application; no production I/O.
+  private func captureTestSnapshot(_ state: BridgeEditorState, bridge: EditorBridge) {
+    guard Bundle.main.bundleIdentifier == "com.huruizhi.Inkora.UITesting",
+      let path = ProcessInfo.processInfo.environment["INKORA_MARKDOWN_SNAPSHOT_SOURCE"]
+    else { return }
+    let identity = "\(state.documentID):\(state.revision)"
+    guard diagnosticRevision != identity else { return }
+    diagnosticRevision = identity
+    bridge.requestVersionedSnapshot { result in
+      guard case .success(let snapshot) = result else { return }
+      do {
+        let url = URL(fileURLWithPath: path)
+        try FileManager.default.createDirectory(
+          at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(snapshot.text.utf8).write(to: url, options: .atomic)
+      } catch {
+        NSLog("INK-024 diagnostic snapshot failed: %@", error.localizedDescription)
+      }
+    }
   }
 
   func webView(
@@ -276,6 +301,9 @@ final class EditorRecoveryView: NSView {
     )
     retryButton = NSButton(title: "Reload Editor", target: target, action: action)
     super.init(frame: .zero)
+    retryButton.setAccessibilityIdentifier("ReloadEditorButton")
+    retryButton.setAccessibilityRole(.button)
+    setAccessibilityIdentifier("EditorRecovery")
 
     messageLabel.alignment = .center
     messageLabel.maximumNumberOfLines = 0
