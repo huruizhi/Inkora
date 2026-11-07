@@ -59,6 +59,17 @@ final class InkoraDocument: NSDocument {
   private var snapshotRequester: SnapshotRequester?
   private var pendingSaves: [PendingSave] = []
   private var saveInProgress = false
+  private var recoverySnapshotRequester: SnapshotRequester?
+  private var recoveryStore = RecoveryStore.applicationStore()
+  private var recoveryID = UUID()
+  private var recoveryTask: Task<Void, Never>?
+  private var recoveryEpoch = 0
+  private var recoveryClosed = false
+  private var recoveredUnsaved = false
+  private var recoverySourceURL: URL?
+  private var recoverySourceFingerprint: RecoveryFingerprint?
+  private var lastRecoveryData: Data?
+  private(set) var recoveryError: Error?
 
   override init() {
     editorResourceBundle = .main
@@ -81,6 +92,26 @@ final class InkoraDocument: NSDocument {
     self.snapshotRequester = snapshotRequester
     self.dataWriter = dataWriter
     super.init()
+  }
+
+  convenience init(recoveryDraft: RecoveryDraft, recoveryStore: RecoveryStore) throws {
+    self.init()
+    try recoveryDraft.validate()
+    self.recoveryStore = recoveryStore
+    recoveryID = recoveryDraft.id
+    recoverySourceURL = recoveryDraft.resolvedSourceURL()
+    recoverySourceFingerprint = recoveryDraft.sourceFingerprint
+    try read(from: recoveryDraft.data, ofType: "net.daringfireball.markdown")
+    fileType = "net.daringfireball.markdown"
+    revisionStorage.set(recoveryDraft.revision)
+    recoveredUnsaved = true
+    lastRecoveryData = recoveryDraft.data
+    synchronizeEditedState(true)
+  }
+
+  func configureRecovery(store: RecoveryStore, snapshotRequester: SnapshotRequester? = nil) {
+    recoveryStore = store
+    recoverySnapshotRequester = snapshotRequester
   }
 
   var text: String {
@@ -197,7 +228,9 @@ final class InkoraDocument: NSDocument {
     guard state.documentID == bridgeDocumentID else { return }
     guard state.revision >= revisionStorage.get() else { return }
     revisionStorage.set(state.revision)
-    synchronizeEditedState(state.dirty || missingOriginal)
+    synchronizeEditedState(state.dirty || missingOriginal || recoveredUnsaved)
+    scheduleRecovery()
+
   }
 
   // ProseMirror owns history. Native change count is a boolean projection of its
@@ -296,6 +329,9 @@ final class InkoraDocument: NSDocument {
     ) { [weak self] error in
       guard let self else { return }
       if error == nil {
+        self.invalidateRecoveryWork()
+        self.recoveredUnsaved = false
+        self.retireRecovery()
         self.missingOriginal = false
         if let committed = try? DocumentDiskVersion(url: save.url),
           committed.data == self.encodedDocumentData()
@@ -397,6 +433,9 @@ final class InkoraDocument: NSDocument {
   func reloadFromDisk() throws {
     guard !saveInProgress, let url = fileURL else { throw CocoaError(.userCancelled) }
     try read(from: url, ofType: fileType ?? "net.daringfireball.markdown")
+    invalidateRecoveryWork()
+    retireRecovery()
+    recoveredUnsaved = false
     bridgeDocumentID = UUID().uuidString
     missingOriginal = false
     synchronizeEditedState(false)
@@ -446,12 +485,117 @@ final class InkoraDocument: NSDocument {
     }
   }
 
+  private func invalidateRecoveryWork() {
+    recoveryEpoch += 1
+    recoveryTask?.cancel()
+    recoveryTask = nil
+  }
+
+  private func scheduleRecovery() {
+    guard !recoveryClosed, recoveryStore != nil else { return }
+    invalidateRecoveryWork()
+    guard isDocumentEdited else {
+      retireRecovery()
+      return
+    }
+    recoveryTask = Task { @MainActor [weak self] in
+      do { try await Task.sleep(for: .seconds(1)) } catch { return }
+      self?.captureRecovery()
+    }
+  }
+
+  func captureRecovery() {
+    guard !recoveryClosed, recoveryStore != nil, isDocumentEdited, !saveInProgress,
+      let requester = recoverySnapshotRequester ?? editorViewController?.requestRecoverySnapshot
+    else { return }
+    let epoch = recoveryEpoch
+    let id = bridgeDocumentID
+    // Background capture never resigns first responder. The Web runtime refuses
+    // snapshots while composing; the next committed state schedules another try.
+    requester { [weak self] result in
+      guard let self, epoch == self.recoveryEpoch, id == self.bridgeDocumentID,
+        self.isDocumentEdited, !self.saveInProgress
+      else { return }
+      switch result {
+      case .success(let snapshot):
+        do { try self.writeRecovery(snapshot) } catch { self.reportRecoveryError(error) }
+      case .failure(let error):
+        if case EditorBridgeError.remote(.editorNotReady, _, _) = error {
+          // A cancelled composition may publish no change. Retry later without
+          // committing it, so earlier dirty edits still get a durable draft.
+          self.scheduleRecovery()
+        }
+      }
+    }
+  }
+
+  func writeRecovery(_ snapshot: BridgeSnapshot) throws {
+    guard !recoveryClosed, let recoveryStore, snapshot.documentID == bridgeDocumentID,
+      snapshot.revision >= bridgeRevision, isDocumentEdited
+    else { return }
+    let data = (bomStorage.get() ? Self.utf8BOM : Data()) + Data(snapshot.text.utf8)
+    guard data != lastRecoveryData else { return }
+    let source = fileURL ?? recoverySourceURL
+    let fingerprint =
+      diskVersion.map { RecoveryFingerprint(data: $0.data, modified: $0.modified) }
+      ?? recoverySourceFingerprint
+    let accessed = source?.startAccessingSecurityScopedResource() ?? false
+    defer { if accessed { source?.stopAccessingSecurityScopedResource() } }
+    let bookmark = try? source?.bookmarkData(
+      options: [.withSecurityScope],
+      includingResourceValuesForKeys: nil, relativeTo: nil)
+    let draft = RecoveryDraft(
+      id: recoveryID, revision: snapshot.revision, data: data,
+      sourceURL: source, sourceFingerprint: fingerprint, bookmark: bookmark)
+    try recoveryStore.write(draft)
+    lastRecoveryData = data
+    recoveryError = nil
+    #if DEBUG
+      let args = ProcessInfo.processInfo.arguments
+      if UUID(uuidString: recoveryStore.directory.lastPathComponent) != nil,
+        args.contains("--inkora-test-crash-after-draft")
+      {
+        // Simulate a killed process only inside an isolated UI-test recovery session.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { _exit(99) }
+      }
+    #endif
+  }
+
+  private func retireRecovery() {
+    guard let recoveryStore else { return }
+    do {
+      try recoveryStore.retire(recoveryID)
+      lastRecoveryData = nil
+      recoveryError = nil
+    } catch { reportRecoveryError(error) }
+  }
+
+  private func reportRecoveryError(_ error: Error) {
+    recoveryError = error
+    for controller in windowControllers {
+      controller.window?.subtitle = "恢复草稿写入或清理失败；请手动保存"
+      controller.window?.setAccessibilityTitle(displayName)
+    }
+  }
+
+  func finishRecoveryForNormalTermination() {
+    recoveryClosed = true
+    invalidateRecoveryWork()
+    retireRecovery()
+  }
+
+  override func close() {
+    finishRecoveryForNormalTermination()
+    super.close()
+  }
+
   private func finishCurrentSave(_ error: Error?) {
     guard !pendingSaves.isEmpty else { return }
     let save = pendingSaves.removeFirst()
     saveInProgress = false
     save.completion(error)
     processNextSave()
+    if pendingSaves.isEmpty && isDocumentEdited { scheduleRecovery() }
   }
 }
 

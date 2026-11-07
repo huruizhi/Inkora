@@ -355,6 +355,48 @@ final class DocumentOpenUITests: XCTestCase {
   }
 
   @MainActor
+  func testCrashDraftIsOfferedOnRestartAndRecoveryNeverWritesSource() throws {
+    let directory = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let source = directory.appendingPathComponent("Crash source.md")
+    try Data("original on disk".utf8).write(to: source)
+    let session = UUID().uuidString
+    let arguments = ["--inkora-test-recovery-session", session]
+    let app = launchApplication(arguments: arguments + ["--inkora-test-crash-after-draft"])
+    defer { app.terminate() }
+    openMenu("File", in: app)
+    app.menuItems["Open…"].click()
+    try chooseFilePath(source, button: "Open", in: app)
+    let editor = webEditor(in: app, windowTitle: source.lastPathComponent)
+    replaceText(in: editor, with: "recover this unsaved text")
+    XCTAssertTrue(
+      app.wait(for: .notRunning, timeout: 15), "App exits only after persisting an actual draft")
+    XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original on disk")
+    app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"] + arguments
+    app.launch()
+    let recover = app.buttons["恢复"]
+    XCTAssertTrue(recover.waitForExistence(timeout: 10))
+    recover.click()
+    let recoveredEditor = app.textViews.matching(
+      NSPredicate(format: "value CONTAINS %@", "recover this unsaved text")
+    ).firstMatch
+    XCTAssertTrue(recoveredEditor.waitForExistence(timeout: 10))
+    XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original on disk")
+    app.typeKey("w", modifierFlags: .command)
+    XCTAssertTrue(
+      app.buttons["Cancel"].waitForExistence(timeout: 5), "Recovered document remains dirty")
+    app.buttons["Cancel"].click()
+    app.typeKey("w", modifierFlags: .command)
+    let discard = app.buttons["Don’t Save"]
+    if discard.waitForExistence(timeout: 3) {
+      discard.click()
+    } else {
+      app.buttons["Don't Save"].click()
+    }
+    XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original on disk")
+  }
+
+  @MainActor
   private func requestClose(_ entry: String, in app: XCUIApplication, window: XCUIElement) {
     switch entry {
     case "button": window.buttons[XCUIIdentifierCloseWindow].click()
@@ -384,7 +426,11 @@ final class DocumentOpenUITests: XCTestCase {
   @MainActor
   private func launchApplication(arguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"] + arguments
+    let isolation =
+      arguments.contains("--inkora-test-recovery-session")
+      ? []
+      : ["--inkora-test-recovery-session", UUID().uuidString]
+    app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"] + isolation + arguments
     app.launch()
     let isRunning = app.wait(for: .runningForeground, timeout: 10)
     XCTAssertTrue(isRunning)

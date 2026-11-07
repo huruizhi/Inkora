@@ -651,6 +651,56 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testBackgroundRecoveryRejectsCompositionWithoutBlurOrHistoryChanges() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "<x>before</x>")
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "recovery-ime-\(UUID())")
+    defer {
+      document.close()
+      try? FileManager.default.removeItem(at: root)
+    }
+    let store = RecoveryStore(directory: root)
+    document.configureRecovery(store: store)
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const editor = document.querySelector('#editor');
+        editor.focus();
+        editor.value = '<x>committed</x>';
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        window.recoveryBlurCount = 0;
+        editor.addEventListener('blur', () => window.recoveryBlurCount++);
+        editor.dispatchEvent(new Event('compositionstart'));
+        editor.value = '<x>中间态</x>';
+        editor.setSelectionRange(5, 5);
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      })()
+      """)
+    do {
+      let snapshot: BridgeSnapshot = try await withCheckedThrowingContinuation { continuation in
+        controller.requestRecoverySnapshot { continuation.resume(with: $0) }
+      }
+      try document.writeRecovery(snapshot)
+      XCTFail("Composition must not yield a recovery snapshot")
+    } catch { XCTAssertTrue(store.discover().drafts.isEmpty) }
+    let blur = try await webView.evaluateJavaScript("window.recoveryBlurCount") as? Int
+    XCTAssertEqual(blur, 0)
+    let selection =
+      try await webView.evaluateJavaScript("document.querySelector('#editor').selectionStart")
+      as? Int
+    XCTAssertEqual(selection, 5)
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('#editor').dispatchEvent(new Event('compositionend'))")
+    let snapshot: BridgeSnapshot = try await withCheckedThrowingContinuation { continuation in
+      controller.requestRecoverySnapshot { continuation.resume(with: $0) }
+    }
+    try document.writeRecovery(snapshot)
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("<x>中间态</x>".utf8))
+    XCTAssertTrue(controller.canPerformEditorCommand(.undo))
+    XCTAssertFalse(controller.canPerformEditorCommand(.redo))
+  }
+
+  @MainActor
   private func waitForJavaScriptValue(
     in webView: WKWebView,
     script: String,
