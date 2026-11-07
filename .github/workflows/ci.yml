@@ -39,6 +39,7 @@ jobs:
         run: make bench-full
       - name: Upload diagnostics
         if: always()
+        uses: actions/upload-artifact@v7
         with:
           name: inkora-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/
