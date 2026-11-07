@@ -32,9 +32,8 @@ targets:
       - name: Build Editor
         script: |
           set -euo pipefail
-          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
           cd "$SRCROOT/editor"
-          pnpm build
+          "$SRCROOT/.tools/node_modules/.bin/pnpm" build
         basedOnDependencyAnalysis: false
   InkoraTests:
     type: bundle.unit-test
