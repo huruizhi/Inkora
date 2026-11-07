@@ -76,7 +76,7 @@ final class DocumentOpenUITests: XCTestCase {
     let temporaryDirectory = try makeTemporaryDirectory()
     let fileURL = temporaryDirectory.appendingPathComponent("History Commands.md")
     try Data("<custom-tag>original</custom-tag>".utf8).write(to: fileURL)
-    let app = try openWithLaunchServices(fileURL)
+    let app = try openDocumentInControlledApplication(fileURL)
     defer {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
@@ -114,7 +114,7 @@ final class DocumentOpenUITests: XCTestCase {
     let temporaryDirectory = try makeTemporaryDirectory()
     let fileURL = temporaryDirectory.appendingPathComponent("File Commands.md")
     try Data("<custom-tag>original</custom-tag>".utf8).write(to: fileURL)
-    let app = try openWithLaunchServices(fileURL)
+    let app = try openDocumentInControlledApplication(fileURL)
     defer {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
@@ -254,16 +254,44 @@ final class DocumentOpenUITests: XCTestCase {
 
   @MainActor
   private func openWithLaunchServices(_ fileURL: URL) throws -> XCUIApplication {
-    let app = launchApplication()
+    let app = XCUIApplication(bundleIdentifier: "com.huruizhi.Inkora")
+    app.terminate()
+    _ = app.wait(for: .notRunning, timeout: 5)
     let applicationURL = try builtApplicationURL()
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-    process.arguments = ["-a", applicationURL.path, fileURL.path]
+    process.arguments = ["-n", "-a", applicationURL.path, fileURL.path]
     try process.run()
     process.waitUntilExit()
     XCTAssertEqual(process.terminationStatus, 0)
     let isRunning = app.wait(for: .runningForeground, timeout: 10)
     XCTAssertTrue(isRunning)
+    return app
+  }
+
+  @MainActor
+  private func openDocumentInControlledApplication(_ fileURL: URL) throws -> XCUIApplication {
+    let app = launchApplication()
+    app.typeKey("o", modifierFlags: .command)
+    let openButton = app.buttons["Open"].firstMatch
+    XCTAssertTrue(openButton.waitForExistence(timeout: 5), "Open panel did not appear")
+
+    app.typeKey("g", modifierFlags: [.command, .shift])
+    let locationField = app.sheets.textFields.firstMatch
+    XCTAssertTrue(
+      locationField.waitForExistence(timeout: 5),
+      "Go to Folder field did not appear"
+    )
+    locationField.typeText(fileURL.path)
+    locationField.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
+    XCTAssertTrue(openButton.waitForExistence(timeout: 5), "Open panel did not return")
+    openButton.click()
+
+    let documentWindow = app.windows[fileURL.lastPathComponent]
+    XCTAssertTrue(
+      documentWindow.waitForExistence(timeout: 10),
+      "Open panel did not open the Markdown document"
+    )
     return app
   }
 
