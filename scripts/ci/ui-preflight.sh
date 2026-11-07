@@ -11,7 +11,7 @@ console_uid=$(stat -f %u /dev/console)
 gui_state=$(launchctl print "gui/$user_id" 2>/dev/null) || fail "GUI 登录会话不存在。请登录桌面；不要用 LaunchDaemon 运行 UI runner。"
 gui_audit=$(print -r -- "$gui_state" | sed -n 's/.*asid = \([0-9]*\).*/\1/p' | head -1)
 process_audit=$(launchctl print "pid/$$" | sed -n 's/.*asid = \([0-9]*\).*/\1/p' | head -1)
-[[ -n $gui_audit && $process_audit == $gui_audit ]] || fail "当前进程不属于桌面 audit session。请以登录用户的 LaunchAgent 启动 runner。"
+[[ -n $gui_audit && $process_audit == $gui_audit ]] || fail "当前进程不属于桌面 audit session (gui=$gui_audit, process=$process_audit, pid=$$)。请以登录用户的 LaunchAgent 启动 runner。"
 session=$(/usr/sbin/ioreg -n Root -d1)
 [[ $session != *'"CGSSessionScreenIsLocked"=Yes'* ]] || fail "屏幕已锁定。请在本机解锁桌面后重试。"
 [[ $session == *'"kCGSSessionOnConsoleKey"=Yes'* && $session == *'"kCGSessionLoginDoneKey"=Yes'* ]] || fail "没有已登录的活动控制台会话。请完成桌面登录后重试。"
