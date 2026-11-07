@@ -39,6 +39,25 @@ final class BridgeProtocolTests: XCTestCase {
     XCTAssertEqual(event.text, "正文")
   }
 
+  func testMarkSavedCommandRoundTripsExactSnapshot() throws {
+    let markdown = "# 已保存\r\n\r\n正文"
+    let command = BridgeNativeCommand.markSaved(
+      requestID: "saved-1",
+      documentID: "doc-1",
+      revision: 7,
+      text: markdown
+    )
+
+    try command.validate()
+    let decoded = try JSONDecoder().decode(
+      BridgeNativeCommand.self,
+      from: JSONEncoder().encode(command)
+    )
+
+    XCTAssertEqual(decoded, command)
+    XCTAssertEqual(decoded.text, markdown)
+  }
+
   func testRevisionTrackerRejectsWrongDocumentAndOlderRevision() {
     var tracker = BridgeRevisionTracker()
     tracker.beginDocument(documentID: "doc-1", revision: 4)

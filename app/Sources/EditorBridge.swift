@@ -46,6 +46,12 @@ enum EditorBridgeError: LocalizedError {
   }
 }
 
+struct BridgeSnapshot: Equatable {
+  let documentID: String
+  let revision: Int
+  let text: String
+}
+
 @MainActor
 final class EditorBridge: NSObject, WKScriptMessageHandler {
   typealias JavaScriptEvaluator = (
@@ -72,7 +78,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   private struct SnapshotRequest {
     let phase: SnapshotPhase
     let attempt: Int
-    let completion: (Result<String, Error>) -> Void
+    let completion: (Result<BridgeSnapshot, Error>) -> Void
 
     var minimumRevision: Int {
       switch phase {
@@ -152,6 +158,14 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   }
 
   func requestSnapshot(completion: @escaping (Result<String, Error>) -> Void) {
+    requestVersionedSnapshot { result in
+      completion(result.map(\.text))
+    }
+  }
+
+  func requestVersionedSnapshot(
+    completion: @escaping (Result<BridgeSnapshot, Error>) -> Void
+  ) {
     guard lifecycle == .ready else {
       completion(
         .failure(
@@ -166,6 +180,20 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       return
     }
     beginSnapshotBarrier(completion: completion, attempt: 1)
+  }
+
+  func confirmSaved(_ snapshot: BridgeSnapshot) {
+    sendImmediately(
+      .markSaved(
+        requestID: UUID().uuidString,
+        documentID: snapshot.documentID,
+        revision: snapshot.revision,
+        text: snapshot.text
+      )
+    ) { [weak self] error in
+      guard let self, let error else { return }
+      self.becomeUnavailable(error)
+    }
   }
 
   func userContentController(
@@ -285,7 +313,9 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
         category: "snapshot"
       )
     )
-    request.completion(.success(text))
+    request.completion(
+      .success(BridgeSnapshot(documentID: documentID, revision: revision, text: text))
+    )
   }
 
   private func handleEditorError(_ event: BridgeEditorEvent) {
@@ -349,7 +379,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   }
 
   private func beginSnapshotBarrier(
-    completion: @escaping (Result<String, Error>) -> Void,
+    completion: @escaping (Result<BridgeSnapshot, Error>) -> Void,
     attempt: Int
   ) {
     guard

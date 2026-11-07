@@ -19,6 +19,22 @@ final class DocumentOpenUITests: XCTestCase {
   }
 
   @MainActor
+  func testFileMenuExposesSaveAndSaveAsCommands() {
+    let app = launchApplication()
+    defer { app.terminate() }
+    let fileMenu = app.menuBars.menuBarItems["File"]
+    XCTAssertTrue(fileMenu.waitForExistence(timeout: 5))
+    fileMenu.click()
+
+    let saveItem = app.menuItems["Save"]
+    let saveAsItem = app.menuItems["Save As…"]
+    XCTAssertTrue(saveItem.waitForExistence(timeout: 5))
+    XCTAssertTrue(saveAsItem.waitForExistence(timeout: 5))
+    XCTAssertTrue(saveItem.isEnabled)
+    XCTAssertTrue(saveAsItem.isEnabled)
+  }
+
+  @MainActor
   func testLaunchServicesOpenUsesTheMarkdownFilenameAsWindowTitle() throws {
     let temporaryDirectory = try makeTemporaryDirectory()
     let fileURL = temporaryDirectory.appendingPathComponent("Finder Open 中文.md")

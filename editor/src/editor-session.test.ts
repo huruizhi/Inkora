@@ -66,6 +66,20 @@ describe("editor history and saved state", () => {
     expect(session.status.dirty).toBe(false);
   });
 
+  it("uses the persisted historical snapshot as the dirty baseline", () => {
+    const session = sessionFrom("one");
+    moveCursorToEnd(session);
+    session.dispatch(session.state.tr.insertText(" two"));
+    const persisted = session.state.doc;
+    session.dispatch(session.state.tr.insertText(" three"));
+
+    session.markSaved(persisted);
+
+    expect(session.state.doc.textContent).toBe("one two three");
+    expect(session.status.dirty).toBe(true);
+    expect(session.status.revision).toBe(2);
+  });
+
   it("does not mark selection-only transactions as document changes", () => {
     const session = sessionFrom("text");
     const changes: number[] = [];

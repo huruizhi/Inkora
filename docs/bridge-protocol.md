@@ -9,7 +9,7 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 - 所有消息均为 UTF-8 JSON 字符串，且必须包含 `protocolVersion: 1` 和 `type`。
 - 每个 Native → Editor 命令必须带非空 `requestID`；同一编辑器会话内不得复用。
 - 文档相关命令携带非空 `documentID` 和非负、JavaScript safe integer `revision`。
-- 正文只出现在 `loadDocument.text` 与 `snapshotReady.text`，必须作为 JSON string 原样传输。
+- 正文只出现在 `loadDocument.text`、`snapshotReady.text` 与 `markSaved.text`，必须作为 JSON string 原样传输。
 
 ## Revision 不变量
 
@@ -18,6 +18,7 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 3. 相同文档的旧 `stateChanged` 不得覆盖较新状态；不同 `documentID` 的事件不得改变当前文档。
 4. `createSnapshot.revision` 是原生已确认的最低 revision；编辑器原子捕获不低于该值的当前 revision 与文本。文档不一致或请求 revision 超前时返回 `stale_revision`。
 5. `snapshotReady` 固定表示编辑器处理请求时捕获的 revision。之后发生的新编辑不会改变该 snapshot，也不得被旧 snapshot 反向覆盖。
+6. 磁盘提交成功后，原生以 `markSaved` 确认实际落盘的 snapshot。该命令不增加 revision；若期间已有更高 revision，编辑器仍保持 dirty。
 
 ## Native → Editor
 
@@ -64,6 +65,21 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 ```
 
 v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 request ID 的 `stateChanged` 表达新 revision；当前历史中无法执行时返回 `command_rejected`，不得静默忽略。
+
+### `markSaved`
+
+```json
+{
+  "protocolVersion": 1,
+  "type": "markSaved",
+  "requestID": "saved-1",
+  "documentID": "document-uuid",
+  "revision": 4,
+  "text": "persisted Markdown"
+}
+```
+
+只在原子磁盘提交成功后发送，正文必须与刚刚写入的 snapshot 完全一致。相同文档中低于或等于当前版本的 revision 均可接受，以支持“保存中继续编辑”；高于当前版本或文档不一致时返回 `stale_revision`。成功响应 `stateChanged`，但不增加当前 revision，也不清除该 snapshot 之后产生的 dirty 状态。
 
 ### `queryState`
 

@@ -13,6 +13,7 @@ export interface EditorRuntimeStatus {
 export interface EditorRuntime {
   readonly status: EditorRuntimeStatus;
   getText(): string;
+  markSaved(text: string): void;
   undo(): boolean;
   redo(): boolean;
   focus(): void;
@@ -28,10 +29,10 @@ class StructuredEditorRuntime implements EditorRuntime {
 
   constructor(
     parent: HTMLElement,
-    private readonly originalText: string,
+    private savedText: string,
     onChange: RuntimeChangeListener,
   ) {
-    this.session = new InkoraEditorSession(parseMarkdown(originalText));
+    this.session = new InkoraEditorSession(parseMarkdown(savedText));
     let view: EditorView;
     view = new EditorView(parent, {
       state: this.session.state,
@@ -54,7 +55,12 @@ class StructuredEditorRuntime implements EditorRuntime {
   }
 
   getText(): string {
-    return this.status.dirty ? serializeMarkdown(this.session.state.doc) : this.originalText;
+    return this.status.dirty ? serializeMarkdown(this.session.state.doc) : this.savedText;
+  }
+
+  markSaved(text: string): void {
+    this.savedText = text;
+    this.session.markSaved(parseMarkdown(text));
   }
 
   undo(): boolean {
@@ -101,7 +107,7 @@ class SourceEditorRuntime implements EditorRuntime {
 
   constructor(
     parent: HTMLElement,
-    private readonly savedText: string,
+    private savedText: string,
     private readonly onChange: RuntimeChangeListener,
   ) {
     this.textArea = document.createElement("textarea");
@@ -132,6 +138,11 @@ class SourceEditorRuntime implements EditorRuntime {
 
   getText(): string {
     return this.currentText;
+  }
+
+  markSaved(text: string): void {
+    this.savedText = text;
+    this.onChange(this.status);
   }
 
   undo(): boolean {

@@ -43,6 +43,14 @@ export type NativeCommand =
     }
   | {
       protocolVersion: 1;
+      type: "markSaved";
+      requestID: string;
+      documentID: string;
+      revision: number;
+      text: string;
+    }
+  | {
+      protocolVersion: 1;
       type: "executeCommand";
       requestID: string;
       documentID: string;
@@ -109,6 +117,15 @@ export function decodeNativeCommand(serialized: string): NativeCommand {
         requestID,
         documentID: requireString(value, "documentID"),
         revision: requireRevision(value),
+      };
+    case "markSaved":
+      return {
+        protocolVersion: BRIDGE_PROTOCOL_VERSION,
+        type: "markSaved",
+        requestID,
+        documentID: requireString(value, "documentID"),
+        revision: requireRevision(value),
+        text: requireString(value, "text", true),
       };
     case "executeCommand": {
       const command = requireString(value, "command");
@@ -241,6 +258,25 @@ export class EditorProtocolSession {
       revision: this.state.revision,
       text,
     };
+  }
+
+  markSaved(
+    command: Extract<NativeCommand, { type: "markSaved" }>,
+    editable: EditableState,
+  ): EditorMessage {
+    const duplicate = this.claimRequest(command.requestID);
+    if (duplicate) return duplicate;
+    if (!this.state) {
+      return this.error("editor_not_ready", command.requestID, "No document is loaded");
+    }
+    if (
+      command.documentID !== this.state.documentID ||
+      command.revision > this.state.revision
+    ) {
+      return this.error("stale_revision", command.requestID, "Saved revision is ahead or mismatched");
+    }
+    this.state = { ...this.state, ...editable };
+    return this.stateChanged(command.requestID);
   }
 
   queryState(command: Extract<NativeCommand, { type: "queryState" }>): EditorMessage {
