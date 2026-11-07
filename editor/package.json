@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@types/jsdom": "30.0.0",
+    "@types/markdown-it": "14.2.0",
     "@types/node": "26.6.6",
     "jsdom": "31.0.0",
     "typescript": "7.0.2",
@@ -19,9 +20,11 @@
     "vitest": "5.1.0"
   },
   "dependencies": {
+    "markdown-it": "14.3.3",
     "prosemirror-commands": "1.7.2",
     "prosemirror-inputrules": "1.5.1",
     "prosemirror-keymap": "1.2.3",
+    "prosemirror-markdown": "1.13.9",
     "prosemirror-model": "1.25.12",
     "prosemirror-schema-list": "1.6.0",
     "prosemirror-state": "1.4.4",
