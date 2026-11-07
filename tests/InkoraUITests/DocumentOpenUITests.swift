@@ -427,7 +427,7 @@ final class DocumentOpenUITests: AcceptanceTestCase {
 
   @MainActor
   private func launchApplication(arguments: [String] = []) -> XCUIApplication {
-    let app = diagnosticApplication()
+    let app = diagnosticApplication(fixedPresentation: true)
     let isolation =
       arguments.contains("--inkora-test-recovery-session")
       ? []
@@ -435,7 +435,6 @@ final class DocumentOpenUITests: AcceptanceTestCase {
     app.launchArguments =
       [
         "-ApplePersistenceIgnoreState", "YES", "-AppleInterfaceStyle", "Light",
-        "--inkora-test-fixed-presentation",
         "-INKTestDefaultsSuite", "InkoraUITests-\(UUID().uuidString)",
       ] + isolation + arguments
     app.launch()

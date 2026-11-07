@@ -155,7 +155,7 @@ XCUITest 另以 `-INKTestDefaultsSuite` 隔离每个用例的恢复历史；冷�
 SDK 的审计 API 自 macOS 14 可用，与项目最低版本一致；不支持的运行环境不作为通过或静默跳过。
 
 截图通过 XCTest keepAlways attachments 保存，入口在成功和失败时均导出附件到
-`artifacts/screenshots/document-open-ui/`（包含 manifest、PNG 与诊断文本；无像素比对）。
+`artifacts/screenshots/document-open-ui/`（manifest 与 PNG；无像素比对），失败诊断附件导出到 markdown-snapshots/document-open-ui。
 新增键盘场景使用固定 Markdown 样本，900×700 内容区、浅色外观、既有 16px/1.65
 系统等宽字体；不覆盖真实用户的外观/字体偏好。窗口外框会因系统版本有所不同。
 

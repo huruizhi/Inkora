@@ -159,7 +159,7 @@ final class InkoraDocument: NSDocument {
     window.setFrameUsingName(frameName)
     window.setFrameAutosaveName(frameName)
     if Bundle.main.bundleIdentifier == "com.huruizhi.Inkora.UITesting",
-      ProcessInfo.processInfo.arguments.contains("--inkora-test-fixed-presentation")
+      ProcessInfo.processInfo.environment["INKORA_TEST_FIXED_PRESENTATION"] == "1"
     {
       window.appearance = NSAppearance(named: .aqua)
       window.setContentSize(NSSize(width: 900, height: 700))

@@ -8,8 +8,9 @@ class AcceptanceTestCase: XCTestCase {
   @MainActor private var snapshotURL: URL?
 
   @MainActor
-  func diagnosticApplication() -> XCUIApplication {
+  func diagnosticApplication(fixedPresentation: Bool = false) -> XCUIApplication {
     let app = XCUIApplication()
+    if fixedPresentation { app.launchEnvironment["INKORA_TEST_FIXED_PRESENTATION"] = "1" }
     if let source = ProcessInfo.processInfo.environment["INKORA_MARKDOWN_SNAPSHOT_SOURCE"]
       ?? ProcessInfo.processInfo.environment["TEST_RUNNER_INKORA_MARKDOWN_SNAPSHOT_SOURCE"]
     {
@@ -75,7 +76,7 @@ class AcceptanceTestCase: XCTestCase {
 
   @MainActor
   func capture(_ name: String, app: XCUIApplication) {
-    let attachment = XCTAttachment(screenshot: app.screenshot())
+    let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
     attachment.name = "acceptance-\(name)"
     attachment.lifetime = .keepAlways
     add(attachment)

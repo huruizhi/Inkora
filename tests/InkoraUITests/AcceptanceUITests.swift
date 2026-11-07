@@ -10,8 +10,7 @@ final class AcceptanceUITests: AcceptanceTestCase {
     defer { try? FileManager.default.removeItem(at: directory) }
     let url = directory.appendingPathComponent("Keyboard Acceptance.md")
     try Data("# Acceptance\n\n中文 Markdown\n\n- First item\n- Second item\n".utf8).write(to: url)
-    let app = diagnosticApplication()
-    app.launchArguments.append("--inkora-test-fixed-presentation")
+    let app = diagnosticApplication(fixedPresentation: true)
     app.launch()
     defer { app.terminate() }
     app.typeKey("o", modifierFlags: .command)
@@ -39,10 +38,11 @@ final class AcceptanceUITests: AcceptanceTestCase {
     XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
     capture("close-confirmation", app: app)
     app.typeKey(.escape, modifierFlags: [])
+    XCTAssertTrue(app.buttons["Cancel"].waitForNonExistence(timeout: 5))
     XCTAssertTrue(window.exists)
     app.typeKey("w", modifierFlags: .command)
     XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
-    app.typeKey("d", modifierFlags: .command)
+    app.typeKey(.delete, modifierFlags: .command)
     XCTAssertTrue(window.waitForNonExistence(timeout: 5))
     XCTAssertTrue(try String(contentsOf: url, encoding: .utf8).contains("keyboard saved"))
     XCTAssertFalse(try String(contentsOf: url, encoding: .utf8).contains("unsaved"))
@@ -50,13 +50,23 @@ final class AcceptanceUITests: AcceptanceTestCase {
     app.typeText("File")
     app.typeKey(.downArrow, modifierFlags: [])
     XCTAssertTrue(app.menuItems["Open…"].isHittable, "Keyboard must open the File menu")
-    app.typeText("Open Recent")
+    app.typeText("Open")
+    app.typeKey(.downArrow, modifierFlags: [])
     app.typeKey(.rightArrow, modifierFlags: [])
     XCTAssertTrue(app.menuItems[url.lastPathComponent].isHittable)
-    app.typeText("Keyboard Acceptance")
+    app.typeText("Keyboard")
     app.typeKey(.return, modifierFlags: [])
     XCTAssertTrue(window.waitForExistence(timeout: 10))
     XCTAssertTrue(editor.waitForExistence(timeout: 10))
+    try app.performAccessibilityAudit(for: [.sufficientElementDescription, .action, .parentChild])
+  }
+
+  @MainActor
+  func testEditorAccessibilityAudit() throws {
+    let app = diagnosticApplication(fixedPresentation: true)
+    app.launch()
+    defer { app.terminate() }
+    XCTAssertTrue(app.windows.firstMatch.textViews.firstMatch.waitForExistence(timeout: 10))
     try app.performAccessibilityAudit(for: [.sufficientElementDescription, .action, .parentChild])
   }
 
