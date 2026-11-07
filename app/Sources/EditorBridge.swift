@@ -5,10 +5,12 @@ import WebKit
 protocol EditorBridgeDelegate: AnyObject {
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge)
   func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState)
+  func editorBridge(_ bridge: EditorBridge, didReceiveRecoverableError error: Error)
   func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error)
 }
 
 extension EditorBridgeDelegate {
+  func editorBridge(_ bridge: EditorBridge, didReceiveRecoverableError error: Error) {}
   func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error) {}
 }
 
@@ -71,11 +73,19 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     let phase: SnapshotPhase
     let attempt: Int
     let completion: (Result<String, Error>) -> Void
+
+    var minimumRevision: Int {
+      switch phase {
+      case .snapshot(_, let minimumRevision):
+        minimumRevision
+      }
+    }
   }
 
   weak var delegate: EditorBridgeDelegate?
   private let requestTimeout: Duration
   private let evaluator: JavaScriptEvaluator?
+  private let diagnostics: BridgeDiagnostics
   private weak var webView: WKWebView?
   private var lifecycle = Lifecycle.loading
   private var currentDocument: LoadedDocument?
@@ -86,11 +96,13 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   init(
     delegate: EditorBridgeDelegate,
     requestTimeout: Duration = .seconds(5),
-    evaluator: JavaScriptEvaluator? = nil
+    evaluator: JavaScriptEvaluator? = nil,
+    diagnostics: BridgeDiagnostics = BridgeDiagnostics()
   ) {
     self.delegate = delegate
     self.requestTimeout = requestTimeout
     self.evaluator = evaluator
+    self.diagnostics = diagnostics
   }
 
   func attach(webView: WKWebView) {
@@ -103,11 +115,39 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     failPendingRequests(EditorBridgeError.editorNotReady)
   }
 
+  func prepareForRecovery() {
+    lifecycle = .loading
+    failPendingRequests(EditorBridgeError.editorUnavailable)
+    diagnostics.record(
+      BridgeDiagnosticEvent(
+        name: .recoveryAttempted,
+        requestID: nil,
+        revision: currentDocument?.revision,
+        category: "lifecycle"
+      )
+    )
+  }
+
+  func webContentProcessDidTerminate() {
+    diagnostics.record(
+      BridgeDiagnosticEvent(
+        name: .processTerminated,
+        requestID: nil,
+        revision: currentDocument?.revision,
+        category: "web_process"
+      )
+    )
+    becomeUnavailable(EditorBridgeError.editorUnavailable, recordsDiagnostic: false)
+  }
+
   func loadDocument(documentID: String, revision: Int, text: String) {
     revisionTracker.beginDocument(documentID: documentID, revision: revision)
     currentDocument = LoadedDocument(documentID: documentID, revision: revision, text: text)
     if lifecycle == .ready {
-      sendCurrentDocument()
+      sendCurrentDocument { [weak self] error in
+        guard let self, let error else { return }
+        self.becomeUnavailable(error)
+      }
     }
   }
 
@@ -146,17 +186,17 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       let data = serialized.data(using: .utf8),
       let editorEvent = try? JSONDecoder().decode(BridgeEditorEvent.self, from: data)
     else {
-      failPendingRequests(EditorBridgeError.invalidMessage)
+      invalidateBridge(EditorBridgeError.invalidMessage, category: "invalid_message")
       return
     }
 
     do {
       try editorEvent.validate()
     } catch BridgeProtocolValidationError.unsupportedVersion {
-      failPendingRequests(EditorBridgeError.protocolMismatch)
+      invalidateBridge(EditorBridgeError.protocolMismatch, category: "protocol_mismatch")
       return
     } catch {
-      failPendingRequests(EditorBridgeError.invalidMessage)
+      invalidateBridge(EditorBridgeError.invalidMessage, category: "invalid_message")
       return
     }
 
@@ -166,9 +206,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   func receiveEditorEvent(_ editorEvent: BridgeEditorEvent) {
     switch editorEvent.type {
     case .ready:
-      lifecycle = .ready
-      sendCurrentDocument()
-      delegate?.editorBridgeDidBecomeReady(self)
+      completeReadyHandshake()
     case .stateChanged:
       handleStateChanged(editorEvent)
     case .snapshotReady:
@@ -186,9 +224,19 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     }
   }
 
-  func becomeUnavailable(_ error: Error) {
+  func becomeUnavailable(_ error: Error, recordsDiagnostic: Bool = true) {
     lifecycle = .unavailable
     failPendingRequests(error)
+    if recordsDiagnostic {
+      diagnostics.record(
+        BridgeDiagnosticEvent(
+          name: .bridgeUnavailable,
+          requestID: nil,
+          revision: currentDocument?.revision,
+          category: diagnosticCategory(for: error)
+        )
+      )
+    }
     delegate?.editorBridge(self, didBecomeUnavailable: error)
   }
 
@@ -201,7 +249,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
   private func handleSnapshotReady(_ event: BridgeEditorEvent) {
     guard let requestID = event.requestID else {
-      failPendingRequests(EditorBridgeError.invalidMessage)
+      invalidateBridge(EditorBridgeError.invalidMessage, category: "invalid_message")
       return
     }
     guard
@@ -216,28 +264,66 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       revision >= minimumRevision,
       let text = event.text
     else {
+      diagnostics.record(
+        BridgeDiagnosticEvent(
+          name: .snapshotFailed,
+          requestID: requestID,
+          revision: event.revision,
+          category: "stale_revision"
+        )
+      )
       request.completion(.failure(EditorBridgeError.staleRevision))
       return
     }
     revisionTracker.observeSnapshot(documentID: documentID, revision: revision)
+    currentDocument = LoadedDocument(documentID: documentID, revision: revision, text: text)
+    diagnostics.record(
+      BridgeDiagnosticEvent(
+        name: .snapshotSucceeded,
+        requestID: requestID,
+        revision: revision,
+        category: "snapshot"
+      )
+    )
     request.completion(.success(text))
   }
 
   private func handleEditorError(_ event: BridgeEditorEvent) {
     guard let code = event.code, let action = event.action, let message = event.message else {
-      failPendingRequests(EditorBridgeError.invalidMessage)
+      invalidateBridge(EditorBridgeError.invalidMessage, category: "invalid_message")
       return
     }
     let error = EditorBridgeError.remote(code, action, message)
+    let requestRevision = event.requestID.flatMap { snapshotRequests[$0]?.minimumRevision }
+    diagnostics.record(
+      BridgeDiagnosticEvent(
+        name: .remoteError,
+        requestID: event.requestID,
+        revision: requestRevision ?? revisionTracker.latestRevision,
+        category: code.rawValue
+      )
+    )
+
+    if action == .stopSaving {
+      becomeUnavailable(error, recordsDiagnostic: false)
+      return
+    }
+
     if let requestID = event.requestID {
       guard let request = snapshotRequests.removeValue(forKey: requestID) else { return }
       if action == .retry && request.attempt < maximumSnapshotAttempts {
         beginSnapshotBarrier(completion: request.completion, attempt: request.attempt + 1)
       } else {
         request.completion(.failure(error))
+        if action == .notify {
+          delegate?.editorBridge(self, didReceiveRecoverableError: error)
+        }
       }
     } else {
       failPendingRequests(error)
+      if action == .notify {
+        delegate?.editorBridge(self, didReceiveRecoverableError: error)
+      }
     }
   }
 
@@ -250,6 +336,14 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
         return
       }
       guard let request = self?.snapshotRequests.removeValue(forKey: requestID) else { return }
+      self?.diagnostics.record(
+        BridgeDiagnosticEvent(
+          name: .snapshotFailed,
+          requestID: requestID,
+          revision: request.minimumRevision,
+          category: "timeout"
+        )
+      )
       request.completion(.failure(EditorBridgeError.requestTimedOut))
     }
   }
@@ -271,6 +365,14 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       attempt: attempt,
       completion: completion
     )
+    diagnostics.record(
+      BridgeDiagnosticEvent(
+        name: .snapshotRequested,
+        requestID: requestID,
+        revision: revision,
+        category: "snapshot"
+      )
+    )
     scheduleTimeout(for: requestID)
     sendImmediately(
       .createSnapshot(
@@ -280,12 +382,28 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       )
     ) { [weak self] error in
       guard let self, let error else { return }
-      self.snapshotRequests.removeValue(forKey: requestID)?.completion(.failure(error))
+      guard let request = self.snapshotRequests.removeValue(forKey: requestID) else { return }
+      self.diagnostics.record(
+        BridgeDiagnosticEvent(
+          name: .snapshotFailed,
+          requestID: requestID,
+          revision: request.minimumRevision,
+          category: self.diagnosticCategory(for: error)
+        )
+      )
+      request.completion(.failure(error))
     }
   }
 
-  private func sendCurrentDocument() {
-    guard let currentDocument else { return }
+  private func sendCurrentDocument(completion: ((Error?) -> Void)? = nil) {
+    guard let currentDocument else {
+      completion?(nil)
+      return
+    }
+    revisionTracker.beginDocument(
+      documentID: currentDocument.documentID,
+      revision: currentDocument.revision
+    )
     sendImmediately(
       .loadDocument(
         requestID: UUID().uuidString,
@@ -293,7 +411,63 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
         revision: currentDocument.revision,
         text: currentDocument.text
       )
+    ) { error in
+      completion?(error)
+    }
+  }
+
+  private func completeReadyHandshake() {
+    sendCurrentDocument { [weak self] error in
+      guard let self else { return }
+      if let error {
+        self.becomeUnavailable(error)
+        return
+      }
+      self.lifecycle = .ready
+      self.diagnostics.record(
+        BridgeDiagnosticEvent(
+          name: .recoveryCompleted,
+          requestID: nil,
+          revision: self.currentDocument?.revision,
+          category: "lifecycle"
+        )
+      )
+      self.delegate?.editorBridgeDidBecomeReady(self)
+    }
+  }
+
+  private func invalidateBridge(_ error: Error, category: String) {
+    diagnostics.record(
+      BridgeDiagnosticEvent(
+        name: .invalidMessage,
+        requestID: nil,
+        revision: revisionTracker.latestRevision,
+        category: category
+      )
     )
+    becomeUnavailable(error, recordsDiagnostic: false)
+  }
+
+  private func diagnosticCategory(for error: Error) -> String {
+    guard let bridgeError = error as? EditorBridgeError else { return "navigation" }
+    switch bridgeError {
+    case .editorUnavailable:
+      return "editor_unavailable"
+    case .editorNotReady:
+      return "editor_not_ready"
+    case .invalidMessage:
+      return "invalid_message"
+    case .javaScriptEvaluation:
+      return "javascript_evaluation"
+    case .protocolMismatch:
+      return "protocol_mismatch"
+    case .remote(let code, _, _):
+      return code.rawValue
+    case .requestTimedOut:
+      return "timeout"
+    case .staleRevision:
+      return "stale_revision"
+    }
   }
 
   private func sendImmediately(
@@ -313,7 +487,13 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
       let script = "window.inkora.receive(\(literal))"
       if let evaluator {
-        evaluator(script, { error in completion?(error) })
+        evaluator(script) { error in
+          if let error {
+            completion?(EditorBridgeError.javaScriptEvaluation(error.localizedDescription))
+          } else {
+            completion?(nil)
+          }
+        }
       } else if let webView {
         webView.evaluateJavaScript(script) { _, error in
           if let error {

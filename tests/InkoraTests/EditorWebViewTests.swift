@@ -135,7 +135,7 @@ final class EditorWebViewTests: XCTestCase {
     let bridge = EditorBridge(
       delegate: delegate,
       requestTimeout: .milliseconds(50),
-      evaluator: { _, _ in }
+      evaluator: { _, completion in completion(nil) }
     )
     bridge.loadDocument(documentID: "timeout-doc", revision: 0, text: "timeout")
     bridge.receiveEditorEvent(
@@ -194,8 +194,190 @@ final class EditorWebViewTests: XCTestCase {
     let controller = EditorViewController(document: document, resourceBundle: missingBundle)
     controller.loadViewIfNeeded()
 
-    let label = try XCTUnwrap(controller.view as? NSTextField)
-    XCTAssertTrue(label.stringValue.contains("resources are missing"))
+    let recoveryView = try XCTUnwrap(controller.view as? EditorRecoveryView)
+    XCTAssertTrue(recoveryView.messageLabel.stringValue.contains("resources are missing"))
+  }
+
+  @MainActor
+  func testTimeoutDiagnosticsContainRequestMetadataButNotDocumentText() async throws {
+    let secretText = "private markdown body 机密"
+    var events: [BridgeDiagnosticEvent] = []
+    let diagnostics = BridgeDiagnostics { event in events.append(event) }
+    let delegate = RecordingBridgeDelegate()
+    let bridge = EditorBridge(
+      delegate: delegate,
+      requestTimeout: .milliseconds(25),
+      evaluator: { _, completion in completion(nil) },
+      diagnostics: diagnostics
+    )
+    bridge.loadDocument(documentID: "diagnostic-doc", revision: 7, text: secretText)
+    bridge.receiveEditorEvent(readyEvent())
+
+    let result = await withCheckedContinuation { continuation in
+      bridge.requestSnapshot { continuation.resume(returning: $0) }
+    }
+
+    guard case .failure(let error) = result else {
+      return XCTFail("Expected snapshot timeout")
+    }
+    XCTAssertEqual(
+      error.localizedDescription, EditorBridgeError.requestTimedOut.localizedDescription)
+    let timeoutEvent = try XCTUnwrap(
+      events.last { $0.name == .snapshotFailed && $0.category == "timeout" }
+    )
+    XCTAssertNotNil(timeoutEvent.requestID)
+    XCTAssertEqual(timeoutEvent.revision, 7)
+    XCTAssertFalse(String(describing: events).contains(secretText))
+  }
+
+  @MainActor
+  func testInvalidEditorMessageStopsSubsequentSnapshots() throws {
+    var events: [BridgeDiagnosticEvent] = []
+    let diagnostics = BridgeDiagnostics { event in events.append(event) }
+    let delegate = RecordingBridgeDelegate()
+    let bridge = EditorBridge(
+      delegate: delegate,
+      evaluator: { _, completion in completion(nil) },
+      diagnostics: diagnostics
+    )
+    bridge.loadDocument(documentID: "invalid-message-doc", revision: 2, text: "safe")
+    bridge.receiveEditorEvent(readyEvent())
+    bridge.receiveEditorEvent(
+      BridgeEditorEvent(
+        protocolVersion: BridgeProtocolV1.version,
+        type: .editorError,
+        requestID: nil,
+        documentID: nil,
+        revision: nil,
+        state: nil,
+        text: nil,
+        code: nil,
+        action: nil,
+        message: nil
+      )
+    )
+
+    var result: Result<String, Error>?
+    bridge.requestSnapshot { result = $0 }
+
+    XCTAssertEqual(delegate.unavailableErrors.count, 1)
+    guard case .failure(let error) = result else {
+      return XCTFail("Expected invalid message to disable snapshots")
+    }
+    XCTAssertEqual(
+      error.localizedDescription, EditorBridgeError.editorUnavailable.localizedDescription)
+    XCTAssertTrue(events.contains { $0.name == .invalidMessage })
+  }
+
+  @MainActor
+  func testProcessTerminationReloadsTheMostRecentConfirmedSnapshot() async throws {
+    let (_, controller, webView) = try await loadedEditor(initialText: "initial")
+    try await replaceEditorText(in: webView, with: "confirmed")
+    let confirmedSnapshot = try await requestText(from: controller)
+    XCTAssertEqual(confirmedSnapshot, "confirmed")
+    try await replaceEditorText(in: webView, with: "not confirmed")
+
+    controller.webViewWebContentProcessDidTerminate(webView)
+
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == "confirmed"
+    }
+    let recoveredSnapshot = try await requestText(from: controller)
+    XCTAssertEqual(recoveredSnapshot, "confirmed")
+  }
+
+  @MainActor
+  func testFailedRecoveryKeepsSavingDisabled() throws {
+    var shouldFailRecovery = false
+    var events: [BridgeDiagnosticEvent] = []
+    let diagnostics = BridgeDiagnostics { event in events.append(event) }
+    let delegate = RecordingBridgeDelegate()
+    let bridge = EditorBridge(
+      delegate: delegate,
+      evaluator: { _, completion in
+        completion(shouldFailRecovery ? InjectedBridgeFailure() : nil)
+      },
+      diagnostics: diagnostics
+    )
+    bridge.loadDocument(documentID: "recovery-doc", revision: 4, text: "confirmed")
+    bridge.receiveEditorEvent(readyEvent())
+    bridge.webContentProcessDidTerminate()
+    shouldFailRecovery = true
+    bridge.prepareForRecovery()
+    bridge.receiveEditorEvent(readyEvent())
+
+    var result: Result<String, Error>?
+    bridge.requestSnapshot { result = $0 }
+
+    XCTAssertEqual(delegate.unavailableErrors.count, 2)
+    guard case .failure(let error) = result else {
+      return XCTFail("Expected failed recovery to keep saving disabled")
+    }
+    XCTAssertEqual(
+      error.localizedDescription, EditorBridgeError.editorUnavailable.localizedDescription)
+    XCTAssertTrue(
+      events.contains {
+        $0.name == .bridgeUnavailable && $0.category == "javascript_evaluation"
+      }
+    )
+  }
+
+  @MainActor
+  func testRemoteErrorActionsRetryNotifyAndStopSaving() throws {
+    var events: [BridgeDiagnosticEvent] = []
+    let diagnostics = BridgeDiagnostics { event in events.append(event) }
+    let delegate = RecordingBridgeDelegate()
+    let bridge = EditorBridge(
+      delegate: delegate,
+      evaluator: { _, completion in completion(nil) },
+      diagnostics: diagnostics
+    )
+    bridge.loadDocument(documentID: "mapping-doc", revision: 9, text: "confirmed")
+    bridge.receiveEditorEvent(readyEvent())
+
+    bridge.requestSnapshot { _ in }
+    let firstRequestID = try XCTUnwrap(
+      events.last { $0.name == .snapshotRequested }?.requestID
+    )
+    bridge.receiveEditorEvent(
+      errorEvent(
+        requestID: firstRequestID,
+        code: .staleRevision,
+        action: .retry
+      )
+    )
+    XCTAssertEqual(events.filter { $0.name == .snapshotRequested }.count, 2)
+
+    let retryRequestID = try XCTUnwrap(
+      events.last { $0.name == .snapshotRequested }?.requestID
+    )
+    bridge.receiveEditorEvent(
+      errorEvent(
+        requestID: retryRequestID,
+        code: .commandRejected,
+        action: .notify
+      )
+    )
+    XCTAssertEqual(delegate.recoverableErrors.count, 1)
+
+    bridge.receiveEditorEvent(
+      errorEvent(
+        requestID: nil,
+        code: .internalError,
+        action: .stopSaving
+      )
+    )
+    var disabledResult: Result<String, Error>?
+    bridge.requestSnapshot { disabledResult = $0 }
+
+    guard case .failure(let error) = disabledResult else {
+      return XCTFail("Expected stop_saving to disable snapshots")
+    }
+    XCTAssertEqual(
+      error.localizedDescription, EditorBridgeError.editorUnavailable.localizedDescription)
+    XCTAssertTrue(
+      events.contains { $0.name == .remoteError && $0.category == "internal_error" }
+    )
   }
 
   @MainActor
@@ -408,8 +590,61 @@ final class EditorWebViewTests: XCTestCase {
   }
 }
 
+private func readyEvent() -> BridgeEditorEvent {
+  BridgeEditorEvent(
+    protocolVersion: BridgeProtocolV1.version,
+    type: .ready,
+    requestID: nil,
+    documentID: nil,
+    revision: nil,
+    state: nil,
+    text: nil,
+    code: nil,
+    action: nil,
+    message: nil
+  )
+}
+
+private func errorEvent(
+  requestID: String?,
+  code: BridgeErrorCode,
+  action: BridgeRecoveryAction
+) -> BridgeEditorEvent {
+  BridgeEditorEvent(
+    protocolVersion: BridgeProtocolV1.version,
+    type: .editorError,
+    requestID: requestID,
+    documentID: "mapping-doc",
+    revision: 9,
+    state: nil,
+    text: nil,
+    code: code,
+    action: action,
+    message: "Fixed diagnostic message"
+  )
+}
+
+private struct InjectedBridgeFailure: LocalizedError {
+  var errorDescription: String? { "Injected failure" }
+}
+
 @MainActor
 private final class SilentBridgeDelegate: EditorBridgeDelegate {
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {}
   func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState) {}
+}
+
+@MainActor
+private final class RecordingBridgeDelegate: EditorBridgeDelegate {
+  private(set) var unavailableErrors: [Error] = []
+  private(set) var recoverableErrors: [Error] = []
+
+  func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {}
+  func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState) {}
+  func editorBridge(_ bridge: EditorBridge, didReceiveRecoverableError error: Error) {
+    recoverableErrors.append(error)
+  }
+  func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error) {
+    unavailableErrors.append(error)
+  }
 }
