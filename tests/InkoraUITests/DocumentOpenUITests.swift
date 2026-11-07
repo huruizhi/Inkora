@@ -84,7 +84,7 @@ final class DocumentOpenUITests: XCTestCase {
     let editor = sourceEditor(in: app)
     XCTAssertTrue(
       editor.waitForExistence(timeout: 10),
-      "Could not locate the source editor in the accessibility hierarchy:\n\(app.debugDescription)"
+      "Could not locate the source editor. \(editorRecoveryMessage(in: app))"
     )
 
     replaceText(in: editor, with: "<custom-tag>changed</custom-tag>")
@@ -122,7 +122,7 @@ final class DocumentOpenUITests: XCTestCase {
     let editor = sourceEditor(in: app)
     XCTAssertTrue(
       editor.waitForExistence(timeout: 10),
-      "Could not locate the source editor in the accessibility hierarchy:\n\(app.debugDescription)"
+      "Could not locate the source editor. \(editorRecoveryMessage(in: app))"
     )
 
     replaceText(in: editor, with: "<custom-tag>shortcut-save</custom-tag>")
@@ -198,6 +198,14 @@ final class DocumentOpenUITests: XCTestCase {
       return labeledEditor
     }
     return app.descendants(matching: .textView).firstMatch
+  }
+
+  @MainActor
+  private func editorRecoveryMessage(in app: XCUIApplication) -> String {
+    let messages = app.staticTexts.allElementsBoundByIndex.compactMap { element in
+      (element.value as? String) ?? (element.label.isEmpty ? nil : element.label)
+    }
+    return messages.isEmpty ? "No editor recovery message was exposed." : messages.joined()
   }
 
   @MainActor
