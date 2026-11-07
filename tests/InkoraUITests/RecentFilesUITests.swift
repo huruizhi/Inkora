@@ -219,6 +219,7 @@ final class RecentFilesUITests: XCTestCase {
     app.launchArguments = [
       "-ApplePersistenceIgnoreState", "YES",
       "-INKTestDefaultsSuite", defaultsSuite,
+      "--inkora-test-recovery-session", UUID().uuidString,
     ]
     app.launch()
     let isRunning = app.wait(for: .runningForeground, timeout: 10)
@@ -238,6 +239,7 @@ final class RecentFilesUITests: XCTestCase {
       "-a", applicationURL.path, fileURL.path, "--args",
       "-ApplePersistenceIgnoreState", "YES",
       "-INKTestDefaultsSuite", isolatedDefaultsSuite(),
+      "--inkora-test-recovery-session", UUID().uuidString,
     ]
     try process.run()
     process.waitUntilExit()

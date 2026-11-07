@@ -30,6 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     )
     RecentDocumentNoter.shared.configure(list: DocumentControllerRecentDocumentList())
     NSApplication.shared.mainMenu = makeMainMenu()
+  }
+
+  func applicationDidFinishLaunching(_ notification: Notification) {
     DispatchQueue.main.async { RecoveryCoordinator.shared.reviewDrafts() }
   }
 

@@ -133,7 +133,9 @@ launchctl bootstrap "gui/$(id -u)" "$runner_plist"
 `test-document-open-ui`、`test-ui` 和 `test-ui-release` 构建使用独立 bundle ID
 `com.huruizhi.Inkora.UITesting`，与用户正式 App 的最近文件、Sandbox 容器、窗口偏好隔离。
 XCUITest 另以 `-INKTestDefaultsSuite` 隔离每个用例的恢复历史；冷启动经 Launch Services
-传入相同参数。普通 `make build` / `make run` 仍使用正式 bundle ID。
+传入相同参数。恢复草稿另以 `--inkora-test-recovery-session` 隔离；测试 bundle
+启用与正式 App 相同的草稿恢复流程，Hostless XCTest 不启用真实存储。
+普通 `make build` / `make run` 仍使用正式 bundle ID。
 
 ## 原生菜单验收
 
