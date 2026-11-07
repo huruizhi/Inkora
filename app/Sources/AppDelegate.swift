@@ -11,10 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
-    Task { @MainActor [weak self] in
-      guard let self else { return }
-      NSApplication.shared.mainMenu = self.makeMainMenu()
-    }
+    NSApplication.shared.mainMenu = makeMainMenu()
   }
 
   func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
