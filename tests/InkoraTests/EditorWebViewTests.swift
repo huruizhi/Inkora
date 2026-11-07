@@ -38,9 +38,10 @@ final class EditorWebViewTests: XCTestCase {
       interval: .milliseconds(25)
     ) { $0 as? Bool == true }
     XCTAssertEqual(ready as? Bool, true)
+    bridge.loadDocument(documentID: "timeout-doc", revision: 0, text: "")
 
     let result = await withCheckedContinuation { continuation in
-      bridge.requestText { result in
+      bridge.requestSnapshot { result in
         continuation.resume(returning: result)
       }
     }
@@ -136,5 +137,5 @@ final class EditorWebViewTests: XCTestCase {
 @MainActor
 private final class SilentBridgeDelegate: EditorBridgeDelegate {
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {}
-  func editorBridge(_ bridge: EditorBridge, didChangeText text: String) {}
+  func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState) {}
 }

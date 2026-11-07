@@ -14,7 +14,8 @@ Inkora 需要可审查的 macOS 工程定义、离线 Web 编辑器资源，以�
    App Bundle。原生侧以只读 `inkora-editor://app/` scheme handler 从该目录提供静态资源，
    不通过 HTTP/HTTPS 加载资源，也不暴露 Bundle 外的文件路径。
 3. Swift 与 TypeScript 通过单一 `WKScriptMessageHandler` 交换 UTF-8 JSON 字符串。
-   协议 v0 定义在 `docs/bridge-protocol.md`。
+   初始骨架使用协议 v0；INK-004 已将唯一跨层接口升级为带 revision 的 v1，定义在
+   `docs/bridge-protocol.md`。
 4. 运行时不加载远端脚本或资源；Content Security Policy 禁止网络连接和外部对象。
 5. `NSDocument` 读写用户选择的文件时显式进入安全作用域。跨启动持久化书签属于最近文件恢复流程，
    在对应任务中实现。
@@ -26,4 +27,5 @@ Inkora 需要可审查的 macOS 工程定义、离线 Web 编辑器资源，以�
 
 - 开发机和 CI 需要完整 Xcode、Homebrew、Node、pnpm 与 XcodeGen。
 - 修改 `project.yml` 后必须重新生成 Xcode 工程。
-- 保存依赖 `getText` 请求成功；Bridge 失败时保存失败，不允许使用陈旧正文覆盖文件。
+- 保存依赖 `createSnapshot` 请求成功；Bridge 失败或 revision 不匹配时保存失败，不允许使用
+  陈旧正文覆盖文件。完整 Save barrier 留给 Issue #13。
