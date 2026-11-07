@@ -254,13 +254,11 @@ final class DocumentOpenUITests: XCTestCase {
 
   @MainActor
   private func openWithLaunchServices(_ fileURL: URL) throws -> XCUIApplication {
-    let app = XCUIApplication(bundleIdentifier: "com.huruizhi.Inkora")
-    app.terminate()
-    _ = app.wait(for: .notRunning, timeout: 5)
+    let app = launchApplication()
     let applicationURL = try builtApplicationURL()
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-    process.arguments = ["-n", "-a", applicationURL.path, fileURL.path]
+    process.arguments = ["-a", applicationURL.path, fileURL.path]
     try process.run()
     process.waitUntilExit()
     XCTAssertEqual(process.terminationStatus, 0)
