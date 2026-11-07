@@ -306,6 +306,55 @@ final class DocumentOpenUITests: XCTestCase {
   }
 
   @MainActor
+  func testExternalModificationConflictKeepsLocalEditsAndSavesCopy() async throws {
+    let directory = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let source = directory.appendingPathComponent("Conflict.md")
+    let copy = directory.appendingPathComponent("Conflict copy.md")
+    try Data("original".utf8).write(to: source)
+    let app = try openWithLaunchServices(source)
+    defer { app.terminate() }
+    let editor = webEditor(in: app, windowTitle: source.lastPathComponent)
+    replaceText(in: editor, with: "local edits")
+    try Data("external edits".utf8).write(to: source, options: .atomic)
+    // The presenter may already have offered the conflict before Cmd+S.
+    let keep = app.buttons["保留编辑并另存为…"]
+    if !keep.waitForExistence(timeout: 2) { app.typeKey("s", modifierFlags: .command) }
+    XCTAssertTrue(keep.waitForExistence(timeout: 10))
+    XCTAssertTrue(app.buttons["重新加载"].exists)
+    keep.click()
+    try chooseFilePath(copy, button: "Save", in: app)
+    let saved = await waitForFile(copy, containing: "local edits")
+    XCTAssertTrue(saved)
+    XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "external edits")
+  }
+
+  @MainActor
+  func testReadOnlySaveOffersSaveAsAndPreservesOriginal() async throws {
+    let directory = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let source = directory.appendingPathComponent("Read only.md")
+    let copy = directory.appendingPathComponent("Writable copy.md")
+    try Data("original".utf8).write(to: source)
+    try FileManager.default.setAttributes([.posixPermissions: 0o444], ofItemAtPath: source.path)
+    defer {
+      try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: source.path)
+    }
+    let app = try openWithLaunchServices(source)
+    defer { app.terminate() }
+    let editor = webEditor(in: app, windowTitle: source.lastPathComponent)
+    replaceText(in: editor, with: "saved copy")
+    app.typeKey("s", modifierFlags: .command)
+    let saveAs = app.buttons["另存为…"]
+    XCTAssertTrue(saveAs.waitForExistence(timeout: 10))
+    saveAs.click()
+    try chooseFilePath(copy, button: "Save", in: app)
+    let saved = await waitForFile(copy, containing: "saved copy")
+    XCTAssertTrue(saved)
+    XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original")
+  }
+
+  @MainActor
   private func requestClose(_ entry: String, in app: XCUIApplication, window: XCUIElement) {
     switch entry {
     case "button": window.buttons[XCUIIdentifierCloseWindow].click()

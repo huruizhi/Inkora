@@ -380,6 +380,184 @@ final class InkoraDocumentTests: XCTestCase {
     XCTAssertFalse(document.isDocumentEdited, "Native state has one dirty transition")
   }
 
+  @MainActor
+  func testExternalChangesNeverOverwriteWithOrWithoutLocalEdits() async throws {
+    for dirty in [false, true] {
+      let directory = try temporaryDirectory()
+      defer { try? FileManager.default.removeItem(at: directory) }
+      let url = directory.appendingPathComponent("external.md")
+      try Data("original".utf8).write(to: url)
+      let document = document(snapshots: ["local", "local"])
+      try document.read(from: url, ofType: markdownType)
+      document.fileURL = url
+      if dirty { document.updateChangeCount(.changeDone) }
+      let date = try FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate]
+      try Data("external".utf8).write(to: url, options: .atomic)
+      if let date {
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: url.path)
+      }
+      document.refreshFileState()
+      XCTAssertEqual(document.fileState, .externalChange)
+      let error = await save(document, to: url, operation: .saveOperation)
+      XCTAssertEqual(error as? DocumentFileState, .externalChange)
+      XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "external")
+      XCTAssertEqual(document.isDocumentEdited, dirty)
+      let copy = directory.appendingPathComponent("copy.md")
+      let copyError = await save(document, to: copy, operation: .saveAsOperation)
+      XCTAssertNil(copyError)
+      XCTAssertEqual(try String(contentsOf: copy, encoding: .utf8), "local")
+      XCTAssertEqual(document.fileState, .current)
+      document.close()
+    }
+  }
+
+  @MainActor
+  func testReadOnlyFileAndDirectoryRequireAnotherDestination() async throws {
+    for protectDirectory in [false, true] {
+      let directory = try temporaryDirectory()
+      defer { try? FileManager.default.removeItem(at: directory) }
+      let url = directory.appendingPathComponent("readonly.md")
+      try Data("original".utf8).write(to: url)
+      let document = document(snapshots: ["local", "local"])
+      try document.read(from: url, ofType: markdownType)
+      document.fileURL = url
+      document.updateChangeCount(.changeDone)
+      let protected = protectDirectory ? directory : url
+      try FileManager.default.setAttributes(
+        [.posixPermissions: 0o555], ofItemAtPath: protected.path)
+      defer {
+        try? FileManager.default.setAttributes(
+          [.posixPermissions: 0o755], ofItemAtPath: protected.path)
+      }
+      document.refreshFileState()
+      XCTAssertEqual(document.fileState, .readOnly)
+      let error = await save(document, to: url, operation: .saveOperation)
+      XCTAssertEqual(error as? DocumentFileState, .readOnly)
+      XCTAssertTrue(document.isDocumentEdited)
+      XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "original")
+      try FileManager.default.setAttributes(
+        [.posixPermissions: 0o755], ofItemAtPath: protected.path)
+      document.refreshFileState()
+      XCTAssertEqual(document.fileState, .current)
+      document.close()
+    }
+  }
+
+  @MainActor
+  func testLockedFlagIsReadOnlyUntilUnlocked() throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("locked.md")
+    try Data("original".utf8).write(to: url)
+    let document = try InkoraDocument(contentsOf: url, ofType: markdownType)
+    defer { document.close() }
+    try FileManager.default.setAttributes([.immutable: true], ofItemAtPath: url.path)
+    defer { try? FileManager.default.setAttributes([.immutable: false], ofItemAtPath: url.path) }
+    document.refreshFileState()
+    XCTAssertEqual(document.fileState, .readOnly)
+    try FileManager.default.setAttributes([.immutable: false], ofItemAtPath: url.path)
+    document.refreshFileState()
+    XCTAssertEqual(document.fileState, .current)
+  }
+
+  @MainActor
+  func testDeletionPreservesBufferAndDirtyUntilSaveAs() async throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("deleted.md")
+    try Data("original".utf8).write(to: url)
+    let document = document(snapshots: ["local", "local"])
+    try document.read(from: url, ofType: markdownType)
+    document.fileURL = url
+    try FileManager.default.removeItem(at: url)
+    document.refreshFileState()
+    XCTAssertEqual(document.fileState, .deleted)
+    XCTAssertEqual(document.text, "original")
+    XCTAssertTrue(document.isDocumentEdited)
+    let error = await save(document, to: url, operation: .saveOperation)
+    XCTAssertEqual(error as? DocumentFileState, .deleted)
+    XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+    let copy = directory.appendingPathComponent("recovered.md")
+    let copyError = await save(document, to: copy, operation: .saveAsOperation)
+    XCTAssertNil(copyError)
+    XCTAssertEqual(try String(contentsOf: copy, encoding: .utf8), "local")
+    XCTAssertFalse(document.isDocumentEdited)
+    document.close()
+  }
+
+  @MainActor
+  func testReloadResetsRevisionIdentityAndDirtyBaseline() throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("reload.md")
+    try Data("original".utf8).write(to: url)
+    let document = try InkoraDocument(contentsOf: url, ofType: markdownType)
+    let oldID = document.bridgeDocumentID
+    document.updateChangeCount(.changeDone)
+    try Data([0xEF, 0xBB, 0xBF] + Array("external\r\n".utf8)).write(to: url)
+    try document.reloadFromDisk()
+    XCTAssertNotEqual(document.bridgeDocumentID, oldID)
+    XCTAssertEqual(document.bridgeRevision, 0)
+    XCTAssertFalse(document.isDocumentEdited)
+    XCTAssertEqual(document.text, "external\r\n")
+    XCTAssertEqual(try document.data(ofType: markdownType), try Data(contentsOf: url))
+    document.close()
+  }
+
+  @MainActor
+  func testPresenterFollowsRenameAndMoveWithoutLosingEdits() async throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let original = directory.appendingPathComponent("original.md")
+    try Data("original".utf8).write(to: original)
+    let document = document(snapshots: ["local", "local"])
+    try document.read(from: original, ofType: markdownType)
+    document.fileURL = original
+    document.updateChangeCount(.changeDone)
+    for destination in [
+      directory.appendingPathComponent("renamed.md"),
+      directory.appendingPathComponent("sub/moved.md"),
+    ] {
+      try FileManager.default.createDirectory(
+        at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+      try FileManager.default.moveItem(at: try XCTUnwrap(document.fileURL), to: destination)
+      document.presentedItemDidMove(to: destination)
+      await Task.yield()
+      // Presenter callbacks are delivered on the main queue.
+      await withCheckedContinuation { continuation in
+        DispatchQueue.main.async { continuation.resume() }
+      }
+      XCTAssertEqual(document.fileURL, destination)
+      XCTAssertTrue(document.isDocumentEdited)
+      XCTAssertEqual(document.text, "original")
+    }
+    let destination = try XCTUnwrap(document.fileURL)
+    let error = await save(document, to: destination, operation: .saveOperation)
+    XCTAssertNil(error)
+    XCTAssertEqual(try String(contentsOf: destination, encoding: .utf8), "local")
+    document.close()
+  }
+
+  @MainActor
+  func testExternalChangeDuringSnapshotIsRejectedBeforeWriting() async throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("race.md")
+    try Data("original".utf8).write(to: url)
+    let document = InkoraDocument(snapshotRequester: { completion in
+      do { try Data("racing external".utf8).write(to: url) } catch { XCTFail("\(error)") }
+      completion(.success(BridgeSnapshot(documentID: "test", revision: 1, text: "local")))
+    })
+    try document.read(from: url, ofType: markdownType)
+    document.fileURL = url
+    document.updateChangeCount(.changeDone)
+    let error = await save(document, to: url, operation: .saveOperation)
+    XCTAssertEqual(error as? DocumentFileState, .externalChange)
+    XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "racing external")
+    XCTAssertTrue(document.isDocumentEdited)
+    document.close()
+  }
+
   private func fixtureData(named name: String) throws -> Data {
     let bundle = Bundle(for: Self.self)
     let url = try XCTUnwrap(

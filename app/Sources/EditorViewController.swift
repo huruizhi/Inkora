@@ -102,6 +102,14 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     }
   }
 
+  func reloadDocument() {
+    guard let document else { return }
+    editorState = nil
+    bridge?.loadDocument(
+      documentID: document.bridgeDocumentID, revision: document.bridgeRevision, text: document.text)
+    NSApplication.shared.mainMenu?.update()
+  }
+
   func confirmSaved(_ snapshot: BridgeSnapshot) {
     bridge?.confirmSaved(snapshot)
   }

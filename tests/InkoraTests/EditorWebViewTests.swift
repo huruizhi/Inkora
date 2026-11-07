@@ -130,6 +130,29 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testReloadedDiskContentStartsWithCleanHistory() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "before")
+    try await replaceEditorText(in: webView, with: "local")
+    try await waitForEditorCommand(.undo, enabled: true, in: controller)
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("reload-\(UUID()).md")
+    defer { try? FileManager.default.removeItem(at: url) }
+    try Data("external".utf8).write(to: url)
+    document.fileURL = url
+    try document.reloadFromDisk()
+    // loadedEditor owns a standalone controller instead of a document window.
+    controller.reloadDocument()
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == "external"
+    }
+    try await waitForEditorCommand(.undo, enabled: false, in: controller)
+    XCTAssertFalse(controller.canPerformEditorCommand(.redo))
+    XCTAssertFalse(document.isDocumentEdited)
+    let snapshot = try await requestText(from: controller)
+    XCTAssertEqual(snapshot, "external")
+    document.close()
+  }
+
+  @MainActor
   func testNativeUndoAndRedoFollowEditorState() async throws {
     let (_, controller, webView) = try await loadedEditor(initialText: "before")
     XCTAssertFalse(controller.canPerformEditorCommand(.undo))
