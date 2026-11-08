@@ -272,6 +272,14 @@
       "mappingVerdict": "unsupported (recorded, not passed)"
     },
     {
+      "action": "delete-all → empty-paragraph insertion point (manager counterexample)",
+      "fixed": true,
+      "previously": "half-commit + TypeError owner.pos",
+      "selectionType": "text@1",
+      "undoRestoresAnchor": true,
+      "noopAndCancelOnEmpty": true
+    },
+    {
       "action": "draft kept across refused Undo/Redo (empty history)",
       "textareaValueKept": true,
       "explicitCancelExit": true

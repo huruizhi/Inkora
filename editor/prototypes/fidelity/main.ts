@@ -1,5 +1,5 @@
 // PROTOTYPE UI; no production entry point imports this file.
-import { NodeSelection } from 'prosemirror-state';
+import { NodeSelection, TextSelection } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { baseKeymap } from 'prosemirror-commands';
 import { keydownHandler } from 'prosemirror-keymap';
@@ -174,27 +174,47 @@ const actions: Record<string, () => void> = {
     const parsed = parse(text);
     const mapped = sourceToVisual(text, parsed.doc, parsed.ranges, lfToRaw(text, backward ? end : start), lfToRaw(text, backward ? start : end));
     if (!mapped.ok) {
-      // A document with no mappable text leaf at all (e.g. only protected
-      // blocks) has no safe anchor to move to; refusing would disable the
-      // repair entry itself, so the commit proceeds with the reason shown.
+      // A document with no mappable text leaf has no safe anchor to move to;
+      // refusing would disable the repair entry itself, so the commit
+      // proceeds with a VISIBLE fallback selection. The fallback is fully
+      // validated on the parsed doc BEFORE any model mutation — a failed
+      // validation falls through to the keep-draft refusal below, never a
+      // half-committed state.
       let hasText = false;
       parsed.doc.descendants(n => { if (n.isText && n.text) hasText = true; });
       if (!hasText) {
-        // No safe anchor exists anywhere (e.g. only protected blocks):
-        // refusing would disable the repair entry itself, so the commit
-        // proceeds — but the selection stays visible instead of silently
-        // resetting: a NodeSelection anchors the block that owns the source
-        // caret. Explicit fallback, recorded as NOT a mapping pass.
-        const caretRaw = lfToRaw(text, start);
-        const owner = parsed.ranges.find(r => caretRaw >= r.start && caretRaw <= r.end)
-          ?? [...parsed.ranges].reverse().find(r => r.end <= caretRaw)
-          ?? parsed.ranges[0];
-        model.sourceEdit(text);
-        model.transaction(model.state.tr.setSelection(NodeSelection.create(model.state.doc, owner.pos)));
-        lastSelectionMap = { stage: 'apply-source', ok: false, reason: mapped.reason, noTextAnchor: true, fallback: `node-selection@${owner.pos}` };
-        sourceMode = false;
-        note = `源码修改已提交；新文档没有任何可视文本锚点（${mapped.reason}），选区已落在包含源码光标的「${owner.kind}」块（NodeSelection 整块锚点，UTF-16 原文 ${owner.start}..${owner.end}）。这是可见回退，记录为文本选区映射不支持，不判通过；受保护块仍可经源码模式修复`;
-        return;
+        if (!parsed.ranges.length) {
+          // Empty / whitespace-only / reference-definitions-only buffer: the
+          // projection is a single empty paragraph (parse's guarantee); its
+          // start is the unique semantic insertion point. This is core
+          // writing flow (delete-all, new empty doc) — NOT the protected-
+          // block NodeSelection fallback.
+          const single = parsed.doc.childCount === 1 && parsed.doc.child(0).type.name === 'paragraph' && parsed.doc.child(0).content.size === 0;
+          if (single) {
+            TextSelection.create(parsed.doc, 1); // validation only, pre-mutation
+            model.sourceEdit(text);
+            model.transaction(model.state.tr.setSelection(TextSelection.create(model.state.doc, 1)));
+            lastSelectionMap = { stage: 'apply-source', ok: false, reason: mapped.reason, noTextAnchor: true, fallback: 'empty-paragraph-text@1' };
+            sourceMode = false;
+            note = '源码修改已提交；新文档没有任何内容块（空文档/仅空白或引用定义），可视投影为唯一空段落，选区落在其唯一插入点（TextSelection，位置 1）。这是语义上正确的空文档光标，非映射失败；空文档属核心写作路径';
+            return;
+          }
+        } else {
+          // Protected-only buffer: a NodeSelection anchors the block that
+          // owns the source caret. Explicit fallback, recorded as NOT a
+          // text-selection mapping pass.
+          const caretRaw = lfToRaw(text, start);
+          const owner = parsed.ranges.find(r => caretRaw >= r.start && caretRaw <= r.end)
+            ?? [...parsed.ranges].reverse().find(r => r.end <= caretRaw)
+            ?? parsed.ranges[0];
+          NodeSelection.create(parsed.doc, owner.pos); // validation only, pre-mutation
+          model.sourceEdit(text);
+          model.transaction(model.state.tr.setSelection(NodeSelection.create(model.state.doc, owner.pos)));
+          lastSelectionMap = { stage: 'apply-source', ok: false, reason: mapped.reason, noTextAnchor: true, fallback: `node-selection@${owner.pos}` };
+          sourceMode = false;
+          note = `源码修改已提交；新文档没有任何可视文本锚点（${mapped.reason}），选区已落在包含源码光标的「${owner.kind}」块（NodeSelection 整块锚点，UTF-16 原文 ${owner.start}..${owner.end}）。这是可见回退，记录为文本选区映射不支持，不判通过；受保护块仍可经源码模式修复`;
+          return;
+        }
       }
       lastSelectionMap = { stage: 'apply-source', ok: false, reason: mapped.reason };
       note = `源码草稿未提交：textarea 当前选区映射回可视文档失败（${mapped.reason}）。草稿、可信原文与原选区全部保持；请把光标移到安全锚点（正文文本处）后重新提交，或取消草稿`;

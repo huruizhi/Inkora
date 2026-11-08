@@ -224,6 +224,52 @@ step('reset');
   assert.ok(!p.lastSelectionMap.ok && p.lastSelectionMap.noTextAnchor === true && p.lastSelectionMap.fallback === `node-selection@${m.ranges[1].pos}`);
   results.push({ action: 'textless buffer: owner-range NodeSelection fallback', committed: true, selectionType: 'node', ownerBlock: 2, dirty: true, mappingVerdict: 'unsupported (recorded, not passed)' });
 }
+// Manager counterexample (fixed): deleting the whole buffer must return to a
+// legal empty-paragraph document with the unique insertion point selected —
+// previously this half-committed (revision+1, past+1, source emptied) and then
+// crashed on owner.pos with the model stuck in source mode.
+step('reset');
+{
+  const m = p.model, src = dom.window.document.getElementById('source-draft');
+  const whole = p.samples.default;
+  let anchor; m.state.doc.descendants((n, pos) => { if (n.isText && n.text.includes('中文正文')) anchor = pos + n.text.indexOf('中文正文') + 2; });
+  m.select(anchor); // concrete pre-edit caret for the undo assertion
+  const r0 = m.revision, past0 = m.past.length;
+  p.run(p.actions.source);
+  src.value = ''; src.dispatchEvent(new dom.window.Event('input'));
+  src.setSelectionRange(0, 0, 'forward');
+  p.run(p.actions.apply);
+  assert.equal(p.sourceMode, false); assert.equal(m.blocked, '');
+  assert.equal(m.source, ''); assert.notEqual(m.source, m.saved); // empty buffer committed, dirty
+  assert.equal(m.revision, r0 + 1); assert.equal(m.past.length, past0 + 1); // exactly one clean commit
+  const sel = m.state.selection;
+  assert.equal(sel.toJSON().type, 'text'); // NOT a NodeSelection, NOT a reset
+  assert.ok(sel.anchor === 1 && sel.head === 1); // unique insertion point of the empty paragraph
+  assert.equal(p.lastSelectionMap.fallback, 'empty-paragraph-text@1');
+  // Undo restores the original bytes AND the pre-edit anchor; redo returns to empty.
+  p.run(p.actions.undo);
+  assert.equal(m.source, whole); assert.equal(m.source, m.saved);
+  assert.equal(m.state.selection.anchor, anchor); assert.equal(m.state.selection.head, anchor);
+  p.run(p.actions.redo);
+  assert.equal(m.source, ''); assert.ok(m.state.selection.anchor === 1 && m.state.selection.head === 1);
+  // Empty document in source mode: entry mapping is unavailable (reason shown)
+  // but the repair entry stays open; no-op commit keeps everything; a modified
+  // draft cancels back to the same empty view and selection.
+  const snap = { revision: m.revision, past: m.past.length, future: m.future.length, sel: m.state.selection.toJSON() };
+  p.run(p.actions.source);
+  assert.ok(!p.lastSelectionMap.ok && p.lastSelectionMap.stage === 'enter-source');
+  p.run(p.actions.apply); // draft untouched → no-op
+  assert.equal(p.sourceMode, false);
+  assert.equal(m.revision, snap.revision); assert.equal(m.past.length, snap.past); assert.equal(m.future.length, snap.future);
+  assert.deepEqual(m.state.selection.toJSON(), snap.sel);
+  p.run(p.actions.source);
+  src.value = '残稿'; src.dispatchEvent(new dom.window.Event('input'));
+  p.run(p.actions.cancel);
+  assert.equal(p.sourceMode, false); assert.equal(m.source, ''); assert.equal(m.revision, snap.revision);
+  assert.deepEqual(m.state.selection.toJSON(), snap.sel);
+  assert.equal(src.value, ''); // textarea reset by the trusted (empty) source
+  results.push({ action: 'delete-all → empty-paragraph insertion point (manager counterexample)', fixed: true, previously: 'half-commit + TypeError owner.pos', selectionType: 'text@1', undoRestoresAnchor: true, noopAndCancelOnEmpty: true });
+}
 // An uncommitted draft is never discarded by history actions: Undo/Redo are
 // refused while the draft differs (even with an empty history, where travel
 // would be a no-op but the mode switch would still clobber the textarea).
