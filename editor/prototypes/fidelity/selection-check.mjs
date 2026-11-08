@@ -6,11 +6,11 @@
 import { build } from 'vite';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 
-const CASES = process.argv[2] ?? '/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-004-fixture-semantics/editor/prototypes/fidelity-cases';
 const here = new URL('.', import.meta.url);
+const CASES = process.argv[2] ?? fileURLToPath(new URL('../fidelity-cases', here));
 const sha = s => createHash('sha256').update(Buffer.from(s, 'utf8')).digest('hex');
 const scalar = s => [...s].length; // Unicode scalar count, distinct from UTF-16 units
 

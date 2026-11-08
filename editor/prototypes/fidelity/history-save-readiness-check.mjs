@@ -43,6 +43,17 @@ function compositionReplace(from, to, insert, id) {
   return { from, to: from + insert.length };
 }
 
+// Ordinary trailing spaces are a supported short-lived draft after
+// INK-PROT-027, so they can no longer stand in for an unsafe operation. This
+// real EditorView transaction types a block marker at the start of an existing
+// paragraph: the target PM node remains a paragraph while Markdown re-parse
+// produces a heading. Until structural input rules translate that operation,
+// the doc.eq guard must reject it without mutating document history.
+function dispatchUnsafeBlockSyntax() {
+  const at = findText('保护块之后的中文。');
+  p.view.dispatch(model.state.tr.insertText('# ', at));
+}
+
 function logicalState() {
   return {
     source: model.source,
@@ -107,11 +118,8 @@ assertSafeEquivalent('composition commit');
 assert.equal(model.dirty, true);
 
 // A rejected transaction is an operation diagnostic, not a persistent
-// document state. In the captured WK run the caret was at PM 66 after the
-// composition began. Inserting a space at its new tail deterministically
-// reaches the same source/PM equivalence guard without mutating history.
-const rejectedAt = findText('保护块之后的中文。中文', '保护块之后的中文。中文'.length);
-assert.equal(rejectedAt, 68, 'captured post-composition tail boundary moved');
+// document state. The failure trigger is intentionally independent from the
+// now-supported trailing-whitespace input path.
 const beforeRefusal = {
   source: model.source,
   doc: model.state.doc,
@@ -119,7 +127,7 @@ const beforeRefusal = {
   past: model.past.length,
   future: model.future.length,
 };
-p.view.dispatch(model.state.tr.insertText(' ', rejectedAt));
+dispatchUnsafeBlockSyntax();
 assert.match(model.blocked, /可信状态未提交/);
 assert.equal(model.source, beforeRefusal.source);
 assert.ok(model.state.doc.eq(beforeRefusal.doc));
@@ -143,8 +151,7 @@ assert.equal(dom.window.document.getElementById('save').disabled, false);
 
 // With the composition kept in future, another refused transaction must not
 // prevent a direct Redo from restoring that independently safe future point.
-const baselineRejectedAt = findText('保护块之后的中文。', '保护块之后的中文。'.length);
-p.view.dispatch(model.state.tr.insertText(' ', baselineRejectedAt));
+dispatchUnsafeBlockSyntax();
 assert.match(model.blocked, /可信状态未提交/);
 assert.equal(model.future.length, 1);
 p.run(p.actions.redo);
@@ -207,8 +214,7 @@ assert.equal(model.pending, true);
 const pending = { source: model.source, doc: model.state.doc };
 p.run(p.actions.undo);
 assert.equal(model.pending, false);
-const safeTail = findText('保护块之后的中文。中文', '保护块之后的中文。中文'.length);
-p.view.dispatch(model.state.tr.insertText(' ', safeTail));
+dispatchUnsafeBlockSyntax();
 assert.match(model.blocked, /可信状态未提交/);
 p.run(p.actions.redo);
 assert.equal(model.source, pending.source);

@@ -263,6 +263,10 @@
             {
               "pmPos": 3,
               "sourceOffset": 2
+            },
+            {
+              "pmPos": 2,
+              "sourceOffset": 1
             }
           ],
           "kind": "paragraph-split"
@@ -388,6 +392,10 @@
             {
               "pmPos": 3,
               "sourceOffset": 2
+            },
+            {
+              "pmPos": 2,
+              "sourceOffset": 1
             }
           ],
           "kind": "paragraph-split"

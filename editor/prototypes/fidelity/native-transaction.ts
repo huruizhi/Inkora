@@ -214,7 +214,7 @@ export function planNativeTransaction(
 ): NativePlan {
   if (!tr.docChanged) throw Error('原生补丁规划器只接受文档事务');
   const supplemental = tr.steps.slice(1).map(step => step.toJSON() as Record<string, any>);
-  if (supplemental.some(step => step.stepType !== 'addMark' && !(step.stepType === 'replace' && step.structure))) throw Error('该多步原生事务尚未支持；可信原文与 PM 状态保持不变');
+  if (supplemental.some(step => step.stepType !== 'addMark' && step.stepType !== 'removeMark' && !(step.stepType === 'replace' && step.structure))) throw Error('该多步原生事务尚未支持；可信原文与 PM 状态保持不变');
   const step = tr.steps[0].toJSON() as Record<string, any>;
 
   const removeStrong = removeStrongPlan(source, step, position);
@@ -274,6 +274,13 @@ export function advanceStagedText(
     pmPos: tr.mapping.map(anchor.pmPos, 1),
     sourceOffset: mapSourceAnchor(anchor.sourceOffset, patch),
   }));
+  // Keep both sides of every staged replacement explicit. In particular,
+  // sequential spaces need the boundary before each newly inserted byte so a
+  // later caret move/selection never guesses through an unprojected suffix.
+  mapped.push(
+    { pmPos: tr.mapping.map(step.from, -1), sourceOffset: patch.from },
+    { pmPos: tr.mapping.map(step.to, 1), sourceOffset: patch.from + insert.length },
+  );
   if (targetSelection.empty && tr.selectionSet) mapped.push({
     pmPos: targetSelection.from,
     sourceOffset: patch.from + insert.length,

@@ -218,11 +218,34 @@ export function sourcePosition(source: string, state: EditorState, ranges: Range
   if (found === undefined) throw Error('选区不能安全映射到原文（空段、转义或重复文本）');
   return found;
 }
-// Markdown cannot represent a trailing empty paragraph or a softbreak moved to
-// the very start of a freshly split paragraph. These are the only doc.eq
-// differences allowed to remain staged; every other mismatch is rejected.
-function stageComparableBlock(node: PMNode): PMNode | null {
-  if (node.type.name !== 'paragraph') return node;
+// Markdown cannot represent a trailing empty paragraph, a softbreak moved to
+// the very start of a freshly split paragraph, or an ordinary space that is
+// temporarily last in a textblock. Only the explicitly named staged kind may
+// remove its corresponding projection-only difference for comparison; every
+// other doc.eq mismatch remains rejected.
+function trimVisualTrailingSpaces(node: PMNode): PMNode {
+  if (node.type.name === 'paragraph' || node.type.name === 'heading') {
+    const children: PMNode[] = [];
+    node.forEach(child => children.push(child));
+    while (children.length) {
+      const last = children.at(-1)!;
+      if (!last.isText || !last.text?.endsWith(' ')) break;
+      const text = last.text.replace(/ +$/, '');
+      children.pop();
+      if (text) {
+        children.push(schema.text(text, last.marks));
+        break;
+      }
+    }
+    return node.type.create(node.attrs, children, node.marks);
+  }
+  if (node.isLeaf) return node;
+  const children: PMNode[] = [];
+  node.forEach(child => children.push(trimVisualTrailingSpaces(child)));
+  return node.type.create(node.attrs, children, node.marks);
+}
+function stageComparableBlock(node: PMNode, kind?: string): PMNode | null {
+  if (node.type.name !== 'paragraph') return kind === 'trailing-whitespace' ? trimVisualTrailingSpaces(node) : node;
   const children: PMNode[] = [];
   node.forEach((child, _offset, index) => {
     if (index === 0 && child.isText && child.text!.startsWith('\n')) {
@@ -230,20 +253,21 @@ function stageComparableBlock(node: PMNode): PMNode | null {
       if (text) children.push(schema.text(text, child.marks));
     } else children.push(child);
   });
-  const paragraph = node.type.create(node.attrs, children, node.marks);
+  let paragraph = node.type.create(node.attrs, children, node.marks);
+  if (kind === 'trailing-whitespace') paragraph = trimVisualTrailingSpaces(paragraph);
   return paragraph.content.size ? paragraph : null;
 }
-function stageComparable(doc: PMNode): PMNode {
+function stageComparable(doc: PMNode, kind?: string): PMNode {
   const blocks: PMNode[] = [];
   doc.forEach(node => {
-    const comparable = stageComparableBlock(node);
+    const comparable = stageComparableBlock(node, kind);
     if (comparable) blocks.push(comparable);
   });
   if (!blocks.length) blocks.push(schema.nodes.paragraph.create());
   return schema.topNodeType.createChecked(null, blocks);
 }
-function stageEquivalent(parsed: PMNode, target: PMNode): boolean {
-  return stageComparable(parsed).eq(stageComparable(target));
+function stageEquivalent(parsed: PMNode, target: PMNode, kind?: string): boolean {
+  return stageComparable(parsed, kind).eq(stageComparable(target, kind));
 }
 export class FidelityModel {
   source: string; saved: string; state: EditorState; ranges: Range[]; issues: Issue[] = [];
@@ -296,14 +320,14 @@ export class FidelityModel {
     let targetPos = 0;
     for (let sourceIndex = 0; sourceIndex < parsed.ranges.length; sourceIndex++) {
       const sourceBlock = parsed.doc.child(sourceIndex);
-      const sourceComparable = stageComparableBlock(sourceBlock);
+      const sourceComparable = stageComparableBlock(sourceBlock, stage.kind);
       if (!sourceComparable) throw Error(`暂存候选范围 ${sourceIndex} 意外对应空结构`);
       let matched = false;
       while (targetIndex < state.doc.childCount) {
         const targetBlock = state.doc.child(targetIndex++);
         const pos = targetPos;
         targetPos += targetBlock.nodeSize;
-        const targetComparable = stageComparableBlock(targetBlock);
+        const targetComparable = stageComparableBlock(targetBlock, stage.kind);
         if (!targetComparable) continue; // explicit staged-only empty structure
         if (!sourceComparable.eq(targetComparable)) throw Error(`暂存候选第 ${sourceIndex + 1} 块与 staged doc 投影不一致`);
         ranges.push({ ...parsed.ranges[sourceIndex], pos, size: targetBlock.nodeSize });
@@ -318,7 +342,7 @@ export class FidelityModel {
     while (targetIndex < state.doc.childCount) {
       const targetBlock = state.doc.child(targetIndex++);
       targetPos += targetBlock.nodeSize;
-      if (stageComparableBlock(targetBlock)) throw Error('staged doc 尾部仍有候选未归属的非空结构');
+      if (stageComparableBlock(targetBlock, stage.kind)) throw Error('staged doc 尾部仍有候选未归属的非空结构');
     }
     const translatedSpans = built.ledger.spans.map(span => {
       if (!span.visible || span.visualStart === undefined || span.visualEnd === undefined) return { ...span };
@@ -348,7 +372,9 @@ export class FidelityModel {
         text: '',
         visualStart: anchor.pmPos,
         visualEnd: anchor.pmPos,
-        detail: '暂存 PM 结构尚无独立 Markdown 表示；仅此显式锚点参与映射',
+        detail: stage.kind === 'trailing-whitespace'
+          ? '尾随空格已在 staged candidate 中保留；显式锚点连接尚未可重解析的 PM 尾部文字'
+          : '暂存 PM 结构尚无独立 Markdown 表示；仅此显式锚点参与映射',
       };
     });
     const ledger = { ...built.ledger, docSize: state.doc.content.size, blocks: translatedBlocks, spans: [...translatedSpans, ...anchors] };
@@ -561,7 +587,7 @@ export class FidelityModel {
         return;
       }
       if (!parsed.doc.eq(target.doc)) {
-        if (!stageEquivalent(parsed.doc, target.doc)) throw Error('暂存候选与目标 PM 文档存在空结构之外的差异；现态保持不变');
+        if (!stageEquivalent(parsed.doc, target.doc, stage.kind)) throw Error('暂存候选与目标 PM 文档存在允许的短期投影之外的差异；现态保持不变');
         this.past.push(previous); this.future = [];
         stage.candidate = next.candidate;
         stage.anchors = next.anchors;
@@ -581,6 +607,35 @@ export class FidelityModel {
     // Build and validate ownership before even enriching the transaction with
     // inherited marks. The cache key is the exact source/doc/ranges triple.
     const ledger = this.sourceLedger();
+    let markBoundaryEnd: number | undefined;
+    if (step?.from !== undefined && step.from === step.to && insert) {
+      const sourceAt = this.ledgerPosition(ledger, step.from, 'from');
+      let delimiterEnd = sourceAt;
+      const owned = ledger.spans.filter(span => span.visible
+        && span.visualEnd === step.from
+        && ['link-label', 'image-alt', 'autolink-text'].includes(span.role)
+        && span.owner);
+      const owners = [...new Set(owned.map(span => span.owner!))];
+      if (owners.length === 1) {
+        delimiterEnd = Math.max(delimiterEnd, ...ledger.spans.filter(span => span.owner === owners[0]).map(span => span.sourceEnd));
+      }
+      if (/^ +$/.test(insert)) {
+        const closeSyntax = new Set(['strong-close', 'em-close', 'strike-close']);
+        while (true) {
+          const close = ledger.spans
+            .filter(span => !span.visible && closeSyntax.has(span.syntax) && span.sourceStart === delimiterEnd)
+            .sort((a, b) => b.sourceEnd - a.sourceEnd)[0];
+          if (!close) break;
+          delimiterEnd = close.sourceEnd;
+        }
+      }
+      if (delimiterEnd > sourceAt) {
+        markBoundaryEnd = delimiterEnd;
+      }
+      if (markBoundaryEnd !== undefined && /^ +$/.test(insert)) {
+        tr.removeMark(step.from, step.from + insert.length);
+      }
+    }
     // PM drops inclusive:false marks when their entire text leaf is replaced.
     // Preserve the exact source leaf's marks for a replacement contained in
     // one text node; otherwise the source re-parse would correctly reject the
@@ -601,6 +656,10 @@ export class FidelityModel {
       tr,
       (position, side = 'any') => this.ledgerPosition(ledger, position, side),
     );
+    if (markBoundaryEnd !== undefined && plan.kind === 'text' && plan.patches.length === 1) {
+      const patch = { ...plan.patches[0], from: markBoundaryEnd, to: markBoundaryEnd };
+      plan = { ...plan, patches: [patch], candidate: applyNativePatches(this.source, [patch]) };
+    }
     plan = this.preserveReferenceTarget(plan, ledger, step ?? {});
     const target = this.state.apply(tr);
     const parsed = parse(plan.candidate);
@@ -612,8 +671,32 @@ export class FidelityModel {
       this.commitClean(plan.candidate, target, plan.patches);
       return;
     }
+    const trailingWhitespace = plan.kind === 'text'
+      && plan.patches.length === 1
+      && step?.from === step?.to
+      && /^ +$/.test(insert)
+      && stageEquivalent(parsed.doc, target.doc, 'trailing-whitespace');
+    if (trailingWhitespace) {
+      const patch = plan.patches[0];
+      const previous = this.snapshot();
+      this.past.push(previous); this.future = [];
+      this.staged = {
+        candidate: plan.candidate,
+        anchors: [
+          { pmPos: tr.mapping.map(step!.from!, -1), sourceOffset: patch.from },
+          { pmPos: tr.mapping.map(step!.from!, 1), sourceOffset: patch.from + patch.insert.length },
+        ],
+        kind: 'trailing-whitespace',
+      };
+      this.state = target;
+      this.before = this.source;
+      this.patches = plan.patches;
+      this.blocked = '';
+      this.revision++;
+      return;
+    }
     if (plan.mayStage && plan.sourceCaret !== undefined) {
-      if (!stageEquivalent(parsed.doc, target.doc)) throw Error('原生结构候选与目标 PM 文档存在不可暂存差异；可信状态未提交');
+      if (!stageEquivalent(parsed.doc, target.doc, plan.kind)) throw Error('原生结构候选与目标 PM 文档存在不可暂存差异；可信状态未提交');
       const previous = this.snapshot();
       this.past.push(previous); this.future = [];
       this.staged = {

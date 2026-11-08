@@ -473,7 +473,14 @@ function mapInlineToken(source: string, lines: ReturnType<typeof lineTable>, tok
       const cursor = prefixCursor(line.text, heading && part === 0);
       let content = line.text.slice(cursor);
       if (heading && part === 0) content = content.replace(/[ \t]+#+[ \t]*$/, '');
-      if (content !== wanted) continue;
+      // CommonMark drops ordinary spaces at the end of the final inline line.
+      // They remain source-owned bytes (and may be a short-lived visual draft)
+      // rather than an alignment failure. Internal line endings are excluded:
+      // their spaces can change softbreak/hardbreak semantics.
+      const finalTrailingSpaces = part === desired.length - 1
+        && content.startsWith(wanted)
+        && /^ *$/.test(content.slice(wanted.length));
+      if (content !== wanted && !finalTrailingSpaces) continue;
       match = { line, start: line.start + cursor, end: line.start + cursor + wanted.length };
       physicalIndex++;
       break;

@@ -268,6 +268,35 @@ for (const item of [
 }
 
 // Cache reuse is allowed only for the exact source/doc/ranges triple.
+// A visual trailing-space draft owns the exact candidate byte and both PM
+// boundaries. Continuing with a visible character promotes it to a normal,
+// re-parse-equivalent source state.
+{
+  const source = 'tail\r\n';
+  const { dom, prototype, errors } = await boot(source);
+  const tail = textOccurrence(prototype, 'tail') + 'tail'.length;
+  select(prototype, tail);
+  prototype.view.dispatch(prototype.model.state.tr.insertText(' '));
+  assert.equal(prototype.model.staged?.kind, 'trailing-whitespace');
+  assert.equal(prototype.model.staged?.candidate, 'tail \r\n');
+  const ledger = prototype.model.sourceLedger();
+  assert.equal(ledger.docSize, prototype.model.state.doc.content.size);
+  assert.ok(ledger.spans.some(span => span.syntax === 'block-suffix'
+    && prototype.model.ledgerSource().slice(span.sourceStart, span.sourceEnd) === ' '));
+  const before = prototype.model.visualToSource(tail, tail, { collapsedAffinity: 'right' });
+  const after = prototype.model.visualToSource(tail + 1, tail + 1, { collapsedAffinity: 'right' });
+  assert.ok(before.ok && after.ok);
+  assert.equal(before.anchor, 4);
+  assert.equal(after.anchor, 5);
+  prototype.view.dispatch(prototype.model.state.tr.insertText('x'));
+  assert.equal(prototype.model.source, 'tail x\r\n');
+  assert.equal(prototype.model.staged, null);
+  assert.ok(prototype.parse(prototype.model.source).doc.eq(prototype.model.state.doc));
+  assert.deepEqual(errors, []);
+  dom.window.close();
+}
+
+// Cache reuse is allowed only for the exact source/doc/ranges triple.
 {
   const { dom, prototype, errors } = await boot('cache text\n');
   const first = prototype.model.sourceLedger();
@@ -336,4 +365,4 @@ for (const item of [
   dom.window.close();
 }
 
-console.log('PASS: 16 real EditorView ledger integration regressions');
+console.log('PASS: 17 real EditorView ledger integration regressions');

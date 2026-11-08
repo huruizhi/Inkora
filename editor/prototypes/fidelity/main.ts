@@ -96,8 +96,11 @@ function render(syncEditors = true) {
   const sourceSelection = model.visualToSource(sel.from, sel.to, { collapsedAffinity: 'right' });
   if (sourceSelection.ok) mapped = `${sourceSelection.anchor}..${sourceSelection.head} (UTF-16, ledger)`;
   const pending = model.pending;
-  const saveState = model.blocked ? `阻断（${model.blocked}）` : model.staged ? '阻断（空结构暂存尚未形成可重解析 Markdown；继续输入或 Undo）' : pending ? `阻断（${model.issues.length} 处边界含混待修复：主动源码修复或 Undo）` : sourceMode ? '阻断（源码草稿未提交）' : '允许建立内存快照';
-  $('state').textContent = `revision: ${model.revision} | dirty: ${model.dirty} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to}（anchor/head ${sel.anchor}/${sel.head}${sel.anchor > sel.head ? '，后向' : ''}）| 原文: ${mapped}\n模式: ${sourceMode ? `主动源码草稿（textarea ${source.selectionStart}..${source.selectionEnd} ${source.selectionDirection ?? 'unknown'}，LF 偏移）` : model.staged ? `可视（${model.staged.kind} 暂存；尚未生成可独立解析的非空块）` : '可视'} | composition: ${compositionLabel()}（visual=${composition.visual}, source=${composition.source}）\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
+  const stagedSaveReason = model.staged?.kind === 'trailing-whitespace'
+    ? '尾随空格候选已保留，尚未形成与重解析一致的投影；继续输入或 Undo'
+    : '空结构暂存尚未形成可重解析 Markdown；继续输入或 Undo';
+  const saveState = model.blocked ? `阻断（${model.blocked}）` : model.staged ? `阻断（${stagedSaveReason}）` : pending ? `阻断（${model.issues.length} 处边界含混待修复：主动源码修复或 Undo）` : sourceMode ? '阻断（源码草稿未提交）' : '允许建立内存快照';
+  $('state').textContent = `revision: ${model.revision} | dirty: ${model.dirty} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to}（anchor/head ${sel.anchor}/${sel.head}${sel.anchor > sel.head ? '，后向' : ''}）| 原文: ${mapped}\n模式: ${sourceMode ? `主动源码草稿（textarea ${source.selectionStart}..${source.selectionEnd} ${source.selectionDirection ?? 'unknown'}，LF 偏移）` : model.staged ? `可视（${model.staged.kind} 暂存；candidate 已保留 ${model.staged.candidate.length} UTF-16 单元）` : '可视'} | composition: ${compositionLabel()}（visual=${composition.visual}, source=${composition.source}）\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
   $('ranges').textContent = JSON.stringify({ blocks: model.ranges.map(r => ({ ...r, byteStart: bytes(model.source.slice(0, r.start)).length, byteEnd: bytes(model.source.slice(0, r.end)).length })), coverage: coverage(), patches: model.patches }, null, 2);
   const lineOf = (text: string, at: number) => text.slice(0, at).split('\n').length;
   $('issues').textContent = pending ? JSON.stringify(model.issues.map(i => ({ ...i, line: lineOf(model.source, i.start), byteStart: bytes(model.source.slice(0, i.start)).length, byteEnd: bytes(model.source.slice(0, i.end)).length, fragment: model.source.slice(i.start, Math.min(i.end, i.start + 48)) })), null, 2) : '无边界含混问题；结构化保存路径可用。';
@@ -292,7 +295,9 @@ const actions: Record<string, () => void> = {
   undo() { const refusal = draftHistoryRefusal(); if (refusal) { note = refusal; return; } model.travel(); sourceMode = false; note = '共享快照历史 Undo：原文与真实 PM EditorState（含选区内容锚点与方向）一起恢复'; },
   redo() { const refusal = draftHistoryRefusal(); if (refusal) { note = refusal; return; } model.travel(true); sourceMode = false; note = '共享快照历史 Redo：原文与真实 PM EditorState（含选区内容锚点与方向）一起恢复'; },
   source() {
-    if (model.staged) throw Error('空结构事务尚未落账；请继续输入形成可重解析段落，或 Undo 取消本次结构动作');
+    if (model.staged) throw Error(model.staged.kind === 'trailing-whitespace'
+      ? '尾随空格候选已完整保留，但尚未形成可重解析投影；请继续输入或 Undo，不会静默丢弃候选字节'
+      : '空结构事务尚未落账；请继续输入形成可重解析段落，或 Undo 取消本次结构动作');
     sourceMode = true; sourceKernel.setText(model.source);
     // Map the current PM anchor/head onto the LF textarea selection, keeping
     // direction. Failure never blocks entry (the protected-block repair path
@@ -393,7 +398,9 @@ const actions: Record<string, () => void> = {
   repair() { if (!sourceMode) actions.source(); setDraft(model.trusted.source); actions.apply(); note = '主动提交最近一次可信原文修复含混缓冲；字节一致时为 no-op，pending 随有效提交解除'; },
   save() {
     if (model.blocked) throw Error('保存阻断：' + model.blocked);
-    if (model.staged) throw Error('保存阻断：空结构事务尚未形成可重解析 Markdown；请继续输入或 Undo');
+    if (model.staged) throw Error(model.staged.kind === 'trailing-whitespace'
+      ? '保存阻断：尾随空格候选已完整保留，但尚未与重解析投影一致；请继续输入或 Undo'
+      : '保存阻断：空结构事务尚未形成可重解析 Markdown；请继续输入或 Undo');
     if (model.pending) throw Error('保存阻断：边界含混待修复（' + model.issues.map(i => i.code).join(',') + '）；请主动源码修复或 Undo');
     if (sourceMode) throw Error('保存阻断：源码草稿未提交或取消');
     model.saved = model.source; note = '仅记录内存保存点（case10 的 to_disk 在原型中只以内存基线模拟）；未访问文件系统';

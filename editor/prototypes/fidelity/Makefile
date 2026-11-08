@@ -13,5 +13,6 @@ test: build lint
 	node source-composition-guard-check.mjs
 	node ime-history-check.mjs
 	node history-save-readiness-check.mjs
+	node trailing-whitespace-check.mjs
 run: build
 	open PROTOTYPE.html
