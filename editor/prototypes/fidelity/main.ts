@@ -33,7 +33,7 @@ function render() {
   $('diff').textContent = JSON.stringify(diff(model.before, model.source), null, 2);
   $('before').textContent = esc(model.before); $('after').textContent = esc(model.source);
   $('save').toggleAttribute('disabled', !!model.blocked || pending || sourceMode || view.composing);
-  annotateIssues();
+  annotateIssues(); annotateImages();
 }
 // Mark problem fragments in the real DOM: conservative raw projection, never faked rendering.
 function annotateIssues() {
@@ -47,6 +47,35 @@ function annotateIssues() {
     el.classList.toggle('protected-issue', flagged);
     el.title = flagged ? `边界含混：${r.issue}（UTF-16 ${r.start}..${r.end}）` : '保留原文的预览；暂不支持块内编辑';
   }
+}
+// Image resources are intentionally never loaded. Show only the image token's
+// exact source spelling as a scoped placeholder; neighboring text/marks stay
+// normal PM content. Normalized/ambiguous alt text remains explicitly unmapped.
+function annotateImages() {
+  const leaves: Array<{ pos: number; text: string; title: string | null }> = [];
+  model.state.doc.descendants((node, pos) => {
+    if (!node.isText) return;
+    const mark = node.marks.find(m => m.type.name === 'image_ref');
+    if (mark) leaves.push({ pos, text: node.text!, title: mark.attrs.title });
+  });
+  const spans = [...view.dom.querySelectorAll<HTMLElement>('span.image-ref')];
+  spans.forEach((span, i) => {
+    const leaf = leaves[i];
+    if (!leaf) return;
+    try {
+      const altStart = sourcePosition(model.source, model.state, model.ranges, leaf.pos, 'from');
+      const suffix = /^\](?:\[[^\]\r\n]*\]|\((?:\\.|[^)\r\n])*\))?/.exec(model.source.slice(altStart + leaf.text.length));
+      if (altStart < 2 || model.source.slice(altStart - 2, altStart) !== '![' || !suffix || model.source.slice(altStart, altStart + leaf.text.length) !== leaf.text) throw Error('unmapped');
+      const raw = model.source.slice(altStart - 2, altStart + leaf.text.length + suffix[0].length);
+      span.dataset.imageSource = raw;
+      if (leaf.title) span.dataset.imageTitle = leaf.title;
+      span.title = `图片原文占位（不加载资源）：${raw}`;
+    } catch {
+      span.classList.add('image-ref-unmapped');
+      span.dataset.imageSource = '图片边界无法安全映射';
+      span.title = '图片原文占位边界无法安全映射；编辑已阻断';
+    }
+  });
 }
 function coverage() {
   let cursor = 0; const all: Array<{ start: number; end: number; owner: string }> = [];

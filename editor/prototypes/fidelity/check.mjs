@@ -208,7 +208,9 @@ step('openMalformed');
   const image = p.view.dom.querySelector('span.image-ref[data-image-ref]');
   assert.equal(image.textContent, '标识图');
   assert.equal(image.getAttribute('data-image-ref'), '/static/mark.svg');
-  assert.equal(image.getAttribute('title'), '图片题名');
+  assert.equal(image.getAttribute('data-image-source'), '![标识图][mark]');
+  assert.equal(image.getAttribute('data-image-title'), '图片题名');
+  assert.ok(image.getAttribute('title').includes('![标识图][mark]'));
   assert.equal(image.parentElement.textContent, '图片前 保留粗体 标识图 与 旁链 图片后。'); // 图片占位不吞同段正文/marks/link
   assert.equal([...p.view.dom.querySelectorAll('a')].filter(a => a.textContent.includes('https://example.org/plain')).length, 0); // bare URL 为普通文本
   assert.equal(p.model.source, refDoc); // 打开不改任何字节

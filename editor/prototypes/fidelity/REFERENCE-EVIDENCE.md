@@ -7,7 +7,7 @@
 - 普通行内链接、完整/折叠/快捷引用式链接和尖括号自动链接进入真实 ProseMirror `link` mark；DOM 为 `a[href]`，只显示文字，不显示 `[]()`、引用标签或标题的 `#`。
 - 解析局部块时附加全文引用定义作为只读解析上下文。定义行、原引用拼写、href/title、空白、BOM 与 CRLF 仍由原文账本持有，不经 serializer 改写。
 - 裸 URL 使用 CommonMark `linkify:false`，作为普通文本载入；`gfm_autolink` 风险不再单独拒绝整篇文档。
-- 生产 schema 没有 image node。本原型只增加 `image_ref` mark：图片 alt 作为黄色「图片原文占位」显示，DOM 是 `span[data-image-ref]`，绝不创建 `img` 或加载资源；其同段正文、strong/em/code/link 仍保留真实结构。图片定界符、路径/title 与引用定义仍只由精确源码补丁维护。
+- 生产 schema 没有 image node。本原型只增加 `image_ref` mark：DOM `span[data-image-ref]` 携带并显示该图片自己的精确 `![alt][label]` / `![alt](…)` 原文范围，绝不创建 `img` 或加载资源；其同段正文、strong/em/code/link 仍保留真实结构。图片路径/title 与引用定义仍只由精确源码补丁维护。
 - paragraph、heading、list、blockquote 均可包含真实 link mark；列表/引用内显示文字可编辑，不再拒绝载入。
 - 文本叶按所属顶层范围中的 PM 顺序映射，重复显示文字按真实 PM 位置区分。候选补丁必须重新解析并与目标 `PM doc` 做 `doc.eq`；失败则保留可信 source/state 并阻断保存。
 - `inclusive:false` link/image mark 在完整替换其文本叶时会被 PM 默认丢弃；`transaction()` 只对「替换完全位于同一文本叶」的单步文本事务继承原 marks。跨叶、多步、结构和一般 mark 事务仍拒绝。

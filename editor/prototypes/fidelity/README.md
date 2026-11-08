@@ -32,7 +32,7 @@ INK-PROT-009 不再把含链接的整段变成字面文本叶：
 - 普通、完整/折叠/快捷引用和尖括号自动链接解析成真实 `link` mark 与 DOM `a[href]`；heading、paragraph、list、blockquote 的结构保留。
 - strong/em/code 与相邻 link 同时保留；显示文字不含 Markdown 引用定界符，带 link 的 heading 不显示 `#` 源码。
 - 裸 URL 按 CommonMark 普通文本处理，不因 `gfm_autolink` 风险拒绝文档。
-- 图片只把自己的 alt 文字范围标成 `image_ref` 原文占位；DOM 为 `span`，不创建 `img`、不加载资源，也不吞同段正文或其它 marks。
+- 图片用 `image_ref` 标记 alt 叶，并由 DOM 占位显示该图片自己的精确 `![alt][label]` / `![alt](…)` 原文；不创建 `img`、不加载资源，也不吞同段正文或其它 marks。
 - 引用定义、原引用拼写、href/title、图片路径、BOM/CRLF 始终保留在原文。行内 href 修改使用专用目标字节补丁与真实 `addMark`。
 
 文本叶按块内 PM 顺序映射到原文，CRLF 再换算回原始 UTF-16 偏移；重复显示文本可按 PM 位置区分。每次候选都必须重新解析并 `doc.eq(targetPMDoc)`，否则不提交可信 source/state。完整替换 `inclusive:false` 的 link/image 文本叶时，只继承该单一源叶的 marks；跨叶、多步、结构事务仍阻断。

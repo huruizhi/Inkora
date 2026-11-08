@@ -93,11 +93,11 @@ async function runCase(id, variant, file, steps, opts = {}) {
         domLinks: anchors.map(a => ({ text: a.textContent, href: a.getAttribute('href'), title: a.getAttribute('title') })),
         heading: p.view.dom.querySelector('h1')?.textContent ?? null,
         bareUrlIsText: !anchors.some(a => a.textContent === 'https://example.com/auto'),
-        image: image ? { text: image.textContent, href: image.getAttribute('data-image-ref'), tag: image.tagName } : null,
+        image: image ? { text: image.textContent, source: image.getAttribute('data-image-source'), href: image.getAttribute('data-image-ref'), tag: image.tagName } : null,
         imageLoadsResource: !!p.view.dom.querySelector('img'),
       };
       const expectedDisplays = ['Inkora 官网', 'Inkora 文档', 'inkora-doc', 'inkora-doc', 'https://example.com/bracket'];
-      if (r.semanticProjection.heading !== '链接保真' || r.semanticProjection.image?.text !== '图标' || r.semanticProjection.imageLoadsResource || !r.semanticProjection.bareUrlIsText || expectedDisplays.some(text => !anchors.some(a => a.textContent === text)) || anchors.some(a => /[\[\]#]/.test(a.textContent ?? ''))) {
+      if (r.semanticProjection.heading !== '链接保真' || r.semanticProjection.image?.source !== '![图标][inkora-icon]' || r.semanticProjection.imageLoadsResource || !r.semanticProjection.bareUrlIsText || expectedDisplays.some(text => !anchors.some(a => a.textContent === text)) || anchors.some(a => /[\[\]#]/.test(a.textContent ?? ''))) {
         r.load = 'blocked: reference semantic projection mismatch'; dom.window.close(); return;
       }
     }

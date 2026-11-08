@@ -38,7 +38,7 @@
 | 3 | 专用 `linkTarget` 将行内 href 改为 `.../inkora-v2` | `4b5bfa9e8924e367fb0b6b96853915fb4e0569566fae251b8aa6b07d93d8e99d` | PASS，DOM href 更新，`refsKept=true` |
 | 4 | 内存保存点 | 同上 | PASS，dirty=false，`refsKept=true` |
 
-载入语义证据：5 个 link marks/anchors 分别显示 `Inkora 官网`、`Inkora 文档`、两个 `inkora-doc` 和尖括号 URL；display 不含引用定界符；href/title 与定义一致；heading 为 `链接保真`；裸 URL 不是 anchor；图片为 `SPAN`，href `/assets/icon.png`，没有 `IMG`。
+载入语义证据：5 个 link marks/anchors 分别显示 `Inkora 官网`、`Inkora 文档`、两个 `inkora-doc` 和尖括号 URL；display 不含引用定界符；href/title 与定义一致；heading 为 `链接保真`；裸 URL 不是 anchor；图片为 `SPAN`，精确原文占位 `![图标][inkora-icon]`，href `/assets/icon.png`，没有 `IMG`。
 
 ## 02 / 10 回归
 
