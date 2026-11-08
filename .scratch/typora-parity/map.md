@@ -55,3 +55,5 @@ Status: open
 ## 当前 M0 执行入口
 
 依据028委员会共识和029冻结契约，只推进一个隔离的030原文权威/PM投影原型，见[共识记录](execution/M0-source-authority-consensus.md)。已接收集成仍为ea63941；027仅保留部分证据，未采纳。11保持claimed，12依赖不解除；未宣告生产架构选型或M0通过。
+
+030首轮6658185已交付但独立验收退回，原因是页面CRLF源码往返、草稿旅行和编辑后锚点错位；同一工作区限定修正中，见[独立验收](execution/M0-source-authority-independent-review.md)。自动矩阵通过尚不足以解除11/12门槛。

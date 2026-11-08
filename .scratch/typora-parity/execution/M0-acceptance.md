@@ -159,3 +159,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 027交付7607079仅有部分连续输入进展：管理者14/14重跑通过，但合法尾随空格候选能parse/reopen，当前保存与主动源码仍无限阻断，独立根断言红。完整任务未验收、008保持ea63941；不通过称短期staged缩减保存/源码要求。paseo-committee两provider只读复核统一编辑投影边界/安全finalize/source-primary比较，不先锁架构；见M0-projection-boundary-review.md。11保持claimed，12未解依赖。
 
 028两轮共同推荐已记录M0-source-authority-consensus.md。029契约/oracle由管理者独立冻结6e6e2b8，数据一致性校验不等于实现通过。030正在独立目录验证统一当前原文权威、save/source/history契约及投影边界；旧fidelity/582冻结控制不改，008仍ea63941。最小主链必须包含停在空格保存/源码no-op/scratch重开/正确raw边界续写/UndoRedo，不能把纯输入子集当闭环。所有委员/复核workspace已备份回收，当前仅030实现。M0/11未通过，12不锁架构。
+
+030首轮6658185未验收：自动矩阵绿，但独立真实HTML页面源码/草稿/真实PM选区回归3项红。接续只修新原型目录，固定oracle和旧对照不变；详见[M0-source-authority-independent-review.md](M0-source-authority-independent-review.md)。当前尚不能进入新bundle真机验收，更不能声明M0或生产迁移通过。

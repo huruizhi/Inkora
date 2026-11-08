@@ -432,3 +432,7 @@ Codex首轮dc14147b…建议C隔离验证/A落地，GLM首轮ff88157f…建议B�
 INK-SPEC-029由管理者在本地独立worktree /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-SPEC-029、branch task/INK-SPEC-029-source-authority-contract冻结纯文档/数据，base7607079，commit6e6e2b8eb1f4ff49e3765cef4052daa419405eee已推送/clean。CONTRACT与ORACLES.json SHA=c53b2f9c54357a624c7ccd7a1e4a7d1ccf272f665d871de96f686bc46e031d08；JSON、字面值UTF-16插入/UTF-8 hex一致性及锁定CommonMark soft/hardbreak smoke已检查，不是原型运行。新术语用domain-modeling格式，原型按LOGIC形态但保真测试/必要既有打包由用户要求优先。
 
 INK-PROT-030：Agent b8560dcd-b9a8-4cc0-9c15-e5c1bf6b493a，workspace wks_aa63ecfcc29de8fa，host srv_MEqRNkRW6fSx；worktree /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-030-source-authority-projection；branch task/INK-PROT-030-source-authority-projection，固定6e6e2b8。profiles为空、provider核实后GPT-5.6-Sol/high/default/full-access/notifyOnFinish=true，创建回执running。只新增editor/prototypes/source-authority/，不动旧控制原型/fixture/契约/生产/native-host/依赖；真实EditorView+公开控制器、单HTML自由操作与主链引导，内存/scratch/真实WK/IME分层。先设计边界报告（不等额外审批），再一个有界实现，失败给最小反例不继续散补丁；完成后独立核验、回收两层。
+
+### 030首轮独立验收退回
+
+6658185已推送，管理者重跑自动矩阵全过，但真实HTML/页面操作的独立3项红回归暴露CRLF源码no-op改字节、未提交草稿Undo失活、旧锚点导致后续输入错位。详见[M0-source-authority-independent-review.md](M0-source-authority-independent-review.md)。原Agent已归档；同workspace由d4617e58-8cee-4af9-bad6-fdecdc55a43c接续限定修正（GPT-5.6-Sol/high/default）。未新建侧栏工作区，未合008/main，11仍claimed、12不采纳架构。
