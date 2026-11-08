@@ -49,6 +49,14 @@ UI 套件：合并前在分支上手动触发一轮，合并后 push 到 main �
   passed"；仅文件/CSP/entitlements 离线检查，未获取 UI 锁、未启动 App。
 - 未运行任何 UI 测试或启动 App 的命令。
 
+## 分支 CI 验证
+
+- [run 42460094912](https://github.com/huruizhi/Inkora/actions/runs/42460094912)
+  （默认 `ui-tests=false`，commit 3c885f2）：成功，总时长 4 分 18 秒。执行：checkout、
+  setup、Lint、Test non-UI layers、Release bundle check (offline)、Performance baseline
+  (light)、Upload diagnostics；跳过：UI acceptance (XCUITest)、UI release launch smoke
+  （`ui-tests=false`）、Full performance baseline（`full-bench=false`）。未运行任何 UI 步骤。
+
 ## 风险
 
 - UI 回归会推迟到发布前才被发现；发布前 UI 失败时需回溯多个 PR 定位；改动菜单、对话框、
