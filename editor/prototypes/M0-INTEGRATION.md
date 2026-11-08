@@ -12,8 +12,10 @@
 | 保护边界与含混缓冲 | 6b0c33e43a0f40603faf6c06937d99c98b6be57b | fidelity/ |
 | 双向选区纯模块 | 598312093ffef5413ae0a45c36ce24008c94b50e | fidelity/ 三个新增文件 |
 | 源码选区/跨模式历史接线与空文档修正 | 713e9227a242da3a6dae04c98f74160d1b4eb9a3 | fidelity/，含010两次交付 |
+| 真实引用链接与图片原文占位 | 70bc4da914bf2e42b86ea5c3b1d3b3004f27c80b | fidelity/，含62c73cc真实链接语义 |
+| 审计后语义重放 driver | 70597e0697cbaeb3df60680496c71213353cbd98 | fidelity/ 三个新增文件 |
 
-通过 git merge 保留来源历史，未改独立样稿的字节预期。005/006/010 已接入，原执行 Agent 均已归档，工作区保留。009首次整段字面化方案未接受，修正仍在执行。
+通过 git merge 保留来源历史，未改独立样稿的字节预期。005/006/009/010/012 已接入。009 首次整段字面化方案 `d3c15c7` 已被后续 `62c73cc` 的真实 link marks 与 `70bc4da` 的精确图片占位取代，不能把旧方案当最终行为。
 
 ## 管理者实际检查（2026-11-08）
 
@@ -35,7 +37,7 @@
 4. 引用链接/图片混排、marks/attrs、结构拆分合并、混合 EOL、composition 历史分组等缺口仍需修正或比较替代架构，不能缩减 M0 判据。
 5. 重建最新 HTML 后再构建宿主，核对版本与 hash，取得 UI 锁/preflight 后安排真实 WKWebView、系统中文 IME、光标选区与撤销验收。该宿主无 NSDocument，不证明生产磁盘保存。
 
-009从集成提交7c497a7独立修正引用链接/图片混排；010现已汇入，009后续接收时需按语义处理main/crossval/check等冲突并复跑组合场景，不能直接覆盖一方。
+009 从集成提交 7c497a7 独立修正引用链接/图片混排；010 先汇入。INK-PROT-015 已按语义手工处理 main/crossval/check/HTML/文档冲突并复跑组合场景，没有整文件覆盖任一方。按真实 diff，010 未修改 `model.ts`；最终 main 统一使用 009 导出的 prototype schema 与带 `side` 的映射，避免 schema identity 混用。
 
 ## 010接收后的实际复核
 
@@ -44,3 +46,15 @@
 同提交重新运行宿主verify通过，源HTML SHA `182fceeaae5daecf3b9d4e160d4c2f336090e58b5b81e1458471e356832382a9`，加载副本SHA `123726e72175c8e110addfa0bb4244f66a930c493a4a43cfa2f8d365337c0c7a`，Info/manifest与698dbdb一致，脚本字节不变。仅构建/签名/资源检查，未启动WKWebView/系统IME/磁盘保存。
 
 总门槛未通过。不得据本工作区已合并、构建成功或样稿数据检查通过关闭 M0、锁定架构或宣告 M1 可交付。
+
+## 015 组合接收后的实际复核
+
+固定来源为 009 `70bc4da914bf2e42b86ea5c3b1d3b3004f27c80b` 与 012 `70597e0697cbaeb3df60680496c71213353cbd98`，均通过 merge commit 保留历史。最终 `PROTOTYPE.html` 由组合后的 shell/main/model 重建，SHA-256 为 `f37dd72cd8c665b2224eda3a23b702445a170843f65c029319396dbf1c3b7cf4`。
+
+- fidelity build + 严格类型 + 37 项组合检查通过；新增单一路径覆盖 link/image/邻近 marks、源码显示文字修改、后向选区、Undo/Redo、no-op 与 Cancel，DOM 无 `img`。
+- selection-check 15/15 通过；重复叶检查按 009 顺序叶映射更新，model 与 selection 模块均映射到第二个真实叶。
+- 以本工作区审计样稿指定最终 bundle 运行 crossval：02、03、09、10-open、10-create 全链通过；05/06/11 的旧 driver 差异不作为审计后 oracle。
+- audited-crossval 指定本工作区审计样稿与最终 bundle：`NOT_PASS`、rc=1、runnerErrors=0；4 个 source 步骤 PASS，05 四步仅 `EXPLICIT_PATCH_DEMO`，结构/空文档 visual 仍 FAIL，11 保留 `ORACLE_ACTION_AMBIGUITY`。该 NOT_PASS 是已知产品原型缺口，不阻塞 015 的来源集成，但也绝不能被写成 M0 通过。
+- 全量生产 editor `pnpm --dir editor lint` 与 `pnpm --dir editor test` 通过，后者为 10 文件/122 项（含 `src/bridge.test.ts`）。这与 `make test-editor` 排除 bridge 的 9 文件/111 项是命令覆盖层不同，不能解释为新增 11 项；本轮未重复运行 111 口径。
+
+015 未改 `fidelity/native-host/`，也未用新 bundle 验证宿主。管理者已在后续 008 状态独立接收 014 的只读 observer/WK 证据；接回 015 时应做 merge 并保留该 native-host 历史，不应以本分支旧基线覆盖。

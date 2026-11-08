@@ -1,6 +1,7 @@
 // PROTOTYPE (INK-PROT-006): pure bidirectional selection mapping between
 // the visual ProseMirror document and the canonical raw Markdown source.
-// Not imported by production entries or the prototype UI yet.
+// Imported by the prototype UI since INK-PROT-010; never imported by a
+// production entry. INK-PROT-015 verifies it against the link/image schema.
 //
 // Coordinates (never mixed):
 // - visual: PM doc positions, UTF-16 code units (surrogate pairs count 2).
