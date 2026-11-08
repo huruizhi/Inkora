@@ -1,0 +1,7 @@
+{
+  "title": "Inkora 1.x Roadmap",
+  "body": "## 目标\n\n跟踪 Inkora 从技术基础、编辑器内核、macOS 文档能力到 1.x 增强的完整开发计划。\n\n## 技术路线\n\n- AppKit `NSDocument` / `NSDocumentController` / `NSWindowController`\n- SwiftUI 外围界面\n- WKWebView 承载离线 ProseMirror 编辑器\n- TypeScript + ProseMirror + `prosemirror-markdown`\n- Vite、Vitest、Playwright、XCTest、XCUITest\n\n## 架构不变量\n\n- 原生层拥有文件、窗口、保存和关闭决策。\n- ProseMirror 拥有内容模型、selection 和 Undo/Redo。\n- Bridge 是唯一跨层接口，并使用 revision 保证一致性。\n- 不允许静默丢失用户 Markdown 内容。\n\n## Foundation\n\n- [x] #2\n- [x] #3\n- [x] #4\n- [x] #5\n\n## Editor Core\n\n建议顺序：#8 → #7 → #6 → #9 → #10 → #11。\n\n- [x] #8\n- [x] #7\n- [x] #6\n- [x] #9\n- [x] #10\n- [x] #11\n\n## Native Bridge\n\n- [x] #12\n- [x] #13\n- [x] #14\n\n## macOS MVP\n\n- [x] #15\n- [x] #16\n- [x] #17\n- [x] #18\n- [x] #19\n- [x] #20\n\n## Data Safety、Performance、Quality 与 Release\n\n- [x] #21\n- [x] #22\n- [x] #23\n- [x] #24\n- [x] #25\n\n## 1.x Enhancements\n\n- [x] #26\n- [x] #27\n- [x] #28\n- [x] #29\n- [x] #30\n- [x] #31\n\n## Release gates\n\n### Editor Core gate\n\n- 支持的 Markdown 往返结构一致。\n- 未知语法不得静默丢失。\n- 中文输入、selection、粘贴和 Undo/Redo 达到可用标准。\n\n### 1.0 gate\n\n- 第一版文件生命周期和快捷键全部通过自动化验收。\n- 没有已知数据丢失缺陷。\n- Developer ID 签名、公证和安装流程可重复执行。\n- 干净 macOS 用户环境可离线启动并打开、编辑、保存 Markdown 文件。\n\n## 非 1.x 范围\n\n文件目录树、多标签页、PDF/Word 导出、iCloud 和插件系统延后到 2.0 以后重新评估。Mac App Store 不在产品路线内。\n\n\n",
+  "state": "open",
+  "url": "https://github.com/huruizhi/Inkora/issues/1",
+  "updated_at": "2026-11-07T23:24:57Z"
+}
