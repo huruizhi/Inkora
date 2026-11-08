@@ -168,3 +168,29 @@ M0 两项执行尚未交付时，已独立派发 [Sandbox 本地图片约束研�
 额外实际重放“默认样稿→主动源码→textarea删空并input→光标0→apply”发现：`sourceMode=true`、`sourceEmpty=true`、`revisionDelta=1`、`pastDelta=1`，随后报 `TypeError: Cannot read properties of undefined (reading 'pos')`。空文档parse没有ranges，noTextAnchor分支先提交内容再访问不存在的owner。此反例说明28项正例不足以证明源码提交边界完整；该提交尚未接入008。
 
 已立即回派同010 Agent限定修正：空/仅空白或引用定义文档的合法空段落锚点，提交前验证选区，删全文/Undo/Redo/no-op/Cancel与纯保护块owner回归；异常时草稿/原文/revision/history必须保持。只重跑受影响检查，不重复未变化的生产111项。原工作区检查后干净，临时链接已清理；012仍排队，尚无执行Agent。
+
+### 010最终交付接收与012派发
+
+- 接收010 `713e9227a242da3a6dae04c98f74160d1b4eb9a3`，核实本地/远端一致、干净；合入008为 `698dbdb9fa10a7d246a1ff36259e5beec17f69ec` 并推送。管理者实际复跑29项原型检查、15项模块检查及02/09/10全部变体；额外四类无正文缓冲（空/空白/仅引用定义/BOM）的提交与Undo/Redo也通过，无半提交。29项含原有草稿保留/纯保护块owner回归，不代表草稿文本级撤销或真实IME完成。
+- 新HTML的宿主verify也实际通过，Info/manifest与698dbdb、源/副本SHA一致；未启动App、IME或真实磁盘保存。010 Agent `dfca34b3-7c84-4be5-bb43-1958a791383c` 已归档，回读closed，archivedAt=`2026-11-08T13:37:49.360Z`，工作区保留。
+- 012准备分支在创建Agent前从e5455ef快进至698dbdb；首位执行者为GLM-5.3/low `97570f1f-67de-4802-a966-e1a57270e72c`，workspace仍为wks_0743d97b1a902aef。创建回执running后即遭额度错误，尚无代码改动，交接如下。
+
+### GLM配额终止与保留工作区的模型交接
+
+三位GLM执行者均返回系统错误429/type1308：“已达到5小时使用上限”，服务报告重置时间2026-11-09 01:42:27（未另推断时区）。管理者逐一核实status=error、activeTurn=null、无pendingPermissions，随后归档并回读closed，绝非观察超时重启。
+
+| 旧Agent | 归档时间（UTC） | 保留状态 |
+| --- | --- | --- |
+| 009：76dcc654-9019-45e8-b9f9-06975476f4a8 | 2026-11-08T13:40:57.658Z | HEAD d3c15c7；model/main未提交语义修正保留，含临时依赖链接；旧整段字面化方案仍不接受 |
+| 013：dad521e7-c0ac-4883-ab1e-8dd7f4b05f13 | 2026-11-08T13:40:57.698Z | HEAD 256c30e；Model.swift/probe未提交改动保留，尚未验证 |
+| 012：97570f1f-67de-4802-a966-e1a57270e72c | 2026-11-08T13:40:57.746Z | HEAD 698dbdb，干净，未产生驱动代码 |
+
+已重新发现profile为空、Codex available及实际model IDs，采用以下接续，均同原workspace/分支、不reset、不创建重复worktree，full-access/default服务档/notifyOnFinish=true：
+
+| 任务 | 新Agent | 模型 | Workspace |
+| --- | --- | --- | --- |
+| 009 引用链接可视语义 | 5b1a6728-12c9-46b4-ad89-502bcdc12e2c | Codex GPT-5.6-Sol/high | wks_1dfa405440d777d8 |
+| 013 资源事务与Save As保全 | a61d140e-4132-4e58-ab01-fdab17e966f4 | Codex GPT-5.6-Sol/high | wks_15302ab6dfd393d7 |
+| 012 修订样稿验收驱动 | b4bf1578-0239-48a4-88a4-487802462ed1 | Codex GPT-6-Luna/medium | wks_0743d97b1a902aef |
+
+Host统一srv_MEqRNkRW6fSx。GPT-5.1-Sol当前未列出，5.6为另一明确型号，已向用户说明；复杂语义/事务用Sol，限定驱动用Luna，没有改用6.1。接续提示包含原任务边界、审核反例、固定起点和未提交改动，已创建回执running，不据此宣称模型执行/测试成功；等待完成通知再核查。

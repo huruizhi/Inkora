@@ -36,3 +36,5 @@ Host / Agent / Workspace：`srv_MEqRNkRW6fSx` / `1da3379f-18dd-414b-b036-f8124a9
 修正产物 `256c30edbfa9230b93b793e9780bd1923350328a` 的实际签名Sandbox探针层证据已接收：管理者实跑make check，10项已有scratch场景和8项判定检查通过，容器读写成功、同一外部fixture非沙盒对照SHA正确且Sandbox返回EPERM。原Agent已归档，工作区/证据保留。但代码审核发现staging后先写最终Markdown、再发布图片的顺序违背既定政策，且未托管相对图片源存在时Save As可能静默断链；现有正例不覆盖这些反例，不能据overallStatus=pass接受完整保存模型。
 
 提交顺序与Save As由INK-PROT-013接续，GLM-5.3/high，固定基线256c30e；host/agent/workspace为`srv_MEqRNkRW6fSx` / `dad521e7-c0ac-4883-ab1e-8dd7f4b05f13` / `wks_15302ab6dfd393d7`，分支`task/INK-PROT-013-asset-commit-order`。要求资源先发布、Markdown最后提交，故障时旧Markdown字节不变、草稿/原资源保留，已发布孤儿如实记录；本票仍未通过。
+
+原013执行者因GLM明确429限额终止后已归档，其Model.swift/probe未提交改动保留，同workspace由Codex GPT-5.6-Sol/high Agent `a61d140e-4132-4e58-ab01-fdab17e966f4`接续；notifyOnFinish开启。该交接不是新实现验收，完整状态见执行记录。
