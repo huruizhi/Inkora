@@ -32,7 +32,6 @@ type HistoryEntry = {
   state: EditorState;
   staged: StagedTransaction | null;
   trusted: { source: string; state: EditorState };
-  blocked: string;
   patches: Patch[];
   before: string;
 };
@@ -406,7 +405,6 @@ export class FidelityModel {
       state: this.state,
       staged: this.cloneStage(this.staged),
       trusted: this.trusted,
-      blocked: this.blocked,
       patches: this.patches.map(patch => ({ ...patch })),
       before: this.before,
     };
@@ -455,7 +453,9 @@ export class FidelityModel {
     this.state = entry.state;
     this.staged = this.cloneStage(entry.staged);
     this.trusted = entry.trusted;
-    this.blocked = entry.blocked;
+    // `blocked` describes the last rejected operation, not the persisted
+    // source/PM snapshot. A later successful commit clears it; history travel
+    // must never resurrect that stale diagnostic on an otherwise safe state.
     this.patches = entry.patches.map(patch => ({ ...patch }));
     this.before = entry.before;
     const parsed = parse(this.source);

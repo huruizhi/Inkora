@@ -12,5 +12,6 @@ test: build lint
 	node ledger-integration-check.mjs
 	node source-composition-guard-check.mjs
 	node ime-history-check.mjs
+	node history-save-readiness-check.mjs
 run: build
 	open PROTOTYPE.html
