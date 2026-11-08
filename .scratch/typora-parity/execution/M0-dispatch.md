@@ -288,3 +288,13 @@ INK-RES-002首轮`28d5ab0731414c20c5f1cec6c146322509f91cb7`已推送且干净，
 018首轮固定`4afe4caa164c826b801ef12a2b73e8ce65bdcc7f`已推送干净，新增受限native-transaction桥接及新版driver，未改冻结样稿/生产/依赖/native-host。管理者实跑37checks、15选区、audited16累计+3isolated+3probe PASS、fixture582，确认05不再靠手供patch、06/11新版动作可真实驱动。
 
 额外真实入口反例发现暂存历史和光标移动错误（具体操作/实际状态见M0-acceptance）：Enter后Undo/Redo丢暂存空段；Enter后移动再输入X导致PM为aXb而candidate仍在旧caret插X，dirty误示false，Undo/Redo丢输入。未将矩阵PASS当全部验收；管理者通过message `fa11a660-48ce-4732-bf23-9584d36a4223`要求同Agent修完整stage快照历史与动态源映射并补真实回归。此轮018不接收、不归档闲置或合008，原Agent接续修订；不重复无关生产125项，不降低保真/历史要求。
+
+### 本地资源跨进程恢复原型
+
+018修订和020模块经实时核实running且无待授权。管理者核对资源013/a60b7b9的明确剩余缺口：draft资源文件虽在磁盘，但会话UUID/pending映射和操作journal仅内存，缺少独立进程恢复。父票14无未解决前置依赖，按已定资源政策独立推进，不等M0完成后再收集平台事实，也不提前实现产品图片功能。
+
+- INK-PROT-021 host / Agent / workspace：`srv_MEqRNkRW6fSx` / `5c3a6b47-46fd-49c1-912e-e1951e2fb0ec` / `wks_96efc5bb7c4cf4d7`。
+- 分支`task/INK-PROT-021-asset-restart-recovery`；worktree`/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-021-asset-restart-recovery`；固定基线a60b7b9，不与不同产品祖先的008强行合并。
+- list_profiles为空，沿用已核实可用的`codex/gpt-5.6-sol`、medium、full-access/default档、notifyOnFinish=true。创建回执running不是验收通过。
+- 只改`prototypes/local-assets/`。版本化草稿/操作记录、字节/图片关联、intent/完成状态，真实子进程在导入/部分发布/全发布/Markdown提交后不同阶段终止，再新进程从磁盘恢复；保持旧原件/其它会话资源、不自动覆写/删除/重试提交，记录损坏及commit确认缺失要保守反馈。
+- 保留原14场景和严格Sandbox判定，新增独立restart目标及真实进程/退出状态/SHA证据。普通scratch进程中断不是断电耐久或Sandbox书签/UI/最低系统证据；父票14仍claimed。完成接收后及时归档并保留工作区。

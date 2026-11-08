@@ -44,3 +44,5 @@ Host / Agent / Workspace：`srv_MEqRNkRW6fSx` / `1da3379f-18dd-414b-b036-f8124a9
 固定修正版 `a60b7b9a513f5949e83aa25ef9b2c99dfa7986e2` 已推送，管理者核实远端一致、干净，实际复跑 `make -C prototypes/local-assets check` exit 0：14项普通scratch场景、严格判定自测、签名Sandbox读写/外部EPERM与非Sandbox同fixture SHA对照，以及非法runID不写入检查通过。保存顺序为全部资源发布成功后最后提交Markdown；S11/S12保留旧文件与草稿/其它资源，S13并发缝明确标为模拟，S14覆盖未托管图片目标缺失/异字节/同字节。
 
 执行Agent已归档，工作区/证据保留。本票仍claimed由管理者维护，不因为首部分成功而解决：内存journal不能跨重启恢复；图片识别仍为保守正则；NSOpenPanel授权、拖放/粘贴、书签跨启动、WK资源broker、路径安全完整矩阵与macOS 14实机仍须后续验证。M0的WK/IME专项由另一原型执行，不等于本票的资源授权/加载验收。
+
+管理者进一步核对013源码：OwnershipJournal只有进程内存entries，DraftSession每次新UUID，没有从持久记录重建草稿/保存阶段的入口。已派INK-PROT-021在固定a60b7b9上补持久会话/每操作记录与真实子进程中断恢复，范围仍仅`prototypes/local-assets/`。普通scratch跨进程证据不能替代上述完整Sandbox/UI矩阵；本票保持claimed。host/agent/workspace及验收约束见[执行记录](../execution/M0-dispatch.md)。
