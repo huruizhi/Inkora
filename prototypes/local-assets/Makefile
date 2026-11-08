@@ -8,16 +8,21 @@ EVIDENCE := $(ROOT)/evidence
 
 SWIFT_TARGET := arm64-apple-macos14.0
 
-.PHONY: build check clean
+.PHONY: build check restart-check clean
 
-build: $(BUILD)/local-assets-model $(BUILD)/AssetPrototype.app/Contents/MacOS/AssetPrototype
-	@echo "build ok: model + signed sandbox probe app"
+build: $(BUILD)/local-assets-model $(BUILD)/persistent-recovery $(BUILD)/AssetPrototype.app/Contents/MacOS/AssetPrototype
+	@echo "build ok: model + persistent recovery + signed sandbox probe app"
 
 $(BUILD):
 	mkdir -p $@
 
 # 状态模型 CLI（普通进程，scratch 文件系统场景）
 $(BUILD)/local-assets-model: $(ROOT)/src/Model.swift | $(BUILD)
+	swiftc -swift-version 5 -target $(SWIFT_TARGET) -o $@ $<
+	shasum -a 256 $@ | sed 's|$(BUILD)/||'
+
+# INK-PROT-021 独立跨进程中断/只读恢复 CLI（普通 scratch 进程）
+$(BUILD)/persistent-recovery: $(ROOT)/src/PersistentRecovery.swift | $(BUILD)
 	swiftc -swift-version 5 -target $(SWIFT_TARGET) -o $@ $<
 	shasum -a 256 $@ | sed 's|$(BUILD)/||'
 
@@ -42,6 +47,10 @@ $(BUILD)/AssetPrototype.app/Contents/MacOS/AssetPrototype: $(ROOT)/src/probe/mai
 # 端到端检查：模型场景 + 沙盒探针 + 证据写入 evidence/
 check: build
 	bash $(ROOT)/scripts/run-check.sh
+
+# 真实子进程到达检查点后由父脚本 SIGKILL，再启动全新进程只读恢复。
+restart-check: $(BUILD)/persistent-recovery
+	bash $(ROOT)/scripts/run-restart-check.sh
 
 clean:
 	rm -rf $(BUILD) $(ROOT)/scratch

@@ -1,7 +1,23 @@
-# INK-PROT-013 本地资源提交顺序修正原型
+# INK-PROT-021 本地资源进程重启恢复原型
 
 父票：INK-PLAN-005 `typora-parity/issues/14-local-assets-platform-prototype.md`（完整范围仍保留，**本目录只完成第一部分**，14 未关闭）。
 修正基线：`256c30edbfa9230b93b793e9780bd1923350328a`（延续 INK-PROT-011 第一部分）。原型代码，不含任何生产修改；无新增依赖（仅系统 Swift/Foundation/CryptoKit）；不访问用户真实内容、不联网、不启动 GUI/面板/拖放/剪贴板/IME。
+
+本轮固定起点为 `a60b7b9a513f5949e83aa25ef9b2c99dfa7986e2`。保留 INK-PROT-013 的 14 个普通 scratch 场景与签名 Sandbox 探针，另加独立 `persistent-recovery` CLI 和 `make restart-check`。本轮只回答：真实 worker 进程在明确检查点被 `SIGKILL` 后，全新进程能否仅凭磁盘记录保守重建未保存草稿并审计发布状态。结论与进程 PID、signal、阶段、SHA 见 [`RESTART-RECOVERY-EVIDENCE.md`](RESTART-RECOVERY-EVIDENCE.md) 和 `evidence/restart-recovery-results.json`。
+
+## INK-PROT-021 持久协议
+
+每个会话位于测试根的 `recovery/<session-uuid>/`，只接受规范 UUID 目录：
+
+- `manifest.json`：schema v1；session/operation UUID；操作类型；原始 Markdown **准确字节**（JSON Data/base64）及 SHA256；来源/目标相对路径和基线 SHA；资源草稿/来源/目标关联、实际唯一名、SHA、字节数、所有权与发布状态；dirty/saved/checkpoint。
+- `events.jsonl`：schema v1 append-only 事件。相关副作用前追加并 `fsync` intent，副作用后追加并 `fsync` confirmed/blocked；sequence、UUID、phase、相对路径、SHA、所有权均校验。
+- manifest 更新写同目录临时文件，文件 `fsync` 后 `rename` 替换，再对父目录 `fsync`。资源/Markdown 也在写入文件并 `fsync` 后 rename，并尝试 `fsync` 父目录。该做法是本机**进程中断**证据，不等同断电、控制器缓存或硬件耐久保证。
+
+恢复命令 `persistent-recovery audit <root>` 是只读入口：拒绝未知 schema、截断/非法事件、非 UUID 会话、`..`/绝对路径、符号链接边界及字段枚举之外的值；从 manifest 的 Markdown 字节和仍存在的草稿资源重建逻辑上的独立未保存草稿。它不自动覆写目标、不重试 commit、不删除 staging、已发布孤儿、同字节复用资源或其它会话资源。记录损坏时只拒绝该会话并保留整个目录。
+
+若目标字节等于计划 Markdown、但缺少最终确认，状态只能是 `observed-bytes-match-completion-unknown`（“已观察目标字节符合计划，但最终完成状态未知”）；不会凭 hash 相同补写 saved。来源/目标被外部修改或草稿资源丢失时同样保守保留并提示。
+
+资源发布与 Markdown rename 仍不是多文件原子事务；中断可留下已发布孤儿，但可由磁盘记录逐项审计。只有最终确认 manifest 持久化后才 `saved=true` / `dirty=false`。
 
 ## 范围与交付
 
@@ -79,6 +95,7 @@ cd prototypes/local-assets
 make build   # swiftc -target arm64-apple-macos14.0；codesign 失败真实非零
 make check   # 判定器自测 + L1 + L2 + 对照 + evidence/ 写入
              # rc: 0 通过 / 1 L1 失败 / 2 L2 证据失败 / 3 沙盒未激活 / 4 自测失败
+make restart-check # 8 个真实 SIGKILL 窗口 + 10 个损坏/冲突/路径负例；非零即失败
 make clean   # 只删本目录 .build/ 与 scratch/
 ```
 
@@ -92,7 +109,7 @@ make clean   # 只删本目录 .build/ 与 scratch/
 - 符号链接逐组件检查可防逃逸，但不防硬链接（原型范围外）。
 - L2 未在 macOS 14.0 真机执行；部署目标为 14 仅由 `-target arm64-apple-macos14.0` 声明，运行时实测为当前系统 27.2。
 - S2 的 Markdown 提交失败用目录占位；S11 用悬空 symlink；S12 用 `uchg` immutable，均为真实文件系统条件。S13 的 `beforePublish` 仅是模拟并发时序缝，证据中明确标注，不能冒称 OS 主动制造并发。
-- 资源 publish 与 Markdown 最后提交之间存在不可消除的 crash 窗口；内存 journal 无法跨重启列出已发布孤儿，持久 per-op journal 仍属父票 14 剩余范围。
+- INK-PROT-013 的 `OwnershipJournal` 仍是进程内结构；本轮用独立原型验证了持久 per-session/per-operation 协议，没有把它接入生产模型或改写原 14 场景。
 
 ## 父票 14 剩余场景（本轮明确未做，需 UI 锁与 preflight）
 

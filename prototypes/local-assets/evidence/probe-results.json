@@ -3,8 +3,8 @@
   "containerFixture" : {
     "byteCount" : 75,
     "ok" : true,
-    "path" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data/probe-fixtures/4948e222-c2e1-4223-9fc6-18ad0569bb59/容器 fixture.bin",
-    "sha256" : "387260480c1ada00b64373109a8e452d5461a0fb31f7a098fc1313fdd3aaf9d7"
+    "path" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data/probe-fixtures/1e9bcc10-cb09-41e6-b66d-3049ba443ed5/容器 fixture.bin",
+    "sha256" : "38a3cc6f2ef44f8f046eddbac532d246c49e22e9be53c0f905f8e6c829ed785e"
   },
   "containerHome" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
   "containerWrite" : {
@@ -16,13 +16,13 @@
     "errno" : 1,
     "errnoMessage" : "Operation not permitted",
     "ok" : false,
-    "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T//ink-prot-011.lNbheh/external/外 部%20fixture.bin"
+    "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T//ink-prot-011.Q2vtCT/external/外 部%20fixture.bin"
   },
   "inheritedHomeEnv" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
   "probeVersion" : "INK-PROT-011 AssetPrototype probe 0.3 (INK-PROT-013 correction)",
-  "processPath" : "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-013-asset-commit-order/prototypes/local-assets/.build/AssetPrototype.app/Contents/MacOS/AssetPrototype",
+  "processPath" : "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-021-asset-restart-recovery/prototypes/local-assets/.build/AssetPrototype.app/Contents/MacOS/AssetPrototype",
   "realHomeFromPasswd" : "/Users/rayhu",
-  "runID" : "4948e222-c2e1-4223-9fc6-18ad0569bb59",
+  "runID" : "1e9bcc10-cb09-41e6-b66d-3049ba443ed5",
   "runIDValid" : true,
   "sandboxActive" : true
 }

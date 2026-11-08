@@ -1,5 +1,5 @@
 {
-  "baselineGitSHA": "256c30edbfa9230b93b793e9780bd1923350328a",
+  "baselineGitSHA": "a60b7b9a513f5949e83aa25ef9b2c99dfa7986e2",
   "evidenceLayers": {
     "L1-pureModelPlusScratchFS": {
       "allPass": true,
@@ -41,9 +41,9 @@
       "status": "ok"
     }
   },
-  "generatedAt": "2026-11-08T13:50:54.126001+00:00",
+  "generatedAt": "2026-11-08T15:11:24.517478+00:00",
   "overallStatus": "pass",
   "prototype": "INK-PROT-013 local-assets commit-order correction (INK-PROT-011 part 1)",
-  "runID": "4948e222-c2e1-4223-9fc6-18ad0569bb59",
+  "runID": "1e9bcc10-cb09-41e6-b66d-3049ba443ed5",
   "swift": "swift-driver version: 1.168.6 Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)"
 }

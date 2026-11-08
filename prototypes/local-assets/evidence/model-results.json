@@ -1,364 +1,364 @@
 {
   "allPass" : true,
-  "baseline" : "256c30edbfa9230b93b793e9780bd1923350328a",
+  "baseline" : "a60b7b9a513f5949e83aa25ef9b2c99dfa7986e2",
   "commitOrder" : "validate(read-only) → private staging + readback verify → publish ALL assets to final locations → atomic markdown commit LAST → markSaved only on full success",
   "crashWindow" : "publish 与 markdown commit 之间崩溃：资源已在最终位置而旧 Markdown 未被替换，表现为孤儿资源；非跨文件原子事务，本原型无法消除该窗口，只如实记录并保留",
   "journal" : [
     {
       "event" : "draft-import",
-      "id" : "2615EB6E-DE3C-4956-8426-20198648DDF5",
+      "id" : "C9757C17-FC9E-4B2D-A617-6301A194067A",
       "note" : "图 片%20.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/207BF721-EDCA-4427-8169-650E79D5B592/imports/图 片%20.png",
-      "session" : "207BF721-EDCA-4427-8169-650E79D5B592"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/EC297043-65FE-4658-9C0E-0069124F3668/imports/图 片%20.png",
+      "session" : "EC297043-65FE-4658-9C0E-0069124F3668"
     },
     {
       "event" : "draft-import",
-      "id" : "7EC420BC-282A-4C03-A061-B76990F25A2E",
+      "id" : "7FF938FD-13F1-46F1-A6BE-3EDD61B32E41",
       "note" : "a.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/14DC67BE-EC0F-4790-BCEB-F89A728B8780/imports/a.png",
-      "session" : "14DC67BE-EC0F-4790-BCEB-F89A728B8780"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/10C28301-2698-427D-B000-FBB9BE497D29/imports/a.png",
+      "session" : "10C28301-2698-427D-B000-FBB9BE497D29"
     },
     {
       "event" : "kept-orphan-recorded",
-      "id" : "5B58D204-78AD-4970-98A0-08D76F683833",
+      "id" : "E5E43DAF-51B2-427D-AD18-011D6BEA1751",
       "note" : "a.png",
-      "op" : "save-37a90850-fa22-4eb1-900c-d135476f1df1",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s2/note.assets/a.png",
-      "session" : "14DC67BE-EC0F-4790-BCEB-F89A728B8780"
+      "op" : "save-f029c237-293f-4915-a3e2-f8d3c99c2e26",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s2/note.assets/a.png",
+      "session" : "10C28301-2698-427D-B000-FBB9BE497D29"
     },
     {
       "event" : "draft-import",
-      "id" : "653BC6B6-0A4E-466F-A272-26A14423B0DC",
+      "id" : "49247CE5-DDD3-4165-9C02-1C7ECCE52854",
       "note" : "图 片%20.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/8FE38D4D-9470-4410-B64B-82BD06A50F83/imports/图 片%20.png",
-      "session" : "8FE38D4D-9470-4410-B64B-82BD06A50F83"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/253B205D-7FE5-484A-BB26-D154624F6532/imports/图 片%20.png",
+      "session" : "253B205D-7FE5-484A-BB26-D154624F6532"
     },
     {
       "event" : "committed",
-      "id" : "7611BC10-D232-49DE-97DC-BEDBD888F895",
+      "id" : "FCC16264-2939-49FE-AE00-12994A06E32A",
       "note" : "图 片%20.png",
-      "op" : "save-57b66cb4-11a3-45fa-9acd-81e4d57dfc30",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s3/笔记 note.assets/图 片%20.png",
-      "session" : "8FE38D4D-9470-4410-B64B-82BD06A50F83"
+      "op" : "save-bb4705c7-c1e5-4c55-83e3-e45f82c40a64",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s3/笔记 note.assets/图 片%20.png",
+      "session" : "253B205D-7FE5-484A-BB26-D154624F6532"
     },
     {
       "event" : "markdown-committed",
-      "id" : "385F8028-D195-4A32-81DF-AEBF049084FA",
-      "op" : "save-57b66cb4-11a3-45fa-9acd-81e4d57dfc30",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s3/笔记 note.md",
-      "session" : "8FE38D4D-9470-4410-B64B-82BD06A50F83"
+      "id" : "95DB968F-B488-4475-9AA8-4E46F318C62D",
+      "op" : "save-bb4705c7-c1e5-4c55-83e3-e45f82c40a64",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s3/笔记 note.md",
+      "session" : "253B205D-7FE5-484A-BB26-D154624F6532"
     },
     {
       "event" : "committed",
-      "id" : "9F870B9D-C328-458D-B330-D6B33F42163C",
+      "id" : "0E4ACC31-F734-4BC8-8ABA-160E940792B2",
       "note" : "笔记 note.assets/图 名.png",
-      "op" : "saveas-a931434b-3c80-4202-81eb-5ca3f9cf4797",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s4-dst/笔记 note.assets/图 名.png",
+      "op" : "saveas-0acd9666-f6d6-4fed-a203-83fe6bd94c13",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s4-dst/笔记 note.assets/图 名.png",
       "session" : "n/a"
     },
     {
       "event" : "markdown-committed",
-      "id" : "93C3CFC8-4323-4996-AA42-8DD8EE908661",
-      "op" : "saveas-a931434b-3c80-4202-81eb-5ca3f9cf4797",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s4-dst/副本 copy.md",
+      "id" : "C4BCCC87-CB75-4983-AB03-5C33A310760A",
+      "op" : "saveas-0acd9666-f6d6-4fed-a203-83fe6bd94c13",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s4-dst/副本 copy.md",
       "session" : "n/a"
     },
     {
       "event" : "draft-import",
-      "id" : "BFC569CB-12DD-4F79-A5BE-186442DCE765",
+      "id" : "DBD3A9D3-12D0-4031-8A28-BBF7D3200393",
       "note" : "same.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/1CF64CD5-BE65-4849-9A4D-BA3337F6E49B/imports/same.png",
-      "session" : "1CF64CD5-BE65-4849-9A4D-BA3337F6E49B"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/D9D7EB80-67C3-4281-9640-FE9072E99DCE/imports/same.png",
+      "session" : "D9D7EB80-67C3-4281-9640-FE9072E99DCE"
     },
     {
       "event" : "reused-no-ownership",
-      "id" : "B54E485C-D59C-4E48-BB43-512785FE7E62",
-      "op" : "save-f3439039-4074-45b6-9899-a6a26ff99714",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s5/a.assets/same.png",
-      "session" : "1CF64CD5-BE65-4849-9A4D-BA3337F6E49B"
+      "id" : "71274C08-5F39-4B4A-AFE7-7EA383F3C025",
+      "op" : "save-c531cf3f-be2d-4209-a3fc-89d82afa17e2",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s5/a.assets/same.png",
+      "session" : "D9D7EB80-67C3-4281-9640-FE9072E99DCE"
     },
     {
       "event" : "draft-import",
-      "id" : "53B314CA-5116-4CD0-A23E-33A41F1D44C5",
+      "id" : "5DDD251F-49FA-414A-A68D-C90ED076C38D",
       "note" : "keep.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/5A075859-7AF7-417D-97F4-20141551D07E/imports/keep.png",
-      "session" : "5A075859-7AF7-417D-97F4-20141551D07E"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/04B34B69-E7A1-4CB3-8D02-7C62CA441789/imports/keep.png",
+      "session" : "04B34B69-E7A1-4CB3-8D02-7C62CA441789"
     },
     {
       "event" : "draft-import",
-      "id" : "70DBD9A8-4A8D-4162-BC0B-133521899F12",
+      "id" : "55533FED-502A-4126-BF1B-DDF6D5CBE288",
       "note" : "drop.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/5A075859-7AF7-417D-97F4-20141551D07E/imports/drop.png",
-      "session" : "5A075859-7AF7-417D-97F4-20141551D07E"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/04B34B69-E7A1-4CB3-8D02-7C62CA441789/imports/drop.png",
+      "session" : "04B34B69-E7A1-4CB3-8D02-7C62CA441789"
     },
     {
       "event" : "draft-import",
-      "id" : "3D450536-63FE-46CC-88A4-6B5A2FCB3F53",
+      "id" : "0525018D-BF92-41DF-ACF7-77A40FAB1540",
       "note" : "c.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/F25FB7F4-C28E-4034-A1E5-5D652BEAC309/imports/c.png",
-      "session" : "F25FB7F4-C28E-4034-A1E5-5D652BEAC309"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/6BD16B96-AD53-4C45-96F2-9BB6DC68EFF0/imports/c.png",
+      "session" : "6BD16B96-AD53-4C45-96F2-9BB6DC68EFF0"
     },
     {
       "event" : "cancelled-draft-kept",
-      "id" : "A4C94654-34FF-4FE9-B871-BC6C916B4DCA",
+      "id" : "4880B06E-AF70-4F1A-9EC5-B400D5FEE52E",
       "op" : "cancel",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/F25FB7F4-C28E-4034-A1E5-5D652BEAC309",
-      "session" : "F25FB7F4-C28E-4034-A1E5-5D652BEAC309"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/6BD16B96-AD53-4C45-96F2-9BB6DC68EFF0",
+      "session" : "6BD16B96-AD53-4C45-96F2-9BB6DC68EFF0"
     },
     {
       "event" : "draft-import",
-      "id" : "A53B108C-BB65-4461-8B43-81250CDC6D02",
+      "id" : "FA5539E2-0E52-4CAE-8613-D8B8495715AD",
       "note" : "x.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/10CBFD63-3DFC-4E2D-9710-A3313AAB8CB9/imports/x.png",
-      "session" : "10CBFD63-3DFC-4E2D-9710-A3313AAB8CB9"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/812F408A-D4FC-48D4-9CAA-C1AA86905B33/imports/x.png",
+      "session" : "812F408A-D4FC-48D4-9CAA-C1AA86905B33"
     },
     {
       "event" : "session-purged",
-      "id" : "58FF2119-28DB-4ED8-BFB7-54B2ECCF4240",
+      "id" : "C76E6B88-9F85-4EE2-860B-6E095CE1A49E",
       "op" : "abandon",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/10CBFD63-3DFC-4E2D-9710-A3313AAB8CB9",
-      "session" : "10CBFD63-3DFC-4E2D-9710-A3313AAB8CB9"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/812F408A-D4FC-48D4-9CAA-C1AA86905B33",
+      "session" : "812F408A-D4FC-48D4-9CAA-C1AA86905B33"
     },
     {
       "event" : "draft-import",
-      "id" : "2A0F2356-057C-4926-8E9D-331E8F2B8FA1",
+      "id" : "0A4CC6E4-ED9E-44D2-8950-520BBB6114F5",
       "note" : "dup.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/0E044991-99A8-4FAD-A5AB-C7BBCDC35961/imports/dup.png",
-      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/87C2A343-D51A-4B84-B046-D1E4B4523288/imports/dup.png",
+      "session" : "87C2A343-D51A-4B84-B046-D1E4B4523288"
     },
     {
       "event" : "draft-import",
-      "id" : "FBA4E9C3-3ED8-4C87-926B-638EBDCF739C",
+      "id" : "5ED243B1-DC26-4096-ACCE-51D70DFB79AA",
       "note" : "dup-1.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/0E044991-99A8-4FAD-A5AB-C7BBCDC35961/imports/dup-1.png",
-      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/87C2A343-D51A-4B84-B046-D1E4B4523288/imports/dup-1.png",
+      "session" : "87C2A343-D51A-4B84-B046-D1E4B4523288"
     },
     {
       "event" : "committed",
-      "id" : "A692F9BB-ABDC-4A2B-9EB0-9368258F1604",
+      "id" : "921B2A6A-0EC3-45DF-B7EB-0098947520E1",
       "note" : "dup.png",
-      "op" : "save-595a959a-2c5b-4e7c-85f5-b60dc1c0fa08",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s10/dup.assets/dup.png",
-      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
+      "op" : "save-48d47d4c-7d6d-4020-99be-b1e0065391d0",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s10/dup.assets/dup.png",
+      "session" : "87C2A343-D51A-4B84-B046-D1E4B4523288"
     },
     {
       "event" : "committed",
-      "id" : "A31823EF-7A60-49BE-9960-7389C7CD5422",
+      "id" : "55A5E046-B138-492D-AA31-955016FF7C98",
       "note" : "dup-1.png",
-      "op" : "save-595a959a-2c5b-4e7c-85f5-b60dc1c0fa08",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s10/dup.assets/dup-1.png",
-      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
+      "op" : "save-48d47d4c-7d6d-4020-99be-b1e0065391d0",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s10/dup.assets/dup-1.png",
+      "session" : "87C2A343-D51A-4B84-B046-D1E4B4523288"
     },
     {
       "event" : "markdown-committed",
-      "id" : "7F035A9E-2AC0-4B34-854C-1A105A5DDB0C",
-      "op" : "save-595a959a-2c5b-4e7c-85f5-b60dc1c0fa08",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s10/dup.md",
-      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
+      "id" : "D4C92185-BFB5-4089-AE01-5A2FC953930F",
+      "op" : "save-48d47d4c-7d6d-4020-99be-b1e0065391d0",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s10/dup.md",
+      "session" : "87C2A343-D51A-4B84-B046-D1E4B4523288"
     },
     {
       "event" : "draft-import",
-      "id" : "51127075-F64B-4FBC-AFFD-3D11DA5F1A17",
+      "id" : "BCE26DB9-A8B5-4984-96D2-284CC90D343D",
       "note" : "a.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/376707DA-2219-4324-91C6-17DC1D315282/imports/a.png",
-      "session" : "376707DA-2219-4324-91C6-17DC1D315282"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/4581048B-04BB-4AF9-B31A-36CD5591FC5C/imports/a.png",
+      "session" : "4581048B-04BB-4AF9-B31A-36CD5591FC5C"
     },
     {
       "event" : "draft-import",
-      "id" : "969AE411-FB35-4D53-8F29-4F3AB02DA4D6",
+      "id" : "B368A9FC-1132-4C09-B71A-FDCCBAAD6156",
       "note" : "b.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/376707DA-2219-4324-91C6-17DC1D315282/imports/b.png",
-      "session" : "376707DA-2219-4324-91C6-17DC1D315282"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/4581048B-04BB-4AF9-B31A-36CD5591FC5C/imports/b.png",
+      "session" : "4581048B-04BB-4AF9-B31A-36CD5591FC5C"
     },
     {
       "event" : "draft-import",
-      "id" : "8F378944-1EA3-48B0-9585-F41C33BFC4D7",
+      "id" : "EF8F0C80-10FC-4F7B-B0A8-EE6E8F2C8A97",
       "note" : "o.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/8B29BE63-2D0A-482A-8F91-03E46CCAA1E5/imports/o.png",
-      "session" : "8B29BE63-2D0A-482A-8F91-03E46CCAA1E5"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/08C98CE2-F997-4F3F-8332-D0D17924F567/imports/o.png",
+      "session" : "08C98CE2-F997-4F3F-8332-D0D17924F567"
     },
     {
       "event" : "kept-orphan-recorded",
-      "id" : "B709478F-076A-4CDF-8245-D5A33315233D",
+      "id" : "6143662C-56F6-444F-B78F-F7EF24E30F7C",
       "note" : "a.png",
-      "op" : "save-63eb01a7-4425-470d-b378-4acf6f951c30",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s11/note.assets/a.png",
-      "session" : "376707DA-2219-4324-91C6-17DC1D315282"
+      "op" : "save-d8caa0a1-2ca7-441e-8f53-c639f6c1a8bd",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s11/note.assets/a.png",
+      "session" : "4581048B-04BB-4AF9-B31A-36CD5591FC5C"
     },
     {
       "event" : "rolled-back-staging-deleted",
-      "id" : "FB391EF5-7961-4895-9AF4-988EA5278BF1",
+      "id" : "1E995F65-76EF-47CA-9BE0-4FBF43F08AEE",
       "note" : "b.png",
-      "op" : "save-63eb01a7-4425-470d-b378-4acf6f951c30",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s11/.inkora-save-63eb01a7-4425-470d-b378-4acf6f951c30/b.png",
-      "session" : "376707DA-2219-4324-91C6-17DC1D315282"
+      "op" : "save-d8caa0a1-2ca7-441e-8f53-c639f6c1a8bd",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s11/.inkora-save-d8caa0a1-2ca7-441e-8f53-c639f6c1a8bd/b.png",
+      "session" : "4581048B-04BB-4AF9-B31A-36CD5591FC5C"
     },
     {
       "event" : "draft-import",
-      "id" : "C9D642EF-A417-4820-9197-58117949A35B",
+      "id" : "30E78FC6-D814-4AA8-99AE-6852183D5DC6",
       "note" : "a.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/3FBBF418-1D64-4BDE-BED5-A0B250B76413/imports/a.png",
-      "session" : "3FBBF418-1D64-4BDE-BED5-A0B250B76413"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/C575246D-20ED-418C-97EF-3A132D8AC4AE/imports/a.png",
+      "session" : "C575246D-20ED-418C-97EF-3A132D8AC4AE"
     },
     {
       "event" : "draft-import",
-      "id" : "56052217-A457-45D1-9EF5-50C8B47B8079",
+      "id" : "910ABD67-3BA6-404B-A657-7A5EC47E0064",
       "note" : "b.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/3FBBF418-1D64-4BDE-BED5-A0B250B76413/imports/b.png",
-      "session" : "3FBBF418-1D64-4BDE-BED5-A0B250B76413"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/C575246D-20ED-418C-97EF-3A132D8AC4AE/imports/b.png",
+      "session" : "C575246D-20ED-418C-97EF-3A132D8AC4AE"
     },
     {
       "event" : "draft-import",
-      "id" : "DF412EC0-9C9E-4877-A132-0039D3DD1886",
+      "id" : "0EE04DEF-33BF-4489-BC7F-781EE2E78897",
       "note" : "keep.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/4FF6AD5E-0D10-4879-B748-5C98D32A5C28/imports/keep.png",
-      "session" : "4FF6AD5E-0D10-4879-B748-5C98D32A5C28"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/8EDF706F-B3CB-4933-BDDD-67DA54BE3F24/imports/keep.png",
+      "session" : "8EDF706F-B3CB-4933-BDDD-67DA54BE3F24"
     },
     {
       "event" : "kept-orphan-recorded",
-      "id" : "30A3FE1D-D59D-4461-867E-D0B65214FB03",
+      "id" : "E5889E16-2BD4-4A64-9933-376C621F33A1",
       "note" : "a.png",
-      "op" : "save-971629be-93c3-4797-8070-a48b1fbc893c",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12/note.assets/a.png",
-      "session" : "3FBBF418-1D64-4BDE-BED5-A0B250B76413"
+      "op" : "save-f583bf08-8552-4fbd-a122-690a8e744f4c",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s12/note.assets/a.png",
+      "session" : "C575246D-20ED-418C-97EF-3A132D8AC4AE"
     },
     {
       "event" : "kept-orphan-recorded",
-      "id" : "F4CA8767-41FA-4546-94C6-1B49DE0642DA",
+      "id" : "700470F1-B5E1-4261-8983-8F072F842FA6",
       "note" : "b.png",
-      "op" : "save-971629be-93c3-4797-8070-a48b1fbc893c",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12/note.assets/b.png",
-      "session" : "3FBBF418-1D64-4BDE-BED5-A0B250B76413"
+      "op" : "save-f583bf08-8552-4fbd-a122-690a8e744f4c",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s12/note.assets/b.png",
+      "session" : "C575246D-20ED-418C-97EF-3A132D8AC4AE"
     },
     {
       "event" : "kept-orphan-recorded",
-      "id" : "345CFCAC-DB5C-4CC9-B53A-25687AFD9981",
+      "id" : "77EA59F3-3AB4-493B-934A-CB345A67B95F",
       "note" : "原 doc.assets/m.png",
-      "op" : "saveas-6902cd58-2d7b-4c46-be55-e5b8f7ac97f2",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12b-dst/原 doc.assets/m.png",
+      "op" : "saveas-ea5ffd80-08de-4b71-a78b-b4b643dc2655",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s12b-dst/原 doc.assets/m.png",
       "session" : "n/a"
     },
     {
       "event" : "draft-import",
-      "id" : "BC78CC4C-1160-4B5B-BA5B-5C1353D50B2C",
+      "id" : "4202AB4A-9681-453C-ADF5-2E3565005487",
       "note" : "s.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/034957AA-E307-42E5-B971-560F6E37FD79/imports/s.png",
-      "session" : "034957AA-E307-42E5-B971-560F6E37FD79"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/26134F0F-DAA1-4E04-B328-A8D5CBBB1AB5/imports/s.png",
+      "session" : "26134F0F-DAA1-4E04-B328-A8D5CBBB1AB5"
     },
     {
       "event" : "rolled-back-staging-deleted",
-      "id" : "09B39270-5922-45FE-93D1-7A5655E1E639",
+      "id" : "2267C4BD-5294-439C-8BB0-02A7AE85349F",
       "note" : "s.png",
-      "op" : "save-3ab4cea8-4226-4819-af46-322a668a0c38",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13a/.inkora-save-3ab4cea8-4226-4819-af46-322a668a0c38/s.png",
-      "session" : "034957AA-E307-42E5-B971-560F6E37FD79"
+      "op" : "save-04ed0883-56f5-47fa-bbc7-9d9688cf40a5",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s13a/.inkora-save-04ed0883-56f5-47fa-bbc7-9d9688cf40a5/s.png",
+      "session" : "26134F0F-DAA1-4E04-B328-A8D5CBBB1AB5"
     },
     {
       "event" : "reused-no-ownership",
-      "id" : "1AAF38A4-B1C3-4E28-BC44-CE5FC293D067",
+      "id" : "CD95D9AF-B255-4B86-A9EE-4A3F8E80A04F",
       "note" : "concurrent-same-bytes",
-      "op" : "save-3ab4cea8-4226-4819-af46-322a668a0c38",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13a/c1.assets/s.png",
-      "session" : "034957AA-E307-42E5-B971-560F6E37FD79"
+      "op" : "save-04ed0883-56f5-47fa-bbc7-9d9688cf40a5",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s13a/c1.assets/s.png",
+      "session" : "26134F0F-DAA1-4E04-B328-A8D5CBBB1AB5"
     },
     {
       "event" : "markdown-committed",
-      "id" : "C6B71FC9-A66D-46B8-9FFA-9E0D81936BA1",
-      "op" : "save-3ab4cea8-4226-4819-af46-322a668a0c38",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13a/c1.md",
-      "session" : "034957AA-E307-42E5-B971-560F6E37FD79"
+      "id" : "B5C07328-76B8-4A86-BC66-F0BF38F09CBD",
+      "op" : "save-04ed0883-56f5-47fa-bbc7-9d9688cf40a5",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s13a/c1.md",
+      "session" : "26134F0F-DAA1-4E04-B328-A8D5CBBB1AB5"
     },
     {
       "event" : "draft-import",
-      "id" : "4F490C0D-868F-4F52-8497-82566712BD92",
+      "id" : "C6B4F98B-9B5E-46D6-9D57-D89AA5ED9FB3",
       "note" : "x1.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/5338262C-E679-4336-BB4F-6249905762B2/imports/x1.png",
-      "session" : "5338262C-E679-4336-BB4F-6249905762B2"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/EFDBDEE4-CDAE-4DEA-BDD3-938D85988C74/imports/x1.png",
+      "session" : "EFDBDEE4-CDAE-4DEA-BDD3-938D85988C74"
     },
     {
       "event" : "draft-import",
-      "id" : "7D24830C-17E2-4976-B6F7-60B41556FCAE",
+      "id" : "55FEF0B1-AA40-4AD2-A3B4-20810F546175",
       "note" : "x2.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/5338262C-E679-4336-BB4F-6249905762B2/imports/x2.png",
-      "session" : "5338262C-E679-4336-BB4F-6249905762B2"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/recovery/EFDBDEE4-CDAE-4DEA-BDD3-938D85988C74/imports/x2.png",
+      "session" : "EFDBDEE4-CDAE-4DEA-BDD3-938D85988C74"
     },
     {
       "event" : "kept-orphan-recorded",
-      "id" : "522AC9E2-7F8B-40B5-A19F-A068D95B2409",
+      "id" : "0981E100-74D1-4179-B0F6-D646C157D6A6",
       "note" : "x1.png",
-      "op" : "save-ebe442e6-b83c-402d-b48a-901cfd11ce79",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13b/c2.assets/x1.png",
-      "session" : "5338262C-E679-4336-BB4F-6249905762B2"
+      "op" : "save-2ae49ba9-e494-46da-9c22-b6e554cccff3",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s13b/c2.assets/x1.png",
+      "session" : "EFDBDEE4-CDAE-4DEA-BDD3-938D85988C74"
     },
     {
       "event" : "rolled-back-staging-deleted",
-      "id" : "E1426D91-81DA-4891-996B-FFF5FD1B917C",
+      "id" : "CDB1A5E8-13D1-4D28-8136-0B792A92986E",
       "note" : "x2.png",
-      "op" : "save-ebe442e6-b83c-402d-b48a-901cfd11ce79",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13b/.inkora-save-ebe442e6-b83c-402d-b48a-901cfd11ce79/x2.png",
-      "session" : "5338262C-E679-4336-BB4F-6249905762B2"
+      "op" : "save-2ae49ba9-e494-46da-9c22-b6e554cccff3",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s13b/.inkora-save-2ae49ba9-e494-46da-9c22-b6e554cccff3/x2.png",
+      "session" : "EFDBDEE4-CDAE-4DEA-BDD3-938D85988C74"
     },
     {
       "event" : "blocked",
-      "id" : "72CD3B09-70D4-40BD-A707-249FD0949C26",
+      "id" : "8507E64C-3277-4C11-BE46-81D37E8F3466",
       "note" : "pics/a.png,pics/b.png,pics/c.png",
-      "op" : "saveas-7e3e1a5c-8454-41c9-b913-8daa7ec3be00",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/copy-a.md",
+      "op" : "saveas-bc5f8ad4-907c-4db0-9a92-e25f707dc7b5",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s14-dst/copy-a.md",
       "session" : "n/a"
     },
     {
       "event" : "reused-no-ownership",
-      "id" : "A0DEFAE7-79D8-43B7-A58C-FBFD3AF69ECF",
+      "id" : "44E9839A-89E9-4002-8F10-6162285F166E",
       "note" : "unmanaged-equivalent-same-bytes",
-      "op" : "saveas-bb1ae2f1-527c-4858-a5f6-20e31a871762",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/pics/b.png",
+      "op" : "saveas-8858d50f-e11f-49eb-b76d-516a69125a43",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s14-dst/pics/b.png",
       "session" : "n/a"
     },
     {
       "event" : "markdown-committed",
-      "id" : "6C5807D0-E83F-469C-A7EA-3C5EB87B370C",
-      "op" : "saveas-bb1ae2f1-527c-4858-a5f6-20e31a871762",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/copy-b.md",
+      "id" : "5464A325-4628-4916-8826-C6B07F731AB5",
+      "op" : "saveas-8858d50f-e11f-49eb-b76d-516a69125a43",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s14-dst/copy-b.md",
       "session" : "n/a"
     },
     {
       "event" : "blocked",
-      "id" : "6E68F760-C6BD-4F06-9251-4158BD9BE2D5",
+      "id" : "24959C1B-5232-44C3-9289-6C1CE6982928",
       "note" : "pics/c.png",
-      "op" : "saveas-a132f6df-5598-413c-b93a-10fe303696c5",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/copy-c.md",
+      "op" : "saveas-d937eb5f-853b-49da-806c-282b0b8bc286",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s14-dst/copy-c.md",
       "session" : "n/a"
     },
     {
       "event" : "markdown-committed",
-      "id" : "22C42B35-A36B-4A7E-867A-E3F5A038B952",
-      "op" : "saveas-6288b804-18b2-4756-8234-c0567da58cb1",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/copy-d.md",
+      "id" : "A42AF26F-CB00-439A-9924-D5012916CB46",
+      "op" : "saveas-80f880a9-b0c9-4d90-a4bc-ce2b6963e5ff",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s14-dst/copy-d.md",
       "session" : "n/a"
     }
   ],
   "journalBoundary" : "journal 仅存在于本进程内存、不落盘：崩溃/重启后没有任何磁盘 journal 可恢复，不能声称跨重启恢复已完成操作；持久化 per-op journal 属父票14剩余范围",
   "prototype" : "INK-PROT-011 local-assets model 0.3 (INK-PROT-013 correction)",
-  "ranAt" : "2026-11-08T13:50:53Z",
+  "ranAt" : "2026-11-08T15:11:23Z",
   "scenarios" : [
     {
       "detail" : [
@@ -382,7 +382,7 @@
     {
       "detail" : [
         "PASS not saved, no markSaved, commit actually failed (phase=markdown-commit)",
-        "PASS error recorded: markdown-commit-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “note.md” couldn’t be saved in the folder “s2”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s2/note.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s2/note.md, NSUnderlyingError=0x1053841e0 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
+        "PASS error recorded: markdown-commit-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “note.md” couldn’t be saved in the folder “s2”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s2/note.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s2/note.md, NSUnderlyingError=0x104b75830 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
         "PASS asset published before markdown commit (order)",
         "PASS published asset kept as recorded orphan, bytes intact",
         "PASS private staging rolled back, no leftovers",
@@ -424,7 +424,7 @@
         "PASS saved + markSaved after full flow",
         "PASS markdown exists",
         "PASS staging cleaned after publish",
-        "PASS percent/中文/空格 ref resolves: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s3/笔记 note.assets/图 片%20.png",
+        "PASS percent/中文/空格 ref resolves: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s3/笔记 note.assets/图 片%20.png",
         "PASS managed bytes SHA == draft bytes",
         "PASS session clean after success"
       ],
@@ -481,7 +481,7 @@
     },
     {
       "detail" : [
-        "PASS same-bytes reused, error=markdown-commit-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “a.md” couldn’t be saved in the folder “s5”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s5/a.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s5/a.md, NSUnderlyingError=0x776f06c870 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
+        "PASS same-bytes reused, error=markdown-commit-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “a.md” couldn’t be saved in the folder “s5”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s5/a.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s5/a.md, NSUnderlyingError=0x797b070870 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
         "PASS failed at markdown commit after reuse",
         "PASS no staging created (nothing to publish)",
         "PASS reused pre-existing file NOT deleted (no ownership)",
@@ -545,7 +545,7 @@
         "PASS 中文/空格/百分号 ref resolves",
         "PASS dotdot rejected: dotdot-rejected: ../escape.png",
         "PASS absolute rejected: absolute-rejected: /etc/passwd",
-        "PASS symlink rejected: symlink-rejected: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s8/doc.assets/link.png",
+        "PASS symlink rejected: symlink-rejected: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s8/doc.assets/link.png",
         "PASS external secret untouched by rejection"
       ],
       "final" : [
@@ -676,7 +676,7 @@
         "PASS both orphans recorded at final paths",
         "PASS private staging deleted, no temp leftovers",
         "PASS session still dirty",
-        "PASS S12b saveAs markdown commit failed: markdown-commit-failed: Error Domain=NSCocoaErrorDomain Code=513 \"You don’t have permission to save the file “新 doc.md” in the folder “s12b-dst”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12b-dst/新 doc.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12b-dst/%E6%96%B0%20doc.md, NSUnderlyingError=0x776f06ce10 {Error Domain=NSPOSIXErrorDomain Code=1 \"Operation not permitted\"}}",
+        "PASS S12b saveAs markdown commit failed: markdown-commit-failed: Error Domain=NSCocoaErrorDomain Code=513 \"You don’t have permission to save the file “新 doc.md” in the folder “s12b-dst”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s12b-dst/新 doc.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model/s12b-dst/%E6%96%B0%20doc.md, NSUnderlyingError=0x797b070e10 {Error Domain=NSPOSIXErrorDomain Code=1 \"Operation not permitted\"}}",
         "PASS S12b source + old target + unrelated resource byte-identical (SHA)",
         "PASS S12b published asset kept + recorded as orphan",
         "PASS S12b no staging leftovers"
@@ -812,5 +812,5 @@
       "pass" : true
     }
   ],
-  "scratchRoot" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model"
+  "scratchRoot" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.Q2vtCT/model"
 }
