@@ -3,7 +3,7 @@
 Type: prototype
 Labels: wayfinder:prototype
 Status: claimed
-Assignee: root / Paseo INK-PROT-011
+Assignee: root / Paseo INK-PROT-013
 Blocked by: 06
 Parent: ../map.md
 
@@ -32,3 +32,7 @@ Host / Agent / Workspace：`srv_MEqRNkRW6fSx` / `1da3379f-18dd-414b-b036-f8124a9
 这是本票的首部分，不缩减上述完整验收标准。文件/目录面板、拖放/粘贴、书签跨重启和WK资源broker的实际授权行为不在该执行者本轮范围，继续待后续持UI锁与preflight验证；普通scratch读写不算Sandbox授权证据，无法无GUI运行Sandbox时明确留空。票据保持claimed，不能因首部分构建或数据检查成功而解决。
 
 首轮产物 `1a413b7` 已接收，执行者报告9项scratch场景及本机签名Sandbox的EPERM正例；管理者审核发现结果判定、会话隔离、唯一命名和回滚无引用证明的缺口，已立即交同Agent限定修正。首部分尚未最终接受，父票继续claimed；代码存在和报告通过不替代上述完整验收。
+
+修正产物 `256c30edbfa9230b93b793e9780bd1923350328a` 的实际签名Sandbox探针层证据已接收：管理者实跑make check，10项已有scratch场景和8项判定检查通过，容器读写成功、同一外部fixture非沙盒对照SHA正确且Sandbox返回EPERM。原Agent已归档，工作区/证据保留。但代码审核发现staging后先写最终Markdown、再发布图片的顺序违背既定政策，且未托管相对图片源存在时Save As可能静默断链；现有正例不覆盖这些反例，不能据overallStatus=pass接受完整保存模型。
+
+提交顺序与Save As由INK-PROT-013接续，GLM-5.3/high，固定基线256c30e；host/agent/workspace为`srv_MEqRNkRW6fSx` / `dad521e7-c0ac-4883-ab1e-8dd7f4b05f13` / `wks_15302ab6dfd393d7`，分支`task/INK-PROT-013-asset-commit-order`。要求资源先发布、Markdown最后提交，故障时旧Markdown字节不变、草稿/原资源保留，已发布孤儿如实记录；本票仍未通过。
