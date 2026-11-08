@@ -23,3 +23,15 @@
 宿主适配自动检查已通过。新bundle真实WK运行、物理搜狗、NSDocument/Sandbox文件流程及macOS 14实机尚未执行；待后续附记实际结果。不宣告M0或生产架构采纳。
 
 030执行Agent及Paseo工作区均已归档：328文件逐字节备份验证及Git bundle校验完成，备份索引累计34个工作区。当前031为独立本地worktree，不新增Paseo侧栏行。
+
+## 构建与预检实测
+
+宿主实际构建基线为 `1c586967039c2b03b2584a901a3afa077ee17fa7`，后续本记录提交只添加验收资料，不改变该构建的代码。`make verify ENTRY_HTML=<031绝对入口>`通过，ad-hoc Hardened Runtime签名及strict验证通过；Info、manifest、入口源/副本和observer实际文件哈希一致，CSP注入只改副本，script字节相同。
+
+- 入口源SHA：`4b8a2a3d51071ce6a5e6456f48c86f65f88d0786253f4959c768bddfc2ceca99`
+- 副本SHA：`7aaa2e7f7ff79104c01bf378dd79c959a084ba7a14ce480f82a978e26c23c807`
+- observer SHA：`073c1a46640c0855d7ca2c73068299519cc1faac9403de4536b7f4b906556950`
+
+`scripts/ci/ui-preflight.sh desktop`实际退出78：屏幕已锁定。没有启动App，没有取得或遗留UI锁，没有投递物理键码或改系统权限。已向用户请求解锁并确认可配合；必须待明确回复后再做依赖物理键盘的步骤。
+
+结构化证据见 `INK-PROT-031-evidence.json`。未重复运行无改动的生产全量测试；本次只读observer新旧接缝检查、JS语法和diff检查均已实际执行。

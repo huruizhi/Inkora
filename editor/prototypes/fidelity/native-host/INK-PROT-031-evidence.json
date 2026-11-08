@@ -1,0 +1,58 @@
+{
+  "task": "INK-PROT-031",
+  "prototypeCommit": "493e2b7cdbe982da02f4747e89a0cf52df3a770f",
+  "artifactBaseline": "1c586967039c2b03b2584a901a3afa077ee17fa7",
+  "buildManifest": {
+    "bundle_id": "com.huruizhi.Inkora.FidelityPrototype",
+    "baseline_commit": "1c586967039c2b03b2584a901a3afa077ee17fa7",
+    "os": "27.2",
+    "toolchain": "Xcode 27.2 Build version 27B52 ",
+    "entry": {
+      "source": "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-031/editor/prototypes/source-authority/PROTOTYPE.html",
+      "dest": "artifacts/FidelityHost.app/Contents/Resources/entry.html",
+      "csp_requested": true,
+      "csp_inserted": true,
+      "csp_source": "injected-by-host",
+      "csp_meta": "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'\">",
+      "source_sha256": "4b8a2a3d51071ce6a5e6456f48c86f65f88d0786253f4959c768bddfc2ceca99",
+      "bundled_sha256": "7aaa2e7f7ff79104c01bf378dd79c959a084ba7a14ce480f82a978e26c23c807",
+      "source_script_sha256": "391c0c4c07589754a513b351e3a9ac2e77b44607017b2c02a96c49e7f51dbb84",
+      "bundled_script_sha256": "391c0c4c07589754a513b351e3a9ac2e77b44607017b2c02a96c49e7f51dbb84",
+      "script_bytes_identical": true
+    },
+    "runtime_observer": {
+      "path": "Resources/runtime-observer.js",
+      "sha256": "073c1a46640c0855d7ca2c73068299519cc1faac9403de4536b7f4b906556950"
+    }
+  },
+  "automaticChecks": {
+    "rootOriginalRegressions": {
+      "passed": 4,
+      "evidenceLayer": "jsdom + real EditorView/DOM; synthetic composition"
+    },
+    "prototypeRegression": 11,
+    "prototypeIntegrationGroups": 10,
+    "legacyObserver": "pass",
+    "sourceAuthorityObserver": "pass",
+    "codesignVerifyStrict": "pass",
+    "manifestInfoAndFiles": "pass"
+  },
+  "runtime": {
+    "desktopPreflight": {
+      "exitCode": 78,
+      "reason": "screen locked"
+    },
+    "appLaunched": false,
+    "wkRuntime": "not executed",
+    "physicalSogou": "not executed",
+    "nsDocumentSandboxFileFlow": "not executed",
+    "macOS14Hardware": "not executed"
+  },
+  "cleanup": {
+    "executionAgents": "archived",
+    "executionWorkspace": "wks_aa63ecfcc29de8fa archived and owned worktree removed",
+    "verifiedBackupFiles": 328,
+    "archivedWorkspaceCount": 34
+  },
+  "verdict": "automatic scoped prototype passes; runtime awaits unlocked desktop; M0 not passed"
+}
