@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node", "jsdom"]
+  },
+  "include": [
+    "./*.ts",
+    "../fidelity/model.ts",
+    "../fidelity/source-ledger.ts",
+    "../fidelity/native-transaction.ts",
+    "../fidelity/reference-context.ts",
+    "../../src/**/*.ts"
+  ]
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>PROTOTYPE · 原文权威与可编辑投影</title>
+<style>
+*{box-sizing:border-box}body{font:15px/1.55 system-ui;margin:24px auto;max-width:1300px;padding:0 20px;color:#202622;background:#f4f6f4}h1{font-size:25px}h2{font-size:17px;margin:.2em 0 .7em}button{font:inherit;border:1px solid #8d9d92;background:#fff;border-radius:5px;padding:7px 12px;margin:3px;cursor:pointer}button:disabled{opacity:.42}.panel{background:#fff;border:1px solid #ced6d0;border-radius:7px;padding:16px;margin:12px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.state-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.state-grid pre{min-height:85px}.ProseMirror,textarea{width:100%;min-height:260px;outline:none;padding:12px;border:1px solid #bdc8c0;border-radius:5px;white-space:pre-wrap;font:15px/1.6 ui-monospace,monospace}.protected-block{border:1px dashed #856f37;background:#fff8df;padding:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f4f1;padding:10px;border-radius:4px;font-size:12px}.question{border-left:4px solid #2b7656;padding-left:12px}.guide button{display:block;width:100%;text-align:left;margin:6px 0}@media(max-width:900px){.grid,.state-grid{grid-template-columns:1fr}}
+</style>
+<h1>PROTOTYPE · 原文权威与可编辑投影</h1>
+<p class="question">验证问题：在保留真实 ProseMirror、锁定 parser/schema/ledger 的前提下，能否让每个已接受编辑立即进入唯一当前原文，并让合法空格、空行、源码往返、Save、重开、选区与历史共享同一套可审计边界？这是 INK-PROT-030 的隔离原型，不是生产迁移或 M0 结论。</p>
+<section class="panel"><h2>主链操作</h2>
+<button data-command="reset">1. 重置 a+LF</button><button data-command="typeSpace">2. 真实 PM 输入 Space</button><button data-command="save">3. 内存 Save</button><button data-command="source">4. 进入源码</button><button data-command="apply">5. 源码 no-op 提交</button><button data-command="reopen">6. 保存点新 epoch 重开</button><button data-command="typeB">7. 输入 b</button><button data-command="undo">8. Undo</button><button data-command="redo">9. Redo</button><button data-command="enter">真实 Enter</button><button data-command="cancel">取消源码草稿</button>
+</section>
+<section class="panel"><h2>完整可见状态</h2><pre id="state"></pre></section>
+<div class="state-grid">
+<section class="panel"><h2>唯一当前原文</h2><pre id="current-raw"></pre><h2>原文保存点</h2><pre id="saved-raw"></pre></section>
+<section class="panel"><h2>投影 / provenance</h2><pre id="projection"></pre></section>
+<section class="panel"><h2>选区 / history / 资格</h2><pre id="selection"></pre><pre id="history"></pre><pre id="eligibility"></pre></section>
+</div>
+<div class="grid">
+<section class="panel"><h2>可编辑投影（真实 EditorView）</h2><div id="visual"></div></section>
+<section class="panel"><h2>当前原文 / 主动源码草稿</h2><textarea id="source" readonly spellcheck="false"></textarea></section>
+</div>
+<section class="panel"><h2>证据边界</h2><p>状态与 Save 为内存层；Node 测试另以明确的 <code>INK-PROT-030-PROTOTYPE-scratch.md</code> 适配执行 UTF-8 真写读。自动层使用 jsdom 中的真实 EditorView，但不等于 WKWebView。composition 仅为 synthetic/replay；物理搜狗、NSDocument/App Sandbox、macOS 14 实机均未在此页宣称通过。</p><p>当前范围允许明确的尾随单空格、编辑空段 raw anchor、marks/链接/列表/引用的语法 provenance。保护片段内部、过期事务、BOM/CRLF/surrogate/grapheme 内部位置仍拒绝并保留意图。<code># </code> 在本原型中自然形成 ATX heading，并有字节/语义/选区/history 断言；这只是一个有界正例，不是完整 Markdown 输入规则承诺。</p></section>
+<!-- INLINE_PROTOTYPE_SCRIPT -->
+</html>
