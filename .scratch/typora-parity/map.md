@@ -19,6 +19,7 @@ Status: open
 - 继续本地图时先读 wayfinder；用户决策使用 grilling 和 domain-modeling；外部事实使用 research；交互验证使用 prototype。此阶段产出决策，进入实施前另行使用 to-spec / to-tickets。
 - 本地研究和检查使用独立 worktree。UI 自动化执行遵循 docs/testing.md；测试存在、测试通过和人工体验验收分别记录。
 - 用户已确认优先验证增量路线；下次推进优先处理相应原型票，再根据证据决定是否锁定架构。独立范围决策仍可在各自会话推进，原型代码与产品实现分别交付。
+- 用户已指定主 Agent 作为调度者/规划者，使用 Paseo 的 Codex 和 OMP 执行具体工作。当前 M0 原型已领取，分工与可恢复的 host/agent/workspace 指针见 [执行记录](execution/M0-dispatch.md)；产物与门槛结论待执行回报和核验。
 
 ## Decisions so far
 

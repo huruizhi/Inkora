@@ -2,8 +2,8 @@
 
 Type: prototype
 Labels: wayfinder:prototype
-Status: open
-Assignee: None
+Status: claimed
+Assignee: Codex 1b4ff74d-c416-407c-9a83-68ed1c02f190; manager root
 Blocked by: 04
 Parent: ../map.md
 
@@ -14,6 +14,10 @@ Parent: ../map.md
 ## Resolution criteria
 
 使用独立、明确标识为原型的代码和可重复样稿验证；用户可以实际查看/操作，研究和自动化结果不能替代用户的交互审阅。每项门槛分别记录通过、失败或未执行，必须保存可复核证据，不能仅凭截图或现有基线 111 项测试宣布原型通过。
+
+## Execution
+
+已通过 Paseo 派发 Codex 实现原型、OMP 独立准备验收样稿，具体任务、模型、host、workspace、Agent ID 和后续核验步骤见 [M0 调度记录](../execution/M0-dispatch.md)。创建回执均为 running，尚无交付或门槛通过结论。
 
 ### 最小验证范围
 
