@@ -25,3 +25,9 @@
 ## 已知边界
 
 这是保守检测器：遇到可能属于多种方言的候选时优先进入源码模式。Issue #26/#27 实现表格、任务列表或图片后，应删除对应风险码并增加 parser/serializer golden fixtures，不能只放宽正则。
+
+## INK-055 runtime 扩展预览
+
+`analyzeMarkdownSafety` 和 `prepareMarkdownSave` 的严格策略保持不变，不能把检测到的扩展直接交给普通 serializer。
+runtime 可在保留原文的原子节点中预览 front matter、GFM table 和含 Wiki link 的顶层块；
+其余文本重新经过安全检测，无法覆盖的风险仍退回源码。此路径的保存来源是节点原文，详见 `markdown-codec.md`。

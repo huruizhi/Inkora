@@ -1,3 +1,4 @@
+import { parseProtectedMarkdown } from "./protected-markdown";
 import { EditorView } from "prosemirror-view";
 import { InkoraEditorSession } from "./editor-session";
 import { TextAreaEditorKernel } from "./editor-kernel";
@@ -34,9 +35,10 @@ class StructuredEditorRuntime implements EditorRuntime {
     parent: HTMLElement,
     private savedText: string,
     onChange: RuntimeChangeListener,
+    private readonly protectedMode = false,
   ) {
     this.lineEndings = classifyLineEndings(savedText);
-    this.session = new InkoraEditorSession(parseMarkdown(structuredInput(savedText)));
+    this.session = new InkoraEditorSession(this.parse(savedText));
     let view: EditorView;
     view = new EditorView(parent, {
       state: this.session.state,
@@ -51,6 +53,11 @@ class StructuredEditorRuntime implements EditorRuntime {
     this.view.dom.addEventListener("compositionstart", this.handleCompositionStart);
     this.view.dom.addEventListener("compositionend", this.handleCompositionEnd);
     this.session.onStateChange(() => onChange(this.status));
+  }
+
+  private parse(text: string) {
+    const input = structuredInput(text);
+    return (this.protectedMode ? parseProtectedMarkdown(input) : null) ?? parseMarkdown(input);
   }
 
   get composing(): boolean {
@@ -71,7 +78,7 @@ class StructuredEditorRuntime implements EditorRuntime {
 
   markSaved(text: string): void {
     this.savedText = text;
-    this.session.markSaved(parseMarkdown(structuredInput(text)));
+    this.session.markSaved(this.parse(text));
     if (!this.composing) this.view.updateState(this.session.state);
   }
 
@@ -239,6 +246,20 @@ export function createEditorRuntime(
         return new SourceEditorRuntime(parent, text, onChange);
       }
       return new StructuredEditorRuntime(parent, text, onChange);
+    } catch {
+      parent.replaceChildren();
+    }
+  }
+  if (endings !== "mixed") {
+    try {
+      const protectedDocument = parseProtectedMarkdown(input);
+      if (protectedDocument) {
+        if (endings === "crlf" &&
+            structuredOutput(serializeMarkdown(protectedDocument), text) !== text) {
+          return new SourceEditorRuntime(parent, text, onChange);
+        }
+        return new StructuredEditorRuntime(parent, text, onChange, true);
+      }
     } catch {
       parent.replaceChildren();
     }

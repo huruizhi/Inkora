@@ -8,7 +8,7 @@ import {
 } from "./schema";
 
 describe("Inkora ProseMirror schema", () => {
-  it("defines only the stage-one node set", () => {
+  it("defines the supported nodes and protected extension block", () => {
     expect(Object.keys(inkoraSchema.nodes)).toEqual([
       "doc",
       "paragraph",
@@ -21,6 +21,7 @@ describe("Inkora ProseMirror schema", () => {
       "ordered_list",
       "bullet_list",
       "list_item",
+      "protected_block",
     ]);
     expect(Object.keys(inkoraSchema.marks)).toEqual([
       "strong",

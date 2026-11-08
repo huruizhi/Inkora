@@ -1,3 +1,4 @@
+import { protectedPreview } from "./protected-preview";
 import {
   type DOMOutputSpec,
   type Node as ProseMirrorNode,
@@ -13,6 +14,7 @@ import {
 } from "prosemirror-schema-list";
 
 export type InkoraNodeName =
+  | "protected_block"
   | "doc"
   | "paragraph"
   | "heading"
@@ -212,6 +214,21 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
     ...baseListItem,
     content: "paragraph block*",
   },
+  protected_block: {
+    group: "block",
+    atom: true,
+    isolating: true,
+    attrs: { raw: { validate: "string" }, kind: { validate: "string" } },
+    parseDOM: [{
+      tag: "section[data-inkora-raw][data-inkora-kind]",
+      getAttrs: (dom) => ({
+        raw: (dom as HTMLElement).dataset.inkoraRaw,
+        kind: (dom as HTMLElement).dataset.inkoraKind,
+      }),
+    }],
+    toDOM: (node) => protectedPreview(node.attrs.raw, node.attrs.kind),
+  },
+
 };
 
 export const inkoraMarkSpecs: Record<InkoraMarkName, MarkSpec> = {

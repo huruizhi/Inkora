@@ -179,6 +179,10 @@ function renderCodeBlock(
 export const inkoraMarkdownSerializer = new MarkdownSerializer(
   {
     ...defaultMarkdownSerializer.nodes,
+    protected_block(state, node) {
+      state.write(node.attrs.raw);
+      state.closeBlock(node);
+    },
     heading: renderHeading,
     code_block: renderCodeBlock,
     bullet_list(state, node) {
