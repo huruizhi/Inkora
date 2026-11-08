@@ -1,0 +1,222 @@
+{
+  "environment": "Node + jsdom (non-UI only)",
+  "baseline": "57aeaac18e41c7191b1be851b284aae8c1b1bbae",
+  "results": [
+    {
+      "action": "text",
+      "patches": [
+        {
+          "from": 10,
+          "to": 14,
+          "insert": "中文改写"
+        }
+      ],
+      "byteDiff": {
+        "from": 25,
+        "beforeEnd": 30,
+        "afterEnd": 30,
+        "removed": [
+          173,
+          163,
+          230,
+          150,
+          135
+        ],
+        "added": [
+          148,
+          185,
+          229,
+          134,
+          153
+        ],
+        "prefixEqual": true,
+        "suffixEqual": true
+      },
+      "pmEquivalent": true
+    },
+    {
+      "action": "strong",
+      "patches": [
+        {
+          "from": 16,
+          "to": 16,
+          "insert": "**"
+        },
+        {
+          "from": 18,
+          "to": 18,
+          "insert": "**"
+        }
+      ],
+      "byteDiff": {
+        "from": 32,
+        "beforeEnd": 38,
+        "afterEnd": 42,
+        "removed": [
+          231,
+          137,
+          185,
+          230,
+          174,
+          138
+        ],
+        "added": [
+          42,
+          42,
+          231,
+          137,
+          185,
+          230,
+          174,
+          138,
+          42,
+          42
+        ],
+        "prefixEqual": true,
+        "suffixEqual": true
+      },
+      "pmEquivalent": true
+    },
+    {
+      "action": "heading",
+      "patches": [
+        {
+          "from": 0,
+          "to": 0,
+          "insert": "#"
+        }
+      ],
+      "byteDiff": {
+        "from": 1,
+        "beforeEnd": 1,
+        "afterEnd": 2,
+        "removed": [],
+        "added": [
+          35
+        ],
+        "prefixEqual": true,
+        "suffixEqual": true
+      },
+      "pmEquivalent": true
+    },
+    {
+      "action": "task",
+      "patches": [
+        {
+          "from": 101,
+          "to": 102,
+          "insert": "x"
+        }
+      ],
+      "byteDiff": {
+        "from": 154,
+        "beforeEnd": 155,
+        "afterEnd": 155,
+        "removed": [
+          32
+        ],
+        "added": [
+          120
+        ],
+        "prefixEqual": true,
+        "suffixEqual": true
+      },
+      "pmEquivalent": true
+    },
+    {
+      "action": "split",
+      "patches": [
+        {
+          "from": 169,
+          "to": 169,
+          "insert": "\r\n\r\n"
+        }
+      ],
+      "byteDiff": {
+        "from": 248,
+        "beforeEnd": 248,
+        "afterEnd": 252,
+        "removed": [],
+        "added": [
+          13,
+          10,
+          13,
+          10
+        ],
+        "prefixEqual": true,
+        "suffixEqual": true
+      },
+      "pmEquivalent": true
+    },
+    {
+      "action": "join",
+      "patches": [
+        {
+          "from": 169,
+          "to": 173,
+          "insert": ""
+        }
+      ],
+      "byteDiff": {
+        "from": 248,
+        "beforeEnd": 252,
+        "afterEnd": 248,
+        "removed": [
+          13,
+          10,
+          13,
+          10
+        ],
+        "added": [],
+        "prefixEqual": true,
+        "suffixEqual": true
+      },
+      "pmEquivalent": true
+    },
+    {
+      "action": "source format / cross-mode undo-redo",
+      "passed": true,
+      "selectionPreserved": true
+    },
+    {
+      "action": "malformed",
+      "blocked": "Error: 公式边界不明确：保留可信视图并阻断保存",
+      "trustedBytesPreserved": true
+    },
+    {
+      "action": "native PM replace emoji",
+      "byteDiff": {
+        "from": 48,
+        "beforeEnd": 50,
+        "afterEnd": 50,
+        "removed": [
+          152,
+          128
+        ],
+        "added": [
+          166,
+          138
+        ],
+        "prefixEqual": true,
+        "suffixEqual": true
+      },
+      "pmEquivalent": true
+    },
+    {
+      "action": "BOM / mixed EOL body edit",
+      "passed": true
+    },
+    {
+      "action": "unsupported native split",
+      "blocked": "Error: 结构/marks 事务需使用专用演示操作；此次操作已阻断",
+      "trustedBytesPreserved": true
+    }
+  ],
+  "unexecuted": [
+    "WKWebView",
+    "system Chinese IME",
+    "native save/reopen",
+    "HITL",
+    "independent OMP fixtures"
+  ]
+}
