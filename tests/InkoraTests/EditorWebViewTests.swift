@@ -679,6 +679,85 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testCRLFStructuredGoldenSnapshotsAndBOMSaves() async throws {
+    let bundle = Bundle(for: Self.self)
+    for name in ["crlf-structured", "crlf-structured-final"] {
+      for bom in [Data(), Data([0xEF, 0xBB, 0xBF])] {
+        let inputURL = try XCTUnwrap(
+          bundle.url(forResource: name + ".input", withExtension: "md", subdirectory: "fixtures"))
+        let expectedURL = try XCTUnwrap(
+          bundle.url(forResource: name + ".expected", withExtension: "md", subdirectory: "fixtures")
+        )
+        let input = try Data(contentsOf: inputURL)
+        let expected = try Data(contentsOf: expectedURL)
+        var snapshotController: EditorViewController?
+        let document = InkoraDocument(snapshotRequester: { completion in
+          snapshotController!.requestSnapshot(completion: completion)
+        })
+        try document.read(from: bom + input, ofType: "net.daringfireball.markdown")
+        let controller = EditorViewController(document: document, resourceBundle: bundle)
+        controller.loadViewIfNeeded()
+        let webView = try XCTUnwrap(controller.view as? WKWebView)
+        _ = try await waitForJavaScriptValue(
+          in: webView,
+          script: "document.querySelector('#editor.ProseMirror') !== null"
+        ) { $0 as? Bool == true }
+        let originalSnapshot = try await requestText(from: controller)
+        XCTAssertEqual(Data(originalSnapshot.utf8), input)
+        XCTAssertEqual(try document.data(ofType: "net.daringfireball.markdown"), bom + input)
+        _ = try await webView.evaluateJavaScript(
+          """
+          (() => {
+            const paragraph = document.querySelector('#editor p');
+            const range = document.createRange();
+            range.setStart(paragraph.firstChild, 0);
+            range.collapse(true);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            return document.execCommand('insertText', false, '改后');
+          })()
+          """)
+        let snapshot = try await requestText(from: controller)
+        XCTAssertEqual(Data(snapshot.utf8), expected, "Snapshot: \(snapshot.debugDescription)")
+        XCTAssertGreaterThan(document.bridgeRevision, 0)
+        let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent(
+          "crlf-save-\(UUID()).md")
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+        snapshotController = controller
+        try await withCheckedThrowingContinuation {
+          (continuation: CheckedContinuation<Void, Error>) in
+          document.save(to: outputURL, ofType: "net.daringfireball.markdown", for: .saveAsOperation)
+          {
+            error in
+            if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+          }
+        }
+        XCTAssertEqual(try Data(contentsOf: outputURL), bom + expected)
+        controller.confirmSaved(
+          BridgeSnapshot(
+            documentID: document.bridgeDocumentID,
+            revision: document.bridgeRevision, text: snapshot))
+        document.close()
+      }
+    }
+  }
+
+  @MainActor
+  func testMixedAndBareCRRemainInSourceMode() async throws {
+    for input in ["first\r\nsecond\nthird", "first\rsecond", "first\rsecond\r\nthird"] {
+      let (document, controller, webView) = try await loadedEditor(initialText: input)
+      let source =
+        try await webView.evaluateJavaScript(
+          "document.querySelector('#editor') instanceof HTMLTextAreaElement") as? Bool
+      XCTAssertEqual(source, true)
+      let snapshot = try await requestText(from: controller)
+      XCTAssertEqual(snapshot, input)
+      document.close()
+    }
+  }
+
+  @MainActor
   func testSnapshotRejectsUncommittedCompositionAndKeepsContent() async throws {
     let (document, controller, webView) = try await loadedEditor(initialText: "<x>before</x>")
     _ = try await webView.evaluateJavaScript(
