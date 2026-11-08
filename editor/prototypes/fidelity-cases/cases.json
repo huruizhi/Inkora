@@ -1345,9 +1345,9 @@
               "n": 1,
               "verdict": "byte-exact",
               "mode": "visual",
-              "action": "视觉模式：光标置于「第二行使用 CRLF 结尾。」行尾按 Enter 创建新段落，并输入「插入为独立段落。」。",
-              "edit_scope": "将原 3 行同段落在第 2 行后拆为两个段落，新段落插入其间：markdown-it commonmark 解析应为 3 个 paragraph 块（第 1 行+第 2 行 / 插入段 / 第 3 行）。",
-              "delimiter_scope": "CommonMark 新段落须空行分隔：第 2 行后与插入段后各插入 1 个空行，4 个新换行边界均继承当前行 CRLF（EOL-002）；原第 2→3 行 CRLF 边界被段落重组吸收，其余原始边界不变。",
+              "action": "视觉模式复合动作：① 光标置于「第二行使用 CRLF 结尾。」句号后、原 softbreak 前，按 Enter；② 输入「插入为独立段落。」；③ 保持光标在该文本句号后、原 softbreak 前，再按 Enter；④ 此时光标位于第 3 个段落开头、原 softbreak 前，执行一次 forward Delete（删除光标后的字符；macOS 通常为 Fn+Delete，不是向后删的 Delete/Backspace），仅删除该 softbreak。",
+              "edit_scope": "两次 Enter 分别执行真实 ProseMirror splitBlock；第二次 split 后原第 2→3 行 softbreak 位于第 3 个段落开头，随后一次 Delete 将它删除。最终前三行区域恰为 3 个 paragraph（原第 1+2 行 / 插入段 / 原第 3 行）。",
+              "delimiter_scope": "源字节的局部替换范围只含「第二行…」至「第三行…」之间的原 CRLF softbreak：该原边界被结构性吸收；最终两个 CommonMark 段落分隔各序列化为 CRLF 空行（局部共 4 个 CRLF 边界，均继承当前行样式）。其余原始边界不变。",
               "ops": [
                 {
                   "find": "第二行使用 CRLF 结尾。\r\n第三行回到 LF。",
@@ -1356,6 +1356,7 @@
               ],
               "acceptance": [
                 "字节判据：保存后文件字节与 visual-after-step-1.md 完全一致；除声明吸收的边界外全部原始 LF/CRLF 边界逐字节不变。",
+                "模型判据：真实 splitBlock→insertText→splitBlock→Delete 后，前三个 PM 节点依次为「原第 1+2 行」「插入为独立段落。」「原第 3 行」；选区折叠于第 3 段开头（证据脚本中 anchor=head=44）。",
                 "模式判据：若原型按 EOL-001 现状对混合 EOL 文档整篇进入源码模式、无法执行视觉 Enter，本步记「现状差异、未执行」；不得以源码模式单换行结果（main 变体字节）冒充视觉段落拆分通过。"
               ],
               "expect": {
@@ -1387,6 +1388,69 @@
                 "to_disk": true,
                 "bytes": 220,
                 "sha256": "61aca3d39289c0e2d83b21a4465ca7249076de9d413ec7372c014a59f172be8d"
+              }
+            }
+          ]
+        },
+        {
+          "id": "single-enter",
+          "files": {
+            "input.md": {
+              "bytes": 173,
+              "sha256": "0b4e136a39ad9a432f8de66078f0800798080c855195b803d45cdeb53521b05c",
+              "bom": false,
+              "eol": "mixed",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标置于「第二行使用 CRLF 结尾。」句号后、原 softbreak 前，只按一次 Enter，并输入「插入为独立段落。」；不再按 Enter 或 Delete。",
+              "edit_scope": "真实 ProseMirror splitBlock 只产生 2 个受影响 paragraph：原第 1+2 行 / 插入文本+原 softbreak+原第 3 行。原第 3 行不是独立 paragraph。",
+              "delimiter_scope": "局部源字节中，第 2 行后新增 CRLF 空行形成段落分隔；原第 2→3 行 CRLF softbreak 保留并移到插入文本之后。局部结果含 3 个 CRLF 边界（结构分隔 2 个 + 段内 softbreak 1 个），其余原始边界不变。",
+              "ops": [
+                {
+                  "find": "第二行使用 CRLF 结尾。\r\n第三行回到 LF。",
+                  "replace": "第二行使用 CRLF 结尾。\r\n\r\n插入为独立段落。\r\n第三行回到 LF。"
+                }
+              ],
+              "acceptance": [
+                "字节判据：保存后文件字节与 single-enter-after-step-1.md 完全一致；原 softbreak 未被无说明吞掉。",
+                "模型判据：受影响区域为 2 个 PM paragraph；第二个 textContent 是「插入为独立段落。\\n第三行回到 LF。」；选区 anchor=head=42。",
+                "CommonMark 判据：受影响区域解析为 2 个 paragraph；全文件顶层 paragraph_open 为 3 个（另含尾段），不得按 visual-split 的 3 个受影响段落判定。"
+              ],
+              "expect": {
+                "file": "single-enter-after-step-1.md",
+                "to_disk": true,
+                "bytes": 201,
+                "sha256": "9b28e5830da2d0e01a8484aba818e85f4bba103d5e2256e245f98f4eff3d40f7"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标置于「尾段 LF 结尾。」句号后、文件尾换行前，只按一次 Enter，并输入「新尾段 LF。」。",
+              "edit_scope": "尾段 splitBlock 后新增 1 个独立 paragraph；不改变步骤 1 中保留的 softbreak。",
+              "delimiter_scope": "新段落的 CommonMark 分隔使用 LF 空行；原尾部 LF 保持，局部共 2 个 LF 边界（EOL-002/EOL-004）。",
+              "ops": [
+                {
+                  "find": "尾段 LF 结尾。\n",
+                  "replace": "尾段 LF 结尾。\n\n新尾段 LF。\n"
+                }
+              ],
+              "acceptance": [
+                "字节判据：保存后文件字节与 single-enter-after-step-2.md 完全一致。",
+                "模型/CommonMark 判据：尾部由 1 个 paragraph 变为 2 个；步骤 1 的第二段仍含原第 3 行 softbreak。"
+              ],
+              "expect": {
+                "file": "single-enter-after-step-2.md",
+                "to_disk": true,
+                "bytes": 218,
+                "sha256": "ded79639a6cb1dda69d6c117e3a34f2364471a9345add4193425cfbb319e927e"
               }
             }
           ]
