@@ -200,3 +200,11 @@ Host统一srv_MEqRNkRW6fSx。GPT-5.1-Sol当前未列出，5.6为另一明确型�
 Luna Agent `b4bf1578-0239-48a4-88a4-487802462ed1` 已结束，但只新增未跟踪的46行audited-crossval.mjs，未验证、未提交推送，也没有DRIVER-AUDIT。管理者读取确认其中model.apply缺tr、05手供patch、06把文字替换当结构动作、11未实际试验、退出码与路径处理不完整；不作为任务完成或可信矩阵接收。草稿保留供接续检查，原会话已及时归档，回读closed，archivedAt=`2026-11-08T13:45:47.510Z`。
 
 这项工作实际上涉及模式/结构命令、累计步骤依赖与oracle语义归因，已用具体未达标结果确认高于普通脚本执行的难度。改交GPT-5.6-Sol/medium/default服务档，在同一workspace wks_0743d97b1a902aef / 分支task/INK-PROT-012-audited-driver接续；新Agent `353d654a-6628-41c5-8d48-63f131ceca1b`，host仍srv_MEqRNkRW6fSx，notifyOnFinish=true，创建回执running。要求完整driver/实际运行/报告/提交，而非再次只交初稿；不要求原型全绿，不将目标未支持当作driver无法完成的理由。
+
+### 资源提交修正版接收与真实环境专项
+
+- 接收013固定提交 `a60b7b9a513f5949e83aa25ef9b2c99dfa7986e2`，本地/远端一致、干净，修改仅资源原型。管理者实跑 `make -C prototypes/local-assets check` exit 0，14项scratch场景、判定自测、真实Sandbox/非Sandbox对照、非法UUID不写检查均通过；本轮证据留 `artifacts/logs/ink-prot-013-manager-check.log`，原提交内JSON保持原样，工作区仍干净。
+- 已核对资源先发布、Markdown最后提交及S11–S14故障/Save As反例。仅接受该受限原型结论：内存journal不支持跨重启，保守图片正则不是通用解析，GUI授权/书签/WK broker/最低系统仍未过。资源分支独立保留，没有向008合并不同产品基线的代码。
+- 013 Agent `a61d140e-4132-4e58-ab01-fdab17e966f4` 已及时归档，回读closed，archivedAt=`2026-11-08T13:55:26.345Z`；工作区保留。
+- 空闲槽位用于已获用户确认的M0真实WK/中文IME专项 INK-PROT-014，基线 `def2002cd281f567de9adea192c25b1b1673d4a1`，分支 `task/INK-PROT-014-wk-ime-runtime`；host/agent/workspace为 `srv_MEqRNkRW6fSx` / `c5d1a216-1a93-4831-9678-7f8bb7c50848` / `wks_41bdef266cb1ee55`。GPT-5.6-Sol/medium/default档，notifyOnFinish开启，创建回执running。
+- 014只改native-host诊断/证据，使用独立原型App，须持生产UI锁并在取锁后desktop preflight，前台App进程结束后由包装器释放锁。系统输入法须真实键序与marked/composition证据，不用注入中文或模拟事件冒充；缺权限/锁屏/工具能力时记录实际未执行，不绕过系统授权。仅内存save不是NSDocument磁盘保存。009/012继续各自执行，014不能宣称验证了尚未合入的009版本或资源票14。

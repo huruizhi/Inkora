@@ -3,7 +3,7 @@
 Type: prototype
 Labels: wayfinder:prototype
 Status: claimed
-Assignee: root / Paseo INK-PROT-013
+Assignee: root
 Blocked by: 06
 Parent: ../map.md
 
@@ -38,3 +38,9 @@ Host / Agent / Workspace：`srv_MEqRNkRW6fSx` / `1da3379f-18dd-414b-b036-f8124a9
 提交顺序与Save As由INK-PROT-013接续，GLM-5.3/high，固定基线256c30e；host/agent/workspace为`srv_MEqRNkRW6fSx` / `dad521e7-c0ac-4883-ab1e-8dd7f4b05f13` / `wks_15302ab6dfd393d7`，分支`task/INK-PROT-013-asset-commit-order`。要求资源先发布、Markdown最后提交，故障时旧Markdown字节不变、草稿/原资源保留，已发布孤儿如实记录；本票仍未通过。
 
 原013执行者因GLM明确429限额终止后已归档，其Model.swift/probe未提交改动保留，同workspace由Codex GPT-5.6-Sol/high Agent `a61d140e-4132-4e58-ab01-fdab17e966f4`接续；notifyOnFinish开启。该交接不是新实现验收，完整状态见执行记录。
+
+## 已接收的首部分证据
+
+固定修正版 `a60b7b9a513f5949e83aa25ef9b2c99dfa7986e2` 已推送，管理者核实远端一致、干净，实际复跑 `make -C prototypes/local-assets check` exit 0：14项普通scratch场景、严格判定自测、签名Sandbox读写/外部EPERM与非Sandbox同fixture SHA对照，以及非法runID不写入检查通过。保存顺序为全部资源发布成功后最后提交Markdown；S11/S12保留旧文件与草稿/其它资源，S13并发缝明确标为模拟，S14覆盖未托管图片目标缺失/异字节/同字节。
+
+执行Agent已归档，工作区/证据保留。本票仍claimed由管理者维护，不因为首部分成功而解决：内存journal不能跨重启恢复；图片识别仍为保守正则；NSOpenPanel授权、拖放/粘贴、书签跨启动、WK资源broker、路径安全完整矩阵与macOS 14实机仍须后续验证。M0的WK/IME专项由另一原型执行，不等于本票的资源授权/加载验收。
