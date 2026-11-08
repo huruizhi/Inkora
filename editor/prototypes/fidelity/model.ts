@@ -7,8 +7,11 @@ import { parseMarkdown } from '../../src/markdown-codec';
 import { parseProtectedMarkdown } from '../../src/protected-markdown';
 import { analyzeMarkdownSafety } from '../../src/markdown-safety';
 
-export type Range = { start: number; end: number; pos: number; size: number; kind: string };
+export type Range = { start: number; end: number; pos: number; size: number; kind: string; issue?: string };
 export type Patch = { from: number; to: number; insert: string };
+// A boundary issue keeps the raw fragment visible (protected projection),
+// marks the problem scope and blocks structured saves. It never fails the load.
+export type Issue = { code: string; start: number; end: number; message: string };
 const tokenizer = new MarkdownIt('commonmark', { html: false }).enable(['table', 'strikethrough']);
 export const bytes = (s: string) => new TextEncoder().encode(s);
 export function diff(a: string, b: string) {
@@ -22,9 +25,11 @@ export function parse(source: string) {
   const starts = [0];
   for (let i = 0; i < source.length; i++) if (source[i] === '\n') starts.push(i + 1);
   const refs = [...source.matchAll(/^ {0,3}\[[^\]^\n]+\]:[^\n]*(?:\n|$)/gm)].map(m => m[0]).join('\n');
-  const ranges: Range[] = [], nodes: PMNode[] = [];
+  const ranges: Range[] = [], nodes: PMNode[] = [], issues: Issue[] = [];
   let cursor = 0, pos = 0;
-  const cleanGap = (s: string) => s.replace(/^ {0,3}\[[^\]^\n]+\]:[^\n]*(?:\n|$)/gm, '').trim().length === 0;
+  // Reference gaps also admit footnote-style labels: markdown-it consumes
+  // `[^1]: def` lines as reference definitions, so they can only be gap bytes.
+  const cleanGap = (s: string) => s.replace(/^ {0,3}\[[^\]\n]+\]:[^\n]*(?:\n|$)/gm, '').trim().length === 0;
   for (const token of tokenizer.parse(source.replace(/^\uFEFF/, ' '), {})) {
     if (token.level !== 0 || !token.map || token.type.endsWith('_close')) continue;
     let start = starts[token.map[0]], end = starts[token.map[1]] ?? source.length;
@@ -34,16 +39,27 @@ export function parse(source: string) {
     if (source.slice(start, end).endsWith('\r\n')) end -= 2;
     else if (source[end - 1] === '\n') end--;
     const raw = source.slice(start, end), normalized = raw.replace(/\r\n/g, '\n');
+    // Comment interiors are literal: mask them (length-preserving) before any
+    // math/mermaid boundary decision so `$x$` inside `<!-- -->` stays literal.
+    const masked = normalized.replace(/<!--[\s\S]*?-->/g, m => ' '.repeat(m.length));
     const risks = analyzeMarkdownSafety(normalized).risks;
-    let node: PMNode;
-    if (risks.some(r => r.code === 'math')) {
-      if (!/^\$\$\n[\s\S]*\n\$\$$/.test(normalized)) throw Error('公式边界不明确：保留可信视图并阻断保存');
-      node = schema.nodes.protected_block.create({ raw, kind: 'metadata' });
+    const maskedRisks = analyzeMarkdownSafety(masked).risks;
+    const protect = () => schema.nodes.protected_block.create({ raw, kind: 'metadata' });
+    let node: PMNode, issue: Issue | undefined;
+    if (/^\$\$\n[\s\S]*\n\$\$$/.test(masked)) {
+      node = protect(); // 稳定可识别的块级数学围栏：整段原字节保留
+    } else if (token.type === 'fence' && token.info.trim() === 'mermaid' && /^(`{3,}|~{3,})mermaid\n[\s\S]*\n(?:`{3,}|~{3,})$/.test(masked)) {
+      node = protect();
+    } else if (maskedRisks.some(r => r.code === 'math')) {
+      issue = { code: 'math', start, end, message: /^\$\$[ \t]*$/m.test(masked) ? '数学围栏未闭合或边界不明确（缺少配对 $$ 行）：已保留原文片段并阻断结构化保存' : '数学语法非围栏形态（行内 $ 定界）：边界不明确，已保留原文片段并阻断结构化保存' };
+      node = protect();
     } else if (token.type === 'fence' && token.info.trim() === 'mermaid') {
-      if (!/^(`{3,}|~{3,})mermaid\n[\s\S]*\n(?:`{3,}|~{3,})$/.test(normalized)) throw Error('Mermaid 边界不明确');
-      node = schema.nodes.protected_block.create({ raw, kind: 'metadata' });
-    } else if (risks.some(r => r.code === 'footnote')) {
-      node = schema.nodes.protected_block.create({ raw, kind: 'metadata' });
+      issue = { code: 'mermaid', start, end, message: 'Mermaid 围栏未闭合或边界不明确：已保留原文片段并阻断结构化保存' };
+      node = protect();
+    } else if (risks.some(r => r.code === 'raw_html')) {
+      node = protect(); // HTML 注释/标签：整段原文保留，内部 $、[[ 等按字面量处理
+    } else if (risks.some(r => r.code === 'obsidian_callout' || r.code === 'footnote')) {
+      node = protect(); // callout / 脚注片段：与正文混排，原字节保留
     } else {
       const protectedDoc = parseProtectedMarkdown(normalized);
       if (protectedDoc && protectedDoc.childCount === 1 && protectedDoc.firstChild?.type.name === 'protected_block') {
@@ -53,15 +69,20 @@ export function parse(source: string) {
         const parsed = parseMarkdown(normalized + '\n\n' + refs);
         if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
         node = parsed.firstChild!;
-        if (node.type.name === 'code_block' && !node.attrs.closed) throw Error('代码围栏未闭合');
+        if (node.type.name === 'code_block' && !node.attrs.closed) {
+          issue = { code: 'code_fence', start, end, message: '代码围栏未闭合：已保留原文片段并阻断结构化保存' };
+          node = protect();
+        }
       }
     }
-    ranges.push({ start, end, pos, size: node.nodeSize, kind: node.type.name });
+    const range: Range = { start, end, pos, size: node.nodeSize, kind: node.type.name };
+    if (issue) { range.issue = issue.message; issues.push(issue); }
+    ranges.push(range);
     nodes.push(node); pos += node.nodeSize; cursor = end;
   }
   if (!cleanGap(source.slice(cursor))) throw Error('尾部存在无法归属的原文');
   if (!nodes.length) nodes.push(schema.nodes.paragraph.create());
-  return { doc: schema.topNodeType.createChecked(null, nodes), ranges };
+  return { doc: schema.topNodeType.createChecked(null, nodes), ranges, issues };
 }
 // Each text leaf must occur exactly once inside its top-level source range.
 // Ambiguous/escaped/normalized leaves are deliberately unsupported.
@@ -86,25 +107,43 @@ export function sourcePosition(source: string, state: EditorState, ranges: Range
   return found;
 }
 export class FidelityModel {
-  source: string; saved: string; state: EditorState; ranges: Range[];
+  source: string; saved: string; state: EditorState; ranges: Range[]; issues: Issue[] = [];
+  // Last clean (re-parse safe) snapshot; repair restores it byte-exactly.
+  trusted: { source: string; state: EditorState };
   revision = 0; blocked = ''; patches: Patch[] = []; before: string;
   past: Array<{ source: string; state: EditorState }> = [];
   future: Array<{ source: string; state: EditorState }> = [];
   constructor(source: string) {
     const parsed = parse(source); this.source = this.saved = this.before = source;
-    this.ranges = parsed.ranges; this.state = EditorState.create({ doc: parsed.doc });
+    this.ranges = parsed.ranges; this.issues = parsed.issues;
+    this.state = EditorState.create({ doc: parsed.doc });
+    this.trusted = { source, state: this.state };
   }
-  commit(source: string, state: EditorState, patches: Patch[]) {
+  get pending() { return this.issues.length > 0; }
+  commitClean(source: string, state: EditorState, patches: Patch[]) {
     const parsed = parse(source);
-    if (!parsed.doc.eq(state.doc)) throw Error('补丁重解析与目标 PM 文档不一致');
+    if (parsed.issues.length || !parsed.doc.eq(state.doc)) throw Error('补丁重解析与目标 PM 文档不一致');
     this.past.push({ source: this.source, state: this.state }); this.future = [];
     this.before = this.source; this.source = source; this.state = state;
-    this.ranges = parsed.ranges; this.patches = patches; this.blocked = ''; this.revision++;
+    this.ranges = parsed.ranges; this.issues = []; this.patches = patches; this.blocked = ''; this.revision++;
+    this.trusted = { source, state };
+  }
+  // The buffer keeps the user's ambiguous input; the view is the conservative
+  // projection of that exact buffer (problem fragment marked as raw). Structured
+  // saving is blocked until a fix or undo restores a clean re-parse.
+  commitPending(source: string, patches: Patch[]) {
+    const parsed = parse(source);
+    this.past.push({ source: this.source, state: this.state }); this.future = [];
+    this.before = this.source; this.source = source;
+    this.state = EditorState.create({ doc: parsed.doc });
+    this.ranges = parsed.ranges; this.issues = parsed.issues; this.patches = patches; this.blocked = ''; this.revision++;
   }
   apply(patches: Patch[], tr: Transaction) {
     let candidate = this.source;
     for (const p of [...patches].sort((a, b) => b.from - a.from)) candidate = candidate.slice(0, p.from) + p.insert + candidate.slice(p.to);
-    this.commit(candidate, this.state.apply(tr), patches);
+    const parsed = parse(candidate);
+    if (parsed.issues.length) { this.commitPending(candidate, patches); return; }
+    this.commitClean(candidate, this.state.apply(tr), patches);
   }
   transaction(tr: Transaction) {
     if (!tr.docChanged) { this.state = this.state.apply(tr); return; }
@@ -120,16 +159,19 @@ export class FidelityModel {
     if (source === this.source) return true;
     const parsed = parse(source);
     // Source -> visual selection mapping is conservative: only preserve exact PM docs.
-    const same = parsed.doc.eq(this.state.doc);
-    const state = EditorState.create({ doc: parsed.doc, selection: same ? this.state.selection : undefined });
-    this.commit(source, state, [{ from: 0, to: this.source.length, insert: source }]);
+    const same = parsed.issues.length === 0 && parsed.doc.eq(this.state.doc);
+    if (parsed.issues.length) this.commitPending(source, [{ from: 0, to: this.source.length, insert: source }]);
+    else this.commitClean(source, EditorState.create({ doc: parsed.doc, selection: same ? this.state.selection : undefined }), [{ from: 0, to: this.source.length, insert: source }]);
     return same;
   }
   travel(redo = false) {
     const from = redo ? this.future : this.past, to = redo ? this.past : this.future;
     const entry = from.pop(); if (!entry) return;
     to.push({ source: this.source, state: this.state }); this.before = this.source;
-    this.source = entry.source; this.state = entry.state; this.ranges = parse(this.source).ranges;
+    this.source = entry.source; this.state = entry.state;
+    const parsed = parse(this.source);
+    this.ranges = parsed.ranges; this.issues = parsed.issues;
+    if (!parsed.issues.length) this.trusted = { source: entry.source, state: entry.state };
     this.patches = []; this.blocked = ''; this.revision++;
   }
   select(from: number, to = from) { this.state = this.state.apply(this.state.tr.setSelection(TextSelection.create(this.state.doc, from, to))); }

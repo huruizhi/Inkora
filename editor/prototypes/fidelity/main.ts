@@ -7,6 +7,10 @@ import { FidelityModel, sourcePosition, diff, bytes, parse } from './model';
 import { inkoraSchema as schema } from '../../src/schema';
 
 export const sample = '# 原型标题\r\n\r\n中文正文  特殊\t空白 😀 e\u0301 保持。\r\n\r\n参考 [文档][ref] 与正文。\n\n[ref]: <https://example.invalid> "标题"\n\n- [ ] 任务一\r\n\r\n$$\nx^2 + y^2\n$$\n\n| 表头 | 值 |\n| --- | --- |\n| 原文 | 保留 |\n\n保护块之后的中文。\n';
+// Independent-audit shaped samples (inputs only; expected outputs are never fed in):
+// mixed = case02-style BOM + comment/callout/footnote fragments; malformed = unclosed $$.
+export const mixedSample = '\uFEFF# 保护片段与空白\n\n修改保护片段前后的正文，其他范围逐字节保留。\n\n\n$$\nE = mc^2\n$$\n\n<!-- 注释内部含 [[bad 与 $x$，均为字面量 -->\n脚注引用在这里[^1]，行尾两个空格  \n\n> [!note] 标题存在\n> 引用正文样式保持。\n\n[^1]: 脚注定义原文保留。\n\n收尾段落包含一个制表符→\t←结束。\n';
+export const malformedSample = '# 边界含混样稿\n\n正常正文一段。\n\n$$\n\\int_0^1 x\\,dx\n';
 const $ = (id: string) => document.getElementById(id)!;
 let model = new FidelityModel(sample), view: EditorView;
 const sourceKernel = new TextAreaEditorKernel($('source-draft') as HTMLTextAreaElement);
@@ -20,11 +24,29 @@ function render() {
   const sel = model.state.selection;
   let mapped = '未验证';
   try { mapped = `${sourcePosition(model.source, model.state, model.ranges, sel.from)}..${sourcePosition(model.source, model.state, model.ranges, sel.to)} (UTF-16)`; } catch { mapped = '无可靠映射'; }
-  $('state').textContent = `revision: ${model.revision} | dirty: ${model.source !== model.saved} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to} | 原文: ${mapped}\n模式: ${sourceMode ? '主动源码草稿' : '可视'} | composition: ${view.composing}\n保存: ${model.blocked || sourceMode ? '阻断' : '允许建立内存快照'}\n${model.blocked || note}`;
+  const pending = model.pending;
+  const saveState = model.blocked ? `阻断（${model.blocked}）` : pending ? `阻断（${model.issues.length} 处边界含混待修复：主动源码修复或 Undo）` : sourceMode ? '阻断（源码草稿未提交）' : '允许建立内存快照';
+  $('state').textContent = `revision: ${model.revision} | dirty: ${model.source !== model.saved} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to} | 原文: ${mapped}\n模式: ${sourceMode ? '主动源码草稿' : '可视'} | composition: ${view.composing}\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
   $('ranges').textContent = JSON.stringify({ blocks: model.ranges.map(r => ({ ...r, byteStart: bytes(model.source.slice(0, r.start)).length, byteEnd: bytes(model.source.slice(0, r.end)).length })), coverage: coverage(), patches: model.patches }, null, 2);
+  const lineOf = (text: string, at: number) => text.slice(0, at).split('\n').length;
+  $('issues').textContent = pending ? JSON.stringify(model.issues.map(i => ({ ...i, line: lineOf(model.source, i.start), byteStart: bytes(model.source.slice(0, i.start)).length, byteEnd: bytes(model.source.slice(0, i.end)).length, fragment: model.source.slice(i.start, Math.min(i.end, i.start + 48)) })), null, 2) : '无边界含混问题；结构化保存路径可用。';
   $('diff').textContent = JSON.stringify(diff(model.before, model.source), null, 2);
   $('before').textContent = esc(model.before); $('after').textContent = esc(model.source);
-  $('save').toggleAttribute('disabled', !!model.blocked || sourceMode || view.composing);
+  $('save').toggleAttribute('disabled', !!model.blocked || pending || sourceMode || view.composing);
+  annotateIssues();
+}
+// Mark problem fragments in the real DOM: conservative raw projection, never faked rendering.
+function annotateIssues() {
+  const sections = view.dom.querySelectorAll('section.protected-block');
+  let index = 0;
+  for (const r of model.ranges) {
+    if (r.kind !== 'protected_block') continue;
+    const el = sections[index++] as HTMLElement | undefined;
+    if (!el) continue;
+    const flagged = !!r.issue;
+    el.classList.toggle('protected-issue', flagged);
+    el.title = flagged ? `边界含混：${r.issue}（UTF-16 ${r.start}..${r.end}）` : '保留原文的预览；暂不支持块内编辑';
+  }
 }
 function coverage() {
   let cursor = 0; const all: Array<{ start: number; end: number; owner: string }> = [];
@@ -66,6 +88,8 @@ const setDraft = (value: string) => { const source = $('source-draft') as HTMLTe
 
 const actions: Record<string, () => void> = {
   reset() { model = new FidelityModel(sample); sourceMode = false; note = '重新加载隔离样稿（混合 LF/CRLF）'; },
+  openMixed() { model = new FidelityModel(mixedSample); sourceMode = false; note = '打开混排样稿：BOM + 数学围栏/HTML 注释/脚注/callout 保护片段与正文混排，全部原字节保留'; },
+  openMalformed() { model = new FidelityModel(malformedSample); sourceMode = false; note = '打开畸形样稿：无闭合 $$ 不再整体失败；正文可视、问题片段原样标注、保存阻断、不置 dirty'; },
   text() { pick('中文正文'); patchSelection('中文改写'); note = '正文通过真实 PM 文本事务与局部补丁更新'; },
   strong() {
     pick('特殊'); const { from, to } = model.state.selection;
@@ -104,9 +128,14 @@ const actions: Record<string, () => void> = {
   },
   cancel() { sourceMode = false; note = '取消草稿；textarea 由可信原文重置，可信内容不变；错误仍需有效源码提交或 Undo 才能解除'; },
   format() { actions.source(); setDraft(($('source-draft') as HTMLTextAreaElement).value.replace('[ref]: ', '[ref]:   ')); actions.apply(); },
-  malformed() { actions.source(); setDraft(($('source-draft') as HTMLTextAreaElement).value.replace('\n$$\n\n|', '\n$\n\n|')); actions.apply(); },
-  repair() { if (!sourceMode) actions.source(); setDraft(model.source); actions.apply(); note = '主动提交可信原文修复草稿；字节一致时为 no-op 并解除阻断'; },
-  save() { if (model.blocked || sourceMode) throw Error('保存阻断'); model.saved = model.source; note = '仅记录内存保存点；未访问文件系统，未验证原生保存'; },
+  malformed() { actions.source(); setDraft(($('source-draft') as HTMLTextAreaElement).value.replace('\n$$\n\n|', '\n$\n\n|')); actions.apply(); note = '已提交含混草稿：缓冲保留用户输入（pending），可信投影标注问题片段，结构化保存阻断'; },
+  repair() { if (!sourceMode) actions.source(); setDraft(model.trusted.source); actions.apply(); note = '主动提交最近一次可信原文修复含混缓冲；字节一致时为 no-op，pending 随有效提交解除'; },
+  save() {
+    if (model.blocked) throw Error('保存阻断：' + model.blocked);
+    if (model.pending) throw Error('保存阻断：边界含混待修复（' + model.issues.map(i => i.code).join(',') + '）；请主动源码修复或 Undo');
+    if (sourceMode) throw Error('保存阻断：源码草稿未提交或取消');
+    model.saved = model.source; note = '仅记录内存保存点（case10 的 to_disk 在原型中只以内存基线模拟）；未访问文件系统';
+  },
 };
 for (const [id, action] of Object.entries(actions)) $(id).addEventListener('click', () => run(action));
 // Keep the visual selection when toolbar buttons are pressed.
@@ -115,12 +144,14 @@ const scenarios = [
   { title: '正文/标记/属性', description: '观察非规范空白、引用定义和保护块保持字节。每一步均是真实 PM 事务。', steps: ['text', 'strong', 'heading', 'task', 'undo', 'redo'] },
   { title: '拆分与合并', description: '尾段中间拆分，再合并。观察补丁仅包含空行。', steps: ['split', 'join', 'undo', 'redo'] },
   { title: '源码与历史', description: '仅改引用定义格式；PM 语义与选区不变，原文和 dirty 仍变化。然后跨模式撤销。', steps: ['text', 'format', 'undo', 'undo', 'redo', 'redo'] },
-  { title: '畸形与修复', description: '删除公式闭合边界；阻断保存并保留可信视图/原文，坏草稿仍可查看。主动修复。', steps: ['malformed', 'repair'] },
+  { title: '混排保护片段', description: '打开 BOM 混排样稿（数学围栏/注释/脚注/callout）。片段原字节保留，前后正文可直接编辑；也可在末段前键入 $$ 行观察 pending。', steps: ['openMixed'] },
+  { title: '畸形与修复', description: '经源码制造畸形围栏：缓冲保留输入并进入 pending、保存阻断、问题片段标注；Undo 或主动修复恢复一致性。', steps: ['malformed', 'repair'] },
+  { title: '畸形打开与修复', description: '直接打开无闭合 $$ 样稿：不整篇切源码、不置 dirty；正文可视、问题位置标注。随后主动源码补一行 $$ 闭合并保存。', steps: ['openMalformed', 'source'] },
 ];
 scenarios.forEach(s => { const b = document.createElement('button'); b.textContent = s.title; b.onclick = () => run(() => {
   actions.reset(); $('guide').replaceChildren(); const p = document.createElement('p'); p.textContent = s.description; $('guide').append(p);
   s.steps.forEach((id, i) => { const step = document.createElement('button'); step.textContent = `${i + 1}. ${$(id).textContent}`; step.onclick = () => run(actions[id]); $('guide').append(step); });
 }); $('tabs').append(b); });
 // Read-only diagnostics for reproducible non-UI checks; no claimed IME coverage.
-Object.assign(window, { fidelityPrototype: { get model() { return model; }, actions, run, parse, diff, view, sourcePosition } });
+Object.assign(window, { fidelityPrototype: { get model() { return model; }, get sourceMode() { return sourceMode; }, actions, run, parse, diff, view, sourcePosition, FidelityModel, mixedSample, malformedSample, samples: { default: sample, mixed: mixedSample, malformed: malformedSample } } });
 render();
