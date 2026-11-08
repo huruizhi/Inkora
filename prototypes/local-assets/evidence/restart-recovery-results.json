@@ -1,8 +1,8 @@
 {
   "allPass": true,
-  "binarySHA256": "cdb3557c6ac516fcb8bc0a393df65ad1047883c1935bcfc28b61e6e1b791e9c6",
+  "binarySHA256": "78d9e7965fa9ce2ad8d5cc98b4e986f7d58865603148d73e4a6a0300728e14c4",
   "durabilityBoundary": "evidence covers process termination, not power loss or storage-hardware durability",
-  "generatedAt": "2026-11-08T15:12:09Z",
+  "generatedAt": "2026-11-08T15:21:09Z",
   "interruptionCases": [
     {
       "checkpoint": "imported",
@@ -11,82 +11,82 @@
       "markdownFidelity": "BOM+CRLF+Chinese+emoji SHA matched",
       "name": "saveDraft-after-import-before-save",
       "operation": "saveDraft",
-      "operationID": "de4e7f39-be34-4e31-9bbe-2fd8ed4afede",
+      "operationID": "1741320f-e661-4c82-9b9e-561dfe0f5cd0",
       "pass": true,
       "phase": "after-import-before-save",
       "publishedMatchingCount": 0,
       "rawReturnCode": -9,
-      "recoveryPID": 82633,
+      "recoveryPID": 91277,
       "recoveryStatus": "not-committed",
-      "sessionID": "e544202e-c205-464e-a2f2-57ac93a9fc55",
+      "sessionID": "144c7a8d-0c44-4820-9c8b-e4195d6bce1e",
       "sourceAssetsPreserved": true,
       "targetSHA256AfterRecovery": null,
       "targetSHA256BeforeRecovery": null,
       "treeSHAUnchangedByRecovery": true,
-      "workerPID": 82632
+      "workerPID": 91276
     },
     {
       "checkpoint": "partially-published",
-      "eventCount": 8,
+      "eventCount": 9,
       "exitSignal": "SIGKILL",
       "markdownFidelity": "BOM+CRLF+Chinese+emoji SHA matched",
       "name": "saveDraft-after-partial-publish",
       "operation": "saveDraft",
-      "operationID": "6c3615ab-2628-4bb1-8ea1-abb66e4e6854",
+      "operationID": "9a7b867d-aff7-4c51-bf81-b0ba5487a44f",
       "pass": true,
       "phase": "after-partial-publish",
       "publishedMatchingCount": 1,
       "rawReturnCode": -9,
-      "recoveryPID": 82635,
+      "recoveryPID": 91279,
       "recoveryStatus": "not-committed",
-      "sessionID": "c14eb6ea-581d-49a0-994c-8444c0c7bba8",
+      "sessionID": "5dc50186-9a17-4199-9551-7cdc4e7798ab",
       "sourceAssetsPreserved": true,
       "targetSHA256AfterRecovery": null,
       "targetSHA256BeforeRecovery": null,
       "treeSHAUnchangedByRecovery": true,
-      "workerPID": 82634
+      "workerPID": 91278
     },
     {
       "checkpoint": "assets-published",
-      "eventCount": 10,
+      "eventCount": 11,
       "exitSignal": "SIGKILL",
       "markdownFidelity": "BOM+CRLF+Chinese+emoji SHA matched",
       "name": "saveDraft-after-all-published-before-markdown",
       "operation": "saveDraft",
-      "operationID": "a30a0b55-8ac4-43e8-afbd-29c1e0e5e238",
+      "operationID": "c4dbc3ff-f04f-4620-a29a-3106f95db123",
       "pass": true,
       "phase": "after-all-published-before-markdown",
       "publishedMatchingCount": 2,
       "rawReturnCode": -9,
-      "recoveryPID": 82637,
+      "recoveryPID": 91281,
       "recoveryStatus": "not-committed",
-      "sessionID": "a2a1726e-eaf6-4413-833f-1b0c85efa4c2",
+      "sessionID": "94e362e8-1c0c-40c4-933b-75c8382f261c",
       "sourceAssetsPreserved": true,
       "targetSHA256AfterRecovery": null,
       "targetSHA256BeforeRecovery": null,
       "treeSHAUnchangedByRecovery": true,
-      "workerPID": 82636
+      "workerPID": 91280
     },
     {
       "checkpoint": "markdown-committed-unconfirmed",
-      "eventCount": 12,
+      "eventCount": 13,
       "exitSignal": "SIGKILL",
       "markdownFidelity": "BOM+CRLF+Chinese+emoji SHA matched",
       "name": "saveDraft-after-markdown-before-final-confirm",
       "operation": "saveDraft",
-      "operationID": "6d0ef411-1d77-4c3a-ab86-471c2436859a",
+      "operationID": "fa9b539b-a756-4da7-83fe-b64f777f6e0b",
       "pass": true,
       "phase": "after-markdown-before-final-confirm",
       "publishedMatchingCount": 2,
       "rawReturnCode": -9,
-      "recoveryPID": 82639,
+      "recoveryPID": 91283,
       "recoveryStatus": "observed-bytes-match-completion-unknown",
-      "sessionID": "7fe5250a-9598-499d-9f7f-8a42ce44920d",
+      "sessionID": "7cae6168-d17b-4472-9fab-8ff3cfc859d4",
       "sourceAssetsPreserved": true,
       "targetSHA256AfterRecovery": "a790dcad56f1e763f59b9bde75a4dcee1568e295e4d08fde851fd1075a787b66",
       "targetSHA256BeforeRecovery": "a790dcad56f1e763f59b9bde75a4dcee1568e295e4d08fde851fd1075a787b66",
       "treeSHAUnchangedByRecovery": true,
-      "workerPID": 82638
+      "workerPID": 91282
     },
     {
       "checkpoint": "imported",
@@ -95,82 +95,82 @@
       "markdownFidelity": "BOM+CRLF+Chinese+emoji SHA matched",
       "name": "saveAs-after-import-before-save",
       "operation": "saveAs",
-      "operationID": "cb357e64-1cd2-4fc8-b2fa-e9e1393ea4bc",
+      "operationID": "e6217df6-18b7-4194-9571-1182d575eda8",
       "pass": true,
       "phase": "after-import-before-save",
       "publishedMatchingCount": 0,
       "rawReturnCode": -9,
-      "recoveryPID": 82641,
+      "recoveryPID": 91285,
       "recoveryStatus": "not-committed",
-      "sessionID": "c0bd1b4d-7854-4ec2-8689-4cd3d8312f9c",
+      "sessionID": "4251e065-3a6e-49af-8094-bbfba88f6bb2",
       "sourceAssetsPreserved": true,
       "targetSHA256AfterRecovery": null,
       "targetSHA256BeforeRecovery": null,
       "treeSHAUnchangedByRecovery": true,
-      "workerPID": 82640
+      "workerPID": 91284
     },
     {
       "checkpoint": "partially-published",
-      "eventCount": 8,
+      "eventCount": 9,
       "exitSignal": "SIGKILL",
       "markdownFidelity": "BOM+CRLF+Chinese+emoji SHA matched",
       "name": "saveAs-after-partial-publish",
       "operation": "saveAs",
-      "operationID": "5a54280c-b26d-4e67-9611-4e962b34e3b8",
+      "operationID": "0529e362-39c5-47d2-89cd-a9b98ef4704b",
       "pass": true,
       "phase": "after-partial-publish",
       "publishedMatchingCount": 1,
       "rawReturnCode": -9,
-      "recoveryPID": 82643,
+      "recoveryPID": 91287,
       "recoveryStatus": "not-committed",
-      "sessionID": "e90a42b4-c386-40c5-8465-2b7ab20469d2",
+      "sessionID": "3c219714-3d78-4ee2-a426-284f151444d3",
       "sourceAssetsPreserved": true,
       "targetSHA256AfterRecovery": null,
       "targetSHA256BeforeRecovery": null,
       "treeSHAUnchangedByRecovery": true,
-      "workerPID": 82642
+      "workerPID": 91286
     },
     {
       "checkpoint": "assets-published",
-      "eventCount": 10,
+      "eventCount": 11,
       "exitSignal": "SIGKILL",
       "markdownFidelity": "BOM+CRLF+Chinese+emoji SHA matched",
       "name": "saveAs-after-all-published-before-markdown",
       "operation": "saveAs",
-      "operationID": "3c0ba13d-dda5-4f50-b04f-368c297180fa",
+      "operationID": "6e245b24-2a12-4717-b347-621102bc4d78",
       "pass": true,
       "phase": "after-all-published-before-markdown",
       "publishedMatchingCount": 2,
       "rawReturnCode": -9,
-      "recoveryPID": 82645,
+      "recoveryPID": 91289,
       "recoveryStatus": "not-committed",
-      "sessionID": "3a7c7da1-00b5-4ce7-b22f-e665e31012aa",
+      "sessionID": "88b3709d-28fa-488c-9d09-3e92c1cf8731",
       "sourceAssetsPreserved": true,
       "targetSHA256AfterRecovery": null,
       "targetSHA256BeforeRecovery": null,
       "treeSHAUnchangedByRecovery": true,
-      "workerPID": 82644
+      "workerPID": 91288
     },
     {
       "checkpoint": "markdown-committed-unconfirmed",
-      "eventCount": 12,
+      "eventCount": 13,
       "exitSignal": "SIGKILL",
       "markdownFidelity": "BOM+CRLF+Chinese+emoji SHA matched",
       "name": "saveAs-after-markdown-before-final-confirm",
       "operation": "saveAs",
-      "operationID": "27030582-15d2-4ab8-a1c2-5ac81b158c29",
+      "operationID": "e4f788fd-4c47-4c5e-93ba-9c32790c0429",
       "pass": true,
       "phase": "after-markdown-before-final-confirm",
       "publishedMatchingCount": 2,
       "rawReturnCode": -9,
-      "recoveryPID": 82647,
+      "recoveryPID": 91291,
       "recoveryStatus": "observed-bytes-match-completion-unknown",
-      "sessionID": "7998ac59-c31d-4225-a5dd-10eb27eb43b4",
+      "sessionID": "9720d2e0-d986-4e09-9121-a17117b1d64f",
       "sourceAssetsPreserved": true,
       "targetSHA256AfterRecovery": "38f8e9488a1f83f649557400123f3040793ec2454d7fdeeaeb9dc692f30e89e5",
       "targetSHA256BeforeRecovery": "38f8e9488a1f83f649557400123f3040793ec2454d7fdeeaeb9dc692f30e89e5",
       "treeSHAUnchangedByRecovery": true,
-      "workerPID": 82646
+      "workerPID": 91290
     }
   ],
   "negativeCases": [
@@ -178,84 +178,146 @@
       "name": "truncated-manifest",
       "pass": true,
       "preserved": true,
-      "recoveryPID": 82649,
+      "recoveryPID": 91293,
       "recoveryStatus": "record-rejected",
-      "workerPID": 82648
+      "workerPID": 91292
     },
     {
       "name": "truncated-event",
       "pass": true,
       "preserved": true,
-      "recoveryPID": 82651,
+      "recoveryPID": 91295,
       "recoveryStatus": "record-rejected",
-      "workerPID": 82650
+      "workerPID": 91294
     },
     {
       "name": "external-target-change",
       "pass": true,
-      "recoveryPID": 82653,
+      "recoveryPID": 91297,
       "recoveryStatus": "external-target-change",
       "targetSHA256AfterRecovery": "76b4caa02b5ea0428d80b348864995e6dc95bdc4cc0255cd1f595ad8f3e1f362",
       "targetSHA256BeforeRecovery": "76b4caa02b5ea0428d80b348864995e6dc95bdc4cc0255cd1f595ad8f3e1f362",
-      "workerPID": 82652
+      "workerPID": 91296
     },
     {
       "name": "missing-draft-asset",
       "pass": true,
       "preserved": true,
-      "recoveryPID": 82655,
+      "recoveryPID": 91299,
       "recoveryStatus": "draft-asset-missing-or-changed",
-      "workerPID": 82654
+      "workerPID": 91298
     },
     {
       "name": "preexisting-same-bytes",
       "ownership": "none",
       "pass": true,
       "preservedSHA256": "5a8779db54a5778cad3e72c286366beeb67e6e4466f4797af06a5eed70e854ee",
-      "recoveryPID": 82657,
-      "workerPID": 82656
+      "recoveryPID": 91301,
+      "workerPID": 91300
     },
     {
       "name": "preexisting-different-bytes",
       "pass": true,
       "preservedSHA256": "eabe5c47f5eeb739eaad174e14c219e6e7fa92be72687549cc7f2679826b2df4",
-      "recoveryPID": 82659,
+      "recoveryPID": 91303,
       "targetStatus": "different-preserved",
       "workerExitCode": 70,
-      "workerPID": 82658
+      "workerPID": 91302
     },
     {
       "name": "other-session-preserved",
       "pass": true,
       "preserved": true,
-      "recoveryPID": 82662,
+      "recoveryPID": 91306,
       "sessionCount": 2,
       "workerPIDs": [
-        82660,
-        82661
+        91304,
+        91305
       ]
     },
     {
       "name": "unknown-schema",
       "outsidePreservedSHA256": "2f36163d980aee8799fc96c176705099a9f4ceebab0435f42cab4089eb856b75",
       "pass": true,
-      "recoveryPID": 82664,
+      "recoveryPID": 91308,
       "recoveryStatus": "record-rejected",
-      "workerPID": 82663
+      "workerPID": 91307
     },
     {
       "name": "illegal-dotdot-path",
       "outsidePreservedSHA256": "2f36163d980aee8799fc96c176705099a9f4ceebab0435f42cab4089eb856b75",
       "pass": true,
-      "recoveryPID": 82666,
+      "recoveryPID": 91310,
       "recoveryStatus": "record-rejected",
-      "workerPID": 82665
+      "workerPID": 91309
     },
     {
       "name": "session-symlink-boundary",
       "outsidePreservedSHA256": "2deb55ce0413b336f4f8a98db07aed4a598b6e4d6adb93543d3efe93645cd99d",
       "pass": true,
-      "recoveryPID": 82667
+      "recoveryPID": 91311
+    },
+    {
+      "name": "manifest.json-symlink-boundary",
+      "outsidePreservedSHA256": "2995c81b7d63adafb8abd4e5ae277703fdb2a1f525769a7de06e5b3046886c2a",
+      "pass": true,
+      "recoveryPID": 91313,
+      "recoveryStatus": "record-rejected",
+      "workerPID": 91312
+    },
+    {
+      "name": "events.jsonl-symlink-boundary",
+      "outsidePreservedSHA256": "53eb8a101e9f7970f5b1989e193402d30c21278b0b6636cda7de0585bc190b57",
+      "pass": true,
+      "recoveryPID": 91315,
+      "recoveryStatus": "record-rejected",
+      "workerPID": 91314
+    },
+    {
+      "name": "contradictory-saved-manifest",
+      "pass": true,
+      "preserved": true,
+      "recoveryPID": 91317,
+      "recoveryStatus": "record-inconsistent",
+      "workerPID": 91316
+    },
+    {
+      "name": "pending-intent-valid-prefix",
+      "pass": true,
+      "preserved": true,
+      "recoveryPID": 91319,
+      "recoveryStatus": "not-committed",
+      "workerPID": 91318
+    },
+    {
+      "historicallyConfirmed": true,
+      "name": "confirmed-target-changed",
+      "pass": true,
+      "preserved": true,
+      "recoveryPID": 91321,
+      "recoveryStatus": "external-target-change",
+      "workerExitCode": 0,
+      "workerPID": 91320
+    },
+    {
+      "historicallyConfirmed": true,
+      "name": "confirmed-target-missing",
+      "pass": true,
+      "preserved": true,
+      "recoveryPID": 91323,
+      "recoveryStatus": "target-missing-after-confirm",
+      "workerExitCode": 0,
+      "workerPID": 91322
+    },
+    {
+      "historicallyConfirmed": true,
+      "name": "confirmed-target-unreadable",
+      "pass": true,
+      "preserved": true,
+      "recoveryPID": 91325,
+      "recoveryStatus": "target-observation-unknown",
+      "workerExitCode": 0,
+      "workerPID": 91324
     }
   ],
   "notExecuted": [
@@ -266,8 +328,20 @@
     "power-loss/storage-hardware durability"
   ],
   "processBoundary": "parent sends SIGKILL after child fsynced checkpoint; recovery is a fresh process reading disk only",
-  "prototype": "INK-PROT-021 persistent restart recovery 0.1",
+  "prototype": "INK-PROT-021 persistent restart recovery 0.2",
   "schemaVersion": 1,
-  "scratchRoot": "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-021.ar1vqxpl",
+  "scratchRoot": "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-021._8l2j8a_",
+  "successControls": [
+    {
+      "historicallyConfirmed": true,
+      "name": "complete-saveDraft",
+      "pass": true,
+      "recoveryPID": 91327,
+      "recoveryStatus": "recorded-saved",
+      "treeSHAUnchangedByRecovery": true,
+      "workerExitCode": 0,
+      "workerPID": 91326
+    }
+  ],
   "transactionBoundary": "asset publication and Markdown rename are not one multi-file atomic transaction; audited orphans may remain"
 }

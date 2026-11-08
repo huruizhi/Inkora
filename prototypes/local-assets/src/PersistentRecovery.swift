@@ -17,6 +17,48 @@ private func sha(_ data: Data) -> String {
 
 private func read(_ url: URL) -> Data? { try? Data(contentsOf: url) }
 
+private struct FileObservation {
+    var state: String // present | missing | unreadable | invalid-path | symlink
+    var data: Data?
+    var error: String?
+    var sha256: String? { data.map(sha) }
+}
+
+/// POSIX 观察明确区分不存在、拒读/非普通文件、非法边界与符号链接。
+/// audit 只读；O_NOFOLLOW 防止最终组件在检查与打开之间被替换为 symlink。
+private func observe(_ url: URL?) -> FileObservation {
+    guard let url else { return FileObservation(state: "invalid-path", data: nil, error: "path-boundary-rejected") }
+    var info = stat()
+    if lstat(url.path, &info) != 0 {
+        let e = errno
+        return FileObservation(state: e == ENOENT ? "missing" : "unreadable", data: nil,
+                               error: "errno=\(e):\(String(cString: strerror(e)))")
+    }
+    if (info.st_mode & S_IFMT) == S_IFLNK {
+        return FileObservation(state: "symlink", data: nil, error: "final-component-symlink")
+    }
+    guard (info.st_mode & S_IFMT) == S_IFREG else {
+        return FileObservation(state: "unreadable", data: nil, error: "not-regular-file")
+    }
+    let fd = open(url.path, O_RDONLY | O_NOFOLLOW)
+    if fd < 0 {
+        let e = errno
+        return FileObservation(state: "unreadable", data: nil,
+                               error: "errno=\(e):\(String(cString: strerror(e)))")
+    }
+    defer { close(fd) }
+    var data = Data()
+    var buffer = [UInt8](repeating: 0, count: 65536)
+    while true {
+        let count = Darwin.read(fd, &buffer, buffer.count)
+        if count > 0 { data.append(contentsOf: buffer[0..<count]); continue }
+        if count == 0 { return FileObservation(state: "present", data: data, error: nil) }
+        let e = errno
+        return FileObservation(state: "unreadable", data: nil,
+                               error: "errno=\(e):\(String(cString: strerror(e)))")
+    }
+}
+
 private func isUUID(_ value: String) -> Bool {
     guard let u = UUID(uuidString: value) else { return false }
     return u.uuidString.lowercased() == value.lowercased()
@@ -308,8 +350,14 @@ private struct AuditSession: Codable {
     var checkpoint: String?
     var dirty: Bool
     var saved: Bool
+    var historicallyConfirmed: Bool
+    var currentIntegrity: String
     var markdownSHA256: String?
+    var targetObservation: String
+    var targetObservationError: String?
     var targetObservedSHA256: String?
+    var sourceObservation: String?
+    var sourceObservationError: String?
     var sourceObservedSHA256: String?
     var eventCount: Int
     var assets: [AuditAsset]
@@ -347,6 +395,170 @@ private func validEvents(_ data: Data, manifest: Manifest) -> [Event]? {
     return result
 }
 
+private struct EventConsistency {
+    var issue: String?
+    var historicallyConfirmed: Bool
+    var markdownConfirmed: Bool
+    var successfulPublishPaths: Set<String>
+}
+
+/// 校验 event 是本协议可产生的串行前缀。最后一个 intent 可以未确认（正常崩溃
+/// 窗口）；confirmed/blocked 必须消费对应 intent，不能靠 manifest 布尔位补历史。
+private func checkEventConsistency(_ events: [Event], manifest: Manifest) -> EventConsistency {
+    guard let first = events.first, first.kind == "confirmed", first.phase == "session-created",
+          first.relativePath == nil else {
+        return EventConsistency(issue: "missing-session-created", historicallyConfirmed: false,
+                                markdownConfirmed: false, successfulPublishPaths: [])
+    }
+    let draftPaths = Set(manifest.assets.map(\.draftRelativePath))
+    let targetPaths = Set(manifest.assets.map(\.targetRelativePath))
+    var pending: [String: Int] = [:]
+    var importConfirmed: Set<String> = []
+    var successfulPublish: Set<String> = []
+    var collisionBlocked = false
+    var targetChangedBlocked = false
+    var saveStartConfirmed = false
+    var markdownConfirmed = false
+    var finalIntent = false
+    var finalConfirmed = false
+
+    func key(_ phase: String, _ path: String?, _ hash: String?) -> String {
+        "\(phase)|\(path ?? "-")|\(hash ?? "-")"
+    }
+    func consume(_ phase: String, _ event: Event) -> Bool {
+        let k = key(phase, event.relativePath, event.sha256)
+        guard pending[k] != nil else { return false }
+        pending.removeValue(forKey: k)
+        return true
+    }
+
+    for event in events.dropFirst() {
+        switch (event.kind, event.phase) {
+        case ("intent", "import"):
+            guard let path = event.relativePath, draftPaths.contains(path),
+                  let hash = event.sha256,
+                  manifest.assets.contains(where: { $0.draftRelativePath == path && $0.sha256 == hash }) else {
+                return EventConsistency(issue: "import-intent-not-in-manifest", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            pending[key("import", path, hash)] = event.sequence
+        case ("confirmed", "import"):
+            guard consume("import", event), let path = event.relativePath else {
+                return EventConsistency(issue: "import-confirm-without-intent", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            importConfirmed.insert(path)
+        case ("intent", "save-start"):
+            guard event.relativePath == nil else {
+                return EventConsistency(issue: "invalid-save-start", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            pending[key("save-start", nil, nil)] = event.sequence
+        case ("confirmed", "save-start"):
+            guard consume("save-start", event) else {
+                return EventConsistency(issue: "save-start-confirm-without-intent", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            saveStartConfirmed = true
+        case ("intent", "publish"):
+            guard let path = event.relativePath, targetPaths.contains(path),
+                  let hash = event.sha256,
+                  manifest.assets.contains(where: { $0.targetRelativePath == path && $0.sha256 == hash }) else {
+                return EventConsistency(issue: "publish-intent-not-in-manifest", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            pending[key("publish", path, hash)] = event.sequence
+        case ("confirmed", "publish"), ("confirmed", "publish-reused"):
+            guard consume("publish", event), let path = event.relativePath else {
+                return EventConsistency(issue: "publish-confirm-without-intent", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            successfulPublish.insert(path)
+        case ("blocked", "publish-collision"):
+            guard consume("publish", event) else {
+                return EventConsistency(issue: "publish-block-without-intent", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            collisionBlocked = true
+        case ("blocked", "target-baseline-changed"):
+            guard event.relativePath == manifest.targetRelativePath else {
+                return EventConsistency(issue: "target-block-path-mismatch", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            targetChangedBlocked = true
+        case ("intent", "markdown-commit"):
+            guard event.relativePath == manifest.targetRelativePath,
+                  event.sha256 == manifest.originalMarkdownSHA256 else {
+                return EventConsistency(issue: "markdown-intent-plan-mismatch", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            pending[key("markdown-commit", event.relativePath, event.sha256)] = event.sequence
+        case ("confirmed", "markdown-commit"):
+            guard consume("markdown-commit", event) else {
+                return EventConsistency(issue: "markdown-confirm-without-intent", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            markdownConfirmed = true
+        case ("intent", "final-confirm"):
+            pending[key("final-confirm", nil, nil)] = event.sequence
+            finalIntent = true
+        case ("confirmed", "final-confirm"):
+            guard consume("final-confirm", event) else {
+                return EventConsistency(issue: "final-confirm-without-intent", historicallyConfirmed: false,
+                                        markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+            }
+            finalConfirmed = true
+        default:
+            return EventConsistency(issue: "unexpected-event-transition", historicallyConfirmed: false,
+                                    markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+        }
+    }
+
+    // 串行协议只允许最后一个 intent 因中断悬而未决。
+    if pending.count > 1 || pending.values.first.map({ $0 != events.last?.sequence }) == true {
+        return EventConsistency(issue: "non-tail-or-multiple-pending-intents", historicallyConfirmed: false,
+                                markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+    }
+    let allImports = importConfirmed.count == manifest.assets.count
+    let allPublished = successfulPublish.count == manifest.assets.count
+    let pendingImportCount = pending.keys.filter { $0.hasPrefix("import|") }.count
+    let saveStartReached = saveStartConfirmed || pending.keys.contains(key("save-start", nil, nil))
+    let checkpointOK: Bool
+    switch manifest.checkpoint {
+    case "created": checkpointOK = manifest.assets.isEmpty || importConfirmed.count + pending.count >= manifest.assets.count
+    case "imported": checkpointOK = importConfirmed.count + pendingImportCount == manifest.assets.count
+    case "save-started": checkpointOK = allImports && saveStartReached
+    case "partially-published": checkpointOK = saveStartConfirmed && !successfulPublish.isEmpty && !allPublished
+    case "assets-published": checkpointOK = saveStartConfirmed && allPublished
+    case "publish-blocked": checkpointOK = saveStartConfirmed && collisionBlocked
+    case "target-changed": checkpointOK = saveStartConfirmed && targetChangedBlocked
+    case "markdown-committed-unconfirmed": checkpointOK = allPublished && markdownConfirmed && !manifest.saved && manifest.dirty
+    case "saved": checkpointOK = allPublished && markdownConfirmed && finalIntent && manifest.saved && !manifest.dirty
+    default: checkpointOK = false
+    }
+    guard checkpointOK else {
+        return EventConsistency(issue: "checkpoint-event-state-mismatch", historicallyConfirmed: false,
+                                markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+    }
+    if manifest.saved != (manifest.checkpoint == "saved") || manifest.dirty == manifest.saved {
+        return EventConsistency(issue: "saved-dirty-checkpoint-mismatch", historicallyConfirmed: false,
+                                markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+    }
+    for asset in manifest.assets {
+        if ["published-owned", "reused"].contains(asset.publishState),
+           !successfulPublish.contains(asset.targetRelativePath) {
+            return EventConsistency(issue: "asset-state-without-publish-event", historicallyConfirmed: false,
+                                    markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+        }
+        if asset.publishState == "collision-kept" && !collisionBlocked {
+            return EventConsistency(issue: "collision-state-without-block-event", historicallyConfirmed: false,
+                                    markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+        }
+    }
+    return EventConsistency(issue: nil, historicallyConfirmed: finalConfirmed,
+                            markdownConfirmed: markdownConfirmed, successfulPublishPaths: successfulPublish)
+}
+
 private func audit(root: URL) -> AuditReport {
     let recovery = root.appendingPathComponent("recovery", isDirectory: true)
     var sessions: [AuditSession] = []
@@ -369,7 +581,9 @@ private func audit(root: URL) -> AuditReport {
             "assets-published", "publish-blocked", "target-changed", "markdown-committed-unconfirmed", "saved"]
         let validOwnership: Set<String> = ["session", "operation", "none"]
         let validPublishStates: Set<String> = ["draft-only", "published-owned", "reused", "collision-kept"]
-        guard let mdata = read(murl), let manifest = try? JSONDecoder().decode(Manifest.self, from: mdata),
+        let manifestObservation = observe(murl)
+        guard manifestObservation.state == "present", let mdata = manifestObservation.data,
+              let manifest = try? JSONDecoder().decode(Manifest.self, from: mdata),
               manifest.schemaVersion == schemaVersion,
               manifest.sessionID.lowercased() == name.lowercased(), isUUID(manifest.sessionID),
               isUUID(manifest.operationID), isSafeRelative(manifest.targetRelativePath),
@@ -389,58 +603,77 @@ private func audit(root: URL) -> AuditReport {
                   && validPublishStates.contains($0.publishState) }) else {
             sessions.append(AuditSession(sessionID: name, operationID: nil, accepted: false,
                 status: "record-rejected", reason: "manifest-invalid-or-unknown-schema",
-                checkpoint: nil, dirty: true, saved: false, markdownSHA256: nil,
-                targetObservedSHA256: nil, sourceObservedSHA256: nil, eventCount: 0, assets: [],
-                preservation: "保留全部；未执行删除、覆盖或提交"))
-            continue
-        }
-        guard let edata = read(eurl), let events = validEvents(edata, manifest: manifest) else {
-            sessions.append(AuditSession(sessionID: name, operationID: manifest.operationID,
-                accepted: false, status: "record-rejected", reason: "event-log-truncated-or-invalid",
-                checkpoint: manifest.checkpoint, dirty: true, saved: false,
-                markdownSHA256: manifest.originalMarkdownSHA256, targetObservedSHA256: nil,
+                checkpoint: nil, dirty: true, saved: false, historicallyConfirmed: false,
+                currentIntegrity: "unknown", markdownSHA256: nil,
+                targetObservation: "not-observed", targetObservationError: manifestObservation.error,
+                targetObservedSHA256: nil, sourceObservation: nil, sourceObservationError: nil,
                 sourceObservedSHA256: nil, eventCount: 0, assets: [],
                 preservation: "保留全部；未执行删除、覆盖或提交"))
             continue
         }
+        let eventsObservation = observe(eurl)
+        guard eventsObservation.state == "present", let edata = eventsObservation.data,
+              let events = validEvents(edata, manifest: manifest) else {
+            sessions.append(AuditSession(sessionID: name, operationID: manifest.operationID,
+                accepted: false, status: "record-rejected", reason: "event-log-truncated-or-invalid",
+                checkpoint: manifest.checkpoint, dirty: true, saved: false,
+                historicallyConfirmed: false, currentIntegrity: "unknown",
+                markdownSHA256: manifest.originalMarkdownSHA256,
+                targetObservation: "not-observed", targetObservationError: eventsObservation.error,
+                targetObservedSHA256: nil, sourceObservation: nil, sourceObservationError: nil,
+                sourceObservedSHA256: nil, eventCount: 0, assets: [],
+                preservation: "保留全部；未执行删除、覆盖或提交"))
+            continue
+        }
+        let consistency = checkEventConsistency(events, manifest: manifest)
         let target = inside(root: root, relative: manifest.targetRelativePath)
-        let targetSHA = target.flatMap(read).map(sha)
-        let sourceSHA = manifest.sourceRelativePath.flatMap { inside(root: root, relative: $0) }.flatMap(read).map(sha)
+        let targetObservation = observe(target)
+        let sourceObservation = manifest.sourceRelativePath.map { observe(inside(root: root, relative: $0)) }
+        let targetSHA = targetObservation.sha256
+        let sourceSHA = sourceObservation?.sha256
         var reason = "已从磁盘记录重建为独立未保存草稿"
         var status = "not-committed"
-        if manifest.saved {
-            status = "recorded-saved"
-            reason = "记录含最终确认；只读审计未修改文件"
+        if let issue = consistency.issue {
+            status = "record-inconsistent"
+            reason = "manifest 与事件状态机不一致（\(issue)）；按未保存状态保守保留全部"
+        } else if let sourceObservation, sourceObservation.state != "present" {
+            status = "source-observation-unknown"
+            reason = "无法确认 Save As 来源当前字节（\(sourceObservation.state)）；保守保留全部"
         } else if manifest.sourceRelativePath != nil, sourceSHA != manifest.sourceBaselineSHA256 {
             status = "external-source-change"
             reason = "来源已外部修改；保守保留全部"
-        } else if targetSHA == manifest.originalMarkdownSHA256 && !manifest.saved {
-            status = "observed-bytes-match-completion-unknown"
-            reason = "已观察目标字节符合计划，但最终完成状态未知"
-        } else if targetSHA != manifest.targetBaselineSHA256 {
-            status = "external-target-change"
-            reason = "目标与记录基线/计划均不符；保守保留全部"
         }
         var assets: [AuditAsset] = []
+        var draftAssetsValid = true
+        var sourceAssetsValid = true
+        var targetAssetsValid = true
+        var targetAssetsKnown = true
         for asset in manifest.assets {
             let draftURL = inside(root: root, relative: asset.draftRelativePath)
             let targetURL = inside(root: root, relative: asset.targetRelativePath)
             let sourceAssetURL = asset.sourceRelativePath.flatMap { inside(root: root, relative: $0) }
-            let draftSHA = draftURL.flatMap(read).map(sha)
-            let sourceAssetSHA = sourceAssetURL.flatMap(read).map(sha)
-            let publishedSHA = targetURL.flatMap(read).map(sha)
-            let draftStatus = draftSHA == asset.sha256 ? "present-matching" :
-                (draftSHA == nil ? "missing" : "different")
-            let targetStatus = publishedSHA == asset.sha256 ? "present-matching" :
-                (publishedSHA == nil ? "absent" : "different-preserved")
+            let draftObservation = observe(draftURL)
+            let targetAssetObservation = observe(targetURL)
+            let sourceAssetObservation = asset.sourceRelativePath == nil ? nil : observe(sourceAssetURL)
+            let draftStatus = draftObservation.state == "present" ?
+                (draftObservation.sha256 == asset.sha256 ? "present-matching" : "different") :
+                (draftObservation.state == "missing" ? "missing" : "observation-unknown")
+            let targetStatus = targetAssetObservation.state == "present" ?
+                (targetAssetObservation.sha256 == asset.sha256 ? "present-matching" : "different-preserved") :
+                (targetAssetObservation.state == "missing" ? "absent" : "observation-unknown")
             let sourceStatus = asset.sourceRelativePath == nil ? nil :
-                (sourceAssetSHA == asset.sha256 ? "present-matching" :
-                    (sourceAssetSHA == nil ? "missing" : "different"))
-            if draftStatus != "present-matching" {
+                (sourceAssetObservation?.state == "present" ?
+                    (sourceAssetObservation?.sha256 == asset.sha256 ? "present-matching" : "different") :
+                    (sourceAssetObservation?.state == "missing" ? "missing" : "observation-unknown"))
+            draftAssetsValid = draftAssetsValid && draftStatus == "present-matching"
+            sourceAssetsValid = sourceAssetsValid && (sourceStatus == nil || sourceStatus == "present-matching")
+            targetAssetsValid = targetAssetsValid && targetStatus == "present-matching"
+            targetAssetsKnown = targetAssetsKnown && targetStatus != "observation-unknown"
+            if consistency.issue == nil && draftStatus != "present-matching" {
                 status = "draft-asset-missing-or-changed"
                 reason = "草稿资源缺失或字节变化；保守保留全部"
             }
-            if let sourceStatus, sourceStatus != "present-matching" {
+            if consistency.issue == nil, let sourceStatus, sourceStatus != "present-matching" {
                 status = "external-source-asset-change"
                 reason = "Save As 来源资源缺失或字节变化；保守保留全部"
             }
@@ -449,10 +682,54 @@ private func audit(root: URL) -> AuditReport {
                                      targetStatus: targetStatus,
                                      ownership: asset.ownership))
         }
+        let historical = consistency.issue == nil && consistency.historicallyConfirmed
+        if consistency.issue == nil && draftAssetsValid && sourceAssetsValid {
+            if historical {
+                if targetObservation.state == "missing" {
+                    status = "target-missing-after-confirm"
+                    reason = "历史最终确认存在，但当前目标已不存在；不自动重写"
+                } else if targetObservation.state != "present" {
+                    status = "target-observation-unknown"
+                    reason = "历史最终确认存在，但当前目标无法可靠读取（\(targetObservation.state)）；不自动重写"
+                } else if targetSHA != manifest.originalMarkdownSHA256 {
+                    status = "external-target-change"
+                    reason = "历史最终确认存在，但当前目标字节已外部变化；不自动重写"
+                } else if !targetAssetsKnown {
+                    status = "target-assets-observation-unknown"
+                    reason = "历史最终确认存在，但当前目标资源无法可靠读取；保守保留"
+                } else if !targetAssetsValid {
+                    status = "target-assets-changed-after-confirm"
+                    reason = "历史最终确认存在，但当前目标资源已缺失或变化；保守保留"
+                } else {
+                    status = "recorded-saved"
+                    reason = "事件含历史最终确认，且当前目标 Markdown/资源仍符合计划；只读审计未修改文件"
+                }
+            } else if targetObservation.state == "present" && targetSHA == manifest.originalMarkdownSHA256 {
+                status = "observed-bytes-match-completion-unknown"
+                reason = "已观察目标字节符合计划，但最终完成状态未知"
+            } else if targetObservation.state == "present" && targetSHA != manifest.targetBaselineSHA256 {
+                status = "external-target-change"
+                reason = "目标与记录基线/计划均不符；保守保留全部"
+            } else if targetObservation.state == "missing" && manifest.targetBaselineSHA256 != nil {
+                status = "external-target-change"
+                reason = "目标基线文件当前缺失；保守保留全部"
+            } else if targetObservation.state != "missing" && targetObservation.state != "present" {
+                status = "target-observation-unknown"
+                reason = "当前目标无法可靠读取（\(targetObservation.state)）；不将未知等同不存在"
+            }
+        }
+        let currentSaved = historical && status == "recorded-saved"
         sessions.append(AuditSession(sessionID: manifest.sessionID,
             operationID: manifest.operationID, accepted: true, status: status, reason: reason,
-            checkpoint: manifest.checkpoint, dirty: status != "recorded-saved", saved: status == "recorded-saved",
-            markdownSHA256: manifest.originalMarkdownSHA256, targetObservedSHA256: targetSHA,
+            checkpoint: manifest.checkpoint, dirty: !currentSaved, saved: currentSaved,
+            historicallyConfirmed: historical,
+            currentIntegrity: currentSaved ? "matching-plan" : "requires-conservative-recovery",
+            markdownSHA256: manifest.originalMarkdownSHA256,
+            targetObservation: targetObservation.state,
+            targetObservationError: targetObservation.error,
+            targetObservedSHA256: targetSHA,
+            sourceObservation: sourceObservation?.state,
+            sourceObservationError: sourceObservation?.error,
             sourceObservedSHA256: sourceSHA, eventCount: events.count, assets: assets,
             preservation: "只读：未自动覆写目标、未重试 commit、未删除孤儿/其它会话资源"))
     }
@@ -513,6 +790,8 @@ private func runWorker(root: URL, operation: String, stop: String) throws -> Nev
     if stop == "after-import-before-save" { try waitForKill(session, phase: stop) }
     try session.event(kind: "intent", phase: "save-start")
     try session.checkpoint("save-started")
+    if stop == "after-save-start-intent" { try waitForKill(session, phase: stop) }
+    try session.event(kind: "confirmed", phase: "save-start")
     try session.publishAssets(stopAfterFirst: {
         if stop == "after-partial-publish" { try waitForKill(session, phase: stop) }
     })

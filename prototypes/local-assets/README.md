@@ -13,9 +13,13 @@
 - `events.jsonl`：schema v1 append-only 事件。相关副作用前追加并 `fsync` intent，副作用后追加并 `fsync` confirmed/blocked；sequence、UUID、phase、相对路径、SHA、所有权均校验。
 - manifest 更新写同目录临时文件，文件 `fsync` 后 `rename` 替换，再对父目录 `fsync`。资源/Markdown 也在写入文件并 `fsync` 后 rename，并尝试 `fsync` 父目录。该做法是本机**进程中断**证据，不等同断电、控制器缓存或硬件耐久保证。
 
-恢复命令 `persistent-recovery audit <root>` 是只读入口：拒绝未知 schema、截断/非法事件、非 UUID 会话、`..`/绝对路径、符号链接边界及字段枚举之外的值；从 manifest 的 Markdown 字节和仍存在的草稿资源重建逻辑上的独立未保存草稿。它不自动覆写目标、不重试 commit、不删除 staging、已发布孤儿、同字节复用资源或其它会话资源。记录损坏时只拒绝该会话并保留整个目录。
+恢复命令 `persistent-recovery audit <root>` 是只读入口：拒绝未知 schema、截断/非法事件、非 UUID 会话、`..`/绝对路径、会话目录以及 `manifest.json`/`events.jsonl` 最终组件的符号链接、字段枚举之外的值；从 manifest 的 Markdown 字节和仍存在的草稿资源重建逻辑上的独立未保存草稿。它不自动覆写目标、不重试 commit、不删除 staging、已发布孤儿、同字节复用资源或其它会话资源。记录损坏时只拒绝该会话并保留整个目录。
 
-若目标字节等于计划 Markdown、但缺少最终确认，状态只能是 `observed-bytes-match-completion-unknown`（“已观察目标字节符合计划，但最终完成状态未知”）；不会凭 hash 相同补写 saved。来源/目标被外部修改或草稿资源丢失时同样保守保留并提示。
+审计还会把 manifest 与完整事件状态机交叉验证：confirmed/blocked 必须消费对应 intent；事件中的路径和 SHA 必须属于 manifest 计划；每个 checkpoint 只接受协议可能产生的事件前缀；最后一个未确认 intent 是合法中断前缀，不会被误报为损坏。`saved=true` 只有在资源发布、Markdown commit、final-confirm 事件与 checkpoint 全部一致时才可形成“历史已确认”事实，单独篡改布尔位只能得到 `record-inconsistent`。
+
+文件观察通过 POSIX `lstat` + `open(O_NOFOLLOW)` + `read` 区分 `present`、`missing`、`unreadable`、`invalid-path`、`symlink`，不再把拒读/非法路径与不存在都折成 nil。若目标字节等于计划 Markdown、但缺少最终确认，状态只能是 `observed-bytes-match-completion-unknown`（“已观察目标字节符合计划，但最终完成状态未知”）；不会凭 hash 相同补写 saved。来源/目标被外部修改或草稿资源丢失时同样保守保留并提示。
+
+历史完成与当前完整性分开报告：`historicallyConfirmed=true` 只表示磁盘事件曾完整确认；若当前目标随后被修改、删除或拒读，分别报告 `external-target-change`、`target-missing-after-confirm`、`target-observation-unknown`，当前恢复资格仍为 `saved=false`、`dirty=true`，且不会自动覆盖。
 
 资源发布与 Markdown rename 仍不是多文件原子事务；中断可留下已发布孤儿，但可由磁盘记录逐项审计。只有最终确认 manifest 持久化后才 `saved=true` / `dirty=false`。
 
@@ -95,7 +99,7 @@ cd prototypes/local-assets
 make build   # swiftc -target arm64-apple-macos14.0；codesign 失败真实非零
 make check   # 判定器自测 + L1 + L2 + 对照 + evidence/ 写入
              # rc: 0 通过 / 1 L1 失败 / 2 L2 证据失败 / 3 沙盒未激活 / 4 自测失败
-make restart-check # 8 个真实 SIGKILL 窗口 + 10 个损坏/冲突/路径负例；非零即失败
+make restart-check # 8 个真实 SIGKILL 窗口 + 17 个负例 + 1 个完整成功对照；非零即失败
 make clean   # 只删本目录 .build/ 与 scratch/
 ```
 

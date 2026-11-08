@@ -2,7 +2,7 @@
 
 ## 结论
 
-`make restart-check` 在唯一 `mktemp` 根内启动独立 worker。父脚本观察 `ready.json` 中已持久化的检查点后向该 PID 发送 `SIGKILL`，确认返回码为 `-9`；随后启动不同 PID 的 `audit` 进程，只从 `manifest.json`、`events.jsonl` 和文件实际字节恢复。8 个关键窗口与 10 个负例全部通过。
+`make restart-check` 在唯一 `mktemp` 根内启动独立 worker。父脚本观察 `ready.json` 中已持久化的检查点后向该 PID 发送 `SIGKILL`，确认返回码为 `-9`；随后启动不同 PID 的 `audit` 进程，只从 `manifest.json`、`events.jsonl` 和文件实际字节恢复。8 个关键窗口、17 个负例与 1 个完整成功对照全部通过。
 
 这是普通 scratch 文件系统上的真实进程中断证据，不是同进程抛异常，也没有靠重新导入资源模拟恢复。它不证明断电/磁盘硬件耐久、App Sandbox bookmark、NSOpenPanel、WK broker、GUI、IME 或最低 macOS 14 真机运行。
 
@@ -35,6 +35,23 @@
 8. 未知 schema：拒绝记录，不执行记录中的动作。
 9. `../outside.md` 非法目标：拒绝记录，根外 marker SHA 不变。
 10. UUID 会话目录符号链接：不跟随，根外 marker SHA 不变。
+11. `manifest.json` 最终组件符号链接：读取前拒绝，外部临时文件 SHA 不变。
+12. `events.jsonl` 最终组件符号链接：读取前拒绝，外部临时文件 SHA 不变。
+13. 仅篡改 manifest 为 saved/clean：事件仍只到 import，报告 `record-inconsistent`、`saved=false`、`dirty=true`。
+14. `save-start` intent 后中断：作为合法尾部 intent 前缀接受，保持 `not-committed`，证明校验不是把正常中断一概报损坏。
+15. 完整 final-confirm 后目标被修改：保留 `historicallyConfirmed=true`，当前报告 `external-target-change`、未保存/dirty。
+16. 完整 final-confirm 后目标被删除：报告 `target-missing-after-confirm`，不自动重建。
+17. 完整 final-confirm 后目标权限改为 `000`：报告 `target-observation-unknown`，不把拒读当不存在。
+
+另有完整成功对照：worker 走完 `confirmSaved` 并正常 `exit 0`，新 audit 进程只有在事件状态机完整且当前 Markdown/全部目标资源仍匹配计划时返回 `recorded-saved`、`historicallyConfirmed=true`、`saved=true`、`dirty=false`。
+
+### 元数据与事件一致性
+
+- `manifest.json` 与 `events.jsonl` 必须是会话目录内的普通文件；读取使用 `lstat` 和 `O_NOFOLLOW`，最终组件 symlink 不可越过边界。
+- `confirmed`/`blocked` 必须对应先前同路径、同 SHA 的 intent；事件路径必须属于 manifest 中的草稿、目标或资源计划。
+- checkpoint 校验导入、保存开始、部分/全部发布、Markdown commit、final-confirm 的可达前缀。串行协议允许最后一个 intent 因中断未确认，但不允许 manifest 凭空声称已完成。
+- “历史最终确认”与“当前文件完整性”分离。历史事件不会掩盖目标后来发生的修改、删除或拒读。
+- 文件观察明确区分 `present`、`missing`、`unreadable`、`invalid-path` 与 `symlink`，未知状态不与空基线相等。
 
 ## 写入与耐久边界
 

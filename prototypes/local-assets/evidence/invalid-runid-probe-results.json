@@ -15,13 +15,13 @@
     "errno" : 1,
     "errnoMessage" : "Operation not permitted",
     "ok" : false,
-    "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T//ink-prot-011.Q2vtCT/external/外 部%20fixture.bin"
+    "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T//ink-prot-011.AJycYj/external/外 部%20fixture.bin"
   },
   "inheritedHomeEnv" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
   "probeVersion" : "INK-PROT-011 AssetPrototype probe 0.3 (INK-PROT-013 correction)",
   "processPath" : "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-021-asset-restart-recovery/prototypes/local-assets/.build/AssetPrototype.app/Contents/MacOS/AssetPrototype",
   "realHomeFromPasswd" : "/Users/rayhu",
-  "runID" : "invalid-1e9bcc10-cb09-41e6-b66d-3049ba443ed5",
+  "runID" : "invalid-5e7190ba-cc6b-49f8-8b06-b53cacd6d2cc",
   "runIDValid" : false,
   "sandboxActive" : true
 }
