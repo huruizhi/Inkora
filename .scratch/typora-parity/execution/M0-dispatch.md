@@ -272,3 +272,13 @@ INK-RES-002首轮`28d5ab0731414c20c5f1cec6c146322509f91cb7`已推送且干净，
 - 019固定`738e5e0583e2f19f2ec2fa4e71cbf7fa10f43cd0`，仅新增source-ledger模块、检查脚本、严格TS配置、证据四文件。管理者实跑严格tsc、8组来源断言及verify.py582项通过；核对测试按独立拼装原文span定位，不以旧贪心或仅往返自洽当预期。引用目标/标题/正文碰撞、转义/entity、Unicode边界、方向和显式affinity有模块级证据，未接入model/main/selection-map/HTML。
 - 019多行定义、复杂lazy continuation/delimiter、hardbreak等仍未覆盖；最坏O(n²)与逐grapheme内存成本明示，不能直接称通用source map或生产可用。失败必须保留当前视图/缓冲并明确阻断该操作，未来接线禁止自动整篇源码化或默认nearest吸附。
 - 019本地/远端一致且干净，临时依赖链接和打包已清；Agent `df31e64f-b5e5-4228-934b-3a35e3eec64b` 已归档回读closed，`2026-11-08T14:49:31.553Z`。未合入008，待018交付后统一组合；没有为模块任务重复生产/桌面/IME/磁盘测试。
+
+### 接线前补齐代码块及结构定位覆盖
+
+管理者额外将019账本作用于冻结样稿所有input：除05之外均能build（不等于所有坐标已验收）；05在围栏代码块失败，`范围 72..100 有 PM 文本但没有可审计 inline token`。这是模块当前能力边界，阻止直接全量替换旧sourcePosition。初次只读检查因错误使用两位case目录名报ENOENT，改用manifest完整case.id后获得上述真实结果；临时打包与依赖链接均已清理。
+
+据此新派INK-PROT-020，只改019模块/检查/证据，补围栏与缩进代码块、hard_break原子节点及空结构有语义的插入锚点；不改018的model/main或冻结预期。不以默认nearest、猜文档头或整篇源码回退绕过。保留019已知复杂语法/最坏复杂度风险，测量与覆盖分别说明。
+
+- Host / Agent / workspace：`srv_MEqRNkRW6fSx` / `bfe9a6d2-4a92-44e1-b4bf-5c660b4de968` / `wks_07b742c264f1b9b9`。
+- 分支`task/INK-PROT-020-ledger-block-coverage`；worktree`/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-020-ledger-block-coverage`；固定起点738e5e0。
+- list_profiles仍空，实时inspect_provider后用Codex GPT-5.6-Sol/medium、full-access/default档、notifyOnFinish=true；限定接口/已证实缺口使用中档推理，不默认6.1-Sol。当前仅创建running回执，未有通过结论。018继续独立原生事务任务，未来再统一组合。
