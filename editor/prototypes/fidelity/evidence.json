@@ -195,7 +195,8 @@
     {
       "action": "undo / repair restore consistency",
       "byteExact": true,
-      "pendingCleared": true
+      "pendingCleared": true,
+      "undoKeepsAmbiguousInput": true
     },
     {
       "action": "native PM replace emoji",
@@ -227,7 +228,8 @@
     },
     {
       "action": "source draft no-op round trip",
-      "bytesDirtyRevisionHistoryUnchanged": true
+      "bytesDirtyRevisionHistoryUnchanged": true,
+      "selectionUnchanged": true
     },
     {
       "action": "draft format-only edit",
@@ -242,6 +244,55 @@
       "action": "draft cancel",
       "trustedUnchanged": true,
       "textareaReset": true
+    },
+    {
+      "action": "source selection round trip (CRLF + emoji)",
+      "enterMapped": true,
+      "rawLfDelta": 2,
+      "applyMappedToContentAnchor": true,
+      "undoRestoresSelection": true
+    },
+    {
+      "action": "backward selection direction kept",
+      "textareaDirection": "backward",
+      "pmDirectionAfterApply": "backward",
+      "cancelKeepsSelection": true
+    },
+    {
+      "action": "mapping failure keeps draft and selection",
+      "reason": "受保护块",
+      "retryFromSafeAnchor": true
+    },
+    {
+      "action": "textless buffer: owner-range NodeSelection fallback",
+      "committed": true,
+      "selectionType": "node",
+      "ownerBlock": 2,
+      "dirty": true,
+      "mappingVerdict": "unsupported (recorded, not passed)"
+    },
+    {
+      "action": "delete-all → empty-paragraph insertion point (manager counterexample)",
+      "fixed": true,
+      "previously": "half-commit + TypeError owner.pos",
+      "selectionType": "text@1",
+      "undoRestoresAnchor": true,
+      "noopAndCancelOnEmpty": true
+    },
+    {
+      "action": "draft kept across refused Undo/Redo (empty history)",
+      "textareaValueKept": true,
+      "explicitCancelExit": true
+    },
+    {
+      "action": "mapping-failure draft kept across refused Undo/Redo",
+      "textareaValueKept": true,
+      "historyUntouched": true
+    },
+    {
+      "action": "BOM buffer selection mapping",
+      "bomPreservedInDraft": true,
+      "anchorExact": true
     },
     {
       "action": "mixed sample open (BOM/comment/callout/footnote)",

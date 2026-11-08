@@ -3,7 +3,8 @@
 //  - 打开：actions.openMixed / actions.openMalformed（真实按钮路径，内嵌样稿须与样稿文件逐字节一致）
 //  - visual 文本编辑：p.view.dispatch（真实 PM 事务）；含混提交后记录 pending/保存资格
 //  - 结构编辑：p.model.apply(patch, 真实 tr)（与原型 split/join/heading 按钮相同入口）
-//  - 源码编辑：真实 UI 路径 actions.source → textarea 赋值 + input 事件（生产 TextAreaEditorKernel 还原 CRLF/LF）→ actions.apply
+//  - 选区接线（INK-PROT-010）：09 全步骤经 pmCaret/enterSource/typeDraft 真实重放，
+//    选区断言按内容锚点（前后字符）独立重推，不写死偏移数字；预期字节仅事后比对
 //  - 历史/保存：actions.undo / redo / save（内存保存点，无文件系统；case10 的 to_disk 仅以内存基线模拟）
 // 样稿预期字节只在事后读取比对，绝不喂入模型。
 // 用法：node crossval.mjs [样稿目录] [PROTOTYPE.html]
@@ -94,10 +95,82 @@ async function runCase(id, variant, file, steps, opts = {}) {
           p.run(p.actions.save);
           rec.savedEqBuffer = p.model.saved === p.model.source;
         }
-        else if (st.how === 'undo') p.run(p.actions.undo);
-        else if (st.how === 'redo') p.run(p.actions.redo);
-        else if (st.how === 'save') p.run(p.actions.save);
-        else if (st.how === 'noop') { p.run(p.actions.source); p.run(p.actions.apply); }
+        else if (st.how === 'undo' || st.how === 'redo') {
+          p.run(p.actions[st.how]);
+          if (st.selAfter !== undefined) {
+            // Selection restored by the real travel action must land on a
+            // content anchor re-derived from the restored doc text, never a
+            // hardcoded position number.
+            const sel = p.model.state.selection;
+            const expectHead = findText(p, st.selAfter) + st.selAfter.length;
+            rec.pm = { anchor: sel.anchor, head: sel.head, backward: sel.anchor > sel.head };
+            rec.selAnchorDerived = expectHead;
+            rec.selOk = sel.head === expectHead && sel.anchor === expectHead
+              && p.model.state.doc.textBetween(expectHead - st.selAfter.length, expectHead) === st.selAfter;
+          }
+        }
+        else if (st.how === 'pmCaret') {
+          // Real prototype selection path (model.select = PM TextSelection
+          // transaction): collapsed caret after `after`'s first occurrence.
+          const at = findText(p, st.after) + st.after.length;
+          p.model.select(at);
+          rec.pm = { anchor: at, head: at };
+          rec.outcome = 'PASS';
+        }
+        else if (st.how === 'pmBackward') {
+          const a = findText(p, st.anchorAfter) + st.anchorAfter.length;
+          const h = findText(p, st.headAfter) + st.headAfter.length;
+          p.model.select(a, h); // anchor > head: backward selection
+          rec.pm = { anchor: a, head: h };
+          const sel = p.model.state.selection;
+          rec.outcome = a > h && sel.anchor === a && sel.head === h ? 'PASS' : 'FAIL';
+        }
+        else if (st.how === 'enterSource') {
+          const src = dom.window.document.getElementById('source-draft');
+          const before = JSON.stringify(p.model.state.selection.toJSON());
+          p.run(p.actions.source);
+          const s = src.selectionStart, e = src.selectionEnd;
+          rec.textarea = { start: s, end: e, direction: src.selectionDirection };
+          rec.map = p.lastSelectionMap ? { ok: p.lastSelectionMap.ok, anchor: p.lastSelectionMap.anchor, head: p.lastSelectionMap.head, snapped: p.lastSelectionMap.snapped ?? null, reason: p.lastSelectionMap.reason ?? null } : null;
+          // Content-anchor check on the LF draft the user sees: the boundary
+          // must sit between the expected characters (derived from text).
+          rec.boundaries = { headPrev: src.value.slice(s - st.headPrev.length, s), headNext: src.value.slice(s, s + st.headNext.length) };
+          const headOk = rec.boundaries.headPrev === st.headPrev && rec.boundaries.headNext === st.headNext;
+          let anchorOk = true;
+          if (st.anchorPrev) { rec.boundaries.anchorPrev = src.value.slice(e - st.anchorPrev.length, e); anchorOk = rec.boundaries.anchorPrev === st.anchorPrev; }
+          rec.outcome = p.sourceMode && headOk && anchorOk && src.selectionDirection === st.dir && rec.map?.ok
+            && (st.snapped !== 'exact' || rec.map.snapped.length === 0)
+            && JSON.stringify(p.model.state.selection.toJSON()) === before ? 'PASS' : 'FAIL';
+        }
+        else if (st.how === 'typeDraft') {
+          const src = dom.window.document.getElementById('source-draft');
+          const s0 = src.selectionStart, e0 = src.selectionEnd, dir = src.selectionDirection;
+          src.value = src.value.slice(0, s0) + st.insert + src.value.slice(e0); // typed at the caret
+          src.dispatchEvent(new dom.window.Event('input'));
+          src.setSelectionRange(s0 + st.insert.length, s0 + st.insert.length, dir === 'backward' ? 'backward' : 'forward');
+          p.run(p.actions.apply);
+          const sel = p.model.state.selection;
+          const expectHead = findText(p, st.after) + st.after.length; // independently re-derived
+          rec.pm = { anchor: sel.anchor, head: sel.head, backward: sel.anchor > sel.head };
+          rec.selAnchorDerived = expectHead;
+          rec.selOk = p.model.blocked === '' && p.lastSelectionMap?.ok && p.lastSelectionMap.snapped.length === 0
+            && sel.anchor === expectHead && sel.head === expectHead
+            && p.model.state.doc.textBetween(expectHead - st.after.length, expectHead) === st.after;
+        }
+        else if (st.how === 'cancelObserve') {
+          const src = dom.window.document.getElementById('source-draft');
+          const before = JSON.stringify(p.model.state.selection.toJSON());
+          p.run(p.actions.cancel);
+          const sel = p.model.state.selection;
+          rec.pm = { anchor: sel.anchor, head: sel.head };
+          rec.outcome = !p.sourceMode && JSON.stringify(p.model.state.selection.toJSON()) === before
+            && src.value === p.model.source.replace(/\r\n/g, '\n') ? 'PASS' : 'FAIL';
+        }
+        else if (st.how === 'noop') {
+          const selSnap = JSON.stringify(p.model.state.selection.toJSON());
+          p.run(p.actions.source); p.run(p.actions.apply);
+          rec.selectionPreserved = JSON.stringify(p.model.state.selection.toJSON()) === selSnap;
+        }
         else if (st.how === 'openObserve') {
           rec.issues = p.model.issues.map(i => ({ code: i.code, line: p.model.source.slice(0, i.start).split('\n').length, utf16: [i.start, i.end] }));
           rec.docTypes = docTypes(p.model);
@@ -149,7 +222,7 @@ async function runCase(id, variant, file, steps, opts = {}) {
           if (st.how === 'visualPending') rec.outcome = base && rec.pending && rec.saveDisabled && rec.docTypes.includes('heading') && rec.docTypes.includes('paragraph') ? 'PASS' : 'FAIL';
           else if (st.how === 'saveBlocked') rec.outcome = rec.blockedBySave.includes('保存阻断') && rec.sha === rec.expectSha && rec.savedSha === rec.expectSha ? 'PASS (blocked path; nothing written)' : 'FAIL';
           else if (st.how === 'sourceSave') rec.outcome = base && !rec.pendingAfterFix && rec.savedEqBuffer ? 'PASS' : 'FAIL';
-          else rec.outcome = base ? 'PASS' : 'FAIL';
+          else rec.outcome = base && rec.selOk !== false && (st.dirty === undefined || rec.dirty === st.dirty) ? 'PASS' : 'FAIL';
           if (rec.outcome === 'FAIL') rec.actualBytes = Buffer.from(p.model.source, 'utf8').length;
         } else if (st.how === 'openObserve') {
           rec.outcome = rec.issues.length && rec.rendered.heading && rec.rendered.paragraph && rec.rendered.issueMarked && !rec.dirty && rec.saveDisabled && !rec.sourceMode ? 'PASS (口径观察项)' : 'FAIL';
@@ -157,7 +230,7 @@ async function runCase(id, variant, file, steps, opts = {}) {
           rec.outcome = rec.reopenedIssues === 0 && rec.reopenedDocTypes.includes('heading') && rec.reopenedDocTypes.includes('paragraph') && rec.reopenedDocTypes.includes('protected_block') ? 'PASS' : 'FAIL';
         } else if (st.how === 'classify') {
           rec.outcome = 'OBSERVED';
-        } else rec.outcome = rec.blocked ? 'BLOCKED' : 'OBSERVED';
+        } else if (!rec.outcome) rec.outcome = rec.blocked ? 'BLOCKED' : 'OBSERVED';
       } catch (e) { rec.outcome = 'ERROR'; rec.error = e.message; rec.sha = sha(p.model.source); rec.blocked = p.model.blocked || ''; }
     }
   } finally { try { dom.window.close(); } catch {} }
@@ -205,9 +278,23 @@ await runCase('08-source-format-dirty', 'main', 'input.md', [
   S(3, 'undo', 'input.md', {}),
 ]);
 await runCase('09-source-roundtrip-selection', 'main', 'input.md', [
-  S(2, 'source', 'after-step-2.md', { find: '🎯。', replace: '🎯锚点。' }),
-  S(4, 'undo', 'input.md', {}),
-  S(5, 'redo', 'after-step-2.md', {}),
+  // 步1（manifest operational）：可视光标落在 🎯 之后（PM 事务），进入源码后
+  // textarea 光标必须落在同一内容锚点：前一个字符 🎯、后一个字符 。，方向保持，
+  // 且 PM 选区不变；本步为精确映射（无吸附），不写死偏移数字。
+  S(1, 'pmCaret', null, { after: '🎯' }),
+  S(1, 'enterSource', null, { headPrev: '🎯', headNext: '。', dir: 'forward', snapped: 'exact' }),
+  // 步2+3：textarea 在光标处真实输入「锚点」（input 事件走生产 kernel），提交后
+  // 缓冲区字节 == after-step-2.md（预期仅事后读取），PM 光标回到「🎯锚点」与
+  // 「。」之间的内容锚点（由文本独立重推），dirty 为真。
+  S(2, 'typeDraft', 'after-step-2.md', { insert: '锚点', after: '🎯锚点', dirty: true }),
+  // 步4：跨模式 Undo：字节回到 input.md、dirty 假、光标回到 🎯 之后的内容锚点。
+  S(4, 'undo', 'input.md', { selAfter: '🎯', dirty: false }),
+  // 步5：Redo：字节回到 after-step-2.md、dirty 真、光标回到「锚点」之后。
+  S(5, 'redo', 'after-step-2.md', { selAfter: '🎯锚点', dirty: true }),
+  // 超出 manifest 的补充（INK-PROT-010）：后向选区方向保持 + Cancel 保留原可视状态。
+  S(6, 'pmBackward', null, { anchorAfter: '。', headAfter: '🎯' }),
+  S(6, 'enterSource', null, { headPrev: '🎯', headNext: '锚点', anchorPrev: '。', dir: 'backward' }),
+  S(6, 'cancelObserve', null, {}),
 ]);
 await runCase('10-malformed-boundary', 'open-malformed', 'malformed-input.md', [
   S(1, 'openObserve', null, {}),

@@ -1,10 +1,24 @@
 // PROTOTYPE UI; no production entry point imports this file.
+import { NodeSelection, TextSelection } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { baseKeymap } from 'prosemirror-commands';
 import { keydownHandler } from 'prosemirror-keymap';
 import { TextAreaEditorKernel } from '../../src/editor-kernel';
 import { FidelityModel, sourcePosition, diff, bytes, parse } from './model';
+import { visualToSource, sourceToVisual, rawToLf, lfToRaw } from './selection-map';
 import { inkoraSchema as schema } from '../../src/schema';
+
+// INK-PROT-010 selection wiring state. The textarea shows the LF-normalized
+// draft: selectionStart/End are LF offsets, and setSelectionRange carries the
+// direction so backward selections survive the round trip.
+type SelectionMapTrace = { stage: 'enter-source' | 'apply-source'; ok: boolean; anchor?: number; head?: number; snapped?: string[]; reason?: string; noTextAnchor?: boolean; fallback?: string };
+let lastSelectionMap: SelectionMapTrace | null = null;
+// Env robustness: when setSelectionRange is unavailable, writing the pair
+// directly still positions the caret (direction degrades to forward).
+function setDraftSelection(src: HTMLTextAreaElement, start: number, end: number, backward: boolean) {
+  if (typeof src.setSelectionRange === 'function') src.setSelectionRange(start, end, backward ? 'backward' : 'forward');
+  else { src.selectionStart = start; src.selectionEnd = end; }
+}
 
 export const sample = '# 原型标题\r\n\r\n中文正文  特殊\t空白 😀 e\u0301 保持。\r\n\r\n参考 [文档][ref] 与正文。\n\n[ref]: <https://example.invalid> "标题"\n\n- [ ] 任务一\r\n\r\n$$\nx^2 + y^2\n$$\n\n| 表头 | 值 |\n| --- | --- |\n| 原文 | 保留 |\n\n保护块之后的中文。\n';
 // Independent-audit shaped samples (inputs only; expected outputs are never fed in):
@@ -26,7 +40,7 @@ function render() {
   try { mapped = `${sourcePosition(model.source, model.state, model.ranges, sel.from)}..${sourcePosition(model.source, model.state, model.ranges, sel.to)} (UTF-16)`; } catch { mapped = '无可靠映射'; }
   const pending = model.pending;
   const saveState = model.blocked ? `阻断（${model.blocked}）` : pending ? `阻断（${model.issues.length} 处边界含混待修复：主动源码修复或 Undo）` : sourceMode ? '阻断（源码草稿未提交）' : '允许建立内存快照';
-  $('state').textContent = `revision: ${model.revision} | dirty: ${model.source !== model.saved} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to} | 原文: ${mapped}\n模式: ${sourceMode ? '主动源码草稿' : '可视'} | composition: ${view.composing}\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
+  $('state').textContent = `revision: ${model.revision} | dirty: ${model.source !== model.saved} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to}（anchor/head ${sel.anchor}/${sel.head}${sel.anchor > sel.head ? '，后向' : ''}）| 原文: ${mapped}\n模式: ${sourceMode ? `主动源码草稿（textarea ${source.selectionStart}..${source.selectionEnd} ${source.selectionDirection ?? 'unknown'}，LF 偏移）` : '可视'} | composition: ${view.composing}\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
   $('ranges').textContent = JSON.stringify({ blocks: model.ranges.map(r => ({ ...r, byteStart: bytes(model.source.slice(0, r.start)).length, byteEnd: bytes(model.source.slice(0, r.end)).length })), coverage: coverage(), patches: model.patches }, null, 2);
   const lineOf = (text: string, at: number) => text.slice(0, at).split('\n').length;
   $('issues').textContent = pending ? JSON.stringify(model.issues.map(i => ({ ...i, line: lineOf(model.source, i.start), byteStart: bytes(model.source.slice(0, i.start)).length, byteEnd: bytes(model.source.slice(0, i.end)).length, fragment: model.source.slice(i.start, Math.min(i.end, i.start + 48)) })), null, 2) : '无边界含混问题；结构化保存路径可用。';
@@ -85,6 +99,14 @@ function patchSelection(insert: string) {
 // Programmatic draft edits go through the real input path so the kernel
 // tracks line endings and user-change state exactly like typed input.
 const setDraft = (value: string) => { const source = $('source-draft') as HTMLTextAreaElement; source.value = value; source.dispatchEvent(new Event('input')); };
+// An uncommitted source draft must never be silently discarded by history
+// actions: leaving source mode lets render reset the textarea, so undo/redo
+// refuse and keep the draft until the user commits, retries from a safe
+// anchor, or cancels explicitly.
+function draftHistoryRefusal(): string | null {
+  if (!sourceMode || sourceKernel.getText() === model.source) return null;
+  return '源码草稿尚未提交，Undo/Redo 已拒绝执行：草稿与可视选区保持不变，不静默丢弃输入。请提交草稿、把源码光标移到安全锚点后重试提交，或显式取消；已提交内容的历史不受影响';
+}
 
 const actions: Record<string, () => void> = {
   reset() { model = new FidelityModel(sample); sourceMode = false; note = '重新加载隔离样稿（混合 LF/CRLF）'; },
@@ -116,17 +138,96 @@ const actions: Record<string, () => void> = {
     if (!a || !b || a.kind !== 'paragraph' || b.kind !== 'paragraph') throw Error('请先执行 split');
     model.apply([{ from: a.end, to: b.start, insert: '' }], model.state.tr.join(b.pos)); note = '真实 PM join；只删除两段之间空行';
   },
-  undo() { model.travel(); sourceMode = false; note = '共享快照历史 Undo：原文与真实 PM EditorState 一起恢复'; },
-  redo() { model.travel(true); sourceMode = false; note = '共享快照历史 Redo'; },
-  source() { sourceMode = true; sourceKernel.setText(model.source); note = '主动编辑源码草稿（复用生产 TextAreaEditorKernel，保真 CRLF/LF/BOM）；可信视图保留且禁止保存'; },
+  // An uncommitted draft must never be silently discarded by history actions
+  // (see draftHistoryRefusal above the actions table).
+  undo() { const refusal = draftHistoryRefusal(); if (refusal) { note = refusal; return; } model.travel(); sourceMode = false; note = '共享快照历史 Undo：原文与真实 PM EditorState（含选区内容锚点与方向）一起恢复'; },
+  redo() { const refusal = draftHistoryRefusal(); if (refusal) { note = refusal; return; } model.travel(true); sourceMode = false; note = '共享快照历史 Redo：原文与真实 PM EditorState（含选区内容锚点与方向）一起恢复'; },
+  source() {
+    sourceMode = true; sourceKernel.setText(model.source);
+    // Map the current PM anchor/head onto the LF textarea selection, keeping
+    // direction. Failure never blocks entry (the protected-block repair path
+    // must stay reachable): the draft and the visual selection are kept
+    // untouched and the reason is shown; the caret can then be placed on a
+    // safe anchor manually before applying.
+    const sel = model.state.selection;
+    const mapped = visualToSource(model.source, model.state.doc, model.ranges, sel.anchor, sel.head);
+    if (!mapped.ok) {
+      lastSelectionMap = { stage: 'enter-source', ok: false, reason: mapped.reason };
+      note = `主动源码草稿已打开（复用生产 TextAreaEditorKernel，保真 CRLF/LF/BOM）；当前可视选区未映射进 textarea（${mapped.reason}）。草稿与可视选区保持不变；可在源码中把光标移到安全锚点后提交，或取消`;
+      return;
+    }
+    const backward = mapped.anchor > mapped.head;
+    setDraftSelection($('source-draft') as HTMLTextAreaElement, rawToLf(model.source, backward ? mapped.head : mapped.anchor), rawToLf(model.source, backward ? mapped.anchor : mapped.head), backward);
+    lastSelectionMap = { stage: 'enter-source', ok: true, anchor: mapped.anchor, head: mapped.head, snapped: mapped.snapped };
+    note = `主动编辑源码草稿（复用生产 TextAreaEditorKernel，保真 CRLF/LF/BOM）；可视选区已映射为 textarea 选区（原文 UTF-16 anchor/head ${mapped.anchor}/${mapped.head}${backward ? '，后向' : ''}${mapped.snapped.length ? `；${mapped.snapped.join('；')}——吸附是有说明的近似，不是精确映射` : '，两端精确映射'})；可信视图保留且禁止保存`;
+  },
   apply() {
     if (!sourceMode) throw Error('请先主动进入源码');
     const text = sourceKernel.getText();
-    if (text === model.source) { sourceMode = false; model.blocked = ''; note = '草稿与可信原文逐字节一致：no-op 提交，不改字节/dirty/revision/history'; return; }
+    if (text === model.source) { sourceMode = false; model.blocked = ''; note = '草稿与可信原文逐字节一致：no-op 提交，不改字节/dirty/revision/history，可视选区保持不变'; return; }
+    // Map the CURRENT textarea selection (LF offsets in the draft the user
+    // sees) through the kernel's canonical text onto the newly parsed
+    // document, before any model mutation: on failure the draft, the trusted
+    // view and the original selection all stay intact — never a silent reset.
+    const src = $('source-draft') as HTMLTextAreaElement;
+    const start = src.selectionStart ?? 0, end = src.selectionEnd ?? 0, backward = src.selectionDirection === 'backward';
+    const parsed = parse(text);
+    const mapped = sourceToVisual(text, parsed.doc, parsed.ranges, lfToRaw(text, backward ? end : start), lfToRaw(text, backward ? start : end));
+    if (!mapped.ok) {
+      // A document with no mappable text leaf has no safe anchor to move to;
+      // refusing would disable the repair entry itself, so the commit
+      // proceeds with a VISIBLE fallback selection. The fallback is fully
+      // validated on the parsed doc BEFORE any model mutation — a failed
+      // validation falls through to the keep-draft refusal below, never a
+      // half-committed state.
+      let hasText = false;
+      parsed.doc.descendants(n => { if (n.isText && n.text) hasText = true; });
+      if (!hasText) {
+        if (!parsed.ranges.length) {
+          // Empty / whitespace-only / reference-definitions-only buffer: the
+          // projection is a single empty paragraph (parse's guarantee); its
+          // start is the unique semantic insertion point. This is core
+          // writing flow (delete-all, new empty doc) — NOT the protected-
+          // block NodeSelection fallback.
+          const single = parsed.doc.childCount === 1 && parsed.doc.child(0).type.name === 'paragraph' && parsed.doc.child(0).content.size === 0;
+          if (single) {
+            TextSelection.create(parsed.doc, 1); // validation only, pre-mutation
+            model.sourceEdit(text);
+            model.transaction(model.state.tr.setSelection(TextSelection.create(model.state.doc, 1)));
+            lastSelectionMap = { stage: 'apply-source', ok: false, reason: mapped.reason, noTextAnchor: true, fallback: 'empty-paragraph-text@1' };
+            sourceMode = false;
+            note = '源码修改已提交；新文档没有任何内容块（空文档/仅空白或引用定义），可视投影为唯一空段落，选区落在其唯一插入点（TextSelection，位置 1）。这是语义上正确的空文档光标，非映射失败；空文档属核心写作路径';
+            return;
+          }
+        } else {
+          // Protected-only buffer: a NodeSelection anchors the block that
+          // owns the source caret. Explicit fallback, recorded as NOT a
+          // text-selection mapping pass.
+          const caretRaw = lfToRaw(text, start);
+          const owner = parsed.ranges.find(r => caretRaw >= r.start && caretRaw <= r.end)
+            ?? [...parsed.ranges].reverse().find(r => r.end <= caretRaw)
+            ?? parsed.ranges[0];
+          NodeSelection.create(parsed.doc, owner.pos); // validation only, pre-mutation
+          model.sourceEdit(text);
+          model.transaction(model.state.tr.setSelection(NodeSelection.create(model.state.doc, owner.pos)));
+          lastSelectionMap = { stage: 'apply-source', ok: false, reason: mapped.reason, noTextAnchor: true, fallback: `node-selection@${owner.pos}` };
+          sourceMode = false;
+          note = `源码修改已提交；新文档没有任何可视文本锚点（${mapped.reason}），选区已落在包含源码光标的「${owner.kind}」块（NodeSelection 整块锚点，UTF-16 原文 ${owner.start}..${owner.end}）。这是可见回退，记录为文本选区映射不支持，不判通过；受保护块仍可经源码模式修复`;
+          return;
+        }
+      }
+      lastSelectionMap = { stage: 'apply-source', ok: false, reason: mapped.reason };
+      note = `源码草稿未提交：textarea 当前选区映射回可视文档失败（${mapped.reason}）。草稿、可信原文与原选区全部保持；请把光标移到安全锚点（正文文本处）后重新提交，或取消草稿`;
+      return;
+    }
     const same = model.sourceEdit(text);
-    sourceMode = false; note = same ? '源码修改完成；语义相同，保留 PM selection，仍计入 dirty/history' : '源码修改完成；结构变化的 selection 尚不支持映射，明确重置到首个可选位置';
+    if (!same) model.select(mapped.anchor, mapped.head);
+    lastSelectionMap = { stage: 'apply-source', ok: true, anchor: mapped.anchor, head: mapped.head, snapped: mapped.snapped };
+    sourceMode = false; note = same
+      ? '源码修改完成；语义相同，保留原可视选区，仍计入 dirty/history'
+      : `源码修改完成；textarea 选区已映射回新文档（anchor/head ${mapped.anchor}/${mapped.head}${mapped.anchor > mapped.head ? '，后向' : ''}${mapped.snapped.length ? `；${mapped.snapped.join('；')}——吸附近似，非精确映射` : '，精确映射'})；仍计入 dirty/history`;
   },
-  cancel() { sourceMode = false; note = '取消草稿；textarea 由可信原文重置，可信内容不变；错误仍需有效源码提交或 Undo 才能解除'; },
+  cancel() { sourceMode = false; note = '取消草稿；textarea 由可信原文重置，可视内容与选区保持不变；错误仍需有效源码提交或 Undo 才能解除'; },
   format() { actions.source(); setDraft(($('source-draft') as HTMLTextAreaElement).value.replace('[ref]: ', '[ref]:   ')); actions.apply(); },
   malformed() { actions.source(); setDraft(($('source-draft') as HTMLTextAreaElement).value.replace('\n$$\n\n|', '\n$\n\n|')); actions.apply(); note = '已提交含混草稿：缓冲保留用户输入（pending），可信投影标注问题片段，结构化保存阻断'; },
   repair() { if (!sourceMode) actions.source(); setDraft(model.trusted.source); actions.apply(); note = '主动提交最近一次可信原文修复含混缓冲；字节一致时为 no-op，pending 随有效提交解除'; },
@@ -153,5 +254,5 @@ scenarios.forEach(s => { const b = document.createElement('button'); b.textConte
   s.steps.forEach((id, i) => { const step = document.createElement('button'); step.textContent = `${i + 1}. ${$(id).textContent}`; step.onclick = () => run(actions[id]); $('guide').append(step); });
 }); $('tabs').append(b); });
 // Read-only diagnostics for reproducible non-UI checks; no claimed IME coverage.
-Object.assign(window, { fidelityPrototype: { get model() { return model; }, get sourceMode() { return sourceMode; }, actions, run, parse, diff, view, sourcePosition, FidelityModel, mixedSample, malformedSample, samples: { default: sample, mixed: mixedSample, malformed: malformedSample } } });
+Object.assign(window, { fidelityPrototype: { get model() { return model; }, get sourceMode() { return sourceMode; }, get lastSelectionMap() { return lastSelectionMap; }, actions, run, parse, diff, view, sourcePosition, FidelityModel, mixedSample, malformedSample, samples: { default: sample, mixed: mixedSample, malformed: malformedSample } } });
 render();

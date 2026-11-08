@@ -1,6 +1,6 @@
 # SELECTION-EVIDENCE：INK-PROT-006 双向选区映射模块
 
-日期：2026-11-08。基线：`692493508d4b5ac78f0b212045aae32a8b59b90e`（本分支起点）。样稿：INK-PROT-004 worktree 固定提交 `484ee81d924efd2a1038e8421b146f4ae5d5b743`，只读，未改任何预期。本模块**未被 main.ts/model.ts 引用**；这是为「源码语义变化后选区重置」缺口准备的独立纯函数库与证据，集成属后续任务。
+日期：2026-11-08。基线：`692493508d4b5ac78f0b212045aae32a8b59b90e`（本分支起点）。样稿：INK-PROT-004 worktree 固定提交 `484ee81d924efd2a1038e8421b146f4ae5d5b743`，只读，未改任何预期。本模块在本文撰写时**未被 main.ts/model.ts 引用**；INK-PROT-010 已将其接入 main.ts 源码往返与历史，接线结果与对本文档失败策略建议的纠正见 `INTEGRATION-SELECTION-EVIDENCE.md`。
 
 ## 交付物与坐标系
 
@@ -51,10 +51,12 @@ node editor/prototypes/fidelity/selection-check.mjs    # PASS：15 项，exit 0
 2. **吸附是有记录的近似，不是精确映射**：块语法前缀（`#`、`>`、列表标记、围栏）、行内定界符区间、块间空白/引用定义、CRLF 中间、文档头 BOM/空白、EOF。全部在 `snapped` 返回说明；集成方可以选择拒绝而非接受。
 3. **失败即失败**：受保护块内部、空文本块、越界偏移、重复叶歧义均 `ok:false`，不猜。空段失败路径无真实 parser 输入可触发（parser 不产生空段落），该分支未经真实文档验证。
 4. **lone `\r` 行尾**：换算函数与 kernel 清单一致地处理，但 model `parse` 的范围归一只处理 `\r\n`，含 lone `\r` 的文档会在 parse 层失败，未单测。
-5. **未验证/未集成**：main.ts 尚未接线（进入源码模式时用 `visualToSource` 设 textarea 光标、`sourceEdit` 后用 `sourceToVisual` 恢复选区、undo/redo 维持映射选区——证据脚本已按此流程用模型公开路径模拟并全通过）；prosemirror-history 分组、WKWebView、系统中文输入法、IME 组合期边界、真实磁盘保存全部不在本轮。Node/jsdom 结果不构成 UI/IME 验收。
-6. **步骤1/3 的 operational 判据**：本模块满足了 09 步1/3 的位置约束（数值见上），但原型 UI 未接线，用户尚不能在实际界面观察到；CROSS-VALIDATION 中 09 的「选区映射现状差异」在 UI 层面仍未消除。
+5. **未验证/未集成**：main.ts 尚未接线（进入源码模式时用 `visualToSource` 设 textarea 光标、`sourceEdit` 后用 `sourceToVisual` 恢复选区、undo/redo 维持映射选区——证据脚本已按此流程用模型公开路径模拟并全通过）；prosemirror-history 分组、WKWebView、系统中文输入法、IME 组合期边界、真实磁盘保存全部不在本轮。Node/jsdom 结果不构成 UI/IME 验收。（INK-PROT-010 更新：main.ts 已接线，见 `INTEGRATION-SELECTION-EVIDENCE.md`；其余未验证项维持不变。）
+6. **步骤1/3 的 operational 判据**：本模块满足了 09 步1/3 的位置约束（数值见上），但原型 UI 未接线，用户尚不能在实际界面观察到；CROSS-VALIDATION 中 09 的「选区映射现状差异」在 UI 层面仍未消除。（INK-PROT-010 更新：已接线并在 jsdom 层消除该现状差异，见 `INTEGRATION-SELECTION-EVIDENCE.md`；WKWebView/IME 仍未验证。）
 
-## 后续集成步骤（建议）
+## 后续集成步骤（建议；已被 INK-PROT-010 实施并纠正）
+
+> **INK-PROT-010 纠正**：下条第 2 点原文写「失败则回退现状重置并在 UI 说明理由」——该策略**错误**，实现时未采用。用户明确要求不静默重置光标、不丢选择：`sourceToVisual` 失败时提交不执行，源码草稿/可信原文与视图/原可视选区全部保留并给出具体原因，用户可移动到安全锚点后重试或取消；仅当新文档完全无文本锚点（纯保护块）时才按既有规则提交并明示原因（保证主动修复入口可达）。吸附均为有说明的近似，不称精确映射。实际接线与证据见 `INTEGRATION-SELECTION-EVIDENCE.md`。
 
 1. 进入源码模式：`visualToSource(model.source, model.state.doc, model.ranges, sel.anchor, sel.head)` → `rawToLf` → 设置 textarea selectionStart/End（失败则保持现状并提示，不重置到头）。
 2. 源码提交（`sourceEdit`）：textarea 偏移 → `lfToRaw` → 对新 (source, doc, ranges) 调 `sourceToVisual` → 用映射结果创建/修正 EditorState selection（失败则回退现状重置并在 UI 说明理由）。
