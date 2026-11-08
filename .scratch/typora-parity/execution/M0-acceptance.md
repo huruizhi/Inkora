@@ -106,3 +106,14 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 019已交付738e5e0，管理者独立重跑严格TS、8组词法来源断言及582项样稿检查通过，已接收纯模块并归档Agent。模块没有接入008或任何UI/事务/保存路径；现有贪心映射反例在实际编辑链路中尚未闭合。复杂引用/容器/delimiter与hardbreak、最坏O(n²)及内存成本继续记风险；未来接线失败不得自动切整篇源码，也不得默认吸附选区。018仍执行中，M0门槛保持未通过。
 
 管理者进一步逐一构建冻结输入的ledger，实际发现05围栏代码块无inline token而拒绝，尚不能整体替换旧映射。020据此补代码块/hard_break/空结构定位，范围仅纯模块，不把8组模块检查当完整技术文章覆盖。018原生事务证据与020原文坐标证据将分别验证后再组合。
+
+### 018首轮原生矩阵通过，但新增暂存反例未过
+
+018交付4afe4ca，管理者实际复跑37checks、15项选区、audited累计16/16+isolated3/3+probe3/3全部PASS（demo/FAIL/错误均0），fixture582项通过；这是当前jsdom/内存矩阵的真实进展，不代表全部历史/选区门槛。
+
+管理者额外用同一HTML、真实EditorView/DOM keydown复现：
+
+1. `ab\n`、保存点同源，清空历史，TextSelection@3后Enter：PM为ab+空段，选区5，staged candidate为`ab\n\n\n`。Undo后Redo没有恢复暂存空段，future仍0，历史不完整。
+2. 同样Enter后移动TextSelection@2，再真实insertText(X)：PM变为aXb+空段，但候选原文成`ab\n\nX\n`，source仍`ab\n`、dirty显示false、blocked为空；Undo/Redo后X不可恢复。旧sourceCaret与移动后的PM选区失配，doc.eq未过后继续暂存错误candidate/state，不能当安全保真。
+
+两条已交回018同分支修正（message fa11a660-48ce-4732-bf23-9584d36a4223），需完整暂存快照历史、随选区移动保持原文ownership并如实显示未持久化状态；不能靠禁止普通移动/默认重置/改oracle/整篇源码退路降低目标。018暂不验收或合入008，Agent实际继续修正而非闲置；020仍独立模块任务。

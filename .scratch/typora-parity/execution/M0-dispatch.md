@@ -282,3 +282,9 @@ INK-RES-002首轮`28d5ab0731414c20c5f1cec6c146322509f91cb7`已推送且干净，
 - Host / Agent / workspace：`srv_MEqRNkRW6fSx` / `bfe9a6d2-4a92-44e1-b4bf-5c660b4de968` / `wks_07b742c264f1b9b9`。
 - 分支`task/INK-PROT-020-ledger-block-coverage`；worktree`/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-020-ledger-block-coverage`；固定起点738e5e0。
 - list_profiles仍空，实时inspect_provider后用Codex GPT-5.6-Sol/medium、full-access/default档、notifyOnFinish=true；限定接口/已证实缺口使用中档推理，不默认6.1-Sol。当前仅创建running回执，未有通过结论。018继续独立原生事务任务，未来再统一组合。
+
+### 018交付复核与暂存修正回交
+
+018首轮固定`4afe4caa164c826b801ef12a2b73e8ce65bdcc7f`已推送干净，新增受限native-transaction桥接及新版driver，未改冻结样稿/生产/依赖/native-host。管理者实跑37checks、15选区、audited16累计+3isolated+3probe PASS、fixture582，确认05不再靠手供patch、06/11新版动作可真实驱动。
+
+额外真实入口反例发现暂存历史和光标移动错误（具体操作/实际状态见M0-acceptance）：Enter后Undo/Redo丢暂存空段；Enter后移动再输入X导致PM为aXb而candidate仍在旧caret插X，dirty误示false，Undo/Redo丢输入。未将矩阵PASS当全部验收；管理者通过message `fa11a660-48ce-4732-bf23-9584d36a4223`要求同Agent修完整stage快照历史与动态源映射并补真实回归。此轮018不接收、不归档闲置或合008，原Agent接续修订；不重复无关生产125项，不降低保真/历史要求。
