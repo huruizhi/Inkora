@@ -17,7 +17,7 @@ affinity 和 projection anchor 审计，不以 `trim`、无条件 `doc.eq` 忽�
 make -C editor/prototypes/source-authority test
 ```
 
-结果：退出码 0，严格 TypeScript、离线 HTML 重建、11 组限定回归和原 9 组集成域全部通过：
+结果：退出码 0，严格 TypeScript、离线 HTML 重建、11 组限定回归和 10 组集成域全部通过：
 
 1. 冻结 PRIMARY P0–P7：`a+LF → Space → Save → source no-op → scratch 新 epoch → b → Undo/Redo`。
 2. 13/13 repeat vectors：无 EOF 换行、BOM/CRLF、strong/em/strike、行内/引用链接、标题、列表、
@@ -28,7 +28,8 @@ make -C editor/prototypes/source-authority test
 6. 同 epoch Save/history、后向选区替换、源码格式变化和 draft/document dirty 分离。
 7. pending math + 源码修复、保护片段未映射、过期事务、非法 Unicode/EOL 边界、composition guard、
    empty history 真负例。
-8. 两个完整 synthetic composition 历史单元，以及取消/no-op 保留已有 future。
+8. composition 最终事务在 DOM end 前或 end 后异步 turn 到达时都是一个原子历史单元；
+   连续两会话分离，选区替换可恢复，普通输入不合并，取消/no-op 保留已有 future。
 9. `# ` 的有界正例：字节、heading 语义、选区、Undo/Redo 均有断言。
 
 限定回归另覆盖：真实 DOM 按钮/textarea 的 BOM+CRLF no-op、混合 EOL 局部编辑、LF↔raw 后向
@@ -41,7 +42,7 @@ parser reprojection 原子拒绝并保留候选意图。
 测试和模型均不写 oracle。
 
 本次固定离线 HTML SHA-256：
-`872c4653472f75e4d34b44400936af5725c638e92c00ac6ea638bfb41139f81b`；同值由
+`4b8a2a3d51071ce6a5e6456f48c86f65f88d0786253f4959c768bddfc2ceca99`；同值由
 `PROTOTYPE.sha256` 保存并由构建更新。
 
 ## 测试接缝修正
@@ -103,7 +104,9 @@ scratch 重开后 raw caret 映射到真实 view，续写与 Backspace 均保持
   语法映射；复杂表格、完整输入规则、跨块任意事务和性能未验。
 - 隐藏字节 Backspace 由真实 EditorView key handler 调用公开控制器的 raw-boundary 删除；仍需固定
   WK bundle 检查浏览器原生 beforeinput/DOMObserver 时序。
-- composition history 保留了 025 的完整分组、取消/no-op 与 future 行为，但这里只执行 synthetic/replay。
+- composition history 以 DOM 生命周期加 transaction composition ID 处理 end 后晚到最终事务，
+  完整分组、取消/no-op 与 future 行为已由真实 bundle `EditorView.dispatch` 重放；但这里仍只是
+  synthetic/replay，不是真实 WKWebView 或物理 IME 证据。
 - 保护片段、过期事务和非法边界会保留内容与未解决意图；诊断/修复入口已验证，产品级交互未设计。
 - 未修改生产代码，也未把结果接入 INK-008；后续管理者仍需固定单一 bundle 集中跑真实 WK、物理搜狗
   和整体用户审阅。

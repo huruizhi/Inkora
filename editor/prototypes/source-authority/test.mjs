@@ -393,6 +393,101 @@ assert.equal(controller().past.length, noOpPast);
 assert.equal(controller().future.length, noOpFuture);
 results.push('composition replay: two units + cancel/no-op future');
 
+// WebKit may deliver the final transaction carrying the same composition ID
+// after DOM compositionend, including on a later microtask. The DOM lifecycle
+// and transaction ID together define one history session; the next unrelated
+// edit is the explicit boundary that seals it.
+reopen('a \n', 2);
+compositionEvent('compositionstart');
+type('zhongwen', 201);
+let lateEnd = controller().state.selection.head;
+compositionEvent('compositionend');
+await Promise.resolve();
+assert.equal(prototype.nativeReplace(lateEnd - 'zhongwen'.length, lateEnd, '中文', 201), true);
+assert.equal(controller().currentRaw, 'a 中文\n');
+assert.equal(controller().past.length, 1, 'late final transaction remains one visible history unit');
+assert.equal(prototype.run('undo'), true);
+assert.equal(controller().currentRaw, 'a \n', 'late final transaction Undo returns to the pre-session raw');
+assert.equal(prototype.run('redo'), true);
+assert.equal(controller().currentRaw, 'a 中文\n');
+
+// A following ordinary edit must not merge into the ended composition.
+type('!');
+assert.equal(controller().past.length, 2);
+assert.equal(prototype.run('undo'), true);
+assert.equal(controller().currentRaw, 'a 中文\n');
+assert.equal(prototype.run('undo'), true);
+assert.equal(controller().currentRaw, 'a \n');
+
+// Consecutive sessions remain independent when one final transaction arrives
+// before compositionend and the other arrives after it.
+reopen('a \n', 2);
+compositionReplace('yi', '一', 202);
+compositionEvent('compositionstart');
+type('er', 203);
+lateEnd = controller().state.selection.head;
+compositionEvent('compositionend');
+assert.equal(prototype.nativeReplace(lateEnd - 2, lateEnd, '二', 203), true);
+assert.equal(controller().currentRaw, 'a 一二\n');
+assert.equal(controller().past.length, 2);
+assert.equal(prototype.run('undo'), true); assert.equal(controller().currentRaw, 'a 一\n');
+assert.equal(prototype.run('undo'), true); assert.equal(controller().currentRaw, 'a \n');
+
+// Selection replacement uses the real view selection and the same late-final
+// ordering; Undo restores both the original bytes and selected range.
+reopen('old\n', 3);
+prototype.view.dispatch(prototype.view.state.tr.setSelection(
+  prototype.view.state.selection.constructor.create(prototype.view.state.doc, 1, 4),
+));
+compositionEvent('compositionstart');
+type('jiu', 204);
+lateEnd = controller().state.selection.head;
+compositionEvent('compositionend');
+assert.equal(prototype.nativeReplace(lateEnd - 3, lateEnd, '旧', 204), true);
+assert.equal(controller().currentRaw, '旧\n');
+assert.equal(prototype.run('undo'), true);
+assert.equal(controller().currentRaw, 'old\n');
+assert.deepEqual(clone(controller().state.selection.toJSON()), { type: 'text', anchor: 1, head: 4 });
+
+// A cancelled late-final session is a no-op and keeps the existing future;
+// a later committed branch clears that future, while Save and source no-op do
+// not alter its raw/history/dirty state.
+reopen('a\n', 1);
+type('b'); type('c');
+assert.equal(prototype.run('undo'), true);
+const lateNoOpPast = controller().past.length;
+const lateNoOpFuture = controller().future.length;
+compositionEvent('compositionstart');
+type('x', 205);
+lateEnd = controller().state.selection.head;
+compositionEvent('compositionend');
+assert.equal(prototype.nativeReplace(lateEnd - 1, lateEnd, '', 205), true);
+assert.equal(controller().currentRaw, 'ab\n');
+assert.equal(controller().past.length, lateNoOpPast);
+assert.equal(controller().future.length, lateNoOpFuture);
+assert.equal(prototype.run('redo'), true); assert.equal(controller().currentRaw, 'abc\n');
+assert.equal(prototype.run('undo'), true); assert.equal(controller().currentRaw, 'ab\n');
+compositionEvent('compositionstart');
+type('han', 206);
+lateEnd = controller().state.selection.head;
+compositionEvent('compositionend');
+assert.equal(prototype.nativeReplace(lateEnd - 3, lateEnd, '汉', 206), true);
+assert.equal(controller().future.length, 0, 'committed composition creates a new branch');
+const beforeCompositionSave = clone(controller().stateReport());
+assert.equal(prototype.run('save'), true);
+assert.equal(controller().documentDirty, false);
+assert.equal(controller().past.length, beforeCompositionSave.undo);
+const beforeSourceNoOp = clone(controller().stateReport());
+assert.equal(prototype.run('source'), true);
+assert.equal(prototype.run('apply'), true);
+assert.deepEqual(clone(controller().stateReport()), beforeSourceNoOp);
+assert.equal(prototype.run('undo'), true);
+assert.equal(controller().currentRaw, 'ab\n');
+type('Z');
+assert.equal(controller().future.length, 0, 'ordinary input after Undo starts a new branch');
+assert.equal(prototype.run('undo'), true); assert.equal(controller().currentRaw, 'ab\n');
+results.push('composition lifecycle: before/late final + boundaries + selection + future');
+
 // Scope declaration: the naturally supported '# ' case proves bytes,
 // semantic projection, selection, and history; it is not a universal input-rule promise.
 reopen('\n', 0);

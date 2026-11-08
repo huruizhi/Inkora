@@ -36,6 +36,7 @@ type CompositionGroup = {
   before: Snapshot;
   past: Snapshot[];
   future: Snapshot[];
+  ended: boolean;
 };
 
 type ProjectionContext = {
@@ -463,10 +464,16 @@ export class SourceAuthorityController {
   private beginComposition(id: unknown): void {
     if (this.compositionGroup?.id === id) return;
     this.finishComposition();
-    this.compositionGroup = { id, before: this.snapshot(), past: [...this.past], future: [...this.future] };
+    this.compositionGroup = {
+      id,
+      before: this.snapshot(),
+      past: [...this.past],
+      future: [...this.future],
+      ended: false,
+    };
   }
 
-  finishComposition(): void {
+  private compactComposition(): void {
     const group = this.compositionGroup;
     if (!group) return;
     const current = this.snapshot();
@@ -477,11 +484,28 @@ export class SourceAuthorityController {
       this.past = [...group.past, group.before];
       this.future = [];
     }
+  }
+
+  finishComposition(): void {
+    if (!this.compositionGroup) return;
+    this.compactComposition();
     this.compositionGroup = null;
   }
 
-  startComposition(): void { this.composing = true; }
-  endComposition(): void { this.composing = false; this.finishComposition(); }
+  startComposition(): void {
+    if (!this.composing && this.compositionGroup?.ended) this.finishComposition();
+    this.composing = true;
+  }
+
+  endComposition(): void {
+    this.composing = false;
+    if (!this.compositionGroup) return;
+    // WebKit may dispatch the final PM transaction after DOM compositionend.
+    // Keep the ended session addressable by its transaction ID; a different
+    // ID, an untagged transaction, or an explicit command seals it.
+    this.compositionGroup.ended = true;
+    this.compactComposition();
+  }
 
   private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping']): void {
     const parsed = parse(raw);
@@ -552,6 +576,7 @@ export class SourceAuthorityController {
           { visual: this.state.selection.anchor, raw: rawSelection.anchor, reason: '真实 PM 选区移动' },
           { visual: this.state.selection.head, raw: rawSelection.head, reason: '真实 PM 选区移动' },
         ]);
+        if (compositionId !== undefined) this.compactComposition();
         return true;
       } catch (error) {
         this.diagnostic = error instanceof Error ? error.message : String(error);
@@ -598,14 +623,17 @@ export class SourceAuthorityController {
         this.version++;
         this.unresolvedIntent = null;
         this.diagnostic = '';
+        if (compositionId !== undefined) this.compactComposition();
         return true;
       }
       this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping);
+      if (compositionId !== undefined) this.compactComposition();
       return true;
     } catch (error) {
       this.restore(before);
       this.diagnostic = error instanceof Error ? error.message : String(error);
       this.unresolvedIntent = { description: this.diagnostic, raw: attemptedRaw };
+      if (compositionId !== undefined) this.compactComposition();
       return false;
     }
   }
@@ -624,6 +652,7 @@ export class SourceAuthorityController {
 
   nativeEnter(): boolean {
     if (this.composing) return this.guard('Enter');
+    this.finishComposition();
     const caret = this.rawSelection.head;
     const eol = eolAt(this.currentRaw, caret);
     const insert = eol + eol;
@@ -644,6 +673,7 @@ export class SourceAuthorityController {
 
   nativeBackspace(): boolean {
     if (this.composing) return this.guard('Backspace');
+    this.finishComposition();
     if (!this.state.selection.empty) return this.nativeType('');
     const caret = this.rawSelection.head;
     if (caret <= (this.currentRaw.startsWith('\uFEFF') ? 1 : 0)) return false;
@@ -672,6 +702,7 @@ export class SourceAuthorityController {
 
   beginSource(): boolean {
     if (this.composing) return this.guard('source_enter');
+    this.finishComposition();
     if (this.draft) return true;
     this.draft = { raw: this.currentRaw, selection: cloneSelection(this.rawSelection) };
     return true;
@@ -721,6 +752,7 @@ export class SourceAuthorityController {
 
   saveMemory(): boolean {
     if (this.composing) return this.guard('save');
+    this.finishComposition();
     if (!this.saveEligible) { this.diagnostic ||= '当前投影、草稿或未解决意图不具备保存资格'; return false; }
     this.savedRaw = this.currentRaw;
     return true;
@@ -752,6 +784,7 @@ export class SourceAuthorityController {
 
   reopen(raw: string, selection?: RawSelection): boolean {
     if (this.composing) return this.guard('reset');
+    this.finishComposition();
     const parsed = parse(raw);
     this.currentRaw = raw; this.savedRaw = raw;
     this.state = EditorState.create({ doc: parsed.doc }); this.issues = parsed.issues;

@@ -70,3 +70,58 @@ controller dispatch。新证据通过真实 DOM 按钮/textarea input、生产 k
 
 未执行真实 WKWebView、物理搜狗、NSDocument/App Sandbox 或 macOS 14 实机验证；本记录不宣称这些
 层级通过，也不构成 INK-008/生产合入或 M0 通过。
+
+## 最终 composition 历史边界限定
+
+基线：`7cedafc29880f19a6f2b1e093157130d65b8266b`。
+
+新增管理者冻结材料只读使用，未修改：
+
+- `composition-late.cjs` SHA-256：`a672bf1a98495f39eff3d949331f18b158b1d77065c31272954aa44dd65f834b`；
+- `COMPOSITION-LATE-RED.txt` SHA-256：`159bda97d49eda026533122378f81574e0fa26a7e960454307a36c2ffb1fc9b8`。
+
+### RED
+
+在未修改实现上实际执行冻结脚本，退出码 1：
+
+```text
+node /Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed/root-030-checks/composition-late.cjs
+```
+
+真实 bundle `EditorView.dispatch` 重放 `compositionstart -> marked(id=71) -> compositionend ->
+final(id=71) -> Undo`；提交后是 `a 中文\n`，但 Undo 错误回到 `a zhongwen\n`，而非会话前
+`a \n`。这与冻结输出一致，且证明只看 `compositionend` 当下 `past.length === 1`
+不足以证明原子 Undo。
+
+### 假设与验证
+
+| 排名 | 可证伪假设 | 验证结果 |
+| --- | --- | --- |
+| 1 | DOM `compositionend` 立即清组，使同 ID 晚到最终事务以 marked 状态为新 `before` | 成立；保留已 end 会话的 ID 和会话前基线后，冻结重放 Undo 回到 `a \n` |
+| 2 | Undo 前 `finishComposition()` 对晚到组再次封账，把 marked 快照压入历史 | 成立；每次同 ID 事务均从原会话基线重新压缩，Undo 边界只清会话不重建 `before` |
+| 3 | 分组只依赖 DOM composing 布尔值，没有以 transaction composition ID 维持归属 | 成立；同 ID 在 end 前/后均归同会话，不同 ID、无 ID 普通输入和显式操作封账 |
+| 4 | 最终替换的选区映射被误判成普通输入 | 否证；事务内容和选区映射均正确，失败仅位于历史封账时机 |
+
+### GREEN
+
+修复不使用延时、拼音字符串过滤、全历史清空或伪造 composition 事件。DOM end 只将当前
+组标记为已结束并压缩可见历史，同 ID 晚到事务仍使用会话前快照；下一个不同 ID、
+无 ID 事务或 Save/Source/Undo/Redo/Enter/Backspace/Reopen 等明确边界再清除组。
+
+实际执行并通过：
+
+```text
+make -C editor/prototypes/source-authority test
+node /Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed/root-030-checks/composition-late.cjs
+node /Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed/root-030-checks/review.cjs
+```
+
+结果：新原型 11/11 限定回归、10 组集成域全绿；冻结 late 脚本退出码 0，Undo 为
+`a \n`；管理者 `review.cjs` 三项均 PASS。新增集成断言覆盖 end 前最终事务、end 后异步
+turn 最终事务、连续两会话、选区替换、普通输入边界、cancel/no-op 保 future、Undo 后
+新分支及 Save/source no-op/dirty。冻结 oracle SHA-256 仍为
+`c53b2f9c54357a624c7ccd7a1e4a7d1ccf272f665d871de96f686bc46e031d08`。
+
+新的离线 bundle SHA-256：`4b8a2a3d51071ce6a5e6456f48c86f65f88d0786253f4959c768bddfc2ceca99`。
+仍未执行真实 WKWebView 或物理搜狗 IME；本轮证据层级仅为 synthetic/replay 的真实 bundle
+`EditorView.dispatch` + DOM composition 生命周期。
