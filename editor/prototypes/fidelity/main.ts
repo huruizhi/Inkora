@@ -122,5 +122,5 @@ scenarios.forEach(s => { const b = document.createElement('button'); b.textConte
   s.steps.forEach((id, i) => { const step = document.createElement('button'); step.textContent = `${i + 1}. ${$(id).textContent}`; step.onclick = () => run(actions[id]); $('guide').append(step); });
 }); $('tabs').append(b); });
 // Read-only diagnostics for reproducible non-UI checks; no claimed IME coverage.
-Object.assign(window, { fidelityPrototype: { get model() { return model; }, actions, run, parse, diff, view } });
+Object.assign(window, { fidelityPrototype: { get model() { return model; }, actions, run, parse, diff, view, sourcePosition } });
 render();

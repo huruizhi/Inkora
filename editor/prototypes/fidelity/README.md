@@ -12,7 +12,7 @@
 - `build.mjs`：由管理者选择复用仓库现有锁定 Vite 8.3.6 工具链，打包 PM 依赖及生产 schema/parser/保护块预览，将 IIFE 内联为 `PROTOTYPE.html`；不新增依赖。产物无外部 JS/CSS/字体。
 - `PROTOTYPE.html`：已提交的可直接打开产物（使用现有 Vite 压缩）。
 - `check.mjs` / `evidence.json`：现有 jsdom 上运行真实 bundle 的非 UI 场景校验与计算结果；无新测试框架。
-- `UI-EVIDENCE.md`：本轮真实 Chrome 的可见交互记录，与 WKWebView/IME 区分。
+- `crossval.mjs` / `CROSS-VALIDATION.md`：对 INK-PROT-002 独立样稿（`c85e1890`，只读）的交叉核验驱动脚本与结果报告。
 
 本机已使用忽略提交的临时链接 `editor/node_modules -> /Users/rayhu/Documents/projects/Inkora/editor/node_modules`，复用已安装锁定依赖；交付提交不包含链接。在具备同一锁定依赖的 checkout 中执行：
 
@@ -57,6 +57,6 @@ make test-editor PNPM=/Users/rayhu/Documents/projects/Inkora/.tools/node_modules
 5. **共享历史为原型快照。** 每个实际 PM 事务保存 EditorState + 原文，源码提交进入同一栈；不是生产 prosemirror-history 分组方案。源码语义不变时 selection 保留；语义变化后明确重置，**选区映射门槛未通过**。源码草稿复用生产 `TextAreaEditorKernel`：textarea 换行虽被浏览器规范化，内核按行记录原始 CRLF/LF 并在提交时逐字节还原，新换行继承当前行样式，BOM 原样保留；无修改提交为 no-op（不改字节/dirty/revision/history），但 **语义变化后的 selection mapping 与 history 分组仍未通过、不在本轮范围**。
 6. **IME 未验证。** 直接 PM composition 事务不被演示按钮 guard 拦截；composition 期间按钮与保存拒绝执行。但系统 IME、光标稳定性、组合历史分组与保存快照边界仍待真实 WKWebView 验收。
 7. **故障恢复保守。** 有映射/语法错误时保留可信原文/视图、禁用保存，并留下主动源码草稿；有效源码提交或 Undo 可解除阻断。源码草稿不是独立历史，Undo 或重置会离开草稿；无文件恢复/冲突机制。
-8. **独立样稿待交叉验证。** 本轮只使用自建临时样稿，不修改 OMP 的范围/预期；待管理者固定其提交后再验收。
+8. **独立样稿交叉验证已有结果。** 已对固定 `c85e1890` 的 INK-PROT-002 样稿（只读、未改预期）驱动真实入口核验，详见 `CROSS-VALIDATION.md`：01/04/07/08 在可执行范围内字节全通过；09 字节通过但选区映射为现状差异；02/03/10-open 无法打开，05/06/10-create/11 存在真实阻断/失败（marks 移除、定界符重写、单换行拆分、畸形打开、gfm_autolink）。不据此宣告 M0 通过。
 
 结论仅限于：已有可操作的真实 PM/保护块原型和局部补丁正例，以及可复现的拒绝/未通过边界。选区、通用映射、历史分组、WKWebView/IME 与用户审阅尚不足以作架构采用结论。
