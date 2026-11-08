@@ -265,3 +265,10 @@ Host均为srv_MEqRNkRW6fSx。两者接口/文件边界已协调，018暂用旧�
 - 接收时核查实际来源与代码引用、研究缺口及分支推送；未取得平台实验不能称系统版本或macOS14验收通过。完成后当轮回收Agent并保留证据工作区。
 
 INK-RES-002首轮`28d5ab0731414c20c5f1cec6c146322509f91cb7`已推送且干净，但验收未通过：遗漏NSDocument自带`browseVersions(_:)`浏览器，把系统浏览界面概括为需应用自建；未说明`preservesVersions`与`autosavesInPlace`组合约束。管理者实际读取Apple官方DocC JSON确认浏览器入口与配置限制，已把具体来源及限定修正交回同Agent（message `ac9f4914-8cac-44d9-b601-b02ecd7145e0`）。还要求核实生产所用completion保存API与writeSafely契约、修正代码引用和研究基线措辞。此时研究16保持claimed，不把初稿或文档检查通过当事实验收完成；Agent继续修订而非闲置等待。
+
+### 019模块与保存历史研究接收
+
+- INK-RES-002修订为`3fad2d05591966aa0d8d2301426bc80c98b2b301`，仅研究文件。管理者核对官方browseVersions/preservesVersions/save/writeSafely DocC正文及生产代码引用，退回项已修正，diff检查/本地远端一致/干净；研究16据此resolved，真实Sandbox、最低系统与方案选型仍未完成。Agent `e431defb-395c-4856-99a9-ecd243d4d252` 已归档回读closed，`2026-11-08T14:48:21.052Z`，工作区保留。
+- 019固定`738e5e0583e2f19f2ec2fa4e71cbf7fa10f43cd0`，仅新增source-ledger模块、检查脚本、严格TS配置、证据四文件。管理者实跑严格tsc、8组来源断言及verify.py582项通过；核对测试按独立拼装原文span定位，不以旧贪心或仅往返自洽当预期。引用目标/标题/正文碰撞、转义/entity、Unicode边界、方向和显式affinity有模块级证据，未接入model/main/selection-map/HTML。
+- 019多行定义、复杂lazy continuation/delimiter、hardbreak等仍未覆盖；最坏O(n²)与逐grapheme内存成本明示，不能直接称通用source map或生产可用。失败必须保留当前视图/缓冲并明确阻断该操作，未来接线禁止自动整篇源码化或默认nearest吸附。
+- 019本地/远端一致且干净，临时依赖链接和打包已清；Agent `df31e64f-b5e5-4228-934b-3a35e3eec64b` 已归档回读closed，`2026-11-08T14:49:31.553Z`。未合入008，待018交付后统一组合；没有为模块任务重复生产/桌面/IME/磁盘测试。
