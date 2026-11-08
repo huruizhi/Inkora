@@ -396,3 +396,15 @@ INK-PROT-026 Agent=9523cd37-d6e6-4e7c-8ef7-7c62a90aaf56，workspace=wks_ffad2b9e
 管理者独立真实HTML/EditorView反例：在新增history-save-readiness-check.mjs原“后续有效编辑”前直接p.run(actions.undo)，source回baseline且parse/doc/trusted/ledger均一致、pending=false/staged=null；断言blocked为空却实际仍Error:补丁重解析与目标PM文档不一致，node exit1。已实际复现，不以原自动矩阵绿接受。临时脚本/依赖链接已清，186d未接入008。
 
 限定接续仍在同一workspace wks_ffad2b9e3daf4502及task/INK-PROT-026-history-save-readiness，不新开侧栏workspace。新Agent22039af2-cc20-4307-a38e-c9c8f18518c5，GPT-5.6-Sol/medium/default/full-access，notifyOnFinish=true，创建running；profiles为空、provider核对。需补失败->直接Undo/Redo、无可travel条目的no-op不清错误、恢复pending/staged仍阻断，以及原红绿路径；禁止一刀切清blocked或削弱安全检查。等待修正交付后独立验收，完成后再备份并归档workspace。
+
+### 026限定补正接收、真实WK检查与027基础输入缺口
+
+026最终ea63941a6ca320c5aa888eb18263c870fb361846，管理者独立以186d旧HTML跑新专项确认直接Undo断言红；新版实跑37+4+16+4+6+5、ledger17、selection15、native16+3+3、fixture582全过，6份025/026冻结材料逐字节未变。只在真实且验证成功history恢复后清当前操作诊断，空history仍保留错误，pending/staged按实际状态禁save。008已FF/推送，source7c1fa47b…e9577、bundlecec18aeb…0a95、script08d0bf5d…957b2、observer2aa57f69…b68696d，宿主verify/签名及Info/清单/HEAD核对通过。
+
+限定Agent22039af2-cc20-4307-a38e-c9c8f18518c5 finished即归档，closed/archivedAt=2026-11-08T18:17:33.953Z。026完成workspace在备份303文件逐字节校验、HEAD与live origin一致、Git bundle verify及root日志保存后归档；累计30个完成workspace已回收。原008随后观察为磁盘/registry均不存在，未推定原因；ea代码在本地和origin一致，已用git worktree add重建不登记侧栏的本地验证目录 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-008-VERIFY，分支仍task/INK-PROT-008-m0-integration。以后验证以该路径为准。
+
+真实WK普通输入检查在ea新宿主上持锁/preflight执行：末段X后Space真实拒绝，直接Undo安全点恢复可save；保留future时再拒绝，空Undo保持错误，直接Redo恢复可save；畸形按钮pending->Undo clean->Redo pending的保存资格正确；最后Undo+内存savepoint dirty=false。普通CUA输入不是物理搜狗证据。宿主PID87910确认后SIGTERM，session44623退出143，UI锁释放。22条原始记录及详细AX观察已冻结到027准备84adcab375cb20311d883c8b3b43e4fc2d067e06，rawSHA=dd4b7af5815301b32dcf45f3d8025c3b96180e0aafd0e630d77f4833cd769fba。
+
+Space拒绝本身仍是合法输入缺口：管理者真实EditorView先定位光标再逐字alpha/space/beta，实际alphabeta，期望alpha beta，node exit1。初稿没移动选区的错误已在捕获前纠正并断言caret；冻结红输出来自正确输入路径。不为维持026故障点而继续拒绝合法空格，027须同时保持诊断恢复测试的安全语义，换用真实不安全/超范围事务触发，禁止手写blocked或删断言。
+
+INK-PROT-027 Agent7e29964b-772d-465b-a2ff-80fd3d93072e，workspace wks_a4f3a99691039ca5，host srv_MEqRNkRW6fSx；分支task/INK-PROT-027-trailing-whitespace-input，worktree /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-027-trailing-whitespace-input。profiles为空，核对provider后5.6-Sol/high/default/full-access/notifyOnFinish=true，创建running。范围仅fidelity投影/源范围/原生事务及必要测试证据，源字节、history、hardbreak/EOL/BOM和安全save资格须可审计；不吞正常空格/不no-op/不全篇源码fallback，不改冻结原型oracle/production/native-host依赖。若现模型无法清楚表达，报告设计阻力按路线比较source-primary，不堆特例。完成后独立核验并回收Agent和workspace两层。

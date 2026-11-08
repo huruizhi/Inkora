@@ -22,7 +22,7 @@ Status: executed with failure; IME history fix and physical retest pending
 由管理者在用户解锁后先重新预检，再以前台可执行文件持锁启动：
 
 ```sh
-cd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-008-m0-integration
+cd /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-008-VERIFY
 INKORA_UI_LOCK_TIMEOUT=30 scripts/ci/with-ui-lock.sh \
   scripts/ci/ui-preflight.sh desktop \
   editor/prototypes/fidelity/native-host/artifacts/FidelityHost.app/Contents/MacOS/FidelityHost \
@@ -84,3 +84,11 @@ INKORA_UI_LOCK_TIMEOUT=30 scripts/ci/with-ui-lock.sh \
 本次App精确PID79074已SIGTERM，前台包装器session38883退出143，进程/锁均确认释放；不是正常Quit，也不涉及用户文件持久化。026已派独立非UI诊断，用户本轮无需继续操作。取消/no-op/选区替换/完整组合期动作、真实修复后保存资格、最低OS与整体审阅仍未全部通过；M0/11保持未通过。
 
 026首轮186d自动修正尚未接收：独立反例显示失败后直接Undo仍保留当前操作错误，虽已恢复安全文档。已交同026workspace限定补正，没有启动新宿主/要求用户继续输入。008仍5bde，首轮026不得当作新的通过产物。
+
+## 026最新接收与真实WK普通输入结果
+
+当前代码ea63941a6ca320c5aa888eb18263c870fb361846，source7c1fa47b665f60b42fdb04b2f495ad8786baa2058107eac32298b33e2c8e9577，bundlecec18aebe609813eac526967df50c191bb359695784b06fd78c3410d11190a95。原Paseo008目录观察不再存在，已从同提交在 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-008-VERIFY 重建签名宿主，保持integration分支且不增加侧栏workspace；以此为当前启动目录。
+
+管理者独立旧红/新绿与矩阵通过，继而真实WK普通CUA输入测试通过：X之后拒绝Space、直接Undo可save；保留future拒绝后空Undo不清错误，直接Redo可save；pending缓冲Undo clean/Redo pending保持资格，最终内存保存点dirty=false。这不是搜狗物理输入、候选窗或磁盘save验收。22条运行记录和逐步AX结果冻结在027准备84adcab的INK-PROT-026-WK-EVIDENCE.md/raw/summary。PID87910已SIGTERM，session44623退出143，锁释放。
+
+普通尾随Space依然被拒，正确光标原生输入alpha/space/beta丢空格为alphabeta。027在独立工作区自动修正这条基本连续写作路径，暂不再占用用户输入时间。最新物理IME组合取消/替换、用户整体审阅等门槛仍待集中验证，不因026局部修复宣布M0通过。

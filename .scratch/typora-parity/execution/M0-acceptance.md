@@ -153,3 +153,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 025新版本5bde已执行真实物理搜狗复验，两个composition各一条历史；在先撤销后置6条普通编辑后，Undo2/Redo2只跨完整中文会话，不再出现中间拼音。该目标本轮有真实证据。但发现有效正文历史恢复点出现保存阻断（pending=false/重解析等价错误），已冻结203条记录并派026诊断。不得以025目标成功关闭M0或忽略保存资格异常。细节见M0-human-acceptance末节，11仍claimed、12仍依赖11。
 
 026首轮186d未接收、未进入008：管理者独立证明“失败事务->直接Undo到source/PM/trusted/ledger安全点”仍残留当前blocked并禁save；原回归先有效commit才Undo，漏掉此路径。原Agent已回收，同026workspace交22039af2…限定补正；M0仍未过。
+
+026最终ea63941已接受自动层并FF进入008。管理者独立旧186d红/新ea绿，原型37+4+16+4+6+5与ledger17/selection15/native16+3+3/fixture582全过；真实WK普通CUA输入也证明直接Undo/Redo恢复save资格、空Undo保留失败、pending恢复仍阻断、内存保存点正确。不是最新物理搜狗/候选窗矩阵通过，M0仍未过。另将真实拒绝的普通空格确认为连续输入缺口：alpha+space+beta在正确caret路径变alphabeta，027已派。实际原始WK及红回归冻结于027准备84adcab，详见dispatch末节；所有完成Agent/workspace已备份回收，目前仅027执行。
