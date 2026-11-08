@@ -122,6 +122,13 @@ scripts/ci/with-ui-lock.sh scripts/ci/ui-preflight.sh desktop \
 不在仓库 Swift lint 路径中；额外对其运行严格 `swift-format lint` 时，报告了该原型文件
 既有的四空格/分号/行长风格，不作为通过项。
 
+## INK-PROT-017 系统键码路径（2026-11-08）
+
+公开 CoreGraphics probe 已编译，但当前 probe 进程的只读
+`CGPreflightPostEventAccess()` 返回 `false`，所以没有启动 UI、切换输入源或投递键码。
+B 层仍未执行且 M0 未通过。完整权限边界、证据与后续物理键盘步骤见
+`IME-KEYPATH.md` 和 `INK-PROT-017-evidence.json`。
+
 ## 后续人工验证步骤（持 UI 锁 + preflight 后）
 
 1. `make ... run` 启动；确认窗口标题含入口名与副本 SHA 前 12 位，诊断栏

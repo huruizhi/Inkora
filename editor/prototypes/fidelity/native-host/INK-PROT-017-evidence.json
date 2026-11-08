@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "task": "INK-PROT-017",
+  "executed_at": "2026-11-08T14:17:55Z",
+  "overall": "permission_blocked",
+  "m0_gate": "not_declared_passed",
+  "fixed_repo_baseline": "afe85724a0b98acae7c0810de003b92d7858d2ac",
+  "fixed_html_baseline": "def2002cd281f567de9adea192c25b1b1673d4a1",
+  "environment": {
+    "os": "macOS 27.2 (26B123)",
+    "architecture": "arm64",
+    "xcode": "27.2 (27B52)",
+    "sdk": "27.2"
+  },
+  "public_api_review": {
+    "sdk_header": "System/Library/Frameworks/CoreGraphics.framework/Versions/A/Headers/CGEvent.h",
+    "preflight_api": "CGPreflightPostEventAccess (macOS 10.15+)",
+    "post_api": "CGEvent.post(tap:) Swift overlay for CGEventPost",
+    "request_api_called": false,
+    "tcc_changed": false,
+    "unicode_injection_used": false,
+    "clipboard_used": false,
+    "javascript_or_dom_event_injection_used": false
+  },
+  "probe": {
+    "source": "Sources/ime_keypath_probe.swift",
+    "source_sha256": "5bdbd2a5d9b5b505ead119e27bf66a0bee03909e43ffcb18de496556ba678cab",
+    "binary": "artifacts/ime-keypath-probe",
+    "binary_sha256": "76f981a34c4b6936669dbedc202d1bce13378d56bb8f56a33ad3d769d9dafa43",
+    "deployment_target": "arm64-apple-macos14.0",
+    "allowed_sequences": ["zhongwen", "space", "escape"],
+    "target_bundle_allowlist": ["com.huruizhi.Inkora.FidelityPrototype"],
+    "focus_policy": "verify frontmost bundle before the sequence and before every key",
+    "transport_if_authorized": "CGEvent virtual key down/up via cghidEventTap"
+  },
+  "preflight": {
+    "command": "editor/prototypes/fidelity/native-host/artifacts/ime-keypath-probe preflight",
+    "exit_status": 77,
+    "post_event_access": false,
+    "process_name": "ime-keypath-probe",
+    "pid": 32296,
+    "bundle_id": null,
+    "executable_path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-017-system-ime-keypath/editor/prototypes/fidelity/native-host/artifacts/ime-keypath-probe",
+    "frontmost_bundle_id_at_check": "com.google.Chrome",
+    "input_source_id_at_check": "com.sogou.inputmethod.sogou.pinyin",
+    "conclusion": "current probe process lacks event synthesizing access"
+  },
+  "execution_boundary": {
+    "host_launched": false,
+    "ui_lock_acquired": false,
+    "desktop_preflight_run": false,
+    "input_source_changed": false,
+    "key_events_posted": 0,
+    "reason": "CGPreflightPostEventAccess returned false; task requires stopping before UI retry or event posting",
+    "cleanup": "no app, UI lock, focus, or input-source state was changed"
+  },
+  "bundle_verification": {
+    "bundle_id": "com.huruizhi.Inkora.FidelityPrototype",
+    "baseline_commit": "afe85724a0b98acae7c0810de003b92d7858d2ac",
+    "source_html_sha256": "182fceeaae5daecf3b9d4e160d4c2f336090e58b5b81e1458471e356832382a9",
+    "bundled_html_sha256": "123726e72175c8e110addfa0bb4244f66a930c493a4a43cfa2f8d365337c0c7a",
+    "source_script_sha256": "98a7ca0d191edcf91c394a2487a1fed1122859fab671bccd2eaa25ac7bd110af",
+    "bundled_script_sha256": "98a7ca0d191edcf91c394a2487a1fed1122859fab671bccd2eaa25ac7bd110af",
+    "script_bytes_identical": true,
+    "observer_sha256": "28f0fa8cebfb0dde5c4e1b2f12b86667baf14ac771539acf230fa1cde0b33d4f"
+  },
+  "layer_b": {
+    "status": "not_executed",
+    "composition_events": 0,
+    "candidate_or_marked_text_observed": false,
+    "observer_log": null,
+    "unexecuted_requirements": [
+      "visible-body system IME composition and commit",
+      "active-source-textarea system IME composition and commit",
+      "composition-time save and mode-switch guards",
+      "IME selection replacement and cursor validation",
+      "IME transaction Undo and Redo"
+    ],
+    "required_next_transport": "human physical keyboard under the project UI lock"
+  },
+  "validation": [
+    {
+      "command": "make -C editor/prototypes/fidelity/native-host probe",
+      "status": "passed"
+    },
+    {
+      "command": "make -C editor/prototypes/fidelity/native-host verify",
+      "status": "passed"
+    },
+    {
+      "command": "xcrun swift-format lint --strict editor/prototypes/fidelity/native-host/Sources/ime_keypath_probe.swift",
+      "status": "passed"
+    },
+    {
+      "command": "probe missing and malformed arguments",
+      "status": "passed",
+      "detail": "both refused before posting with EX_USAGE (64)"
+    }
+  ]
+}
