@@ -82,3 +82,11 @@ M0 两项执行尚未交付时，已独立派发 [Sandbox 本地图片约束研�
 | INK-PROT-005：保护片段/含混输入 | 6924935；只改原型，修正case02和case10，保留原文/输入/可信投影并阻断不安全保存 | srv_MEqRNkRW6fSx / 54622b76-6057-4797-bfdc-e7cf10f55144 / wks_cc9d6c53f3180f42 | OMP GLM-5.3 / high，创建回执 running |
 
 两项均 notifyOnFinish，工作分支分别为 `task/INK-PROT-004-fixture-semantics` 和 `task/INK-PROT-005-protected-boundaries`。其它 links、marks、通用映射、历史、实际 WKWebView/IME 等缺口继续保留，不能以有限修正缩减总体验收目标。
+
+### INK-PROT-004 交接与选区模块并行任务
+
+- 接收独立审计提交 `484ee81d924efd2a1038e8421b146f4ae5d5b743`，本地/远端一致、工作区干净；管理者实际复跑 verify.py，11 例 47 步 557 项完整性检查通过。CommonMark 段落/softbreak 语义纠正保留原单换行覆盖；emoji 文案改为实际字节/UTF-16 数，没有改有效字节预期。
+- 11 visual-split 的段落重组/原边界吸收仍是需按真实动作重放的表示选择，不能仅凭与单个目标 hash 不一致判定失败；样稿自校验不是完整交互语义证明。
+- `fb89ab9b-ce31-4152-a346-27c3744f4fea` 已交接归档，回读 closed，archivedAt=`2026-11-08T12:45:30.575Z`，样稿工作区保留。后续统一核验使用新固定样稿，005当前专测的02/10不受此审计改动影响。
+- 新增 INK-PROT-006：GLM-5.3 / high，独立分支 `task/INK-PROT-006-source-selection`，起点6924935；host/agent/workspace 为 `srv_MEqRNkRW6fSx` / `62168a02-a1de-484e-b029-39d9a2cfa942` / `wks_b402ba30bed468ee`。创建回执 running，notifyOnFinish 开启。
+- 006只新增选区映射纯模块、独立检查和证据，不改005正在修改的model/main/shell/build/HTML；覆盖PM与原文双向位置、textarea与CRLF偏移、方向、emoji/BOM及语义编辑后的内容锚点。模糊映射必须有明确失败结果，不静默重置；模块交付后仍需集成与真实环境验证。
