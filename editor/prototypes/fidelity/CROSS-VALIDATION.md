@@ -1,6 +1,6 @@
 # CROSS-VALIDATION：INK-PROT-005 原型 × INK-PROT-002 独立样稿
 
-交叉核验日期：2026-11-08（本轮为 INK-PROT-005 保护边界轮复测，原型基线 `6924935` 的后继提交；产品起点仍 `57aeaac`）。样稿：`ink-prot-002-fidelity-cases` worktree（固定 `c85e1890b2ef3938dd6853d97977d28ac54b309e`），只读，未做任何修改；样稿预期与语义判定未被修改。02/10 的修改前后对比与行为契约详见 `BOUNDARY-EVIDENCE.md`。
+交叉核验日期：2026-11-08（本轮为 INK-PROT-010 选区接线轮复测，原型基线 `7fe11b3`；产品起点仍 `57aeaac`）。样稿：`ink-prot-002-fidelity-cases` worktree（固定 `c85e1890b2ef3938dd6853d97977d28ac54b309e`），只读，未做任何修改；样稿预期与语义判定未被修改。02/10 的修改前后对比与行为契约详见 `BOUNDARY-EVIDENCE.md`；09 的选区接线证据详见 `INTEGRATION-SELECTION-EVIDENCE.md`。
 
 ## 方法与命令
 
@@ -26,7 +26,7 @@
 | 06 split/join（CRLF） | ok | — | 步1、步3（阻断） | 步2、步4 | 失败（本轮未处理） |
 | 07 Undo/Redo 粒度 | ok | 步1–6 全部（含 dirty 状态） | 无 | 无 | **通过** |
 | 08 源码改格式 dirty | ok | 步1–3 全部 | 无 | 无 | **通过** |
-| 09 源码往返选区 | ok | 步2、4、5（byte-exact/state-ref） | — | 步1、3（operational） | 字节通过；**选区映射现状差异** |
+| 09 源码往返选区 | ok | 步1–5 全部（byte-exact/state-ref + 选区内容锚点与方向，本轮 INK-PROT-010 接线）+ 补充后向/Cancel | 无 | 无 | **通过（jsdom 级）**；旧「09 字节 PASS」不再冒充选区通过——步1/3 现为真实选区断言 |
 | 10 open-malformed | ok（真实 `openMalformed` 按钮） | 步1（打开观察：含混标注/不切源码/不置 dirty）、步2（保存阻断且零写入）、步3（源码修复 byte-exact + 内存基线重开） | 无 | 真实磁盘写/重开 | **通过（磁盘仅内存基线模拟）** |
 | 10 create-ambiguity | ok | 步1–3 全部（含步2 含混缓冲 byte-exact 保留 + pending/阻断）、步4 归类 OBSERVED | 无 | 真实磁盘写 | **通过**（步4 记录：追加闭合 `$$` 后尾段被归入已闭合数学围栏整段保护，保存资格恢复） |
 | 11 混合 EOL 插入 | ok | — | 步1、步2（阻断） | 无 | 失败（本轮未处理） |
@@ -38,7 +38,7 @@
 - **04 步1–2**：`[ ]→[x]` 与 `[X]→[ ]` 各只改 1 字符，sha 等于 `after-step-1/2.md`；全文保持 CRLF 且无尾部换行。
 - **07 步1–6**：两次编辑、逐次撤销×2、重做×2，缓冲区 sha 逐步等于 `after-step-1/2/1/input/1/2.md`；undo 粒度未合并；回到输入时 `dirty=false`，其余步 `dirty=true`。
 - **08 步1–3**：无修改源码往返为 no-op（字节/dirty/revision/history 均不变）；`*星号强调*→_星号强调_` 经真实 textarea 草稿路径提交后 sha 等于 `after-step-2.md` 且 `dirty=true`；跨模式撤销回到输入字节且 `dirty=false`。
-- **09 步2/4/5**：源码在 🎯 后插入「锚点」，sha 等于 `after-step-2.md`；跨模式撤销/重做字节精确还原（`input.md`/`after-step-2.md`）。
+- **09 步1–5（本轮 INK-PROT-010 选区接线）**：全部经真实路径重放——`pmCaret`（PM 事务置光标于 🎯 后）→ `actions.source`（textarea 光标落在 🎯 与 。之间，方向保持，映射精确无吸附）→ textarea 真实键入「锚点」（input 事件走生产 TextAreaEditorKernel）→ `actions.apply`（字节 sha == `after-step-2.md`，PM 光标回到「🎯锚点」与「。」之间的内容锚点，dirty=true）→ Undo（字节回 `input.md`、dirty=false、光标回 🎯 后）/Redo（字节回 `after-step-2.md`、dirty=true、光标回锚点后）。选区断言全部按内容锚点（前后字符/textBetween/独立 findText）重推，不写死偏移；补充步骤验证后向选区方向（PM 35>32 ↔ textarea backward 33..36）与 Cancel 保留原可视选区。旧口径「步2/4/5 字节通过、步1/3 未执行」作废。
 - **10 open-malformed 步1–3（本轮修复）**：打开不再抛错——issues=[math@第 5 行，UTF-16 19..36]，投影 heading,paragraph,protected_block（问题片段红框标注），`sourceMode=false`（未整篇切源码），`dirty=false`，保存按钮禁用；未修改保存被拒（「保存阻断：边界含混待修复（math）」），缓冲与内存保存点 sha 均保持输入 `794a3df…0aea`；主动源码在 `\int_0^1 x\,dx` 行后补 `$$` 后 pending 清除，保存点 sha `1bce610…faaa` == `malformed-after-step-3.md`；以内存基线重开（`new FidelityModel(saved)`）：issues=0、数学片段 raw 精确 `$$\n\int_0^1 x\,dx\n$$`、正文可继续编辑。
 - **10 create-ambiguity 步1–3（本轮修复）**：步1 正文替换 sha == `valid-after-step-1.md`，数学片段逐字节保留；步2 视觉插入 `$$` 行不再被拒绝——**缓冲 sha `84191d9…9bcb` == `valid-buffer-after-step-2.md`（用户输入保留）**，pending=true(math)、保存禁用、dirty=true、投影仍含可信标题/正文/数学片段；步3 主动源码删除该行后 pending 清除、保存恢复，sha 回到 `e9650f3…896e` == `valid-after-step-3.md`。步4（OBSERVED）：重建含混后在文末追加 `$$`，pending 消失，尾段被归类为已闭合数学围栏整段进入 protected_block（投影 heading,paragraph,protected_block×2），保存资格恢复——如实记录「尾段被吞入数学片段」的实际归类。
 
@@ -50,9 +50,9 @@
 - **05 步3（行内代码插反引号）**：`行内代码` 在文档中出现多次，`选区边界有多个原文映射` → 阻断。原型无定界符重写（`` ` `` → ```` `` ````）能力，即使映射成功也不会产出预期字节 → 失败。
 - **05 步4（围栏 info python→swift）**：原型无 code_block attrs/info 编辑入口 → 未执行（unsupported）。
 - **06 步1/3、11 步1/2（单换行 split）**：`model.apply` 以单换行补丁+真实 `tr.split` 提交时，重解析等价检查失败（单 `\n`/`\r\n` 在 CommonMark 下仍是同段软换行，无法与两个 PM 段落等价），原型拒绝提交、缓冲字节保持不变（`补丁重解析与目标 PM 文档不一致`）。样稿预期单换行拆分 → 判失败；受影响的 join 步骤（06 步2/4）随之未执行。本轮未处理。
-- **09 步1/3（operational 选区映射）**：原型进入源码模式不映射光标（textarea 全文重置），切回可视语义变化后 selection 重置到文档开头。与 README 已声明的「选区映射门槛未通过」一致 → 现状差异，不判通过。
+- ~~**09 步1/3（operational 选区映射）**~~：已于 INK-PROT-010 消除——进入源码映射光标、提交后映射回新文档、Undo/Redo 恢复内容锚点与方向，全部为 jsdom 级真实断言通过（见上）；WKWebView/IME 仍不在范围。
 - **边界保守反例（本轮新增，如实记录）**：行内 `$…$`（非围栏形态）与含两个 `$` 的普通文本按含混处理（片段原样保留 + pending + 保存阻断）；`> $$`、`$$\n$$` 空围栏等非稳定形态同理。未用其它输入替代或放宽判定。
 
 ## 结论
 
-本轮实际驱动 12 个变体中的 12 个：7 个用例/变体在其可执行范围内全部通过（01、02、04、07、08、10-open、10-create；10 的磁盘语义仅内存基线模拟）；09 字节通过但选区映射为现状差异；03 仍无法打开；05、06、11 存在真实阻断/失败，均为原型已知边界（marks/attrs、定界符重写、单换行拆分、gfm_autolink），本轮未处理。**样稿预期未被修改，未用预期反哺实现。** 本交叉核验不改变「M0 全门槛未通过」的结论；jsdom 结果不构成 WKWebView/IME/磁盘保存验收。
+本轮实际驱动 12 个变体中的 12 个：8 个用例/变体在其可执行范围内全部通过（01、02、04、07、08、09、10-open、10-create；10 的磁盘语义仅内存基线模拟；09 本轮升级为选区级通过）；03 仍无法打开（gfm_autolink）。05/06/11 的输出为**旧 driver 结果**（05 旧 driver 缺步 1、06/11 的动作未按审计修订重写），不构成对审计后 oracle 的判定，本轮未处理、待正确重放；其既有阻断原因（marks 移除、定界符重写、单换行拆分）见上节。**样稿预期未被修改，未用预期反哺实现。** 本交叉核验不改变「M0 全门槛未通过」的结论；jsdom 结果不构成 WKWebView/IME/磁盘保存验收。
