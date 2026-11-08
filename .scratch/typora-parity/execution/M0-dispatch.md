@@ -90,3 +90,13 @@ M0 两项执行尚未交付时，已独立派发 [Sandbox 本地图片约束研�
 - `fb89ab9b-ce31-4152-a346-27c3744f4fea` 已交接归档，回读 closed，archivedAt=`2026-11-08T12:45:30.575Z`，样稿工作区保留。后续统一核验使用新固定样稿，005当前专测的02/10不受此审计改动影响。
 - 新增 INK-PROT-006：GLM-5.3 / high，独立分支 `task/INK-PROT-006-source-selection`，起点6924935；host/agent/workspace 为 `srv_MEqRNkRW6fSx` / `62168a02-a1de-484e-b029-39d9a2cfa942` / `wks_b402ba30bed468ee`。创建回执 running，notifyOnFinish 开启。
 - 006只新增选区映射纯模块、独立检查和证据，不改005正在修改的model/main/shell/build/HTML；覆盖PM与原文双向位置、textarea与CRLF偏移、方向、emoji/BOM及语义编辑后的内容锚点。模糊映射必须有明确失败结果，不静默重置；模块交付后仍需集成与真实环境验证。
+
+### INK-PROT-007：真实 WKWebView 环境准备
+
+005、006 本轮重新核实仍为 running、有 activeTurn、无待审批项；继续原会话，不因等待重启。并行派发低复杂度的真实环境准备：
+
+- Host / Agent / Workspace：`srv_MEqRNkRW6fSx` / `fd9b1530-878f-4a55-a570-913cf49c7c0c` / `wks_c1a816897258247a`。
+- 模型：OMP GLM-5.3 / low；分支 `task/INK-PROT-007-wkwebview-host`，起点6924935。创建回执 running，notifyOnFinish 开启。
+- 只新增 `editor/prototypes/fidelity/native-host/` 的 Swift/AppKit/WebKit 宿主、隔离 bundle、构建/运行入口和说明，不改生产代码或005/006文件。
+- 使用独立 bundle ID、App Sandbox、离线资源/导航约束和 ad-hoc 签名；支持指定原型HTML，记录原文件与加载副本hash，避免源码更新却验证旧产物。
+- 本阶段只编译、打包、签名和检查资源，不启动桌面或模拟IME。后续合并原型后单独安排真实运行；构建成功不能当作 WKWebView/系统输入法验收通过。
