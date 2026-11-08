@@ -24,7 +24,9 @@ if [[ ! -x $executable ]]; then
   exit 66
 fi
 
-"$executable" -ApplePersistenceIgnoreState YES --inkora-test-recovery-session "$(uuidgen)" &
+"$executable" -ApplePersistenceIgnoreState YES \
+  -INKTestDefaultsSuite "InkoraSmoke-$(uuidgen)" \
+  --inkora-test-recovery-session "$(uuidgen)" &
 app_pid=$!
 
 cleanup() {

@@ -170,3 +170,4 @@ run-and-capture.sh 失败分支归档。
 快照只用于测试诊断，不能作为生产恢复机制。冷 Launch Services 启动未继承 XCUITest
 环境时快照可能 unavailable，完整日志与截图仍保留。此限制须结合失败附件判断。
 `bench-full` 的启动构建也明确使用 UITesting bundle ID，并使用独立 defaults/recovery 参数。
+Debug/Release 启动烟测均传入 UUID defaults suite 和 recovery session。
