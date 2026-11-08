@@ -1,0 +1,317 @@
+{
+  "allPass" : true,
+  "baseline" : "36e636578798510d240b23520122c88578cf3fe5",
+  "journal" : [
+    {
+      "event" : "draft-import",
+      "id" : "DA70AA46-75D4-4EAC-AE52-0E6415D3E97A",
+      "note" : "图 片%20.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/7C84466A-C8ED-4AF9-B944-8AAA846EEFB2/imports/图 片%20.png",
+      "session" : "7C84466A-C8ED-4AF9-B944-8AAA846EEFB2"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "ABD9B73F-2AEA-45BA-8C3B-09A24B34A0C3",
+      "note" : "a.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/ABFA8206-9E35-4545-A5CB-A896C4C5A96D/imports/a.png",
+      "session" : "ABFA8206-9E35-4545-A5CB-A896C4C5A96D"
+    },
+    {
+      "event" : "rolled-back-deleted",
+      "id" : "1B7F365F-C002-482F-8C4B-F701214A9F25",
+      "note" : "copy a.png",
+      "op" : "save-05DC5AA6",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s2/note.assets/a.png",
+      "session" : "ABFA8206-9E35-4545-A5CB-A896C4C5A96D"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "1F96763F-91F0-4EF3-BEAA-636960DE9060",
+      "note" : "图 片%20.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/BAA72B53-A8E8-4D18-B87F-BC7C9979C727/imports/图 片%20.png",
+      "session" : "BAA72B53-A8E8-4D18-B87F-BC7C9979C727"
+    },
+    {
+      "event" : "committed",
+      "id" : "1F544C5A-F26D-44AA-8CB6-91350B312E06",
+      "note" : "copy 图 片%20.png",
+      "op" : "save-C5F7125B",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s3/笔记 note.assets/图 片%20.png",
+      "session" : "BAA72B53-A8E8-4D18-B87F-BC7C9979C727"
+    },
+    {
+      "event" : "committed",
+      "id" : "0387DEB0-FBD7-42A6-A83D-D9FFF996E699",
+      "note" : "copied dir 笔记 note.assets",
+      "op" : "saveas-109E5D1B",
+      "path" : "/private/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s4-dst/笔记 note.assets/图 名.png",
+      "session" : "n/a"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "E4A27FD3-5145-4DF6-9C0B-D830C24A7F28",
+      "note" : "same.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/F3F7A989-535F-4EE1-A0DC-10C7BD47D8D8/imports/same.png",
+      "session" : "F3F7A989-535F-4EE1-A0DC-10C7BD47D8D8"
+    },
+    {
+      "event" : "reused-no-ownership",
+      "id" : "FF1F934D-B426-45E0-A2D7-2B482D7E5691",
+      "op" : "save-06EAC5DC",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s5/a.assets/same.png",
+      "session" : "F3F7A989-535F-4EE1-A0DC-10C7BD47D8D8"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "8E6FE9F9-DCD8-4ABC-A646-C77FF900C832",
+      "note" : "keep.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/757C5837-F4F8-41B0-AF02-940EF45B46D8/imports/keep.png",
+      "session" : "757C5837-F4F8-41B0-AF02-940EF45B46D8"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "F395B52B-A4C5-4CF4-AC58-22D56B7B9827",
+      "note" : "drop.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/757C5837-F4F8-41B0-AF02-940EF45B46D8/imports/drop.png",
+      "session" : "757C5837-F4F8-41B0-AF02-940EF45B46D8"
+    },
+    {
+      "event" : "rolled-back-kept-referenced",
+      "id" : "E211D9D5-8680-4F96-851D-AAF6EF2BDF9B",
+      "note" : "copy keep.png",
+      "op" : "save-23428229",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s6/note.assets/keep.png",
+      "session" : "757C5837-F4F8-41B0-AF02-940EF45B46D8"
+    },
+    {
+      "event" : "rolled-back-deleted",
+      "id" : "74787674-6979-443A-BC75-BCF5DDCD6631",
+      "note" : "copy drop.png",
+      "op" : "save-23428229",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s6/note.assets/drop.png",
+      "session" : "757C5837-F4F8-41B0-AF02-940EF45B46D8"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "97A71E79-249D-4008-B063-0C6625AE83FA",
+      "note" : "c.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/B1B737F6-B273-4946-A102-5D9ABE9774AD/imports/c.png",
+      "session" : "B1B737F6-B273-4946-A102-5D9ABE9774AD"
+    },
+    {
+      "event" : "cancelled-draft-kept",
+      "id" : "1AB9DD32-C556-4D1E-AB24-AA879DCE4E66",
+      "op" : "cancel",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/B1B737F6-B273-4946-A102-5D9ABE9774AD",
+      "session" : "B1B737F6-B273-4946-A102-5D9ABE9774AD"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "8BBD8FFA-7926-4179-AE9C-93D0CAEFD3FC",
+      "note" : "x.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/8FE0B8B3-BCD2-4239-B370-DC735C563285/imports/x.png",
+      "session" : "8FE0B8B3-BCD2-4239-B370-DC735C563285"
+    },
+    {
+      "event" : "session-purged",
+      "id" : "1DDE23A1-8C7F-45C6-9268-B7B9EAF48127",
+      "op" : "abandon",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/recovery/8FE0B8B3-BCD2-4239-B370-DC735C563285",
+      "session" : "8FE0B8B3-BCD2-4239-B370-DC735C563285"
+    }
+  ],
+  "prototype" : "INK-PROT-011 local-assets model 0.1",
+  "ranAt" : "2026-11-08T13:17:18Z",
+  "scenarios" : [
+    {
+      "detail" : [
+        "PASS imported file exists in session dir",
+        "PASS session bytes SHA == imported bytes",
+        "PASS dirty=true saved=false before first save"
+      ],
+      "final" : [
+
+      ],
+      "initial" : [
+
+      ],
+      "name" : "S1-draft-import-retained",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS not saved, no markSaved, write actually failed",
+        "PASS error recorded: markdown-write-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “note.md” couldn’t be saved in the folder “s2”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s2/note.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s2/note.md, NSUnderlyingError=0x10141afb0 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
+        "PASS owned unreferenced copy rolled back (deleted)",
+        "PASS draft + unrelated file SHAs unchanged",
+        "PASS session still dirty, not saved"
+      ],
+      "final" : [
+        {
+          "exists" : true,
+          "path" : "a.png",
+          "sha256" : "3bcfffda982c2a5d38d006a41c12ff6c8b4b11950868e12ae25c7abf4693c4f1"
+        },
+        {
+          "exists" : true,
+          "path" : "unrelated.txt",
+          "sha256" : "d59c2a5f721ce135ce54628b1ad8ad8b8eb26c8bbe2e2abe1cdca97e2d6ab446"
+        }
+      ],
+      "initial" : [
+        {
+          "exists" : true,
+          "path" : "a.png",
+          "sha256" : "3bcfffda982c2a5d38d006a41c12ff6c8b4b11950868e12ae25c7abf4693c4f1"
+        },
+        {
+          "exists" : true,
+          "path" : "unrelated.txt",
+          "sha256" : "d59c2a5f721ce135ce54628b1ad8ad8b8eb26c8bbe2e2abe1cdca97e2d6ab446"
+        }
+      ],
+      "name" : "S2-md-write-failure-keeps-draft",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS saved + markSaved after md write",
+        "PASS markdown exists",
+        "PASS percent/中文/空格 ref resolves: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s3/笔记 note.assets/图 片%20.png",
+        "PASS managed bytes SHA == draft bytes",
+        "PASS session clean after success"
+      ],
+      "final" : [
+
+      ],
+      "initial" : [
+
+      ],
+      "name" : "S3-first-save-success",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS saveAs saved, error=nil",
+        "PASS new markdown exists",
+        "PASS markdown bytes identical (ref bytes unchanged)",
+        "PASS managed asset copied under ORIGINAL dir name at new location",
+        "PASS originals untouched (still exist, same SHA)"
+      ],
+      "final" : [
+        {
+          "exists" : true,
+          "path" : "笔记 note.md",
+          "sha256" : "dd741787dbc646b1d6d848a4983e3a232cf418f7e4d7de3472e40c18c20ce170"
+        },
+        {
+          "exists" : true,
+          "path" : "图 名.png",
+          "sha256" : "1b1caf70fc79f599ffdb6dcb8cb80086999b2921c57c14d68dd172893c6faa17"
+        }
+      ],
+      "initial" : [
+        {
+          "exists" : true,
+          "path" : "笔记 note.md",
+          "sha256" : "dd741787dbc646b1d6d848a4983e3a232cf418f7e4d7de3472e40c18c20ce170"
+        },
+        {
+          "exists" : true,
+          "path" : "图 名.png",
+          "sha256" : "1b1caf70fc79f599ffdb6dcb8cb80086999b2921c57c14d68dd172893c6faa17"
+        }
+      ],
+      "name" : "S4-save-as-byte-identical",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS same-bytes reused, error=markdown-write-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “a.md” couldn’t be saved in the folder “s5”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s5/a.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s5/a.md, NSUnderlyingError=0x7a20c54840 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
+        "PASS rollback did not claim reused file",
+        "PASS reused pre-existing file NOT deleted on rollback (no ownership)",
+        "PASS different-bytes rejected",
+        "PASS target not overwritten"
+      ],
+      "final" : [
+
+      ],
+      "initial" : [
+
+      ],
+      "name" : "S5-conflict-rules",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS save failed as injected",
+        "PASS referenced created file kept: [\"/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s6/note.assets/keep.png\"]",
+        "PASS unreferenced created file deleted: [\"/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s6/note.assets/drop.png\"]",
+        "PASS other.md untouched",
+        "PASS foreign file untouched"
+      ],
+      "final" : [
+
+      ],
+      "initial" : [
+
+      ],
+      "name" : "S6-rollback-ownership-boundary",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS draft import still exists after cancel",
+        "PASS session dir still exists after cancel",
+        "PASS still dirty, not saved"
+      ],
+      "final" : [
+
+      ],
+      "initial" : [
+
+      ],
+      "name" : "S7-cancel-keeps-draft",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS 中文/空格/百分号 ref resolves",
+        "PASS dotdot rejected: dotdot-rejected: ../escape.png",
+        "PASS absolute rejected: absolute-rejected: /etc/passwd",
+        "PASS symlink rejected: symlink-rejected: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model/s8/doc.assets/link.png",
+        "PASS external secret untouched by rejection"
+      ],
+      "final" : [
+
+      ],
+      "initial" : [
+
+      ],
+      "name" : "S8-resolution-boundaries",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS session dir purged on explicit abandon"
+      ],
+      "final" : [
+
+      ],
+      "initial" : [
+
+      ],
+      "name" : "S9-explicit-abandon",
+      "pass" : true
+    }
+  ],
+  "scratchRoot" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.FI5l8a/model"
+}

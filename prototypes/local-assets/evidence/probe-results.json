@@ -1,0 +1,24 @@
+{
+  "bundleIDHint" : "com.huruizhi.Inkora.AssetPrototype",
+  "containerFixture" : {
+    "byteCount" : 34,
+    "ok" : true,
+    "path" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data/probe-fixtures/容器 fixture.bin",
+    "sha256" : "b7c58d8b2d0454af84dee2307c56691cd29cbb1789fd5e22a9d25311a1b1be36"
+  },
+  "containerHome" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
+  "containerWrite" : {
+    "ok" : true
+  },
+  "externalFixture" : {
+    "errno" : 1,
+    "errnoMessage" : "Operation not permitted",
+    "ok" : false,
+    "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T//ink-prot-011.FI5l8a/external/外 部%20fixture.bin"
+  },
+  "inheritedHomeEnv" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
+  "probeVersion" : "INK-PROT-011 AssetPrototype probe 0.1",
+  "processPath" : "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-011-local-assets-platform/prototypes/local-assets/.build/AssetPrototype.app/Contents/MacOS/AssetPrototype",
+  "sandboxActive" : true,
+  "sandboxEvidence" : "NSHomeDirectory()=/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data; HOME env=/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data; sandboxActive=true"
+}

@@ -1,0 +1,32 @@
+{
+  "baselineGitSHA": "36e636578798510d240b23520122c88578cf3fe5",
+  "evidenceLayers": {
+    "nonSandboxedContrast": {
+      "externalFixtureOk": true,
+      "sha256": "2e89563dbb3030e68f55a18cb48ee29a0e55f4e5e19658b912f2906938d73773"
+    },
+    "pureModelPlusScratchFS": {
+      "allPass": true,
+      "binarySHA256": "e495992ae354749239a71e9e68b3ae6fa56019b11e7513ccd8487465603d5e21",
+      "journalEntries": 16,
+      "scenarioCount": 9
+    },
+    "signedSandboxProbe": {
+      "binarySHA256": "67e3923a87fc1d1c6fbe23e3540918d964984da2213a478683d1373e89a3ef88",
+      "containerFixtureReadOk": true,
+      "containerHome": "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
+      "containerWriteOk": true,
+      "externalErrno": 1,
+      "externalErrnoMessage": "Operation not permitted",
+      "externalFixtureOk": false,
+      "sandboxActive": true,
+      "signing": "ad-hoc + com.apple.security.app-sandbox entitlement (see Makefile)",
+      "verdict": "sandbox-active-blocked-external"
+    }
+  },
+  "generatedAt": "2026-11-08T13:17:18.239316+00:00",
+  "notes": [],
+  "prototype": "INK-PROT-011 local-assets platform prototype part 1",
+  "status": "pass",
+  "swift": "swift-driver version: 1.168.6 Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)"
+}
