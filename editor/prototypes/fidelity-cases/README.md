@@ -124,8 +124,9 @@ python3 editor/prototypes/fidelity-cases/verify.py
 
 - 输入换行序列（8 个边界）：LF、CRLF、LF、空行 CRLF、CRLF、CRLF、空行 LF、LF。
 - main 变体（源码模式单换行继承局部 EOL）：① CRLF 行末 Enter 插入新行（新边界继承 **CRLF**，结果为同段落 softbreak）；② LF 末行 Enter 插入新行（新边界继承 **LF**，原尾部换行保持）。
-- visual-split 变体（视觉 Enter 段落拆分，不得降级为源码判定）：① 「第二行使用 CRLF 结尾。」行尾 Enter 创建新段落并输入文本（新空行的 4 个边界继承 **CRLF**）；② 尾段行尾 Enter 创建新段落（2 个新边界继承 **LF**，原尾部换行保持）。若混合 EOL 文档按 EOL-001 现状整篇源码、无法执行视觉 Enter，记「现状差异、未执行」。
-- **字节判据**：保存后与对应 `after-step-N.md` / `visual-after-step-N.md` 逐字节一致，除声明吸收/新增边界外全部原始边界不变。
+- visual-split 变体（视觉复合动作，不得降级为源码判定）：① 「第二行使用 CRLF 结尾。」句号后执行 `Enter → 输入 → Enter → forward Delete`（删除光标后的字符，macOS 通常为 Fn+Delete）；第二次 Enter 后只删除移到第 3 段开头的原 softbreak，得到冻结的 3 段目标（两个 CRLF 空行、局部 4 个 CRLF 边界）；② 尾段行尾 Enter 创建新段落（2 个新边界继承 **LF**，原尾部换行保持）。若混合 EOL 文档按 EOL-001 现状整篇源码、无法执行视觉 Enter，记「现状差异、未执行」。
+- single-enter 变体（单次 Enter 独立覆盖）：① 同一锚点只执行 `Enter → 输入`，真实 PM 状态只有 2 个受影响段落；插入文本与原第 3 行仍由保留的 softbreak 相连，不能冒充 visual-split 的 3 段目标；② 尾段只执行一次 Enter 并输入，独立覆盖 LF 尾段 split。
+- **字节判据**：保存后与对应 `after-step-N.md` / `visual-after-step-N.md` / `single-enter-after-step-N.md` 逐字节一致，除声明吸收/新增边界外全部原始边界不变。
 - **模式判据**：main 变体为源码字节覆盖；混合 EOL 可视结构化编辑由 visual-split 变体判定，按 EOL-001 现状整篇源码时记现状差异，不判为已满足新体验。
 
 ## 高价值边界（交叉核验优先盯）
@@ -173,3 +174,18 @@ exit=0
 ```
 
 变更要点：06 main 步骤①改为空行段落拆分（CRLF×2）、新增 06 softbreak 变体（单 CRLF 软换行）；11 main 明确为源码模式单换行、新增 11 visual-split 变体（视觉 Enter 段落拆分，CRLF/LF 各一步）；01 emoji 长度说明修正为实测值（25→18 字节、11→8 UTF-16 单元）。依据与独立 markdown-it 证明见 `SEMANTIC-AUDIT.md`。
+
+## 动作语义再审记录（2026-11-08，INK-PROT-016）
+
+```text
+$ pnpm --dir editor exec vitest run prototypes/fidelity-cases/action-audit.test.ts --reporter=verbose
+Test Files  1 passed (1)
+Tests       3 passed (3)
+
+$ python3 editor/prototypes/fidelity-cases/verify.py
+用例: 11  步骤: 49 (byte-exact 36 / state-ref 8 / operational 5)
+检查通过 582 项，失败 0 项
+全部通过
+```
+
+case 11 的冻结 `visual-split` 字节、ops、hash 未改；仅把步骤 1 改写为实测可到达三段目标的复合动作，并新增 `single-enter` 两步覆盖。独立 PM 节点 JSON、选区、CommonMark 段落计数、EOL 字节范围与 hash 证明见 `ACTION-AUDIT.md`；可重复命令由 `action-audit.test.ts` 提供。该脚本是纯模型证据，不代表 WKWebView、键盘事件或中文输入法验收。
