@@ -139,3 +139,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 022固定6360a2904cb07f9d94f1a9169fc709962f4f1a99已接收并FF进008推送。管理者独立重跑37+4+16、17组ledger、15映射、native16+3+3、01/02/03/04/07/08/09/10指定交叉场景和fixture582均通过；另实际EditorView改正文、CommonMark独立href对照、EOF源码提交及Undo/Redo验证通过。HTML SHA为e2e259f44b9a3cf372ba1de891da99d68b7a655dd39ab79073942105c6ffd3f6；旧014的WK日志仍不适用新bundle，M0未过。
 
 准备新宿主时发现两项确定缺口：旧observer以source!=saved计算dirty，漏报staged；main.run只看PM composing，忽略现成sourceKernel.composing。后者在【合成信号仅测guard，不是真IME】下实际重现：source a+LF，源码草稿a中+LF，compositionstart后input，再点apply会误走no-op退出sourceMode并清掉草稿。023补只读诊断，024补操作守卫和保留草稿回归；不把合成信号回归当真实组合输入通过。新App与人工验收要等这两项修正验收后固定，屏幕仍需可用会话。
+
+023已接收270716e并FF入008源码。管理者重跑只读observer回归、native-host verify/签名资源检查，独立核对source/bundle/observer hash、script原字节及最终baseline/Info一致；dirty getter与staged诊断修复。未启动App、024getter当前仅兼容mock，尚不是合并后真实组合输入证据；008现有旧artifact不得直接拿来代表新宿主。024仍执行，后续最终HEAD重建与人工物理键盘验收未完成。

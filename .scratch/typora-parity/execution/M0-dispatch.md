@@ -348,3 +348,11 @@ message `702a8638-813c-4629-8862-b6b135c0f8ee`已交同Agent修元数据symlink/
 | INK-PROT-024 源码composition操作守卫 | 12b99bf1-8d0f-4ba0-806e-aac1d3d3e563 / wks_1272d6ec70875c09 | 6360a29; task/INK-PROT-024-source-composition-guard | GPT-5.6-Sol/medium；组合期动作不丢草稿，不强制updateState/setText；合成信号仅测guard |
 
 Host均srv_MEqRNkRW6fSx，full-access/default档/notifyOnFinish=true，list_profiles为空后以已核实provider字段启动，创建回执running。023 worktree`/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-023-host-observer-sync`；024路径末段为`ink-prot-024-source-composition-guard`。约定024新增只读prototype.sourceComposing/composing getters，023存在则读取、缺失用明示legacy fallback，不要求互相等待或改对方文件。待分别验收合入008并从最终HEAD重建宿主后再请求实际物理键盘验收。
+
+### 023宿主诊断接收与回收
+
+023固定`270716ebe88d4bfb0ddde85fdffa271586e0d9b2`仅4个native-host文件，远端一致/干净。管理者实际重跑observer-check（真实HTML/EditorView Enter暂存、UndoRedo、重复snapshot只读、旧模型/可选getter兼容）及make verify、两项JS语法/diff检查通过。另独立核对Info的真实`FidelityBuildBaseline`与manifest/HEAD，source/bundle/observer SHA及脚本字节一致；未启动App。
+
+023工作区本轮artifact baseline270716e，HTML source=e2e259f…ffd3f6、bundle=d171ec7d…dccb737、observer=2aa57f69…b68696d；024组合信号尚只以普通mock证明兼容，需其合入后再用实际getters复核。Agent `799844f3-1976-4b6f-98af-2ccacff7d7d2`已归档closed，`2026-11-08T16:09:21.818Z`，工作区/证据保留。008源码已FF270716e并推送，008旧artifacts不外推为更新后的可运行验收成品；待024合入最终HEAD统一重建。
+
+当前仅024继续源码composition守卫。屏幕预检锁定与真IME缺证保持独立，不因宿主静态构建/合成guard检查通过就关闭M0或HITL。
