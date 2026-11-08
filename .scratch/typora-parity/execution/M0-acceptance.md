@@ -161,3 +161,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 028两轮共同推荐已记录M0-source-authority-consensus.md。029契约/oracle由管理者独立冻结6e6e2b8，数据一致性校验不等于实现通过。030正在独立目录验证统一当前原文权威、save/source/history契约及投影边界；旧fidelity/582冻结控制不改，008仍ea63941。最小主链必须包含停在空格保存/源码no-op/scratch重开/正确raw边界续写/UndoRedo，不能把纯输入子集当闭环。所有委员/复核workspace已备份回收，当前仅030实现。M0/11未通过，12不锁架构。
 
 030首轮6658185未验收：自动矩阵绿，但独立真实HTML页面源码/草稿/真实PM选区回归3项红。接续只修新原型目录，固定oracle和旧对照不变；详见[M0-source-authority-independent-review.md](M0-source-authority-independent-review.md)。当前尚不能进入新bundle真机验收，更不能声明M0或生产迁移通过。
+
+030补正7cedafc的原3项缺陷及页面11组独立通过；另有末次composition事务晚于compositionend时Undo暴露中间拼音的自动重放红，已限定接续。030/M0尚未通过，尚未新bundle真机验收。

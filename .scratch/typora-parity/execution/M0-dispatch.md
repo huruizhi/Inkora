@@ -436,3 +436,5 @@ INK-PROT-030：Agent b8560dcd-b9a8-4cc0-9c15-e5c1bf6b493a，workspace wks_aa63ec
 ### 030首轮独立验收退回
 
 6658185已推送，管理者重跑自动矩阵全过，但真实HTML/页面操作的独立3项红回归暴露CRLF源码no-op改字节、未提交草稿Undo失活、旧锚点导致后续输入错位。详见[M0-source-authority-independent-review.md](M0-source-authority-independent-review.md)。原Agent已归档；同workspace由d4617e58-8cee-4af9-bad6-fdecdc55a43c接续限定修正（GPT-5.6-Sol/high/default）。未新建侧栏工作区，未合008/main，11仍claimed、12不采纳架构。
+
+030补正7cedafc的原3项红已独立转绿，新增11组和原9域重跑通过；执行Agent已归档。但compositionend后同ID最终PM事务再Undo的真实EditorView重放仍暴露中间拼音，root脚本exit1。Agent adb05108-b6a8-42df-bb49-516f67e07b07 只在同030工作区接续（GPT-5.6-Sol/medium/default），不新开侧栏工作区，不启动GUI。详细记录见独立验收文档末节。

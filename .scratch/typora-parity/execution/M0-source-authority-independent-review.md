@@ -23,3 +23,11 @@
 要求补真实EditorView/DOM按钮/textarea接缝、CRLF与混合EOL偏移保真、草稿Undo/Redo守卫、所有anchors映射和不安全语义差异拒绝；不可删除有效断言或用预期patch反哺模型。若公共投影契约无法满足则报告表示失败，不继续堆叠staged特例。
 
 030首轮未验收，未合008/main；已接收旧集成仍ea63941，M0和架构采纳均未通过。真实WK/物理搜狗待修正后固定单一bundle再验证，不以新自动矩阵替代。当前工作区仍有在做修正任务，暂保留；任务结束独立验收并核对备份后回收workspace层。
+
+## 7cedafc 补正复核与末次 composition 缺口
+
+7cedafc29880f19a6f2b1e093157130d65b8266b 已推送且工作区干净。管理者实际重跑原只读 review.cjs，CRLF 源码 no-op、草稿旅行守卫、编辑锚点三项全绿；新增页面回归11/11及原9域、PRIMARY8、repeat13、paragraph3全过。改动仅新原型目录。原Agent d4617e58-8cee-4af9-bad6-fdecdc55a43c 已归档，closed，archivedAt=2026-11-08T20:23:54.268Z。
+
+新增独立真实EditorView synthetic/replay：a+Space+LF raw2 → compositionstart → marked zhongwen (meta71) → compositionend → final中文 (同meta71) → Undo，实际恢复 a+Space+zhongwen+LF，预期应会话前a+Space+LF。root-030-checks/composition-late.cjs 实际exit1，冻结输出 COMPOSITION-LATE-RED.txt；不是物理IME新证据。endComposition立即封账与同ID末次事务需统一处理，不能以Undo前past计数1误判通过。
+
+因此原三项补正局部接受，030仍未整体验收。Agent adb05108-b6a8-42df-bb49-516f67e07b07 在同030工作区限定接续（GPT-5.6-Sol/medium/default，profiles为空后provider核实，notifyOnFinish=true），只修历史分组时序并保持oracle和旧对照冻结。真实WK/搜狗验收暂未开始，008/main未合，不新建侧栏工作区。
