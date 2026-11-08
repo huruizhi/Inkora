@@ -1,7 +1,7 @@
-// INK-PROT-014: read-only runtime observation. Never synthesizes DOM/input events.
+// INK-PROT-023: read-only runtime observation. Never synthesizes DOM/input events.
 (() => {
   "use strict";
-  const version = "ink-prot-014-observer-v1";
+  const version = "ink-prot-023-observer-v2";
   let sequence = 0;
 
   const targetName = (target) => {
@@ -44,13 +44,23 @@
       const view = prototype?.view;
       const textarea = document.getElementById("source-draft");
       const selection = model?.state?.selection;
+      const modelDirty = model?.dirty;
+      const staged = model?.staged;
+      const sourceComposing = prototype?.sourceComposing;
+      const prototypeComposing = prototype?.composing;
       return {
         version,
         sourceMode: Boolean(prototype?.sourceMode),
         revision: model?.revision ?? null,
         pending: Boolean(model?.pending),
         blocked: model?.blocked || null,
-        dirty: model ? model.source !== model.saved : null,
+        dirty: model ? (
+          typeof modelDirty === "boolean"
+            ? modelDirty
+            : model.source !== model.saved || Boolean(staged)
+        ) : null,
+        staged: model ? Boolean(staged) : null,
+        stagedKind: typeof staged?.kind === "string" ? staged.kind : null,
         past: model?.past?.length ?? null,
         future: model?.future?.length ?? null,
         selection: selection ? {
@@ -59,7 +69,10 @@
           anchor: selection.anchor,
           head: selection.head,
         } : null,
-        composing: Boolean(view?.composing),
+        sourceComposing: typeof sourceComposing === "boolean" ? sourceComposing : null,
+        composing: typeof prototypeComposing === "boolean"
+          ? prototypeComposing
+          : Boolean(view?.composing),
         textarea: textarea ? {
           readOnly: textarea.readOnly,
           selectionStart: textarea.selectionStart,

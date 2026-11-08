@@ -129,6 +129,38 @@ scripts/ci/with-ui-lock.sh scripts/ci/ui-preflight.sh desktop \
 B 层仍未执行且 M0 未通过。完整权限边界、证据与后续物理键盘步骤见
 `IME-KEYPATH.md` 和 `INK-PROT-017-evidence.json`。
 
+## INK-PROT-023 observer staged dirty 同步（2026-11-09）
+
+observer 快照优先读取模型公开的布尔 `dirty`；仅在旧模型没有该 getter 时，
+回退为 `source !== saved || staged`。快照另只读暴露 `staged` 与 `stagedKind`
+标量，不输出候选全文，也不修改模型或编辑器。若原型提供 `sourceComposing` 和
+聚合 `composing` getter，observer 会读取它们；旧原型明确回退为
+`sourceComposing: null` 与 `view.composing`。
+
+非 UI 回归 `observer-check.mjs` 使用仓库锁定的真实 `PROTOTYPE.html` 与真实
+EditorView：在 `ab\n` 末尾按 Enter 后，`source === saved`，但模型与快照均保持
+`dirty=true`、`staged=true`；Undo/Redo 正确恢复，连续快照不改变 source、doc、
+selection、past 或 future。测试另覆盖无 `dirty` getter 的旧 mock，以及可选
+composition getter 的普通 mock。它没有合成 composition 事件，也不作为真实 IME
+证据。
+
+本轮通过：
+
+```sh
+make -C editor/prototypes/fidelity/native-host observer-check
+node --check editor/prototypes/fidelity/native-host/Resources/runtime-observer.js
+node --check editor/prototypes/fidelity/native-host/observer-check.mjs
+git diff --check
+make -C editor/prototypes/fidelity/native-host verify
+```
+
+源 `PROTOTYPE.html` SHA256 保持
+`e2e259f44b9a3cf372ba1de891da99d68b7a655dd39ab79073942105c6ffd3f6`；
+构建核对 source、bundle、script 与 observer hash，并通过编译、ad-hoc Hardened
+Runtime 签名和资源校验。旧 INK-PROT-014 WK 日志针对当时 observer/bundle，不能
+覆盖本轮 bundle。本轮未启动 App，未执行真实 WKWebView、真实 IME、HITL 或磁盘
+保存验证，也不宣告 M0 通过。
+
 ## 后续人工验证步骤（持 UI 锁 + preflight 后）
 
 1. `make ... run` 启动；确认窗口标题含入口名与副本 SHA 前 12 位，诊断栏
