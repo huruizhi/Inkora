@@ -263,3 +263,5 @@ Host均为srv_MEqRNkRW6fSx。两者接口/文件边界已协调，018暂用旧�
 - 本次list_profiles为空，已实时核对list_models/inspect_provider后用`codex/gpt-6-luna`、medium、full-access、service_tier=default、notifyOnFinish=true；这类资料整理用经济档，不升级6.1-Sol。当前仅创建回执running。
 - 限定只新增一份研究Markdown，以Apple一手文档及固定代码区分事实、现状、建议和待签名Sandbox实验。对比系统管理/应用检查点，核实保存失败、位置不支持、Save As/移动、旁置图片、保留容量与卸载迁移；不启用autosavesInPlace、不改产品或依赖、不做桌面/真实用户文件操作。
 - 接收时核查实际来源与代码引用、研究缺口及分支推送；未取得平台实验不能称系统版本或macOS14验收通过。完成后当轮回收Agent并保留证据工作区。
+
+INK-RES-002首轮`28d5ab0731414c20c5f1cec6c146322509f91cb7`已推送且干净，但验收未通过：遗漏NSDocument自带`browseVersions(_:)`浏览器，把系统浏览界面概括为需应用自建；未说明`preservesVersions`与`autosavesInPlace`组合约束。管理者实际读取Apple官方DocC JSON确认浏览器入口与配置限制，已把具体来源及限定修正交回同Agent（message `ac9f4914-8cac-44d9-b601-b02ecd7145e0`）。还要求核实生产所用completion保存API与writeSafely契约、修正代码引用和研究基线措辞。此时研究16保持claimed，不把初稿或文档检查通过当事实验收完成；Agent继续修订而非闲置等待。
