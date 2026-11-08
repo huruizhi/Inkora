@@ -160,3 +160,11 @@ M0 两项执行尚未交付时，已独立派发 [Sandbox 本地图片约束研�
 - 收到009 `d3c15c789b47be3e7cda3446e9ea8fb9571bcf40`，核实本地/远端一致、干净。但其把含链接段落/标题的源码变为单个可编辑字面文本叶，丢掉链接与同段marks的可视语义，并拒绝列表/引用内链接。字节样稿PASS不能替代原任务体验；本实现未接入008，已立即回派同Agent修正，要求真实link marks/DOM与段落/列表/引用结构、仅图片自身局部原文表示及完整字节证据，失败则如实保留架构反例而非缩减体验。
 - 010仍运行。管理者只读预审其尚未提交的main.ts，发现源码态Undo/Redo无条件离开可丢未提交草稿，以及noTextAnchor例外仍重置选区。已发steer要求真实UI路径补证/修正，保留草稿和可信选区，并更正旧05/06/11驱动输出的归因；未将草稿报告视为固定交付。
 - 当前三个执行槽位为009即时修正、010接线修正、013资源提交修正。均保留原范围和隔离；M0、平台票14与总体路线均未通过。
+
+### 010固定交付复跑与空文档反例
+
+收到 `8ca296bfd84501f4259800d9beb4e759da32b8b2`，本地/远端一致且干净；原有草稿Undo丢输入路径已加守卫，纯保护块改为owner NodeSelection并明确不是精确文本映射。管理者实跑 `make -C editor/prototypes/fidelity test`，构建/严格类型与28项检查通过。
+
+额外实际重放“默认样稿→主动源码→textarea删空并input→光标0→apply”发现：`sourceMode=true`、`sourceEmpty=true`、`revisionDelta=1`、`pastDelta=1`，随后报 `TypeError: Cannot read properties of undefined (reading 'pos')`。空文档parse没有ranges，noTextAnchor分支先提交内容再访问不存在的owner。此反例说明28项正例不足以证明源码提交边界完整；该提交尚未接入008。
+
+已立即回派同010 Agent限定修正：空/仅空白或引用定义文档的合法空段落锚点，提交前验证选区，删全文/Undo/Redo/no-op/Cancel与纯保护块owner回归；异常时草稿/原文/revision/history必须保持。只重跑受影响检查，不重复未变化的生产111项。原工作区检查后干净，临时链接已清理；012仍排队，尚无执行Agent。
