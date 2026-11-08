@@ -82,7 +82,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     self.bridge = bridge
     self.resourceSchemeHandler = resourceSchemeHandler
     self.webView = webView
-    view = webView
+    presentEditor(webView)
 
     loadEditor(into: webView)
   }
@@ -127,6 +127,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     }
     bridge?.loadDocument(
       documentID: document.bridgeDocumentID, revision: document.bridgeRevision, text: document.text)
+    if let webView { presentEditor(webView) }
     NSApplication.shared.mainMenu?.update()
   }
 
@@ -288,8 +289,37 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       return
     }
     bridge.prepareForRecovery()
-    view = webView
+    presentEditor(webView)
     loadEditor(into: webView)
+  }
+
+  @objc
+  func convertBareCRToLF(_ sender: Any?) {
+    document?.convertBareCRToLF()
+  }
+
+  private func presentEditor(_ webView: WKWebView) {
+    webView.removeFromSuperview()
+    guard document?.isBareCRReadOnly == true else {
+      view = webView
+      return
+    }
+    let message = NSTextField(
+      wrappingLabelWithString:
+        "含 bare CR 换行，整篇只读。转换会统一为 LF 且不可撤销；保存前原文件不变。")
+    message.setAccessibilityIdentifier("BareCRExplanation")
+    let button = NSButton(
+      title: "转换为 LF 并编辑", target: self,
+      action: #selector(convertBareCRToLF(_:)))
+    button.keyEquivalent = "l"
+    button.keyEquivalentModifierMask = [.command, .option]
+    button.setAccessibilityIdentifier("ConvertBareCRToLF")
+    button.setAccessibilityHelp("Command-Option-L。转换不可撤销，不会自动保存。")
+    let stack = NSStackView(views: [message, button, webView])
+    stack.orientation = .vertical
+    stack.alignment = .width
+    stack.spacing = 8
+    view = stack
   }
 
   private func presentResourceError(message: String) {

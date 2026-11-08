@@ -134,6 +134,32 @@ final class InkoraDocument: NSDocument {
     textStorage.get()
   }
 
+  var isBareCRReadOnly: Bool { Self.containsBareCR(textStorage.get()) }
+
+  // Native save/recovery gate mirrors line-endings.ts's bare_cr classification.
+  // Scan UTF-8: Swift Character treats CRLF as one grapheme cluster.
+  private nonisolated static func containsBareCR(_ text: String) -> Bool {
+    let bytes = Array(text.utf8)
+    return bytes.indices.contains {
+      bytes[$0] == 13 && ($0 + 1 == bytes.count || bytes[$0 + 1] != 10)
+    }
+  }
+
+  /// Explicit, irreversible session boundary. Disk bytes remain untouched until Save.
+  func convertBareCRToLF() {
+    guard isBareCRReadOnly, !saveInProgress else { return }
+    textStorage.set(
+      text.replacingOccurrences(of: "\r\n", with: "\n")
+        .replacingOccurrences(of: "\r", with: "\n"))
+    bridgeDocumentID = UUID().uuidString
+    revisionStorage.set(0)
+    recoveredUnsaved = true
+    synchronizeEditedState(true)
+    editorViewController?.reloadDocument()
+    refreshFileState()
+    scheduleRecovery()
+  }
+
   var bridgeRevision: Int {
     revisionStorage.get()
   }
@@ -238,6 +264,7 @@ final class InkoraDocument: NSDocument {
 
   override func data(ofType typeName: String) throws -> Data {
     if let encodingError { throw encodingError }
+    if isBareCRReadOnly { throw DocumentFileState.bareCR }
     return encodedDocumentData()
   }
 
@@ -257,6 +284,7 @@ final class InkoraDocument: NSDocument {
     // the original again, after the asynchronous snapshot and before writing.
     // This override is nonisolated, so read the lock-guarded storage directly.
     if let encodingError = encodingErrorStorage.get() { throw encodingError }
+    if Self.containsBareCR(textStorage.get()) { throw DocumentFileState.bareCR }
     if saveOperation == .saveOperation,
       let original = absoluteOriginalContentsURL, original == fileURL
     {
@@ -283,6 +311,10 @@ final class InkoraDocument: NSDocument {
       completionHandler(encodingError)
       return
     }
+    guard !isBareCRReadOnly else {
+      completionHandler(DocumentFileState.bareCR)
+      return
+    }
     pendingSaves.append(
       PendingSave(
         url: url,
@@ -295,6 +327,7 @@ final class InkoraDocument: NSDocument {
   }
 
   func editorDidChangeState(_ state: BridgeEditorState) {
+    guard !isBareCRReadOnly, encodingError == nil else { return }
     guard state.documentID == bridgeDocumentID else { return }
     guard state.revision >= revisionStorage.get() else { return }
     let dirty = state.dirty || missingOriginal || recoveredUnsaved
@@ -308,6 +341,7 @@ final class InkoraDocument: NSDocument {
   // ProseMirror owns history. Native change count is a boolean projection of its
   // saved baseline, not a second undo stack (revisions also increase on Undo).
   private func synchronizeEditedState(_ dirty: Bool) {
+    let dirty = dirty && !isBareCRReadOnly && encodingError == nil
     guard dirty != isDocumentEdited else { return }
     updateChangeCount(dirty ? .changeDone : .changeCleared)
   }
@@ -315,7 +349,7 @@ final class InkoraDocument: NSDocument {
   func prepareForClose(completion: @escaping (Error?) -> Void) {
     // The encoding error state has no editor session to snapshot and is
     // never dirty, so closing needs no save review at all.
-    guard encodingError == nil else {
+    guard encodingError == nil, !isBareCRReadOnly else {
       completion(nil)
       return
     }
@@ -432,6 +466,13 @@ final class InkoraDocument: NSDocument {
       updateFileStateSubtitle()
       return
     }
+    if isBareCRReadOnly {
+      fileState = .bareCR
+      synchronizeEditedState(false)
+      updateFileStateSubtitle()
+      return
+    }
+    fileState = .current
     guard let url = fileURL else { return }
     let wasEdited = isDocumentEdited
     let accessed = url.startAccessingSecurityScopedResource()
@@ -473,6 +514,7 @@ final class InkoraDocument: NSDocument {
 
   private func validateOriginalForSaving() throws {
     if let encodingError { throw encodingError }
+    if isBareCRReadOnly { throw DocumentFileState.bareCR }
     refreshFileState()
     guard fileState == .current || fileState == .moved else { throw fileState }
   }
@@ -584,7 +626,7 @@ final class InkoraDocument: NSDocument {
   }
 
   private func scheduleRecovery() {
-    guard !recoveryClosed, recoveryStore != nil else { return }
+    guard !isBareCRReadOnly, !recoveryClosed, recoveryStore != nil else { return }
     invalidateRecoveryWork()
     guard isDocumentEdited else {
       retireRecovery()
@@ -597,7 +639,8 @@ final class InkoraDocument: NSDocument {
   }
 
   func captureRecovery() {
-    guard !recoveryClosed, recoveryStore != nil, isDocumentEdited, !saveInProgress,
+    guard !isBareCRReadOnly, !recoveryClosed, recoveryStore != nil, isDocumentEdited,
+      !saveInProgress,
       let requester = recoverySnapshotRequester ?? editorViewController?.requestRecoverySnapshot
     else { return }
     let epoch = recoveryEpoch
@@ -622,7 +665,8 @@ final class InkoraDocument: NSDocument {
   }
 
   func writeRecovery(_ snapshot: BridgeSnapshot) throws {
-    guard !recoveryClosed, let recoveryStore, snapshot.documentID == bridgeDocumentID,
+    guard !isBareCRReadOnly, !recoveryClosed, let recoveryStore,
+      snapshot.documentID == bridgeDocumentID,
       snapshot.revision >= bridgeRevision, isDocumentEdited
     else { return }
     let data = (bomStorage.get() ? Self.utf8BOM : Data()) + Data(snapshot.text.utf8)
