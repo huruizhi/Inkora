@@ -133,3 +133,17 @@ M0 两项执行尚未交付时，已独立派发 [Sandbox 本地图片约束研�
 | INK-PROT-011 本地资源平台首部分 | 36e6365；仅prototypes/local-assets/，隔离持久化/所有权/失败注入与非GUI Sandbox探针 | 1da3379f-18dd-414b-b036-f8124a95bb67 / wks_3c98f8b2ad411c85 | GLM-5.3 low；task/INK-PROT-011-local-assets-platform |
 
 三者host均为srv_MEqRNkRW6fSx；009/010可能在model/main交叠，固定提交汇合时按语义处理并复跑组合场景。011属于平台票14的首部分，GUI授权/书签跨启动/WK broker等仍待验证，不因首部分完成关闭父票。各执行者均禁止操纵桌面和修改生产/独立样稿，不直接合并main或宣告M0通过。
+
+### INK-PROT-011 首轮交付审核
+
+接收 `1a413b760c866e134d102e70a83985eef466648e`，本地/远端一致、工作区干净，范围仅 `prototypes/local-assets/`。执行者报告9项普通scratch场景通过，并在签名Sandbox进程中观察到容器内读写成功、未授权外部fixture返回EPERM；未执行GUI授权、书签跨启动或WK broker。管理者已读取代码和证据，尚未复跑。
+
+审核发现四项限定缺口并已立即回派同Agent修正，notifyOnFinish开启：验证器未把所有探针/对照失败与不完整状态计入最终结果；未激活Sandbox时仍可能向HOME写固定fixture且清理路径不区分本轮会话；同名图片唯一化后PendingAsset仍记录旧名；回滚依靠不完整正则/浅层扫描且把读取失败当无引用，不能证明已发布文件可安全删除。要求严格分层判定、唯一会话与写入前容器检查、实际唯一名称及保守的staging/发布所有权边界，并补最小反例。当前阶段存在即时修正，不作为已验收成果归档或关闭平台票。
+
+### 验收驱动审核与待派任务
+
+管理者读取当前008原型、crossval与审计后manifest，确认旧driver的05跳过前置移除strong步骤、06仍插入单CRLF却执行PM段落split、11把源码单换行用PM split重放。因此这些旧driver输出不能直接作为新样稿的实现判决。
+
+已准备独立workspace `wks_0743d97b1a902aef`，路径 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-012-audited-driver`，分支 `task/INK-PROT-012-audited-driver`，固定起点e5455ef。尚未创建执行Agent：009、010和011即时修正正在占用三个执行槽位，先等待其完成通知。
+
+下一空闲槽位优先委派低成本012，只新增独立驱动/报告，保留旧crossval避免与009/010冲突；按冻结manifest完整动作顺序重放05/06/11全部变体，expected只在操作后读取，禁止把oracle补丁喂进实现制造通过。区分真实UI/PM命令、显式patch演示、源码操作、未实现、驱动错误与oracle动作歧义；11 visual-split的文字动作能否产生指定段落数需独立核对，有疑点记录反例而非改预期。接受可指定新bundle路径，为009/010汇合后重跑准备证据；不改生产、模型或样稿，不宣称UI/IME/磁盘验收。

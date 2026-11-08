@@ -30,3 +30,5 @@ Parent: ../map.md
 Host / Agent / Workspace：`srv_MEqRNkRW6fSx` / `1da3379f-18dd-414b-b036-f8124a95bb67` / `wks_3c98f8b2ad411c85`。分支 `task/INK-PROT-011-local-assets-platform`，固定基线 `36e636578798510d240b23520122c88578cf3fe5`；OMP GLM-5.3 / low，notifyOnFinish 已开启。
 
 这是本票的首部分，不缩减上述完整验收标准。文件/目录面板、拖放/粘贴、书签跨重启和WK资源broker的实际授权行为不在该执行者本轮范围，继续待后续持UI锁与preflight验证；普通scratch读写不算Sandbox授权证据，无法无GUI运行Sandbox时明确留空。票据保持claimed，不能因首部分构建或数据检查成功而解决。
+
+首轮产物 `1a413b7` 已接收，执行者报告9项scratch场景及本机签名Sandbox的EPERM正例；管理者审核发现结果判定、会话隔离、唯一命名和回滚无引用证明的缺口，已立即交同Agent限定修正。首部分尚未最终接受，父票继续claimed；代码存在和报告通过不替代上述完整验收。
