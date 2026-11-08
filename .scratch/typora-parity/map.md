@@ -11,7 +11,8 @@ Status: open
 
 - 用户于 2026-11-08 确认：规划完整路线、分阶段实施；以中文技术文章与项目文档为主要验收场景；纳入公式、Mermaid、脚注、主题和导出。
 - 继承仓库 AGENTS.md、README.md 和已接受 ADR：macOS 14+、App Sandbox、离线编辑、Markdown 保真优先、保护 IME/光标/选区/撤销历史；Developer ID 签名、公证后直接分发。
-- 当前事实基线：main `3bc978e68ba63f48d4e743481be0fe5316ae17eb`。既有 [Inkora 1.x Roadmap](https://github.com/huruizhi/Inkora/issues/1) 是输入材料，勾选状态需与实现和证据对账；这张地图跨阶段规划，不承诺所有内容属于 1.x。
+- 初始研究基线：main `3bc978e68ba63f48d4e743481be0fe5316ae17eb`。本轮路线讨论读取时，本地 main 已新增 `57aeaac18e41c7191b1be851b284aae8c1b1bbae`（当时尚未进入 origin/main），需补充保护块实现对路线的影响核实；研究证据按提交区分，不能把旧现状描述当作新实现事实。
+- 既有 [Inkora 1.x Roadmap](https://github.com/huruizhi/Inkora/issues/1) 是输入材料，历史勾选与实现的差异及更正见维护记录；这张地图跨阶段规划，不承诺所有内容属于 1.x。
 - 本地图使用 wayfinder 默认的本地 Markdown tracker，尚未执行 setup-matt-pocock-skills。地图是本文件；子票据在 issues/；研究证据位于各票指定的独立研究分支 research/ 路径，以提交链接固定版本，不合并研究分支。
 - 2026-11-08 用户授权整理旧路线：仅对旧路线图增加历史/重规划说明、链接本地图并纠正与子 Issue 状态不一致的勾选；保留已有 Issue 和实现记录。对账记录见 [INK-PLAN-002](../../docs/tasks/INK-PLAN-002.md)。研究中的旧勾选是更正前快照，不代表更正后的状态。新路线尚在决策阶段，未完成迁移前不关闭旧路线图或批量改动子 Issue。
 - 子票据的 Type、Labels、Status、Assignee、Blocked by 是调度依据。Status 使用 open / claimed / resolved；依赖项 resolved 后才可领取；无依赖写 None。决策结论只写在对应票据的 Answer 中，地图只保留摘要链接。
