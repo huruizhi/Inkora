@@ -1,6 +1,6 @@
 # PROTOTYPE：真实桌面检查记录
 
-日期：2026-11-08；使用 cua_repl 操作本机 Google Chrome，新建本地 file:// 标签，无服务器。
+日期：2026-11-08；此桌面检查使用压缩前的同源 bundle；最终压缩产物重跑了全部 11 项非 UI 检查，未重复桌面验收。使用 cua_repl 操作本机 Google Chrome，新建本地 file:// 标签，无服务器。
 
 - 先执行 `INKORA_UI_LOCK_TIMEOUT=2 scripts/ci/with-ui-lock.sh scripts/ci/ui-preflight.sh desktop /bin/sleep 180`：取得 UI 锁（pid 33749），desktop preflight 通过（uid 501）。检查结束对锁拥有进程发 TERM，依脚本 trap 释放锁。
 - 加载工作区 `editor/prototypes/fidelity/PROTOTYPE.html`，AX 明确显示标题 PROTOTYPE、revision 0、dirty false、真实可视中文/链接/任务/公式保护块/表格预览、范围与 UTF-8 diff。

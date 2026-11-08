@@ -10,7 +10,7 @@
 - `main.ts`：真实 EditorView、直接输入、演示操作、可见状态、源码草稿与场景。
 - `shell.html`：页面模板；不是可运行产物。
 - `build.mjs`：用现有锁定 Vite 8.3.6 打包仓库 PM 依赖及生产 schema/parser/保护块预览，将 IIFE 内联为 `PROTOTYPE.html`。用户已允许此项打包例外；不新增依赖。产物无外部 JS/CSS/字体。
-- `PROTOTYPE.html`：已提交的可直接打开产物（约 694 KB）。
+- `PROTOTYPE.html`：已提交的可直接打开产物（使用现有 Vite 压缩）。
 - `check.mjs` / `evidence.json`：现有 jsdom 上运行真实 bundle 的非 UI 场景校验与计算结果；无新测试框架。
 - `UI-EVIDENCE.md`：本轮真实 Chrome 的可见交互记录，与 WKWebView/IME 区分。
 
