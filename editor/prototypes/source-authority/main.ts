@@ -1,5 +1,7 @@
 // PROTOTYPE UI: thin DOM adapter over SourceAuthorityController.
 import { EditorView } from 'prosemirror-view';
+import { TextAreaEditorKernel } from '../../src/editor-kernel';
+import { lfToRaw, rawToLf } from '../fidelity/selection-map';
 import { SourceAuthorityController, type Affinity, type RawSelection } from './core';
 
 declare global {
@@ -13,6 +15,7 @@ const initialRaw = 'a\n';
 let controller = new SourceAuthorityController(initialRaw, { anchor: 1, head: 1, affinity: 'right' });
 let sourceMode = false;
 let view: EditorView;
+let lastDispatchAccepted = false;
 
 const byId = <T extends HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -21,6 +24,7 @@ const byId = <T extends HTMLElement>(id: string): T => {
 };
 
 const source = byId<HTMLTextAreaElement>('source');
+const sourceKernel = new TextAreaEditorKernel(source);
 
 function command(name: string, action: () => boolean): boolean {
   const beforeState = controller.state;
@@ -31,7 +35,7 @@ function command(name: string, action: () => boolean): boolean {
 }
 
 function dispatchTransaction(transaction: Parameters<EditorView['dispatch']>[0]): void {
-  command('dispatch', () => controller.dispatch(transaction));
+  lastDispatchAccepted = command('dispatch', () => controller.dispatch(transaction));
 }
 
 function render(): void {
@@ -45,9 +49,10 @@ function render(): void {
   byId('eligibility').textContent = `save=${controller.saveEligible} source=${controller.sourceAccessible} documentDirty=${controller.documentDirty} draftDirty=${controller.draftDirty}`;
   source.readOnly = !sourceMode;
   if (!sourceMode) {
-    source.value = controller.currentRaw;
-    source.selectionStart = controller.rawSelection.head;
-    source.selectionEnd = controller.rawSelection.anchor;
+    sourceKernel.setText(controller.currentRaw);
+    const start = rawToLf(controller.currentRaw, Math.min(controller.rawSelection.anchor, controller.rawSelection.head));
+    const end = rawToLf(controller.currentRaw, Math.max(controller.rawSelection.anchor, controller.rawSelection.head));
+    source.setSelectionRange(start, end, controller.rawSelection.anchor > controller.rawSelection.head ? 'backward' : 'forward');
   }
   for (const button of document.querySelectorAll<HTMLButtonElement>('button[data-command]')) {
     const guarded = controller.composing && ['save', 'source', 'apply', 'cancel', 'undo', 'redo', 'reset'].includes(button.dataset.command ?? '');
@@ -60,17 +65,26 @@ function beginSource(): boolean {
   if (!accepted) return false;
   sourceMode = true;
   source.readOnly = false;
-  source.value = controller.draft!.raw;
+  sourceKernel.setText(controller.draft!.raw);
   const selection = controller.draft!.selection;
-  source.setSelectionRange(Math.min(selection.anchor, selection.head), Math.max(selection.anchor, selection.head), selection.anchor > selection.head ? 'backward' : 'forward');
+  source.setSelectionRange(
+    rawToLf(controller.draft!.raw, Math.min(selection.anchor, selection.head)),
+    rawToLf(controller.draft!.raw, Math.max(selection.anchor, selection.head)),
+    selection.anchor > selection.head ? 'backward' : 'forward',
+  );
   return true;
 }
 
 function updateDraftFromTextarea(): void {
   if (!sourceMode || !controller.draft) return;
-  const anchor = source.selectionDirection === 'backward' ? source.selectionEnd : source.selectionStart;
-  const head = source.selectionDirection === 'backward' ? source.selectionStart : source.selectionEnd;
-  controller.updateDraft(source.value, { anchor, head, affinity: 'right' });
+  const raw = sourceKernel.getText();
+  const anchorLf = source.selectionDirection === 'backward' ? source.selectionEnd : source.selectionStart;
+  const headLf = source.selectionDirection === 'backward' ? source.selectionStart : source.selectionEnd;
+  controller.updateDraft(raw, {
+    anchor: lfToRaw(raw, anchorLf),
+    head: lfToRaw(raw, headLf),
+    affinity: 'right',
+  });
   render();
 }
 
@@ -92,7 +106,25 @@ function setRawSelection(offset: number, affinity: Affinity = 'right'): boolean 
 }
 
 function nativeType(text: string, compositionId?: unknown): boolean {
-  return command('type', () => controller.nativeType(text, compositionId));
+  let transaction = view.state.tr.insertText(text);
+  if (compositionId !== undefined) transaction = transaction.setMeta('composition', compositionId);
+  lastDispatchAccepted = false;
+  view.dispatch(transaction);
+  return lastDispatchAccepted;
+}
+
+function nativeReplace(from: number, to: number, text: string, compositionId?: unknown): boolean {
+  let transaction = view.state.tr.insertText(text, from, to);
+  if (compositionId !== undefined) transaction = transaction.setMeta('composition', compositionId);
+  lastDispatchAccepted = false;
+  view.dispatch(transaction);
+  return lastDispatchAccepted;
+}
+
+function travel(direction: 'undo' | 'redo'): boolean {
+  const accepted = direction === 'undo' ? controller.undo() : controller.redo();
+  if (accepted && !controller.draft) sourceMode = false;
+  return accepted;
 }
 
 function reopen(raw: string, selection?: RawSelection): boolean {
@@ -114,9 +146,9 @@ view = new EditorView(byId('visual'), {
 
 view.dom.addEventListener('compositionstart', () => { controller.startComposition(); render(); });
 view.dom.addEventListener('compositionend', () => { controller.endComposition(); render(); });
+sourceKernel.onChange(updateDraftFromTextarea);
 source.addEventListener('compositionstart', () => { controller.startComposition(); render(); });
 source.addEventListener('compositionend', () => { controller.endComposition(); render(); });
-source.addEventListener('input', updateDraftFromTextarea);
 source.addEventListener('select', () => { if (sourceMode) updateDraftFromTextarea(); });
 
 const actions: Record<string, () => boolean> = {
@@ -128,8 +160,8 @@ const actions: Record<string, () => boolean> = {
   source: () => command('source', beginSource),
   apply: () => command('apply', applySource),
   cancel: () => command('cancel', cancelSource),
-  undo: () => command('undo', () => controller.undo()),
-  redo: () => command('redo', () => controller.redo()),
+  undo: () => command('undo', () => travel('undo')),
+  redo: () => command('redo', () => travel('redo')),
   reopen: () => reopen(controller.savedRaw, controller.rawSelection),
 };
 
@@ -145,6 +177,7 @@ function createPrototype() {
     actions,
     run(id: string) { return actions[id]?.() ?? false; },
     nativeType,
+    nativeReplace,
     setRawSelection,
     reopen,
     render,

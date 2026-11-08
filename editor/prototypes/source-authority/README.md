@@ -25,6 +25,8 @@ Save 不重建投影、不移动选区、不推进版本，也不增加 Undo。s
 - `editor/prototypes/fidelity/model.ts` 的锁定 parser/schema；
 - `editor/prototypes/fidelity/source-ledger.ts` 的词法归属与双向映射；
 - `editor/prototypes/fidelity/native-transaction.ts` 的局部原文补丁规划；
+- `editor/src/editor-kernel.ts` 的生产 `TextAreaEditorKernel`，用于保留 textarea 归一化前的
+  BOM、CRLF/LF 与混合 EOL；
 - 生产 `editor/src` 下被上述模块引用的 schema、codec 与安全分析。
 
 新增核心在 `core.ts`，不读取 DOM。`main.ts` 只负责 EditorView、按键、textarea 与状态面板。
@@ -48,8 +50,9 @@ make -C editor/prototypes/source-authority test
 make -C editor/prototypes/source-authority build
 ```
 
-随后可双击 `PROTOTYPE.html`。页面提供真实 PM 自由编辑、主动源码、当前原文/保存点/投影/
-选区/history/资格面板，以及冻结主链按钮。
+随后可双击 `PROTOTYPE.html`。构建同时更新 `PROTOTYPE.sha256`；页面提供真实 PM 自由编辑、主动源码、
+当前原文/保存点/投影/选区/history/资格面板，以及冻结主链按钮。页面公开的 `nativeType` 与
+`nativeReplace` 也会先进入真实 `EditorView.dispatch`，不会绕到控制器私有捷径。
 
 ## 有界声明
 
@@ -58,5 +61,7 @@ make -C editor/prototypes/source-authority build
 - 保护片段内部编辑、过期事务、BOM 前位置、CRLF/surrogate/grapheme 内部边界仍明确拒绝，
   并保留诊断/未解决意图。
 - 原型只为冻结 oracle 覆盖的常见结构建立投影关系；没有推广为完整 Markdown 投影代数。
+- parser projection 与 PM transaction 不可比时，仅允许带明确原文字节/anchor 证明的尾空格显形、
+  编辑空行、hardbreak 与空行 ATX 激活；其他差异原子拒绝并保留候选意图。
 
-结果与证据分层见 [RESULTS.md](RESULTS.md)。
+结果与证据分层见 [RESULTS.md](RESULTS.md)，本轮红绿过程见 [RED-GREEN.md](RED-GREEN.md)。

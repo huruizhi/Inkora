@@ -179,6 +179,7 @@ type(' ');
 assert.equal(controller().currentRaw, breakCase.afterDoubleSpace);
 assert.equal(controller().semanticBreak(), breakCase.doubleSemanticBreak);
 assert.equal(controller().rawSelection.head, breakCase.doubleCaret);
+assert.match(controller().projection.provenance[0], /second trailing space activates one hardbreak/);
 results.push('softbreak/hardbreak semantic projection');
 
 // Reopened hidden-space Backspace uses the actual EditorView key handler.
@@ -360,10 +361,9 @@ function compositionEvent(type) {
 function compositionReplace(marked, committed, id) {
   compositionEvent('compositionstart');
   const start = controller().state.selection.head;
-  assert.equal(prototype.nativeType(marked, id), true);
+  assert.equal(prototype.nativeType(marked, id), true, controller().diagnostic);
   const end = controller().state.selection.head;
-  assert.equal(controller().nativeReplace(end - marked.length, end, committed, id), true);
-  prototype.view.updateState(controller().state);
+  assert.equal(prototype.nativeReplace(end - marked.length, end, committed, id), true, controller().diagnostic);
   compositionEvent('compositionend');
   assertViewSynced(`composition ${id}`);
 }
@@ -386,8 +386,7 @@ const noOpFuture = controller().future.length;
 compositionEvent('compositionstart');
 type('x', 103);
 let end = controller().state.selection.head;
-assert.equal(controller().nativeReplace(end - 1, end, '', 103), true);
-prototype.view.updateState(controller().state);
+assert.equal(prototype.nativeReplace(end - 1, end, '', 103), true);
 compositionEvent('compositionend');
 assert.equal(controller().currentRaw, noOpRaw);
 assert.equal(controller().past.length, noOpPast);
@@ -399,6 +398,7 @@ results.push('composition replay: two units + cancel/no-op future');
 reopen('\n', 0);
 type('#');
 const beforeHashSpace = controller().currentRaw;
+assert.match(controller().projection.provenance[0], /ATX heading activation on an empty raw line/);
 type(' ');
 assert.equal(controller().currentRaw, '# \n');
 assert.equal(controller().state.doc.firstChild.type.name, 'heading');

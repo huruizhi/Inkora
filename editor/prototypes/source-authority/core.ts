@@ -10,7 +10,7 @@ import {
   type LedgerSpan,
   type SourceLedger,
 } from '../fidelity/source-ledger';
-import { applyNativePatches, planNativeTransaction, type NativePatch } from '../fidelity/native-transaction';
+import { applyNativePatches, planNativeTransaction, type NativePatch, type NativePlan } from '../fidelity/native-transaction';
 
 export type Affinity = 'left' | 'right';
 export type RawSelection = { anchor: number; head: number; affinity: Affinity };
@@ -125,12 +125,22 @@ function eolAt(raw: string, offset: number): '\n' | '\r\n' {
   return (before ?? '\n') as '\n' | '\r\n';
 }
 
-function shiftRawOffset(offset: number, patch: NativePatch, side: -1 | 1): number {
-  if (offset < patch.from || (offset === patch.from && side < 0)) return offset;
-  if (offset > patch.to || (offset === patch.to && side > 0)) {
-    return offset + patch.insert.length - (patch.to - patch.from);
+function mapRawOffset(offset: number, patches: readonly NativePatch[], side: -1 | 1): number {
+  let delta = 0;
+  for (const patch of [...patches].sort((a, b) => a.from - b.from || a.to - b.to)) {
+    if (offset < patch.from) break;
+    const mappedFrom = patch.from + delta;
+    if (patch.from === patch.to) {
+      if (offset === patch.from) return mappedFrom + (side < 0 ? 0 : patch.insert.length);
+      delta += patch.insert.length;
+      continue;
+    }
+    if (offset === patch.from) return mappedFrom;
+    if (offset === patch.to) return mappedFrom + patch.insert.length;
+    if (offset < patch.to) return mappedFrom + (side < 0 ? 0 : patch.insert.length);
+    delta += patch.insert.length - (patch.to - patch.from);
   }
-  return patch.from + (side < 0 ? 0 : patch.insert.length);
+  return offset + delta;
 }
 
 function normalizeProjectionText(text: string): string {
@@ -163,6 +173,61 @@ function comparableDoc(doc: PMNode): PMNode {
   });
   if (!children.length) children.push(schema.nodes.paragraph.create());
   return schema.topNodeType.createChecked(null, children);
+}
+
+function nodeCount(doc: PMNode, type: string): number {
+  let count = 0;
+  doc.descendants(node => { if (node.type.name === type) count++; });
+  return count;
+}
+
+function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, projection: ProjectionAudit, plan: NativePlan, parsedDoc: PMNode, targetDoc: PMNode): string | null {
+  if (!['text', 'empty-text'].includes(plan.kind) || plan.patches.length !== 1) return null;
+  const patch = plan.patches[0];
+  if (patch.from !== patch.to) return null;
+
+  const rawLineStart = patch.from === 0 ? 0 : beforeRaw.lastIndexOf('\n', patch.from - 1) + 1;
+  const rawLineEndMatch = /\r\n|\n/.exec(beforeRaw.slice(patch.from));
+  const rawLineEnd = rawLineEndMatch ? patch.from + rawLineEndMatch.index : beforeRaw.length;
+  const activatesAtxOnEmptyLine = /^#{1,6}$/.test(patch.insert)
+    && patch.from === rawLineStart
+    && patch.from === rawLineEnd
+    && nodeCount(parsedDoc, 'heading') === nodeCount(beforeDoc, 'heading') + 1
+    && nodeCount(targetDoc, 'heading') === nodeCount(beforeDoc, 'heading');
+  if (activatesAtxOnEmptyLine) return `semantic-contract: ${patch.insert.length}-level ATX heading activation on an empty raw line`;
+
+  const activatesHardbreak = patch.insert === ' '
+    && beforeRaw[patch.from - 1] === ' '
+    && beforeRaw[patch.from - 2] !== ' '
+    && /^(?:\r\n|\n|$)/.test(beforeRaw.slice(patch.from))
+    && nodeCount(parsedDoc, 'hard_break') === nodeCount(beforeDoc, 'hard_break') + 1
+    && nodeCount(targetDoc, 'hard_break') === nodeCount(beforeDoc, 'hard_break');
+  if (activatesHardbreak) return 'semantic-contract: second trailing space activates one hardbreak';
+
+  const exposesHiddenSingleSpace = patch.insert.length > 0
+    && !/[\r\n]/.test(patch.insert)
+    && beforeRaw[patch.from - 1] === ' '
+    && beforeRaw[patch.from - 2] !== ' '
+    && /^(?:\r\n|\n|$)/.test(beforeRaw.slice(patch.from))
+    && comparableDoc(parse(beforeRaw).doc).eq(comparableDoc(beforeDoc));
+  if (exposesHiddenSingleSpace) return 'semantic-contract: inserted text exposes one source-owned hidden trailing space';
+
+  const materializesAnchoredEmptyLine = patch.insert.length > 0
+    && !/[\r\n]/.test(patch.insert)
+    && /(?:\r\n|\n)$/.test(beforeRaw.slice(0, patch.from))
+    && /^(?:\r\n|\n)/.test(beforeRaw.slice(patch.from))
+    && projection.anchors.some(anchor => anchor.raw === patch.from);
+  if (materializesAnchoredEmptyLine) return 'semantic-contract: insertion at an audited raw anchor materializes an empty line';
+
+  if (patch.insert !== ' ') return null;
+
+  const marker = beforeRaw.slice(rawLineStart, patch.from);
+  const activatesEmptyAtxHeading = /^#{1,6}$/.test(marker)
+    && patch.from === rawLineEnd
+    && nodeCount(parsedDoc, 'heading') === nodeCount(beforeDoc, 'heading') + 1
+    && nodeCount(targetDoc, 'heading') === nodeCount(beforeDoc, 'heading');
+  if (activatesEmptyAtxHeading) return `semantic-contract: ${marker.length}-level empty ATX heading whitespace activation`;
+  return null;
 }
 
 function rawBoundaryError(raw: string, offset: number): string | null {
@@ -418,25 +483,34 @@ export class SourceAuthorityController {
   startComposition(): void { this.composing = true; }
   endComposition(): void { this.composing = false; this.finishComposition(); }
 
-  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number): void {
+  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping']): void {
     const parsed = parse(raw);
     this.currentRaw = raw;
     this.issues = parsed.issues;
-    const mappedAnchors = this.projection.anchors.map(anchor => ({
-      ...anchor,
-      visual: target.doc.eq(this.state.doc) ? anchor.visual : anchor.visual,
-      // Existing anchors at an insertion boundary stay on its left edge. The
-      // accepted post-edit caret is appended separately on the right edge.
-      raw: patches.reduce((value, patch) => shiftRawOffset(value, patch, -1), anchor.raw),
-    }));
+    const mappedAnchors = this.projection.anchors.map(anchor => {
+      const visualResult = mapping?.mapResult(anchor.visual, -1);
+      const visual = visualResult?.pos ?? anchor.visual;
+      const mappedRaw = mapRawOffset(anchor.raw, patches, -1);
+      return {
+        visual,
+        raw: mappedRaw,
+        reason: visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
+      };
+    });
     const step = target.selection;
     if (sourceCaret !== undefined) mappedAnchors.push({ visual: step.head, raw: sourceCaret, reason });
-    for (const patch of patches) {
+    if (patches.length === 1) {
+      const patch = patches[0];
       // The post-transaction collapsed selection is the right edge of the
       // inserted bytes. The left edge remains represented by the pre-existing
       // visual/raw anchor; assigning both raw edges to the new caret would
       // manufacture an ambiguity on the next insertion.
       mappedAnchors.push({ visual: step.head, raw: patch.from + patch.insert.length, reason: `${reason} 接受后 caret` });
+    }
+    for (const anchor of mappedAnchors) {
+      if (anchor.visual < 0 || anchor.visual > target.doc.content.size) throw Error(`投影 anchor 的 PM 位置 ${anchor.visual} 越界`);
+      const boundaryError = rawBoundaryError(raw, anchor.raw);
+      if (boundaryError) throw Error(`投影 anchor 映射失败：${boundaryError}`);
     }
 
     if (parsed.issues.length) {
@@ -486,6 +560,7 @@ export class SourceAuthorityController {
     }
 
     const before = this.snapshot();
+    let attemptedRaw: string | undefined;
     try {
       let tr = transaction;
       const step = tr.steps[0]?.toJSON() as { stepType?: string; from?: number; to?: number; slice?: { content?: Array<{ text?: string }> } } | undefined;
@@ -497,6 +572,7 @@ export class SourceAuthorityController {
       const context = this.projectionContext();
       const plan = planNativeTransaction(this.currentRaw, this.state, context.ranges, tr,
         (position, side = 'any') => this.mapVisualEndpoint(position, side));
+      attemptedRaw = plan.candidate;
       const target = this.state.apply(tr);
       let sourceCaret = plan.sourceCaret;
       if (sourceCaret === undefined && plan.patches.length === 1 && target.selection.empty) {
@@ -504,13 +580,17 @@ export class SourceAuthorityController {
       }
       const parsed = parse(plan.candidate);
       if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
-        // A semantic change such as the second hardbreak space is represented
-        // by the parser projection, with the raw caret explicitly remapped.
+        const proof = semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
+        if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
         const semanticCaret = sourceCaret ?? plan.patches.at(-1)!.from + plan.patches.at(-1)!.insert.length;
         this.currentRaw = plan.candidate;
-        const oldRaw = before.raw;
         this.state = EditorState.create({ doc: parsed.doc });
-        this.projection = { kind: 'exact', reason: `语义投影更新：${plan.kind}`, anchors: [], provenance: [plan.kind] };
+        this.projection = {
+          kind: 'exact',
+          reason: `有界语义投影更新：${plan.kind}`,
+          anchors: [],
+          provenance: [proof, ...plan.patches.map(patch => `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`)],
+        };
         this.issues = parsed.issues;
         this.rawSelection = { anchor: semanticCaret, head: semanticCaret, affinity: 'right' };
         if (!this.setRawSelection(semanticCaret, semanticCaret, 'right')) throw Error(this.diagnostic);
@@ -518,15 +598,14 @@ export class SourceAuthorityController {
         this.version++;
         this.unresolvedIntent = null;
         this.diagnostic = '';
-        void oldRaw;
         return true;
       }
-      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret);
+      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping);
       return true;
     } catch (error) {
       this.restore(before);
       this.diagnostic = error instanceof Error ? error.message : String(error);
-      this.unresolvedIntent = { description: this.diagnostic };
+      this.unresolvedIntent = { description: this.diagnostic, raw: attemptedRaw };
       return false;
     }
   }
@@ -550,9 +629,10 @@ export class SourceAuthorityController {
     const insert = eol + eol;
     const before = this.snapshot();
     const raw = this.currentRaw.slice(0, caret) + insert + this.currentRaw.slice(caret);
-    const target = this.state.apply(this.state.tr.split(this.state.selection.from));
+    const transaction = this.state.tr.split(this.state.selection.from);
+    const target = this.state.apply(transaction);
     try {
-      this.accept(raw, target, [{ from: caret, to: caret, insert }], before, '真实 EditorView Enter 拆段', caret + insert.length);
+      this.accept(raw, target, [{ from: caret, to: caret, insert }], before, '真实 EditorView Enter 拆段', caret + insert.length, transaction.mapping);
       return true;
     } catch (error) {
       this.restore(before);
@@ -648,6 +728,7 @@ export class SourceAuthorityController {
 
   undo(): boolean {
     if (this.composing) return this.guard('undo');
+    if (this.draftDirty) { this.diagnostic = '源码草稿尚未提交，拒绝 Undo；草稿、原文、历史与选区保持不变'; return false; }
     this.finishComposition();
     const previous = this.past.at(-1);
     if (!previous) return false;
@@ -659,6 +740,7 @@ export class SourceAuthorityController {
 
   redo(): boolean {
     if (this.composing) return this.guard('redo');
+    if (this.draftDirty) { this.diagnostic = '源码草稿尚未提交，拒绝 Redo；草稿、原文、历史与选区保持不变'; return false; }
     this.finishComposition();
     const next = this.future.at(-1);
     if (!next) return false;

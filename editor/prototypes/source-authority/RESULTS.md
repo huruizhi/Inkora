@@ -17,7 +17,7 @@ affinity 和 projection anchor 审计，不以 `trim`、无条件 `doc.eq` 忽�
 make -C editor/prototypes/source-authority test
 ```
 
-结果：退出码 0，严格 TypeScript、离线 HTML 重建和 9 组集成域全部通过：
+结果：退出码 0，严格 TypeScript、离线 HTML 重建、11 组限定回归和原 9 组集成域全部通过：
 
 1. 冻结 PRIMARY P0–P7：`a+LF → Space → Save → source no-op → scratch 新 epoch → b → Undo/Redo`。
 2. 13/13 repeat vectors：无 EOF 换行、BOM/CRLF、strong/em/strike、行内/引用链接、标题、列表、
@@ -31,9 +31,29 @@ make -C editor/prototypes/source-authority test
 8. 两个完整 synthetic composition 历史单元，以及取消/no-op 保留已有 future。
 9. `# ` 的有界正例：字节、heading 语义、选区、Undo/Redo 均有断言。
 
+限定回归另覆盖：真实 DOM 按钮/textarea 的 BOM+CRLF no-op、混合 EOL 局部编辑、LF↔raw 后向
+选区、source composition 提交、dirty draft 对 past/future/empty Undo/Redo 的统一拒绝、clean source session 的明确旅行退出、
+所有 anchor 的 raw/visual 同步映射、后向替换、重复文字、多次编辑、marks 后隐藏空格，以及无证明的
+parser reprojection 原子拒绝并保留候选意图。
+
 测试读取冻结 `ORACLES.json`，先核对 SHA-256
 `c53b2f9c54357a624c7ccd7a1e4a7d1ccf272f665d871de96f686bc46e031d08`；预期从冻结文件读取，
 测试和模型均不写 oracle。
+
+本次固定离线 HTML SHA-256：
+`872c4653472f75e4d34b44400936af5725c638e92c00ac6ea638bfb41139f81b`；同值由
+`PROTOTYPE.sha256` 保存并由构建更新。
+
+## 测试接缝修正
+
+旧 `test.mjs` 的 source no-op 直接调用 `controller.beginSource()/applySource()`，绕过浏览器把 CRLF
+归一化成 LF 的 textarea；旧 `prototype.nativeType()` 也直接调用 `controller.nativeType()`，所以“每次
+视觉编辑都经 view.dispatch”的注释并不成立。本轮改为：source 回归点击真实按钮并发送 textarea
+`input`，页面复用生产 `TextAreaEditorKernel`；视觉输入/替换经真实 `EditorView.dispatch`，Enter/
+Backspace 继续经真实 key handler。控制器直调只保留为明确的数据层控制，不再冒充页面证据。
+
+管理者只读 `review.cjs` 在修复前连续两次稳定得到三个 FAIL，修复后连续两次全部 PASS；完整红绿记录、
+冻结文件哈希与假设验证见 `RED-GREEN.md`。
 
 ## scratch 与 Save 的证据层级
 
@@ -50,7 +70,18 @@ make -C editor/prototypes/source-authority test
 
 ## 旧冻结控制组
 
-下列命令均在未修改 `fidelity/`、`fidelity-cases/` 与 native-host 的情况下实际执行并通过：
+本轮限定修正另外实际重跑了与复用接缝直接相关的窄控制，均退出码 0：
+
+- `vitest run src/editor-kernel.test.ts`：7/7；
+- `selection-check.mjs`：15/15；
+- `source-composition-guard-check.mjs`：4/4 synthetic signal guard；
+- `source-ledger-check.mjs`：17/17；
+- `native-transaction-stage-check.mjs`：4/4。
+
+临时 `editor/node_modules` 链接在命令退出时已删除；没有安装依赖，也没有重建/修改旧 fidelity HTML。
+
+以下为原 030 成果已经记录的更宽旧控制组；本轮未重复无关项，也未修改 `fidelity/`、
+`fidelity-cases/` 与 native-host：
 
 - `python3 editor/prototypes/fidelity-cases/verify.py`：582/582；
 - `node prototypes/fidelity/selection-check.mjs`：15/15；

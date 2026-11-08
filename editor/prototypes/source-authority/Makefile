@@ -19,6 +19,7 @@ test:
 	trap 'if [ "$$created" = 1 ]; then rm $(EDITOR)/node_modules; fi' EXIT; \
 	node build.mjs; \
 	$(PNPM) --dir $(EDITOR) exec tsc -p prototypes/source-authority/tsconfig.json; \
+	node regression.mjs; \
 	node test.mjs
 run:
 	@set -e; created=0; \
