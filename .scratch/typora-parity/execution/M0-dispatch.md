@@ -408,3 +408,11 @@ INK-PROT-026 Agent=9523cd37-d6e6-4e7c-8ef7-7c62a90aaf56，workspace=wks_ffad2b9e
 Space拒绝本身仍是合法输入缺口：管理者真实EditorView先定位光标再逐字alpha/space/beta，实际alphabeta，期望alpha beta，node exit1。初稿没移动选区的错误已在捕获前纠正并断言caret；冻结红输出来自正确输入路径。不为维持026故障点而继续拒绝合法空格，027须同时保持诊断恢复测试的安全语义，换用真实不安全/超范围事务触发，禁止手写blocked或删断言。
 
 INK-PROT-027 Agent7e29964b-772d-465b-a2ff-80fd3d93072e，workspace wks_a4f3a99691039ca5，host srv_MEqRNkRW6fSx；分支task/INK-PROT-027-trailing-whitespace-input，worktree /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-027-trailing-whitespace-input。profiles为空，核对provider后5.6-Sol/high/default/full-access/notifyOnFinish=true，创建running。范围仅fidelity投影/源范围/原生事务及必要测试证据，源字节、history、hardbreak/EOL/BOM和安全save资格须可审计；不吞正常空格/不no-op/不全篇源码fallback，不改冻结原型oracle/production/native-host依赖。若现模型无法清楚表达，报告设计阻力按路线比较source-primary，不堆特例。完成后独立核验并回收Agent和workspace两层。
+
+### 027部分进展、保存/源码闭环退回与只读委员会
+
+027固定76070797f52b0b71debbc59b30ce8d4da6cd6f38，HEAD=origin/clean。管理者独立连续输入14/14通过，但真实EditorView输入a+Space后候选a+Space+LF已可无issues解析并被new FidelityModel安全重开，当前actions.source/save却都throw且会无限停留；根断言valid trailing whitespace cannot indefinitely block source access实际exit1。故只接受部分连续输入证据，完整交付未验收，未接入008。不能仅把阻断称短期或要求继续输入/Undo，就缩减原保存与源码闭环。
+
+执行Agent7e29964b-772d-465b-a2ff-80fd3d93072e收到finished即归档，closed/archivedAt=2026-11-08T18:50:02.162Z。原027workspace已备份310文件逐字节、bundle verify、HEAD与live origin核对后归档；累计31个已结束执行workspace回收。新复核副本独立固定同7607079，不能把旧worktree原路径当存在。
+
+已使用paseo-committee：profiles为空，provider discovery后Codex5.6-Sol/high/default/full-access与OMP zhipu-coding-plan/glm-5.3/high/full两个不同family，同问题级prompt、fresh context、notifyOnFinish=true、严格no edits/code/GUI/build，不轮询催促。Codex Agent dc14147b-c7e2-4e94-ab54-22042c5132b7 / wks_04d9eb8e03cfe611，branch task/INK-REV-028a-projection-boundary；OMP Agent ff88157f-a62d-420e-8aff-f2b317081eec / wks_0940ccd779fd77d1，branch task/INK-REV-028b-source-authority；host srv_MEqRNkRW6fSx。真实GLM配额不能由列表推定恢复，失败只据通知处理不循环重试。两者输出后交叉观点至收敛，再生成有限验证序列，当前不再堆内核补丁。详见[M0投影边界复核](M0-projection-boundary-review.md)。

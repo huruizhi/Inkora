@@ -155,3 +155,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 026首轮186d未接收、未进入008：管理者独立证明“失败事务->直接Undo到source/PM/trusted/ledger安全点”仍残留当前blocked并禁save；原回归先有效commit才Undo，漏掉此路径。原Agent已回收，同026workspace交22039af2…限定补正；M0仍未过。
 
 026最终ea63941已接受自动层并FF进入008。管理者独立旧186d红/新ea绿，原型37+4+16+4+6+5与ledger17/selection15/native16+3+3/fixture582全过；真实WK普通CUA输入也证明直接Undo/Redo恢复save资格、空Undo保留失败、pending恢复仍阻断、内存保存点正确。不是最新物理搜狗/候选窗矩阵通过，M0仍未过。另将真实拒绝的普通空格确认为连续输入缺口：alpha+space+beta在正确caret路径变alphabeta，027已派。实际原始WK及红回归冻结于027准备84adcab，详见dispatch末节；所有完成Agent/workspace已备份回收，目前仅027执行。
+
+027交付7607079仅有部分连续输入进展：管理者14/14重跑通过，但合法尾随空格候选能parse/reopen，当前保存与主动源码仍无限阻断，独立根断言红。完整任务未验收、008保持ea63941；不通过称短期staged缩减保存/源码要求。paseo-committee两provider只读复核统一编辑投影边界/安全finalize/source-primary比较，不先锁架构；见M0-projection-boundary-review.md。11保持claimed，12未解依赖。

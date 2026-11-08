@@ -92,3 +92,5 @@ INKORA_UI_LOCK_TIMEOUT=30 scripts/ci/with-ui-lock.sh \
 管理者独立旧红/新绿与矩阵通过，继而真实WK普通CUA输入测试通过：X之后拒绝Space、直接Undo可save；保留future拒绝后空Undo不清错误，直接Redo可save；pending缓冲Undo clean/Redo pending保持资格，最终内存保存点dirty=false。这不是搜狗物理输入、候选窗或磁盘save验收。22条运行记录和逐步AX结果冻结在027准备84adcab的INK-PROT-026-WK-EVIDENCE.md/raw/summary。PID87910已SIGTERM，session44623退出143，锁释放。
 
 普通尾随Space依然被拒，正确光标原生输入alpha/space/beta丢空格为alphabeta。027在独立工作区自动修正这条基本连续写作路径，暂不再占用用户输入时间。最新物理IME组合取消/替换、用户整体审阅等门槛仍待集中验证，不因026局部修复宣布M0通过。
+
+027交付7607079尚未接收完整闭环：连续字词空格测试通过，但停在合法尾随空格时保存和主动源码均受阻；候选本身已可安全解析重开。已由两名只读委员比较统一原文/编辑投影边界及候选方案，不再让用户重复复验仅覆盖连续输入的子集。当前008仍ea63941，本轮没有启动新的App，也未追加人工操作要求。
