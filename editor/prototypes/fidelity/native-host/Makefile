@@ -30,7 +30,9 @@ MACOS_DIR   := $(CONTENTS)/MacOS
 RES_DIR     := $(CONTENTS)/Resources
 OBSERVER_JS := Resources/runtime-observer.js
 
-.PHONY: build verify run clean
+.PHONY: build verify probe probe-preflight run clean
+
+PROBE_BIN := $(ARTIFACTS)/ime-keypath-probe
 
 build:
 	rm -rf $(APP_DIR)
@@ -80,6 +82,18 @@ verify: build
 	@echo "-- Info.plist version keys --"; plutil -p $(CONTENTS)/Info.plist | grep -i fidelity
 	@echo "-- bundle resources --"; ls -l $(RES_DIR)
 	@echo "-- build manifest --"; cat $(ARTIFACTS)/build-manifest.json
+
+# INK-PROT-017: 独立、非沙盒的公开 CoreGraphics 键码路径探针。
+# preflight 只读取当前进程已有权限；探针源码不调用权限申请 API。
+probe:
+	mkdir -p $(ARTIFACTS)
+	swiftc -O -target arm64-apple-macos$(MIN_MACOS) \
+		-o $(PROBE_BIN) Sources/ime_keypath_probe.swift \
+		-framework AppKit -framework Carbon -framework CoreGraphics
+	@echo "== probe build OK =="
+
+probe-preflight: probe
+	$(PROBE_BIN) preflight
 
 # 禁止在本任务中执行 UI 启动；run 仅提供给后续人工验证者。
 run: build
