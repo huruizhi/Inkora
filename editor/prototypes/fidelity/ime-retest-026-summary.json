@@ -1,0 +1,279 @@
+{
+  "baseline": "5bde76bab9b2bb74839fc7be99935b97d8125c66",
+  "manifest": {
+    "bundle_id": "com.huruizhi.Inkora.FidelityPrototype",
+    "baseline_commit": "5bde76bab9b2bb74839fc7be99935b97d8125c66",
+    "os": "27.2",
+    "toolchain": "Xcode 27.2 Build version 27B52 ",
+    "entry": {
+      "source": "../PROTOTYPE.html",
+      "dest": "artifacts/FidelityHost.app/Contents/Resources/entry.html",
+      "csp_requested": true,
+      "csp_inserted": true,
+      "csp_source": "injected-by-host",
+      "csp_meta": "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'\">",
+      "source_sha256": "23730ee34cc06c708c14f7112a4dfb39cd0d0d0898831e354003b2f8764586ff",
+      "bundled_sha256": "df2b8056f176d260777ed4b97ef68d1978ceb46bc6524867b8464fb355d619e5",
+      "source_script_sha256": "c1d32d4fdc35115036b13105d84c9ac3f063f2bedeba69d0fc98060d8d916d16",
+      "bundled_script_sha256": "c1d32d4fdc35115036b13105d84c9ac3f063f2bedeba69d0fc98060d8d916d16",
+      "script_bytes_identical": true
+    },
+    "runtime_observer": {
+      "path": "Resources/runtime-observer.js",
+      "sha256": "2aa57f6906dd5afe0dd9a9e3bd4ad8d149f4534afd25e7d754632d66eb68696d"
+    }
+  },
+  "rawLogSHA256": "4f2befce2dc99ec3a3dd14e946b05d32c092e1ddb22f3595144e92dfc7089b89",
+  "inputMethod": "Sogou, user physical keyboard",
+  "runtimeRecords": 203,
+  "compositionBoundaries": [
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 98,
+        "target": "prosemirror",
+        "type": "compositionstart",
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:50:34Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "中文",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 127,
+        "target": "prosemirror",
+        "type": "compositionend",
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:50:34Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 136,
+        "target": "prosemirror",
+        "type": "compositionstart",
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:50:44Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "测试",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 156,
+        "target": "prosemirror",
+        "type": "compositionend",
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:50:45Z"
+    }
+  ],
+  "blockedSnapshots": [
+    {
+      "kind": "snapshot",
+      "payload": {
+        "activeElement": "prosemirror",
+        "blocked": "Error: 补丁重解析与目标 PM 文档不一致；可信状态未提交",
+        "composing": false,
+        "dirty": true,
+        "future": 0,
+        "past": 49,
+        "pending": false,
+        "revision": 58,
+        "saveDisabled": true,
+        "selection": {
+          "anchor": 68,
+          "from": 68,
+          "head": 68,
+          "to": 68
+        },
+        "sourceComposing": false,
+        "sourceMode": false,
+        "staged": false,
+        "stagedKind": null,
+        "textarea": {
+          "readOnly": true,
+          "selectionDirection": "none",
+          "selectionEnd": 167,
+          "selectionStart": 167
+        },
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:50:41Z"
+    },
+    {
+      "kind": "snapshot",
+      "payload": {
+        "activeElement": "prosemirror",
+        "blocked": "Error: 补丁重解析与目标 PM 文档不一致；可信状态未提交",
+        "composing": false,
+        "dirty": true,
+        "future": 0,
+        "past": 50,
+        "pending": false,
+        "revision": 65,
+        "saveDisabled": true,
+        "selection": {
+          "anchor": 69,
+          "from": 69,
+          "head": 69,
+          "to": 69
+        },
+        "sourceComposing": false,
+        "sourceMode": false,
+        "staged": false,
+        "stagedKind": null,
+        "textarea": {
+          "readOnly": true,
+          "selectionDirection": "none",
+          "selectionEnd": 169,
+          "selectionStart": 169
+        },
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:50:46Z"
+    },
+    {
+      "kind": "snapshot",
+      "payload": {
+        "activeElement": "prosemirror",
+        "blocked": "Error: 补丁重解析与目标 PM 文档不一致；可信状态未提交",
+        "composing": false,
+        "dirty": true,
+        "future": 6,
+        "past": 50,
+        "pending": false,
+        "revision": 77,
+        "saveDisabled": true,
+        "selection": {
+          "anchor": 67,
+          "from": 67,
+          "head": 67,
+          "to": 67
+        },
+        "sourceComposing": false,
+        "sourceMode": false,
+        "staged": false,
+        "stagedKind": null,
+        "textarea": {
+          "readOnly": true,
+          "selectionDirection": "none",
+          "selectionEnd": 169,
+          "selectionStart": 169
+        },
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:51:49Z"
+    },
+    {
+      "kind": "snapshot",
+      "payload": {
+        "activeElement": "prosemirror",
+        "blocked": "Error: 补丁重解析与目标 PM 文档不一致；可信状态未提交",
+        "composing": false,
+        "dirty": true,
+        "future": 7,
+        "past": 49,
+        "pending": false,
+        "revision": 78,
+        "saveDisabled": true,
+        "selection": {
+          "anchor": 68,
+          "from": 68,
+          "head": 68,
+          "to": 68
+        },
+        "sourceComposing": false,
+        "sourceMode": false,
+        "staged": false,
+        "stagedKind": null,
+        "textarea": {
+          "readOnly": true,
+          "selectionDirection": "none",
+          "selectionEnd": 167,
+          "selectionStart": 167
+        },
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:52:13Z"
+    },
+    {
+      "kind": "snapshot",
+      "payload": {
+        "activeElement": "prosemirror",
+        "blocked": "Error: 补丁重解析与目标 PM 文档不一致；可信状态未提交",
+        "composing": false,
+        "dirty": true,
+        "future": 7,
+        "past": 49,
+        "pending": false,
+        "revision": 80,
+        "saveDisabled": true,
+        "selection": {
+          "anchor": 68,
+          "from": 68,
+          "head": 68,
+          "to": 68
+        },
+        "sourceComposing": false,
+        "sourceMode": false,
+        "staged": false,
+        "stagedKind": null,
+        "textarea": {
+          "readOnly": true,
+          "selectionDirection": "none",
+          "selectionEnd": 167,
+          "selectionStart": 167
+        },
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:52:31Z"
+    },
+    {
+      "kind": "snapshot",
+      "payload": {
+        "activeElement": "prosemirror",
+        "blocked": "Error: 补丁重解析与目标 PM 文档不一致；可信状态未提交",
+        "composing": false,
+        "dirty": true,
+        "future": 6,
+        "past": 50,
+        "pending": false,
+        "revision": 81,
+        "saveDisabled": true,
+        "selection": {
+          "anchor": 67,
+          "from": 67,
+          "head": 67,
+          "to": 67
+        },
+        "sourceComposing": false,
+        "sourceMode": false,
+        "staged": false,
+        "stagedKind": null,
+        "textarea": {
+          "readOnly": true,
+          "selectionDirection": "none",
+          "selectionEnd": 169,
+          "selectionStart": 169
+        },
+        "version": "ink-prot-023-observer-v2"
+      },
+      "timestamp": "2026-11-08T17:52:37Z"
+    }
+  ],
+  "result": "two-session Undo/Redo has no intermediate pinyin; save-readiness/history finding remains unresolved",
+  "closure": "owned PID79074 SIGTERM, wrapper session38883 exit143"
+}
