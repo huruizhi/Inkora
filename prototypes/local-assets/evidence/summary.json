@@ -1,15 +1,24 @@
 {
-  "baselineGitSHA": "1a413b760c866e134d102e70a83985eef466648e",
+  "baselineGitSHA": "256c30edbfa9230b93b793e9780bd1923350328a",
   "evidenceLayers": {
     "L1-pureModelPlusScratchFS": {
       "allPass": true,
-      "binarySHA256": "f93af4fb11a9c746c34f4a33a60b7c111f5bae40c81dc0def527b15ea90b1a64",
-      "journalEntries": 18,
-      "scenarioCount": 10,
+      "binarySHA256": "0c32b4101f2e031474eb50d4754182a7570f808acf62f92eed59f72320e3b9a9",
+      "journalEntries": 45,
+      "scenarioCount": 14,
       "status": "pass"
     },
+    "L2-invalidRunIDNoWriteNegative": {
+      "containerPathExists": false,
+      "containerWriteAttempted": false,
+      "probeExitCode": 0,
+      "reasons": [],
+      "runIDValid": false,
+      "sandboxActive": true,
+      "status": "ok"
+    },
     "L2-signedSandboxProbe": {
-      "binarySHA256": "8f7216f7e1057720dc78267173084261180d34fdd74b31675f5fb421334dcd20",
+      "binarySHA256": "9fb7565f041bee3a9ed4031c0affa1f77adf73d9f545dd8018338050528cde57",
       "containerFixtureReadOk": true,
       "containerHome": "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
       "containerWriteOk": true,
@@ -20,6 +29,7 @@
       "externalFixtureOk": false,
       "externalFixtureSHA256ExpectedUnreadable": "2e89563dbb3030e68f55a18cb48ee29a0e55f4e5e19658b912f2906938d73773",
       "probeExitCode": 0,
+      "runIDValid": true,
       "sandboxActive": true,
       "signing": "ad-hoc + com.apple.security.app-sandbox entitlement (see Makefile)",
       "status": "ok"
@@ -31,9 +41,9 @@
       "status": "ok"
     }
   },
-  "generatedAt": "2026-11-08T13:24:33.677828+00:00",
+  "generatedAt": "2026-11-08T13:50:54.126001+00:00",
   "overallStatus": "pass",
-  "prototype": "INK-PROT-011 local-assets platform prototype part 1",
-  "runID": "87992cba-6754-49f2-9793-ca68854a7a16",
+  "prototype": "INK-PROT-013 local-assets commit-order correction (INK-PROT-011 part 1)",
+  "runID": "4948e222-c2e1-4223-9fc6-18ad0569bb59",
   "swift": "swift-driver version: 1.168.6 Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)"
 }

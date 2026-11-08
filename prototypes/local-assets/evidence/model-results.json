@@ -1,151 +1,364 @@
 {
   "allPass" : true,
-  "baseline" : "1a413b760c866e134d102e70a83985eef466648e",
+  "baseline" : "256c30edbfa9230b93b793e9780bd1923350328a",
+  "commitOrder" : "validate(read-only) → private staging + readback verify → publish ALL assets to final locations → atomic markdown commit LAST → markSaved only on full success",
+  "crashWindow" : "publish 与 markdown commit 之间崩溃：资源已在最终位置而旧 Markdown 未被替换，表现为孤儿资源；非跨文件原子事务，本原型无法消除该窗口，只如实记录并保留",
   "journal" : [
     {
       "event" : "draft-import",
-      "id" : "E3AD0E44-7BF3-4634-BDF8-C6E40A8AC0A1",
+      "id" : "2615EB6E-DE3C-4956-8426-20198648DDF5",
       "note" : "图 片%20.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/EDF90E1A-4827-4218-A748-838D2B6AA60B/imports/图 片%20.png",
-      "session" : "EDF90E1A-4827-4218-A748-838D2B6AA60B"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/207BF721-EDCA-4427-8169-650E79D5B592/imports/图 片%20.png",
+      "session" : "207BF721-EDCA-4427-8169-650E79D5B592"
     },
     {
       "event" : "draft-import",
-      "id" : "9DBA8B9F-E2AB-45EE-97D7-AD315E20C812",
+      "id" : "7EC420BC-282A-4C03-A061-B76990F25A2E",
       "note" : "a.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/130BCFC2-0B85-4D57-8238-FC0833FDBE5F/imports/a.png",
-      "session" : "130BCFC2-0B85-4D57-8238-FC0833FDBE5F"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/14DC67BE-EC0F-4790-BCEB-F89A728B8780/imports/a.png",
+      "session" : "14DC67BE-EC0F-4790-BCEB-F89A728B8780"
     },
     {
-      "event" : "rolled-back-staging-deleted",
-      "id" : "598C266E-A63B-49B6-AD02-88A2D62DF33F",
+      "event" : "kept-orphan-recorded",
+      "id" : "5B58D204-78AD-4970-98A0-08D76F683833",
       "note" : "a.png",
-      "op" : "save-D2742E20",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s2/.inkora-save-save-D2742E20/a.png",
-      "session" : "130BCFC2-0B85-4D57-8238-FC0833FDBE5F"
+      "op" : "save-37a90850-fa22-4eb1-900c-d135476f1df1",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s2/note.assets/a.png",
+      "session" : "14DC67BE-EC0F-4790-BCEB-F89A728B8780"
     },
     {
       "event" : "draft-import",
-      "id" : "6775F139-53BB-4E9B-A6F8-E993E8588FDC",
+      "id" : "653BC6B6-0A4E-466F-A272-26A14423B0DC",
       "note" : "图 片%20.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/B4115564-1FE7-4ADB-A372-78DCBB975351/imports/图 片%20.png",
-      "session" : "B4115564-1FE7-4ADB-A372-78DCBB975351"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/8FE38D4D-9470-4410-B64B-82BD06A50F83/imports/图 片%20.png",
+      "session" : "8FE38D4D-9470-4410-B64B-82BD06A50F83"
     },
     {
       "event" : "committed",
-      "id" : "B97057E3-5CD1-40BD-AE9D-23382AAF564C",
+      "id" : "7611BC10-D232-49DE-97DC-BEDBD888F895",
       "note" : "图 片%20.png",
-      "op" : "save-8CF95312",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s3/.inkora-save-save-8CF95312/图 片%20.png",
-      "session" : "B4115564-1FE7-4ADB-A372-78DCBB975351"
+      "op" : "save-57b66cb4-11a3-45fa-9acd-81e4d57dfc30",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s3/笔记 note.assets/图 片%20.png",
+      "session" : "8FE38D4D-9470-4410-B64B-82BD06A50F83"
+    },
+    {
+      "event" : "markdown-committed",
+      "id" : "385F8028-D195-4A32-81DF-AEBF049084FA",
+      "op" : "save-57b66cb4-11a3-45fa-9acd-81e4d57dfc30",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s3/笔记 note.md",
+      "session" : "8FE38D4D-9470-4410-B64B-82BD06A50F83"
     },
     {
       "event" : "committed",
-      "id" : "0727B2CF-85C0-4B65-B175-D24F6FB2DD35",
+      "id" : "9F870B9D-C328-458D-B330-D6B33F42163C",
       "note" : "笔记 note.assets/图 名.png",
-      "op" : "saveas-39B5272A",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s4-dst/.inkora-saveas-saveas-39B5272A/笔记 note.assets/图 名.png",
+      "op" : "saveas-a931434b-3c80-4202-81eb-5ca3f9cf4797",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s4-dst/笔记 note.assets/图 名.png",
+      "session" : "n/a"
+    },
+    {
+      "event" : "markdown-committed",
+      "id" : "93C3CFC8-4323-4996-AA42-8DD8EE908661",
+      "op" : "saveas-a931434b-3c80-4202-81eb-5ca3f9cf4797",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s4-dst/副本 copy.md",
       "session" : "n/a"
     },
     {
       "event" : "draft-import",
-      "id" : "A4FD6F9F-D699-4610-8715-FD43F100BF14",
+      "id" : "BFC569CB-12DD-4F79-A5BE-186442DCE765",
       "note" : "same.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/93CECCB2-39D9-4588-993A-E78FDBC5A3E1/imports/same.png",
-      "session" : "93CECCB2-39D9-4588-993A-E78FDBC5A3E1"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/1CF64CD5-BE65-4849-9A4D-BA3337F6E49B/imports/same.png",
+      "session" : "1CF64CD5-BE65-4849-9A4D-BA3337F6E49B"
     },
     {
       "event" : "reused-no-ownership",
-      "id" : "E958C5AC-57C6-4885-BA45-69405548DC1F",
-      "op" : "save-EC1F0361",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s5/a.assets/same.png",
-      "session" : "93CECCB2-39D9-4588-993A-E78FDBC5A3E1"
+      "id" : "B54E485C-D59C-4E48-BB43-512785FE7E62",
+      "op" : "save-f3439039-4074-45b6-9899-a6a26ff99714",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s5/a.assets/same.png",
+      "session" : "1CF64CD5-BE65-4849-9A4D-BA3337F6E49B"
     },
     {
       "event" : "draft-import",
-      "id" : "93503184-2BAF-4C70-BE8D-D9258C0ADF4A",
+      "id" : "53B314CA-5116-4CD0-A23E-33A41F1D44C5",
       "note" : "keep.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/5C3ADE51-B0FF-4E5B-9EB8-41B24EB620AF/imports/keep.png",
-      "session" : "5C3ADE51-B0FF-4E5B-9EB8-41B24EB620AF"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/5A075859-7AF7-417D-97F4-20141551D07E/imports/keep.png",
+      "session" : "5A075859-7AF7-417D-97F4-20141551D07E"
     },
     {
       "event" : "draft-import",
-      "id" : "C3155C04-0B19-43FB-8422-DD0530999FE5",
+      "id" : "70DBD9A8-4A8D-4162-BC0B-133521899F12",
       "note" : "drop.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/5C3ADE51-B0FF-4E5B-9EB8-41B24EB620AF/imports/drop.png",
-      "session" : "5C3ADE51-B0FF-4E5B-9EB8-41B24EB620AF"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/5A075859-7AF7-417D-97F4-20141551D07E/imports/drop.png",
+      "session" : "5A075859-7AF7-417D-97F4-20141551D07E"
     },
     {
       "event" : "draft-import",
-      "id" : "6CD92236-9AE2-4BAE-84D4-49740E2CB3EC",
+      "id" : "3D450536-63FE-46CC-88A4-6B5A2FCB3F53",
       "note" : "c.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/6406A8B5-1E0D-4E3A-9773-7C79056913AF/imports/c.png",
-      "session" : "6406A8B5-1E0D-4E3A-9773-7C79056913AF"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/F25FB7F4-C28E-4034-A1E5-5D652BEAC309/imports/c.png",
+      "session" : "F25FB7F4-C28E-4034-A1E5-5D652BEAC309"
     },
     {
       "event" : "cancelled-draft-kept",
-      "id" : "2ACCE35B-3D57-49AA-8F15-9757D465AAA8",
+      "id" : "A4C94654-34FF-4FE9-B871-BC6C916B4DCA",
       "op" : "cancel",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/6406A8B5-1E0D-4E3A-9773-7C79056913AF",
-      "session" : "6406A8B5-1E0D-4E3A-9773-7C79056913AF"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/F25FB7F4-C28E-4034-A1E5-5D652BEAC309",
+      "session" : "F25FB7F4-C28E-4034-A1E5-5D652BEAC309"
     },
     {
       "event" : "draft-import",
-      "id" : "2BAD600B-8D15-4A31-A3AA-A96277E89EFB",
+      "id" : "A53B108C-BB65-4461-8B43-81250CDC6D02",
       "note" : "x.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/52D90C76-989F-48C2-A276-4D59B513A899/imports/x.png",
-      "session" : "52D90C76-989F-48C2-A276-4D59B513A899"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/10CBFD63-3DFC-4E2D-9710-A3313AAB8CB9/imports/x.png",
+      "session" : "10CBFD63-3DFC-4E2D-9710-A3313AAB8CB9"
     },
     {
       "event" : "session-purged",
-      "id" : "7438180D-D5FB-4B4F-A7B8-B4EBCB2D1B14",
+      "id" : "58FF2119-28DB-4ED8-BFB7-54B2ECCF4240",
       "op" : "abandon",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/52D90C76-989F-48C2-A276-4D59B513A899",
-      "session" : "52D90C76-989F-48C2-A276-4D59B513A899"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/10CBFD63-3DFC-4E2D-9710-A3313AAB8CB9",
+      "session" : "10CBFD63-3DFC-4E2D-9710-A3313AAB8CB9"
     },
     {
       "event" : "draft-import",
-      "id" : "4FB0F2E5-E2C8-400B-A0B4-1FF68793854E",
+      "id" : "2A0F2356-057C-4926-8E9D-331E8F2B8FA1",
       "note" : "dup.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/433321A6-B527-4AB1-B26E-D05A0B329C38/imports/dup.png",
-      "session" : "433321A6-B527-4AB1-B26E-D05A0B329C38"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/0E044991-99A8-4FAD-A5AB-C7BBCDC35961/imports/dup.png",
+      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
     },
     {
       "event" : "draft-import",
-      "id" : "9258AC12-92DA-41BF-A7F4-0866674F528D",
+      "id" : "FBA4E9C3-3ED8-4C87-926B-638EBDCF739C",
       "note" : "dup-1.png",
       "op" : "import",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/recovery/433321A6-B527-4AB1-B26E-D05A0B329C38/imports/dup-1.png",
-      "session" : "433321A6-B527-4AB1-B26E-D05A0B329C38"
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/0E044991-99A8-4FAD-A5AB-C7BBCDC35961/imports/dup-1.png",
+      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
     },
     {
       "event" : "committed",
-      "id" : "2E573190-5C71-434F-944A-8C7FCAEE0394",
+      "id" : "A692F9BB-ABDC-4A2B-9EB0-9368258F1604",
       "note" : "dup.png",
-      "op" : "save-85A3FAC9",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s10/.inkora-save-save-85A3FAC9/dup.png",
-      "session" : "433321A6-B527-4AB1-B26E-D05A0B329C38"
+      "op" : "save-595a959a-2c5b-4e7c-85f5-b60dc1c0fa08",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s10/dup.assets/dup.png",
+      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
     },
     {
       "event" : "committed",
-      "id" : "BF8F5A14-1ACE-443F-83A3-8E8F37BB31EA",
+      "id" : "A31823EF-7A60-49BE-9960-7389C7CD5422",
       "note" : "dup-1.png",
-      "op" : "save-85A3FAC9",
-      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s10/.inkora-save-save-85A3FAC9/dup-1.png",
-      "session" : "433321A6-B527-4AB1-B26E-D05A0B329C38"
+      "op" : "save-595a959a-2c5b-4e7c-85f5-b60dc1c0fa08",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s10/dup.assets/dup-1.png",
+      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
+    },
+    {
+      "event" : "markdown-committed",
+      "id" : "7F035A9E-2AC0-4B34-854C-1A105A5DDB0C",
+      "op" : "save-595a959a-2c5b-4e7c-85f5-b60dc1c0fa08",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s10/dup.md",
+      "session" : "0E044991-99A8-4FAD-A5AB-C7BBCDC35961"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "51127075-F64B-4FBC-AFFD-3D11DA5F1A17",
+      "note" : "a.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/376707DA-2219-4324-91C6-17DC1D315282/imports/a.png",
+      "session" : "376707DA-2219-4324-91C6-17DC1D315282"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "969AE411-FB35-4D53-8F29-4F3AB02DA4D6",
+      "note" : "b.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/376707DA-2219-4324-91C6-17DC1D315282/imports/b.png",
+      "session" : "376707DA-2219-4324-91C6-17DC1D315282"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "8F378944-1EA3-48B0-9585-F41C33BFC4D7",
+      "note" : "o.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/8B29BE63-2D0A-482A-8F91-03E46CCAA1E5/imports/o.png",
+      "session" : "8B29BE63-2D0A-482A-8F91-03E46CCAA1E5"
+    },
+    {
+      "event" : "kept-orphan-recorded",
+      "id" : "B709478F-076A-4CDF-8245-D5A33315233D",
+      "note" : "a.png",
+      "op" : "save-63eb01a7-4425-470d-b378-4acf6f951c30",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s11/note.assets/a.png",
+      "session" : "376707DA-2219-4324-91C6-17DC1D315282"
+    },
+    {
+      "event" : "rolled-back-staging-deleted",
+      "id" : "FB391EF5-7961-4895-9AF4-988EA5278BF1",
+      "note" : "b.png",
+      "op" : "save-63eb01a7-4425-470d-b378-4acf6f951c30",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s11/.inkora-save-63eb01a7-4425-470d-b378-4acf6f951c30/b.png",
+      "session" : "376707DA-2219-4324-91C6-17DC1D315282"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "C9D642EF-A417-4820-9197-58117949A35B",
+      "note" : "a.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/3FBBF418-1D64-4BDE-BED5-A0B250B76413/imports/a.png",
+      "session" : "3FBBF418-1D64-4BDE-BED5-A0B250B76413"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "56052217-A457-45D1-9EF5-50C8B47B8079",
+      "note" : "b.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/3FBBF418-1D64-4BDE-BED5-A0B250B76413/imports/b.png",
+      "session" : "3FBBF418-1D64-4BDE-BED5-A0B250B76413"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "DF412EC0-9C9E-4877-A132-0039D3DD1886",
+      "note" : "keep.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/4FF6AD5E-0D10-4879-B748-5C98D32A5C28/imports/keep.png",
+      "session" : "4FF6AD5E-0D10-4879-B748-5C98D32A5C28"
+    },
+    {
+      "event" : "kept-orphan-recorded",
+      "id" : "30A3FE1D-D59D-4461-867E-D0B65214FB03",
+      "note" : "a.png",
+      "op" : "save-971629be-93c3-4797-8070-a48b1fbc893c",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12/note.assets/a.png",
+      "session" : "3FBBF418-1D64-4BDE-BED5-A0B250B76413"
+    },
+    {
+      "event" : "kept-orphan-recorded",
+      "id" : "F4CA8767-41FA-4546-94C6-1B49DE0642DA",
+      "note" : "b.png",
+      "op" : "save-971629be-93c3-4797-8070-a48b1fbc893c",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12/note.assets/b.png",
+      "session" : "3FBBF418-1D64-4BDE-BED5-A0B250B76413"
+    },
+    {
+      "event" : "kept-orphan-recorded",
+      "id" : "345CFCAC-DB5C-4CC9-B53A-25687AFD9981",
+      "note" : "原 doc.assets/m.png",
+      "op" : "saveas-6902cd58-2d7b-4c46-be55-e5b8f7ac97f2",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12b-dst/原 doc.assets/m.png",
+      "session" : "n/a"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "BC78CC4C-1160-4B5B-BA5B-5C1353D50B2C",
+      "note" : "s.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/034957AA-E307-42E5-B971-560F6E37FD79/imports/s.png",
+      "session" : "034957AA-E307-42E5-B971-560F6E37FD79"
+    },
+    {
+      "event" : "rolled-back-staging-deleted",
+      "id" : "09B39270-5922-45FE-93D1-7A5655E1E639",
+      "note" : "s.png",
+      "op" : "save-3ab4cea8-4226-4819-af46-322a668a0c38",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13a/.inkora-save-3ab4cea8-4226-4819-af46-322a668a0c38/s.png",
+      "session" : "034957AA-E307-42E5-B971-560F6E37FD79"
+    },
+    {
+      "event" : "reused-no-ownership",
+      "id" : "1AAF38A4-B1C3-4E28-BC44-CE5FC293D067",
+      "note" : "concurrent-same-bytes",
+      "op" : "save-3ab4cea8-4226-4819-af46-322a668a0c38",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13a/c1.assets/s.png",
+      "session" : "034957AA-E307-42E5-B971-560F6E37FD79"
+    },
+    {
+      "event" : "markdown-committed",
+      "id" : "C6B71FC9-A66D-46B8-9FFA-9E0D81936BA1",
+      "op" : "save-3ab4cea8-4226-4819-af46-322a668a0c38",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13a/c1.md",
+      "session" : "034957AA-E307-42E5-B971-560F6E37FD79"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "4F490C0D-868F-4F52-8497-82566712BD92",
+      "note" : "x1.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/5338262C-E679-4336-BB4F-6249905762B2/imports/x1.png",
+      "session" : "5338262C-E679-4336-BB4F-6249905762B2"
+    },
+    {
+      "event" : "draft-import",
+      "id" : "7D24830C-17E2-4976-B6F7-60B41556FCAE",
+      "note" : "x2.png",
+      "op" : "import",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/recovery/5338262C-E679-4336-BB4F-6249905762B2/imports/x2.png",
+      "session" : "5338262C-E679-4336-BB4F-6249905762B2"
+    },
+    {
+      "event" : "kept-orphan-recorded",
+      "id" : "522AC9E2-7F8B-40B5-A19F-A068D95B2409",
+      "note" : "x1.png",
+      "op" : "save-ebe442e6-b83c-402d-b48a-901cfd11ce79",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13b/c2.assets/x1.png",
+      "session" : "5338262C-E679-4336-BB4F-6249905762B2"
+    },
+    {
+      "event" : "rolled-back-staging-deleted",
+      "id" : "E1426D91-81DA-4891-996B-FFF5FD1B917C",
+      "note" : "x2.png",
+      "op" : "save-ebe442e6-b83c-402d-b48a-901cfd11ce79",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s13b/.inkora-save-ebe442e6-b83c-402d-b48a-901cfd11ce79/x2.png",
+      "session" : "5338262C-E679-4336-BB4F-6249905762B2"
+    },
+    {
+      "event" : "blocked",
+      "id" : "72CD3B09-70D4-40BD-A707-249FD0949C26",
+      "note" : "pics/a.png,pics/b.png,pics/c.png",
+      "op" : "saveas-7e3e1a5c-8454-41c9-b913-8daa7ec3be00",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/copy-a.md",
+      "session" : "n/a"
+    },
+    {
+      "event" : "reused-no-ownership",
+      "id" : "A0DEFAE7-79D8-43B7-A58C-FBFD3AF69ECF",
+      "note" : "unmanaged-equivalent-same-bytes",
+      "op" : "saveas-bb1ae2f1-527c-4858-a5f6-20e31a871762",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/pics/b.png",
+      "session" : "n/a"
+    },
+    {
+      "event" : "markdown-committed",
+      "id" : "6C5807D0-E83F-469C-A7EA-3C5EB87B370C",
+      "op" : "saveas-bb1ae2f1-527c-4858-a5f6-20e31a871762",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/copy-b.md",
+      "session" : "n/a"
+    },
+    {
+      "event" : "blocked",
+      "id" : "6E68F760-C6BD-4F06-9251-4158BD9BE2D5",
+      "note" : "pics/c.png",
+      "op" : "saveas-a132f6df-5598-413c-b93a-10fe303696c5",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/copy-c.md",
+      "session" : "n/a"
+    },
+    {
+      "event" : "markdown-committed",
+      "id" : "22C42B35-A36B-4A7E-867A-E3F5A038B952",
+      "op" : "saveas-6288b804-18b2-4756-8234-c0567da58cb1",
+      "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s14-dst/copy-d.md",
+      "session" : "n/a"
     }
   ],
-  "prototype" : "INK-PROT-011 local-assets model 0.2",
-  "ranAt" : "2026-11-08T13:24:33Z",
+  "journalBoundary" : "journal 仅存在于本进程内存、不落盘：崩溃/重启后没有任何磁盘 journal 可恢复，不能声称跨重启恢复已完成操作；持久化 per-op journal 属父票14剩余范围",
+  "prototype" : "INK-PROT-011 local-assets model 0.3 (INK-PROT-013 correction)",
+  "ranAt" : "2026-11-08T13:50:53Z",
   "scenarios" : [
     {
       "detail" : [
@@ -160,15 +373,19 @@
       "initial" : [
 
       ],
+      "injections" : [
+
+      ],
       "name" : "S1-draft-import-retained",
       "pass" : true
     },
     {
       "detail" : [
-        "PASS not saved, no markSaved, write actually failed",
-        "PASS error recorded: markdown-write-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “note.md” couldn’t be saved in the folder “s2”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s2/note.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s2/note.md, NSUnderlyingError=0x1016bb4b0 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
+        "PASS not saved, no markSaved, commit actually failed (phase=markdown-commit)",
+        "PASS error recorded: markdown-commit-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “note.md” couldn’t be saved in the folder “s2”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s2/note.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s2/note.md, NSUnderlyingError=0x1053841e0 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
+        "PASS asset published before markdown commit (order)",
+        "PASS published asset kept as recorded orphan, bytes intact",
         "PASS private staging rolled back, no leftovers",
-        "PASS managed dir never received unpublished copy",
         "PASS draft + unrelated file SHAs unchanged",
         "PASS session still dirty, not saved"
       ],
@@ -196,7 +413,10 @@
           "sha256" : "d59c2a5f721ce135ce54628b1ad8ad8b8eb26c8bbe2e2abe1cdca97e2d6ab446"
         }
       ],
-      "name" : "S2-md-write-failure-keeps-draft",
+      "injections" : [
+        "real-fs-fault: Markdown 目标路径被目录占用（真实 EISDIR 类错误，非模拟异常）"
+      ],
+      "name" : "S2-markdown-commit-failure-keeps-target",
       "pass" : true
     },
     {
@@ -204,7 +424,7 @@
         "PASS saved + markSaved after full flow",
         "PASS markdown exists",
         "PASS staging cleaned after publish",
-        "PASS percent/中文/空格 ref resolves: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s3/笔记 note.assets/图 片%20.png",
+        "PASS percent/中文/空格 ref resolves: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s3/笔记 note.assets/图 片%20.png",
         "PASS managed bytes SHA == draft bytes",
         "PASS session clean after success"
       ],
@@ -212,6 +432,9 @@
 
       ],
       "initial" : [
+
+      ],
+      "injections" : [
 
       ],
       "name" : "S3-first-save-success",
@@ -223,6 +446,7 @@
         "PASS new markdown exists",
         "PASS markdown bytes identical (ref bytes unchanged)",
         "PASS managed asset copied under ORIGINAL dir name at new location",
+        "PASS asset published before markdown commit (order)",
         "PASS originals untouched (still exist, same SHA)"
       ],
       "final" : [
@@ -249,21 +473,29 @@
           "sha256" : "1b1caf70fc79f599ffdb6dcb8cb80086999b2921c57c14d68dd172893c6faa17"
         }
       ],
+      "injections" : [
+
+      ],
       "name" : "S4-save-as-byte-identical",
       "pass" : true
     },
     {
       "detail" : [
-        "PASS same-bytes reused, error=markdown-write-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “a.md” couldn’t be saved in the folder “s5”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s5/a.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s5/a.md, NSUnderlyingError=0x7aa5038810 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
-        "PASS staging rolled back",
+        "PASS same-bytes reused, error=markdown-commit-failed: Error Domain=NSCocoaErrorDomain Code=512 \"The file “a.md” couldn’t be saved in the folder “s5”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s5/a.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s5/a.md, NSUnderlyingError=0x776f06c870 {Error Domain=NSPOSIXErrorDomain Code=21 \"Is a directory\"}}",
+        "PASS failed at markdown commit after reuse",
+        "PASS no staging created (nothing to publish)",
         "PASS reused pre-existing file NOT deleted (no ownership)",
-        "PASS different-bytes rejected",
-        "PASS target not overwritten"
+        "PASS different-bytes rejected at validation (nothing written)",
+        "PASS target not overwritten",
+        "PASS no staging leftovers"
       ],
       "final" : [
 
       ],
       "initial" : [
+
+      ],
+      "injections" : [
 
       ],
       "name" : "S5-conflict-rules",
@@ -271,10 +503,12 @@
     },
     {
       "detail" : [
-        "PASS save failed as injected",
-        "PASS only private staging rolled back",
-        "PASS pre-existing assets + docs untouched (incl. refstyle target)",
-        "PASS unpublished staged copy never landed in managed dir"
+        "PASS validation abort on keep.png conflict: conflict-different-bytes: keep.png",
+        "PASS nothing staged/published before validation passes",
+        "PASS no staging leftovers",
+        "PASS pre-existing assets + docs + old markdown untouched (incl. refstyle target)",
+        "PASS no unpublished copy ever created",
+        "PASS draft retained"
       ],
       "final" : [
 
@@ -282,7 +516,10 @@
       "initial" : [
 
       ],
-      "name" : "S6-rollback-ownership-boundary",
+      "injections" : [
+        "real-fs-fault: 校验期异内容冲突 + 预置不可读文档（chmod 000）"
+      ],
+      "name" : "S6-validation-abort-boundary",
       "pass" : true
     },
     {
@@ -297,6 +534,9 @@
       "initial" : [
 
       ],
+      "injections" : [
+
+      ],
       "name" : "S7-cancel-keeps-draft",
       "pass" : true
     },
@@ -305,13 +545,16 @@
         "PASS 中文/空格/百分号 ref resolves",
         "PASS dotdot rejected: dotdot-rejected: ../escape.png",
         "PASS absolute rejected: absolute-rejected: /etc/passwd",
-        "PASS symlink rejected: symlink-rejected: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model/s8/doc.assets/link.png",
+        "PASS symlink rejected: symlink-rejected: /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s8/doc.assets/link.png",
         "PASS external secret untouched by rejection"
       ],
       "final" : [
 
       ],
       "initial" : [
+
+      ],
+      "injections" : [
 
       ],
       "name" : "S8-resolution-boundaries",
@@ -325,6 +568,9 @@
 
       ],
       "initial" : [
+
+      ],
+      "injections" : [
 
       ],
       "name" : "S9-explicit-abandon",
@@ -345,9 +591,226 @@
       "initial" : [
 
       ],
+      "injections" : [
+
+      ],
       "name" : "S10-unique-name-same-preferred",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS publish-phase failure, not saved/markSaved (phase=publish)",
+        "PASS collision boundary recorded: publish-collision-unreadable-dest: note.assets/b.png (symlink invisible to exists-precheck)",
+        "PASS old markdown + draft bytes + OTHER session/doc asset unchanged (SHA)",
+        "PASS first asset published-orphan kept, bytes intact, recorded at final path",
+        "PASS unpublished private staging deleted",
+        "PASS pre-existing dangling symlink NOT removed (no ownership)",
+        "PASS session still dirty, draft retained"
+      ],
+      "final" : [
+        {
+          "exists" : true,
+          "path" : "note.md",
+          "sha256" : "a968b22224a8991c1bccded89624fba30389b1b100ecae2e781faa47cd124d52"
+        },
+        {
+          "exists" : true,
+          "path" : "a.png",
+          "sha256" : "e793c41f42c3766932d69864deeea3b3949a26e1e427bdf261a77755021e58cb"
+        },
+        {
+          "exists" : true,
+          "path" : "b.png",
+          "sha256" : "700983acb1832a2b0830405407bcaefaf0909c8631c1603cc5a72ecc4257e4d2"
+        },
+        {
+          "exists" : true,
+          "path" : "o.png",
+          "sha256" : "1c55d9b826e8dfa994370e306ae8dc2e849f3e003381dc848a0b95f782c0c0e3"
+        },
+        {
+          "exists" : true,
+          "path" : "keep.png",
+          "sha256" : "e9f387659cd7892e38bd321361851455a32947bf08a7930322f2f87594fe5764"
+        }
+      ],
+      "initial" : [
+        {
+          "exists" : true,
+          "path" : "note.md",
+          "sha256" : "a968b22224a8991c1bccded89624fba30389b1b100ecae2e781faa47cd124d52"
+        },
+        {
+          "exists" : true,
+          "path" : "a.png",
+          "sha256" : "e793c41f42c3766932d69864deeea3b3949a26e1e427bdf261a77755021e58cb"
+        },
+        {
+          "exists" : true,
+          "path" : "b.png",
+          "sha256" : "700983acb1832a2b0830405407bcaefaf0909c8631c1603cc5a72ecc4257e4d2"
+        },
+        {
+          "exists" : true,
+          "path" : "o.png",
+          "sha256" : "1c55d9b826e8dfa994370e306ae8dc2e849f3e003381dc848a0b95f782c0c0e3"
+        },
+        {
+          "exists" : true,
+          "path" : "keep.png",
+          "sha256" : "e9f387659cd7892e38bd321361851455a32947bf08a7930322f2f87594fe5764"
+        }
+      ],
+      "injections" : [
+        "real-fs-fault: 悬空符号链接占据 b.png 最终路径（fileExists 预检不可见；copyItem EEXIST）"
+      ],
+      "name" : "S11-publish-failure-second-asset",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS markdown commit failed after full publish, not saved/markSaved",
+        "PASS both assets published before commit attempt",
+        "PASS old markdown + drafts + OTHER session/doc asset SHAs unchanged",
+        "PASS published assets kept with correct bytes",
+        "PASS both orphans recorded at final paths",
+        "PASS private staging deleted, no temp leftovers",
+        "PASS session still dirty",
+        "PASS S12b saveAs markdown commit failed: markdown-commit-failed: Error Domain=NSCocoaErrorDomain Code=513 \"You don’t have permission to save the file “新 doc.md” in the folder “s12b-dst”.\" UserInfo={NSFilePath=/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12b-dst/新 doc.md, NSURL=file:///var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model/s12b-dst/%E6%96%B0%20doc.md, NSUnderlyingError=0x776f06ce10 {Error Domain=NSPOSIXErrorDomain Code=1 \"Operation not permitted\"}}",
+        "PASS S12b source + old target + unrelated resource byte-identical (SHA)",
+        "PASS S12b published asset kept + recorded as orphan",
+        "PASS S12b no staging leftovers"
+      ],
+      "final" : [
+        {
+          "exists" : true,
+          "path" : "note.md",
+          "sha256" : "79b0eccaa206a828db686737459260a0ba63fe1c56b63b2f61576375c70ad286"
+        },
+        {
+          "exists" : true,
+          "path" : "a.png",
+          "sha256" : "05db6c1a9b57ceae144d5dd2b12bc9b1c872a55d583ab6a179472a59bbc8a5f2"
+        },
+        {
+          "exists" : true,
+          "path" : "b.png",
+          "sha256" : "8bb1234e53874eb999fb00a9d9dd473f6334a903d28a4a98779c6c0da0c1feb3"
+        },
+        {
+          "exists" : true,
+          "path" : "keep.png",
+          "sha256" : "c1c392be68319c29e28a419e897f91defad11240bbd2f03d7a4f21754df45d90"
+        },
+        {
+          "exists" : true,
+          "path" : "keep.png",
+          "sha256" : "22305c9d3c1d6d8374f822b7c44e57b7ff4959eefe6d9206757426d8e8cc0f1e"
+        }
+      ],
+      "initial" : [
+        {
+          "exists" : true,
+          "path" : "note.md",
+          "sha256" : "79b0eccaa206a828db686737459260a0ba63fe1c56b63b2f61576375c70ad286"
+        },
+        {
+          "exists" : true,
+          "path" : "a.png",
+          "sha256" : "05db6c1a9b57ceae144d5dd2b12bc9b1c872a55d583ab6a179472a59bbc8a5f2"
+        },
+        {
+          "exists" : true,
+          "path" : "b.png",
+          "sha256" : "8bb1234e53874eb999fb00a9d9dd473f6334a903d28a4a98779c6c0da0c1feb3"
+        },
+        {
+          "exists" : true,
+          "path" : "keep.png",
+          "sha256" : "c1c392be68319c29e28a419e897f91defad11240bbd2f03d7a4f21754df45d90"
+        },
+        {
+          "exists" : true,
+          "path" : "keep.png",
+          "sha256" : "22305c9d3c1d6d8374f822b7c44e57b7ff4959eefe6d9206757426d8e8cc0f1e"
+        }
+      ],
+      "injections" : [
+        "real-fs-fault: chflags uchg(SF_IMMUTABLE) 旧 note.md → 原子写 rename EPERM"
+      ],
+      "name" : "S12-markdown-commit-failure-after-full-publish",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS 13a concurrent same-bytes reuses and succeeds, error=nil",
+        "PASS 13a reused without ownership, nothing published by us",
+        "PASS 13a target bytes = concurrent same bytes",
+        "PASS 13a no staging leftovers",
+        "PASS 13b different-bytes collision fails explicitly: publish-collision-different-bytes: c2.assets/x2.png",
+        "PASS 13b old markdown SHA unchanged",
+        "PASS 13b first asset published-orphan kept + recorded",
+        "PASS 13b concurrently-created file NOT overwritten/deleted (no ownership)",
+        "PASS 13b unpublished staging deleted",
+        "PASS 13b draft retained"
+      ],
+      "final" : [
+
+      ],
+      "initial" : [
+
+      ],
+      "injections" : [
+        "simulated-concurrency: beforePublish 注入缝（场景代码在发布瞬间写入目标，模拟另一文档并发发布；非 OS 故障）"
+      ],
+      "name" : "S13-concurrent-publisher-boundary",
+      "pass" : true
+    },
+    {
+      "detail" : [
+        "PASS 14a blocked with explicit reason: blocked-unmanaged-relative-refs",
+        "PASS 14a all three refs (inline ×2 + reference-style def) classified target-missing",
+        "PASS 14a target dir untouched (no markdown, no staging, no partial files)",
+        "PASS 14a source untouched",
+        "PASS 14b allowed via equivalent same bytes, error=nil",
+        "PASS 14b markdown bytes identical (ordinary link/defs & image ref untouched)",
+        "PASS 14b equivalent target reused without ownership, no copy performed",
+        "PASS 14b pre-placed target bytes unchanged",
+        "PASS 14c reference-style def conflicting target blocked: blocked-target-conflict-different-bytes",
+        "PASS 14c target not overwritten",
+        "PASS 14c no markdown written",
+        "PASS 14d external image refs passthrough, not treated as local assets: [\"https://example.com/e.png\", \"https://example.com/s.png\"]"
+      ],
+      "final" : [
+        {
+          "exists" : true,
+          "path" : "a.md",
+          "sha256" : "2dcc3788b572ecc7f7f0c8bf8b94d8c8faf346c4bedb9a3c0380898cce1c976c"
+        },
+        {
+          "exists" : true,
+          "path" : "a.png",
+          "sha256" : "16093737ba241abb963f7c41a27015b0162a215908aa2a9b99eb9ce517e8e9e0"
+        }
+      ],
+      "initial" : [
+        {
+          "exists" : true,
+          "path" : "a.md",
+          "sha256" : "2dcc3788b572ecc7f7f0c8bf8b94d8c8faf346c4bedb9a3c0380898cce1c976c"
+        },
+        {
+          "exists" : true,
+          "path" : "a.png",
+          "sha256" : "16093737ba241abb963f7c41a27015b0162a215908aa2a9b99eb9ce517e8e9e0"
+        }
+      ],
+      "injections" : [
+
+      ],
+      "name" : "S14-saveas-unmanaged-relative-refs",
       "pass" : true
     }
   ],
-  "scratchRoot" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.WL6Njz/model"
+  "scratchRoot" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/ink-prot-011.lNbheh/model"
 }

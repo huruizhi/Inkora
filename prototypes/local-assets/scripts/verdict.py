@@ -17,6 +17,7 @@
 - 沙盒外部拒绝的 errno 必须是权限拒绝 EPERM(1)/EACCES(13)；
   ENOENT 等其它失败与“无权限”不得混淆。
 - 容器写、容器读必须实际成功。
+- runID 必须通过规范 UUID 校验；非法值不能写容器。
 - 未激活沙盒 = L2 incomplete，不作为任何 Sandbox 证据。
 """
 
@@ -35,6 +36,8 @@ def judge(probe, contrast, probe_rc, contrast_rc, ext_sha):
     if not probe.get("sandboxActive"):
         reasons.append("sandbox-inactive: 沙盒未激活或容器路径不匹配，L2 未执行通过")
         return "incomplete", reasons
+    if probe.get("runIDValid") is not True:
+        reasons.append("invalid-run-id: 探针 runID 不是规范 UUID")
     cw = probe.get("containerWrite", {})
     if not cw.get("attempted"):
         reasons.append("container-write-not-attempted")
@@ -65,6 +68,7 @@ def judge(probe, contrast, probe_rc, contrast_rc, ext_sha):
 def _base_probe(**over):
     p = {
         "sandboxActive": True,
+        "runIDValid": True,
         "containerWrite": {"attempted": True, "ok": True, "error": None},
         "containerFixture": {"ok": True, "errno": None},
         "externalFixture": {"ok": False, "errno": 1, "errnoMessage": "Operation not permitted"},
@@ -106,6 +110,7 @@ def selftest():
             _base_probe(containerFixture={"ok": False, "errno": 1}), _base_contrast(), 0, 0, "A" * 64, "fail",
         ),
         ("sandbox-inactive", _base_probe(sandboxActive=False), _base_contrast(), 0, 0, "A" * 64, "incomplete"),
+        ("invalid-run-id", _base_probe(runIDValid=False), _base_contrast(), 0, 0, "A" * 64, "fail"),
         ("probe-crashed", _base_probe(), _base_contrast(), 6, 0, "A" * 64, "fail"),
     ]
     failed = 0

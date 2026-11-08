@@ -29,6 +29,7 @@ struct ContainerWrite: Codable {
 struct ProbeReport: Codable {
     let probeVersion: String
     let runID: String
+    let runIDValid: Bool // 规范 UUID（8-4-4-4-12 hex）；非法 runID 只报告不写容器
     let processPath: String
     let bundleID: String
     let containerHome: String // NSHomeDirectory()
@@ -69,6 +70,11 @@ let args = CommandLine.arguments
 let runID = args.count > 1 ? args[1] : ""
 let externalPath = args.count > 2 ? args[2] : ""
 
+// 只接受规范 8-4-4-4-12 十六进制 UUID。不能只依赖“非空”或路径标准化，
+// 否则 run ID 可逃出本轮子目录；非法值只进入报告，绝不参与任何写路径拼接。
+let uuidPattern = #"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"#
+let runIDValid = runID.range(of: uuidPattern, options: .regularExpression) != nil
+
 let bundleID = "com.huruizhi.Inkora.AssetPrototype"
 let home = NSHomeDirectory()
 let inheritedHome = ProcessInfo.processInfo.environment["HOME"] ?? ""
@@ -79,12 +85,12 @@ if let pw = getpwuid(getuid()) {
 }
 let expectedContainer = realHome + "/Library/Containers/" + bundleID + "/Data"
 // 沙盒激活判定：NSHomeDirectory() 必须精确等于预期独立容器路径
-let sandboxActive = !runID.isEmpty && home == expectedContainer
+let sandboxActive = home == expectedContainer
 
 // 容器内 fixture：仅在确认预期容器后才写，且只写本次 run ID 子目录
 var containerWrite: ContainerWrite
 var fixturePath = ""
-if sandboxActive {
+if sandboxActive && runIDValid {
     let dir = URL(fileURLWithPath: home, isDirectory: true)
         .appendingPathComponent("probe-fixtures", isDirectory: true)
         .appendingPathComponent(runID, isDirectory: true)
@@ -98,13 +104,17 @@ if sandboxActive {
         containerWrite = .init(attempted: true, ok: false, error: String(describing: error))
     }
 } else {
-    // 未激活：不写任何 HOME 位置，避免污染真实用户目录
-    containerWrite = .init(attempted: false, ok: nil, error: "sandbox-inactive: container write skipped")
+    // 未激活或 run ID 非法：不写任何 HOME 位置，避免污染/越界。
+    let reason = sandboxActive
+        ? "invalid-run-id: container write skipped"
+        : "sandbox-inactive: container write skipped"
+    containerWrite = .init(attempted: false, ok: nil, error: reason)
 }
 
 let report = ProbeReport(
-    probeVersion: "INK-PROT-011 AssetPrototype probe 0.2",
+    probeVersion: "INK-PROT-011 AssetPrototype probe 0.3 (INK-PROT-013 correction)",
     runID: runID,
+    runIDValid: runIDValid,
     processPath: CommandLine.arguments[0],
     bundleID: bundleID,
     containerHome: home,
@@ -114,7 +124,8 @@ let report = ProbeReport(
     sandboxActive: sandboxActive,
     containerWrite: containerWrite,
     containerFixture: fixturePath.isEmpty
-        ? .init(path: "", ok: false, errno: nil, errnoMessage: "not attempted (sandbox inactive)",
+        ? .init(path: "", ok: false, errno: nil,
+                errnoMessage: runIDValid ? "not attempted (sandbox inactive)" : "not attempted (invalid run ID)",
                 sha256: nil, byteCount: nil)
         : posixRead(fixturePath),
     externalFixture: externalPath.isEmpty

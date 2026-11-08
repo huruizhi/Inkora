@@ -1,0 +1,27 @@
+{
+  "bundleID" : "com.huruizhi.Inkora.AssetPrototype",
+  "containerFixture" : {
+    "errnoMessage" : "not attempted (invalid run ID)",
+    "ok" : false,
+    "path" : ""
+  },
+  "containerHome" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
+  "containerWrite" : {
+    "attempted" : false,
+    "error" : "invalid-run-id: container write skipped"
+  },
+  "expectedContainerHome" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
+  "externalFixture" : {
+    "errno" : 1,
+    "errnoMessage" : "Operation not permitted",
+    "ok" : false,
+    "path" : "/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T//ink-prot-011.lNbheh/external/外 部%20fixture.bin"
+  },
+  "inheritedHomeEnv" : "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.AssetPrototype/Data",
+  "probeVersion" : "INK-PROT-011 AssetPrototype probe 0.3 (INK-PROT-013 correction)",
+  "processPath" : "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-013-asset-commit-order/prototypes/local-assets/.build/AssetPrototype.app/Contents/MacOS/AssetPrototype",
+  "realHomeFromPasswd" : "/Users/rayhu",
+  "runID" : "invalid-4948e222-c2e1-4223-9fc6-18ad0569bb59",
+  "runIDValid" : false,
+  "sandboxActive" : true
+}
