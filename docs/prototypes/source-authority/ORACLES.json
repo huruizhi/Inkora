@@ -1,0 +1,479 @@
+{
+  "schemaVersion": 1,
+  "id": "INK-SPEC-029",
+  "status": "frozen-v1-not-production-architecture",
+  "controlCommit": "76070797f52b0b71debbc59b30ce8d4da6cd6f38",
+  "acceptedIntegrationCommit": "ea63941a6ca320c5aa888eb18263c870fb361846",
+  "encoding": "lossless UTF-8, preserve BOM/EOL; raw selection uses UTF-16 including BOM/CRLF",
+  "primary": [
+    {
+      "id": "P0",
+      "op": "open",
+      "raw": "a\n",
+      "saved": "a\n",
+      "selection": {
+        "anchor": 1,
+        "head": 1
+      },
+      "undo": 0,
+      "redo": 0,
+      "version": 0,
+      "dirty": false,
+      "expectedUtf8Hex": "610a",
+      "rawUtf16Length": 2
+    },
+    {
+      "id": "P1",
+      "op": "native_type",
+      "text": " ",
+      "raw": "a \n",
+      "saved": "a\n",
+      "selection": {
+        "anchor": 2,
+        "head": 2
+      },
+      "undo": 1,
+      "redo": 0,
+      "version": 1,
+      "dirty": true,
+      "saveEligible": true,
+      "sourceAccessible": true,
+      "expectedUtf8Hex": "61200a",
+      "rawUtf16Length": 3
+    },
+    {
+      "id": "P2",
+      "op": "save_memory_and_scratch",
+      "raw": "a \n",
+      "saved": "a \n",
+      "selection": {
+        "anchor": 2,
+        "head": 2
+      },
+      "undo": 1,
+      "redo": 0,
+      "version": 1,
+      "dirty": false,
+      "preserveFrom": "P1",
+      "preserveFields": [
+        "raw",
+        "projection",
+        "visualSelection",
+        "rawSelection",
+        "version",
+        "undo",
+        "redo",
+        "provenance"
+      ],
+      "expectedUtf8Hex": "61200a",
+      "rawUtf16Length": 3
+    },
+    {
+      "id": "P3",
+      "op": "source_enter_noop_apply",
+      "raw": "a \n",
+      "saved": "a \n",
+      "selection": {
+        "anchor": 2,
+        "head": 2
+      },
+      "undo": 1,
+      "redo": 0,
+      "version": 1,
+      "dirty": false,
+      "preserveFrom": "P2",
+      "expectedUtf8Hex": "61200a",
+      "rawUtf16Length": 3
+    },
+    {
+      "id": "P4",
+      "op": "scratch_reopen_new_epoch_and_map_raw_selection_to_real_view",
+      "raw": "a \n",
+      "saved": "a \n",
+      "selection": {
+        "anchor": 2,
+        "head": 2
+      },
+      "undo": 0,
+      "redo": 0,
+      "version": 0,
+      "dirty": false,
+      "newEpoch": true,
+      "expectedUtf8Hex": "61200a",
+      "rawUtf16Length": 3
+    },
+    {
+      "id": "P5",
+      "op": "native_type",
+      "text": "b",
+      "raw": "a b\n",
+      "saved": "a \n",
+      "selection": {
+        "anchor": 3,
+        "head": 3
+      },
+      "undo": 1,
+      "redo": 0,
+      "version": 1,
+      "dirty": true,
+      "expectedUtf8Hex": "6120620a",
+      "rawUtf16Length": 4
+    },
+    {
+      "id": "P6",
+      "op": "undo",
+      "raw": "a \n",
+      "saved": "a \n",
+      "selection": {
+        "anchor": 2,
+        "head": 2
+      },
+      "undo": 0,
+      "redo": 1,
+      "version": 2,
+      "dirty": false,
+      "expectedUtf8Hex": "61200a",
+      "rawUtf16Length": 3
+    },
+    {
+      "id": "P7",
+      "op": "redo",
+      "raw": "a b\n",
+      "saved": "a \n",
+      "selection": {
+        "anchor": 3,
+        "head": 3
+      },
+      "undo": 1,
+      "redo": 0,
+      "version": 3,
+      "dirty": true,
+      "expectedUtf8Hex": "6120620a",
+      "rawUtf16Length": 4
+    }
+  ],
+  "repeatPrimaryVectors": [
+    {
+      "id": "EOF_NO_NEWLINE",
+      "initial": "a",
+      "caret": 1,
+      "afterSpace": "a ",
+      "afterContinue": "a b",
+      "continueCaret": 3,
+      "initialUtf8Hex": "61",
+      "afterSpaceUtf8Hex": "6120",
+      "afterContinueUtf8Hex": "612062"
+    },
+    {
+      "id": "BOM_CRLF",
+      "initial": "﻿a\r\n",
+      "caret": 2,
+      "afterSpace": "﻿a \r\n",
+      "afterContinue": "﻿a b\r\n",
+      "continueCaret": 4,
+      "initialUtf8Hex": "efbbbf610d0a",
+      "afterSpaceUtf8Hex": "efbbbf61200d0a",
+      "afterContinueUtf8Hex": "efbbbf6120620d0a"
+    },
+    {
+      "id": "CRLF",
+      "initial": "a\r\n",
+      "caret": 1,
+      "afterSpace": "a \r\n",
+      "afterContinue": "a b\r\n",
+      "continueCaret": 3,
+      "initialUtf8Hex": "610d0a",
+      "afterSpaceUtf8Hex": "61200d0a",
+      "afterContinueUtf8Hex": "6120620d0a"
+    },
+    {
+      "id": "STRONG",
+      "initial": "**a**\n",
+      "caret": 5,
+      "affinity": "right",
+      "afterSpace": "**a** \n",
+      "afterContinue": "**a** b\n",
+      "continueCaret": 7,
+      "initialUtf8Hex": "2a2a612a2a0a",
+      "afterSpaceUtf8Hex": "2a2a612a2a200a",
+      "afterContinueUtf8Hex": "2a2a612a2a20620a"
+    },
+    {
+      "id": "EM",
+      "initial": "*a*\n",
+      "caret": 3,
+      "affinity": "right",
+      "afterSpace": "*a* \n",
+      "afterContinue": "*a* b\n",
+      "continueCaret": 5,
+      "initialUtf8Hex": "2a612a0a",
+      "afterSpaceUtf8Hex": "2a612a200a",
+      "afterContinueUtf8Hex": "2a612a20620a"
+    },
+    {
+      "id": "STRIKE",
+      "initial": "~~a~~\n",
+      "caret": 5,
+      "affinity": "right",
+      "afterSpace": "~~a~~ \n",
+      "afterContinue": "~~a~~ b\n",
+      "continueCaret": 7,
+      "initialUtf8Hex": "7e7e617e7e0a",
+      "afterSpaceUtf8Hex": "7e7e617e7e200a",
+      "afterContinueUtf8Hex": "7e7e617e7e20620a"
+    },
+    {
+      "id": "INLINE_LINK",
+      "initial": "[a](u)\n",
+      "caret": 6,
+      "affinity": "right",
+      "afterSpace": "[a](u) \n",
+      "afterContinue": "[a](u) b\n",
+      "continueCaret": 8,
+      "preserve": "[a](u)",
+      "initialUtf8Hex": "5b615d2875290a",
+      "afterSpaceUtf8Hex": "5b615d287529200a",
+      "afterContinueUtf8Hex": "5b615d28752920620a"
+    },
+    {
+      "id": "REFERENCE",
+      "initial": "[a][r]\n\n[r]: /u \"t\"\n",
+      "caret": 6,
+      "affinity": "right",
+      "afterSpace": "[a][r] \n\n[r]: /u \"t\"\n",
+      "afterContinue": "[a][r] b\n\n[r]: /u \"t\"\n",
+      "continueCaret": 8,
+      "preserve": "[r]: /u \"t\"\n",
+      "initialUtf8Hex": "5b615d5b725d0a0a5b725d3a202f75202274220a",
+      "afterSpaceUtf8Hex": "5b615d5b725d200a0a5b725d3a202f75202274220a",
+      "afterContinueUtf8Hex": "5b615d5b725d20620a0a5b725d3a202f75202274220a"
+    },
+    {
+      "id": "HEADING",
+      "initial": "# a\n",
+      "caret": 3,
+      "afterSpace": "# a \n",
+      "afterContinue": "# a b\n",
+      "continueCaret": 5,
+      "initialUtf8Hex": "2320610a",
+      "afterSpaceUtf8Hex": "232061200a",
+      "afterContinueUtf8Hex": "23206120620a"
+    },
+    {
+      "id": "LIST",
+      "initial": "- a\n",
+      "caret": 3,
+      "afterSpace": "- a \n",
+      "afterContinue": "- a b\n",
+      "continueCaret": 5,
+      "initialUtf8Hex": "2d20610a",
+      "afterSpaceUtf8Hex": "2d2061200a",
+      "afterContinueUtf8Hex": "2d206120620a"
+    },
+    {
+      "id": "QUOTE",
+      "initial": "> a\n",
+      "caret": 3,
+      "afterSpace": "> a \n",
+      "afterContinue": "> a b\n",
+      "continueCaret": 5,
+      "initialUtf8Hex": "3e20610a",
+      "afterSpaceUtf8Hex": "3e2061200a",
+      "afterContinueUtf8Hex": "3e206120620a"
+    },
+    {
+      "id": "PROTECTED_NEIGHBOR",
+      "initial": "a\n\n$$\nx\n$$\n",
+      "caret": 1,
+      "afterSpace": "a \n\n$$\nx\n$$\n",
+      "afterContinue": "a b\n\n$$\nx\n$$\n",
+      "continueCaret": 3,
+      "preserve": "$$\nx\n$$\n",
+      "initialUtf8Hex": "610a0a24240a780a24240a",
+      "afterSpaceUtf8Hex": "61200a0a24240a780a24240a",
+      "afterContinueUtf8Hex": "6120620a0a24240a780a24240a"
+    },
+    {
+      "id": "UNICODE_RAW",
+      "initial": "﻿中😀é\r\n",
+      "caret": 6,
+      "afterSpace": "﻿中😀é \r\n",
+      "afterContinue": "﻿中😀é b\r\n",
+      "continueCaret": 8,
+      "invalidInitialOffsets": [
+        0,
+        3,
+        5,
+        7
+      ],
+      "initialUtf8Hex": "efbbbfe4b8adf09f988065cc810d0a",
+      "afterSpaceUtf8Hex": "efbbbfe4b8adf09f988065cc81200d0a",
+      "afterContinueUtf8Hex": "efbbbfe4b8adf09f988065cc8120620d0a"
+    }
+  ],
+  "saveHistory": {
+    "initial": "a\n",
+    "afterEditAndSave": "a \n",
+    "afterUndo": "a\n",
+    "undoDirty": true,
+    "afterRedo": "a \n",
+    "redoDirty": false,
+    "saveMustNotChangeHistory": true
+  },
+  "paragraphCases": [
+    {
+      "id": "PARAGRAPH_ENTER",
+      "initial": "a\n",
+      "caret": 1,
+      "insertSeparator": "\n\n",
+      "afterEnter": "a\n\n\n",
+      "enterCaret": 3,
+      "afterReopenAndContinue": "a\n\nb\n",
+      "continueCaret": 4
+    },
+    {
+      "id": "SPACE_ENTER",
+      "initial": "a\n",
+      "caret": 1,
+      "typeFirst": " ",
+      "insertSeparator": "\n\n",
+      "afterEnter": "a \n\n\n",
+      "enterCaret": 4,
+      "afterReopenAndContinue": "a \n\nb\n",
+      "continueCaret": 5
+    },
+    {
+      "id": "CRLF_ENTER",
+      "initial": "a\r\n",
+      "caret": 1,
+      "insertSeparator": "\r\n\r\n",
+      "afterEnter": "a\r\n\r\n\r\n",
+      "enterCaret": 5,
+      "afterReopenAndContinue": "a\r\n\r\nb\r\n",
+      "continueCaret": 6
+    }
+  ],
+  "lineBreakCase": {
+    "initial": "a\nb\n",
+    "caret": 1,
+    "afterSingleSpace": "a \nb\n",
+    "singleCaret": 2,
+    "singleSemanticBreak": "softbreak",
+    "afterDoubleSpace": "a  \nb\n",
+    "doubleCaret": 3,
+    "doubleSemanticBreak": "hardbreak",
+    "preserveUnaffectedSuffix": "b\n"
+  },
+  "reopenedHiddenBackspace": {
+    "initial": "a \n",
+    "saved": "a \n",
+    "caret": 2,
+    "operation": "actual native Backspace after real view mapping",
+    "afterBackspace": "a\n",
+    "afterCaret": 1,
+    "dirty": true,
+    "afterUndo": "a \n",
+    "undoCaret": 2,
+    "undoDirty": false
+  },
+  "backwardSelection": {
+    "initial": "a  b\n",
+    "selection": {
+      "anchor": 3,
+      "head": 1
+    },
+    "replace": " ",
+    "after": "a b\n",
+    "afterSelection": {
+      "anchor": 2,
+      "head": 2
+    },
+    "undoRestoresBackwardSelection": true
+  },
+  "sourceFormat": {
+    "initial": "**a**\n",
+    "saved": "**a**\n",
+    "draft": "__a__\n",
+    "draftCaret": 5,
+    "afterApply": "__a__\n",
+    "dirty": true,
+    "undoRaw": "**a**\n",
+    "redoRaw": "__a__\n",
+    "semanticEqualityDoesNotMeanNoop": true
+  },
+  "sourceDraft": {
+    "initial": "a \n",
+    "saved": "a \n",
+    "caret": 2,
+    "modifiedDraft": "a x\n",
+    "beforeApplyDocument": "a \n",
+    "beforeApplyDocumentDirty": false,
+    "draftDirty": true,
+    "saveEligibleBeforeApply": false,
+    "cancelRaw": "a \n",
+    "cancelChangesHistory": false,
+    "applyRaw": "a x\n",
+    "applyHistoryDelta": 1
+  },
+  "negatives": [
+    {
+      "id": "PENDING_MATH",
+      "initial": "正文\n\n$$\nx\n",
+      "saveEligible": false,
+      "sourceAccessible": true,
+      "repairAppend": "$$\n",
+      "afterRepair": "正文\n\n$$\nx\n$$\n",
+      "wholeDocumentSourceFallback": false
+    },
+    {
+      "id": "PROTECTED_UNMAPPED",
+      "require": "actual unmapped edit inside protected fragment; preserve bytes/selection/history/version and explicit intent/diagnostic"
+    },
+    {
+      "id": "STALE_TRANSACTION",
+      "require": "dispatch transaction built before an accepted edit; preserve current bytes/history/saved point; no stale overwrite"
+    },
+    {
+      "id": "COMPOSITION_GUARD",
+      "commands": [
+        "save",
+        "source_enter",
+        "source_apply",
+        "source_cancel",
+        "reset",
+        "undo",
+        "redo"
+      ],
+      "require": "refused commands do not mutate document/draft/selection/history/version or cause extra view/kernel reinitialization"
+    },
+    {
+      "id": "EMPTY_HISTORY",
+      "require": "without actual undo/redo entry, preserve current error and all logical state"
+    }
+  ],
+  "composition": {
+    "initial": "a \n",
+    "saved": "a \n",
+    "caret": 2,
+    "marked": "a zhongwen\n",
+    "committed": "a 中文\n",
+    "committedCaret": 4,
+    "historyDelta": 1,
+    "undoRaw": "a \n",
+    "undoCaret": 2,
+    "redoRaw": "a 中文\n",
+    "redoCaret": 4,
+    "cancelNetHistoryDelta": 0,
+    "cancelPreservesExistingFuture": true,
+    "evidence": "synthetic/replay only until fixed-bundle physical Sogou test"
+  },
+  "evidenceLayers": {
+    "dataOracle": "frozen literals, schema/UTF-8 consistency verification only",
+    "modelReplay": "NOT_EXECUTED_FOR_NEW_PROTOTYPE",
+    "scratchFile": "NOT_EXECUTED_FOR_NEW_PROTOTYPE",
+    "realWK": "NOT_EXECUTED_FOR_NEW_PROTOTYPE",
+    "physicalIME": "NOT_EXECUTED_FOR_NEW_PROTOTYPE",
+    "NSDocument": "OUT_OF_SCOPE",
+    "macOS14Actual": "NOT_EXECUTED"
+  }
+}
