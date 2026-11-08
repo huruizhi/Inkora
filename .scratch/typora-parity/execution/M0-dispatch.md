@@ -388,3 +388,11 @@ INK-PROT-025：Agent `5bc9f083-65b4-438f-b6d6-1aab0be62311`，workspace `wks_a64
 新发现：revision77/78/80/81等历史点pending=false/无边界含混，但blocked=Error:补丁重解析与目标PM文档不一致，保存禁用；不能据局部历史单元成功宣布M0通过。Redo6普通编辑后revision87/past56/future0恢复全部结束内容及caret70，blocked=null。管理者停止精确PID79074，session38883退出143；进程不存在、UI锁释放。本轮203条真实记录及6个blocked snapshot冻结在026准备提交abd4c58f8f247c285f3a17cb44c36b73021ae1f5，raw SHA=4f2befce2dc99ec3a3dd14e946b05d32c092e1ddb22f3595144e92dfc7089b89。
 
 INK-PROT-026 Agent=9523cd37-d6e6-4e7c-8ef7-7c62a90aaf56，workspace=wks_ffad2b9e3daf4502，host=srv_MEqRNkRW6fSx；worktree=/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-026-history-save-readiness，branch=task/INK-PROT-026-history-save-readiness。本轮list_profiles空，inspect_provider核实5.6-Sol；用medium/default/full-access/notifyOnFinish=true做聚焦历史保存资格诊断，创建回执running。按diagnosing-bugs先真实EditorView红回归/独立source-doc-ledger一致性检查/排序假设，不能清所有blocked、削弱pending或丢用户缓冲。仅fidelity核心/测试/新证据，禁止GUI/native-host既有代码/production/fixtures/原始026冻结记录。完成后独立核验、回收Agent和workspace两层。
+
+### 026首轮退回：直接Undo仍残留当前拒绝诊断
+
+026交付186d6a07e01afecee65cf5ce8f8aa1012f8cfc2e，远端一致/clean；原Agent9523cd37-d6e6-4e7c-8ef7-7c62a90aaf56收到finished即归档，closed/archivedAt=2026-11-08T18:07:09.978Z。首轮只删除HistoryEntry中的blocked，能避免“失败->有效commit->Undo”复活旧诊断，但当前blocked不会随直接Undo失效。
+
+管理者独立真实HTML/EditorView反例：在新增history-save-readiness-check.mjs原“后续有效编辑”前直接p.run(actions.undo)，source回baseline且parse/doc/trusted/ledger均一致、pending=false/staged=null；断言blocked为空却实际仍Error:补丁重解析与目标PM文档不一致，node exit1。已实际复现，不以原自动矩阵绿接受。临时脚本/依赖链接已清，186d未接入008。
+
+限定接续仍在同一workspace wks_ffad2b9e3daf4502及task/INK-PROT-026-history-save-readiness，不新开侧栏workspace。新Agent22039af2-cc20-4307-a38e-c9c8f18518c5，GPT-5.6-Sol/medium/default/full-access，notifyOnFinish=true，创建running；profiles为空、provider核对。需补失败->直接Undo/Redo、无可travel条目的no-op不清错误、恢复pending/staged仍阻断，以及原红绿路径；禁止一刀切清blocked或削弱安全检查。等待修正交付后独立验收，完成后再备份并归档workspace。

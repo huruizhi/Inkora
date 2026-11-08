@@ -82,3 +82,5 @@ INKORA_UI_LOCK_TIMEOUT=30 scripts/ci/with-ui-lock.sh \
 新发现：revision77/78/80/81等恢复点pending=false、无语法边界问题，却保存被补丁重解析等价错误阻断。随后Redo6普通编辑，revision87/past56/future0、caret70及用户最终中文加空格全部恢复，blocked=null；未改源码或点修复来掩盖异常。原始203条记录与6个blocked snapshot已冻结到026准备abd4c58，见其IME-RETEST-026.md/raw/summary文件；原始log SHA=4f2befce2dc99ec3a3dd14e946b05d32c092e1ddb22f3595144e92dfc7089b89。保存资格异常的内部根因需诊断，不凭AX表象直接清错误。
 
 本次App精确PID79074已SIGTERM，前台包装器session38883退出143，进程/锁均确认释放；不是正常Quit，也不涉及用户文件持久化。026已派独立非UI诊断，用户本轮无需继续操作。取消/no-op/选区替换/完整组合期动作、真实修复后保存资格、最低OS与整体审阅仍未全部通过；M0/11保持未通过。
+
+026首轮186d自动修正尚未接收：独立反例显示失败后直接Undo仍保留当前操作错误，虽已恢复安全文档。已交同026workspace限定补正，没有启动新宿主/要求用户继续输入。008仍5bde，首轮026不得当作新的通过产物。
