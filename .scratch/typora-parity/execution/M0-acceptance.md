@@ -117,3 +117,9 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 2. 同样Enter后移动TextSelection@2，再真实insertText(X)：PM变为aXb+空段，但候选原文成`ab\n\nX\n`，source仍`ab\n`、dirty显示false、blocked为空；Undo/Redo后X不可恢复。旧sourceCaret与移动后的PM选区失配，doc.eq未过后继续暂存错误candidate/state，不能当安全保真。
 
 两条已交回018同分支修正（message fa11a660-48ce-4732-bf23-9584d36a4223），需完整暂存快照历史、随选区移动保持原文ownership并如实显示未持久化状态；不能靠禁止普通移动/默认重置/改oracle/整篇源码退路降低目标。018暂不验收或合入008，Agent实际继续修正而非闲置；020仍独立模块任务。
+
+### 020首轮覆盖通过，BOM/无尾换行边界待修正
+
+020首轮8923def，管理者实跑strict TS、14组检查（含19次冻结输入/05 after构建）、verify582均通过。代码块/hard_break/空结构已有模块进展，尚未接入编辑链路。
+
+额外实际探针显示：仅BOM和BOM+空行的空投影，在right affinity时返回source0（BOM之前），与文件前缀保真不符；应从BOM之后的合法gap选择。`    code`无尾换行能被真实model.parse解析为indented code_block，但ledger把token补出的末尾逻辑LF误当缺失原文而拒绝，带CRLF对照成功。两条已交回020同分支补独立端点/字节回归（message d15604e6-ed29-4886-9b16-8172509c4b8c），不把常见无尾换行降为不支持，不提供写入BOM前的合法候选。020暂不接收/合入，Agent实际继续修订。

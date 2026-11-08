@@ -298,3 +298,5 @@ INK-RES-002首轮`28d5ab0731414c20c5f1cec6c146322509f91cb7`已推送且干净，
 - list_profiles为空，沿用已核实可用的`codex/gpt-5.6-sol`、medium、full-access/default档、notifyOnFinish=true。创建回执running不是验收通过。
 - 只改`prototypes/local-assets/`。版本化草稿/操作记录、字节/图片关联、intent/完成状态，真实子进程在导入/部分发布/全发布/Markdown提交后不同阶段终止，再新进程从磁盘恢复；保持旧原件/其它会话资源、不自动覆写/删除/重试提交，记录损坏及commit确认缺失要保守反馈。
 - 保留原14场景和严格Sandbox判定，新增独立restart目标及真实进程/退出状态/SHA证据。普通scratch进程中断不是断电耐久或Sandbox书签/UI/最低系统证据；父票14仍claimed。完成接收后及时归档并保留工作区。
+
+020首轮交付`8923def12ef01a4bd35d308cca715275892035f1`已核实只改3个ledger文件、远端一致且干净。管理者实跑strict TS、14组（19次input/after构建）、verify582通过；额外探针发现BOM空投影right affinity落source0，以及无尾换行缩进代码因parser补LF误拒绝。message `d15604e6-ed29-4886-9b16-8172509c4b8c`已要求同Agent限定修正/新增边界证据，未接收或合008，保留首轮通过与新失败的分层记录。018继续暂存修正，021继续资源恢复，三项互不改对方文件。
