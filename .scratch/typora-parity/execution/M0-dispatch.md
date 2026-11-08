@@ -335,3 +335,16 @@ message `702a8638-813c-4629-8862-b6b135c0f8ee`已交同Agent修元数据symlink/
 022实际活动显示02/03/09已过，10的程序化源码value将caret留EOF而新ledger拒绝非可视gap；native audit仍有runner/probe问题，未形成交付。管理者已通过message `12f5dc9e-1f45-4976-83e4-5ff3ed687dbd`澄清：可纠正驱动到真实内容锚点，但另须覆盖普通用户在源码EOF提交/UndoRedo，不能仅移动测试光标避开常见路径。有效语法与光标映射分别判断；ledger无默认nearest，UI若选择EOF/间隙的相邻owner边界必须显式调用并显示reason/snapped，不能重置文档头或丢草稿。此为本次原型边界与证据要求，不提前解决依赖M0的正式产品交互票。
 
 022仍running、未固定交付时，管理者阅读接线证据和定义扫描发现context污染：正文[x][ref]、围栏内[ref]:/wrong、围栏外[ref]:/right；当前HTML实际PM href=/wrong且sourceLedger成功，但锁定markdown-it CommonMark独立env为/right。定位model.refs和ledger.parseDefinitions的全文件行regex不能识别代码归属；已通过message `dce5a806-b39c-4192-ba7b-7500a6e52172`要求在当前任务内修实际reference环境及词法范围、补只有代码定义/合法首次定义/真实编辑往返的语义和字节组合。不因PM/ledger同错自洽或仅模块PASS接受，未改执行者文件/原型预期。
+
+### 022接收回收及023/024准备真实输入门槛
+
+- 022固定`6360a2904cb07f9d94f1a9169fc709962f4f1a99`远端一致/干净。管理者实跑37+4+16、17组ledger、15映射、native16+3+3、目标crossval和582项，并独立实际EditorView编辑code/reference反例、EOF源码提交及Undo/Redo均通过；008已FF并推送，HTML源SHA=e2e259f…ffd3f6。Agent `84be1aff-7d48-4949-927a-e6f1090ee917`已归档closed，`2026-11-08T15:56:52.826Z`，工作区保留。通用语法/性能、真实新bundle WK/IME/HITL/产品磁盘仍未证明。
+- 原生宿主observer仍用source!=saved漏报staged dirty，故准备023限定只读诊断同步。原Luna/low Agent `571e6938-d201-43a1-932e-af153b8e908c`未执行工具便自述预算受限；管理者确认工作区仍6360a29且干净后归档closed，`2026-11-08T16:02:13.773Z`，不据此推断全局配额。相同workspace由5.6-Sol/low接续，实际ID如下。
+- 另发现main.run忽略sourceKernel.composing。管理者用真实HTML/DOM但合成composition信号，仅作guard反例：源码草稿a中+LF在组合期apply误no-op退出并复原a+LF，revision/history未记录。024据此修操作守卫，不改model/ledger/native-host/生产，不冒称真实IME通过。023仅native-host，不改HTML/core，两个文件域隔离。
+
+| 任务 | Agent / Workspace | 固定起点与分支 | 模型/边界 |
+| --- | --- | --- | --- |
+| INK-PROT-023 只读宿主诊断接续 | 799844f3-1976-4b6f-98af-2ccacff7d7d2 / wks_8b7c48210fa9580a | 6360a29; task/INK-PROT-023-host-observer-sync | GPT-5.6-Sol/low；真实stage只读snapshot回归+非UIbuild/verify；禁止App/发键/权限变更 |
+| INK-PROT-024 源码composition操作守卫 | 12b99bf1-8d0f-4ba0-806e-aac1d3d3e563 / wks_1272d6ec70875c09 | 6360a29; task/INK-PROT-024-source-composition-guard | GPT-5.6-Sol/medium；组合期动作不丢草稿，不强制updateState/setText；合成信号仅测guard |
+
+Host均srv_MEqRNkRW6fSx，full-access/default档/notifyOnFinish=true，list_profiles为空后以已核实provider字段启动，创建回执running。023 worktree`/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-023-host-observer-sync`；024路径末段为`ink-prot-024-source-composition-guard`。约定024新增只读prototype.sourceComposing/composing getters，023存在则读取、缺失用明示legacy fallback，不要求互相等待或改对方文件。待分别验收合入008并从最终HEAD重建宿主后再请求实际物理键盘验收。
