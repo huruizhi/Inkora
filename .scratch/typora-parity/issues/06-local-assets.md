@@ -4,7 +4,7 @@ Type: grilling
 Labels: wayfinder:grilling
 Status: open
 Assignee: None
-Blocked by: None
+Blocked by: 13
 Parent: ../map.md
 
 ## Question
@@ -14,3 +14,5 @@ Parent: ../map.md
 ## Resolution criteria
 
 用户确认资源归属、路径及错误恢复规则；查明所需系统 API 事实后再决策。保留离线原则，排除云图床上传。
+
+事实输入由[本地图片约束研究](13-local-assets-feasibility.md)提供；研究不代替用户的资源策略决定，也不越过 M0 原型门槛提前实施完整图片功能。

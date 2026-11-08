@@ -40,3 +40,7 @@
 管理者已重新核实两个特定 Agent 的 running、activeTurn/session 与实际工具活动，无待审批项。已发送 steer 消息，强调用户最新“高级语法不自动整篇回退、含混边界阻止不安全保存”优先于旧产品规范中的自动回退行为。消息队列已接收，原型和独立样稿继续由原 Agent 执行，未重复启动。
 
 后续证据与字节/交互/运行环境分层判据见 [M0 验收索引](M0-acceptance.md)。
+
+### 并行准备：本地图片事实研究
+
+M0 两项执行尚未交付时，已独立派发 [Sandbox 本地图片约束研究](../issues/13-local-assets-feasibility.md)，只为后续资源策略提供事实输入，不展开图片功能实现。Paseo workspace 为 `wks_394cc660a127da5d`，host/agent 为 `srv_MEqRNkRW6fSx` / `10924b8b-564b-48fc-81c0-2e8df68ac355`，Codex GPT-6.1-Sol / high，创建回执 running。完成通知返回后核查一手来源与实际研究提交，再进入资源策略决策。
