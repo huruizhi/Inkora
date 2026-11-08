@@ -1,11 +1,12 @@
 // main.swift — INK-PROT-011 签名 Sandbox headless 探针
 //
 // 独立 bundleID com.huruizhi.Inkora.AssetPrototype，唯一 entitlement 为
-// com.apple.security.app-sandbox。不使用 GUI，不访问用户真实内容：
-// - 容器内：在自身容器写入并读回 fixture（应成功）。
-// - 容器外：仅尝试读取控制脚本以 argv 传入的临时外部 fixture（应被 OS 拒绝）。
-// 输出机器可读 JSON 到 stdout。自行判定 sandbox 是否激活；未激活时如实报告，
-// 不把普通进程结果冒充 Sandbox 证据。
+// com.apple.security.app-sandbox。无 GUI，不访问用户真实内容：
+// - 仅当 NSHomeDirectory() 精确匹配预期的独立容器路径（getpwuid 真实 HOME +
+//   /Library/Containers/<bundleID>/Data）时，才向容器内唯一 run ID 会话子目录
+//   写入并读回 fixture；沙盒未激活时绝不写任何 HOME 位置，只报告。
+// - 容器外：仅尝试读取控制脚本以 argv 传入的临时外部 fixture，记录实际 errno。
+// 输出机器可读 JSON 到 stdout；不把普通进程结果冒充 Sandbox 证据。
 
 import Foundation
 import CryptoKit
@@ -19,22 +20,25 @@ struct FileAccess: Codable {
     let byteCount: Int?
 }
 
+struct ContainerWrite: Codable {
+    let attempted: Bool
+    let ok: Bool?
+    let error: String?
+}
+
 struct ProbeReport: Codable {
     let probeVersion: String
+    let runID: String
     let processPath: String
-    let bundleIDHint: String
-    let containerHome: String
+    let bundleID: String
+    let containerHome: String // NSHomeDirectory()
+    let expectedContainerHome: String // 真实 HOME 推导的预期容器路径
+    let realHomeFromPasswd: String // getpwuid，不受沙盒改写影响
     let inheritedHomeEnv: String
     let sandboxActive: Bool
-    let sandboxEvidence: String
-    let containerWrite: Result
+    let containerWrite: ContainerWrite
     let containerFixture: FileAccess
     let externalFixture: FileAccess
-
-    struct Result: Codable {
-        let ok: Bool
-        let error: String?
-    }
 }
 
 func posixRead(_ path: String) -> FileAccess {
@@ -62,38 +66,57 @@ func posixRead(_ path: String) -> FileAccess {
 }
 
 let args = CommandLine.arguments
-let externalPath = args.count > 1 ? args[1] : ""
+let runID = args.count > 1 ? args[1] : ""
+let externalPath = args.count > 2 ? args[2] : ""
 
+let bundleID = "com.huruizhi.Inkora.AssetPrototype"
 let home = NSHomeDirectory()
 let inheritedHome = ProcessInfo.processInfo.environment["HOME"] ?? ""
-// secinit 会把 HOME 重定向到 /Users/<u>/Library/Containers/<id>/Data，且同步改写
-// 进程环境 HOME，因此不能靠 NSHomeDirectory() != env HOME 判定；以容器路径形态为准，
-// 外部读取 errno 作为主证据。
-let sandboxActive = home.contains("/Library/Containers/") && home.hasSuffix("/Data")
+// 真实 HOME 从 passwd 取：沙盒激活时环境 HOME/NSHomeDirectory 都会被 secinit 改写
+var realHome = inheritedHome
+if let pw = getpwuid(getuid()) {
+    realHome = String(cString: pw.pointee.pw_dir)
+}
+let expectedContainer = realHome + "/Library/Containers/" + bundleID + "/Data"
+// 沙盒激活判定：NSHomeDirectory() 必须精确等于预期独立容器路径
+let sandboxActive = !runID.isEmpty && home == expectedContainer
 
-// 容器内 fixture：写入后读回
-let fixtureDir = URL(fileURLWithPath: home, isDirectory: true)
-    .appendingPathComponent("probe-fixtures", isDirectory: true)
-try? FileManager.default.createDirectory(at: fixtureDir, withIntermediateDirectories: true)
-let fixture = fixtureDir.appendingPathComponent("容器 fixture.bin")
-var writeResult: ProbeReport.Result
-do {
-    try Data("INK-PROT-011 sandbox probe fixture".utf8).write(to: fixture)
-    writeResult = .init(ok: true, error: nil)
-} catch {
-    writeResult = .init(ok: false, error: String(describing: error))
+// 容器内 fixture：仅在确认预期容器后才写，且只写本次 run ID 子目录
+var containerWrite: ContainerWrite
+var fixturePath = ""
+if sandboxActive {
+    let dir = URL(fileURLWithPath: home, isDirectory: true)
+        .appendingPathComponent("probe-fixtures", isDirectory: true)
+        .appendingPathComponent(runID, isDirectory: true)
+    do {
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let f = dir.appendingPathComponent("容器 fixture.bin")
+        try Data("INK-PROT-011 sandbox probe fixture run=\(runID)".utf8).write(to: f)
+        fixturePath = f.path
+        containerWrite = .init(attempted: true, ok: true, error: nil)
+    } catch {
+        containerWrite = .init(attempted: true, ok: false, error: String(describing: error))
+    }
+} else {
+    // 未激活：不写任何 HOME 位置，避免污染真实用户目录
+    containerWrite = .init(attempted: false, ok: nil, error: "sandbox-inactive: container write skipped")
 }
 
 let report = ProbeReport(
-    probeVersion: "INK-PROT-011 AssetPrototype probe 0.1",
+    probeVersion: "INK-PROT-011 AssetPrototype probe 0.2",
+    runID: runID,
     processPath: CommandLine.arguments[0],
-    bundleIDHint: "com.huruizhi.Inkora.AssetPrototype",
+    bundleID: bundleID,
     containerHome: home,
+    expectedContainerHome: expectedContainer,
+    realHomeFromPasswd: realHome,
     inheritedHomeEnv: inheritedHome,
     sandboxActive: sandboxActive,
-    sandboxEvidence: "NSHomeDirectory()=\(home); HOME env=\(inheritedHome); sandboxActive=\(sandboxActive)",
-    containerWrite: writeResult,
-    containerFixture: posixRead(fixture.path),
+    containerWrite: containerWrite,
+    containerFixture: fixturePath.isEmpty
+        ? .init(path: "", ok: false, errno: nil, errnoMessage: "not attempted (sandbox inactive)",
+                sha256: nil, byteCount: nil)
+        : posixRead(fixturePath),
     externalFixture: externalPath.isEmpty
         ? .init(path: "", ok: false, errno: nil, errnoMessage: "no external path argument", sha256: nil, byteCount: nil)
         : posixRead(externalPath))
