@@ -103,10 +103,23 @@ final class DocumentOpenUITests: AcceptanceTestCase {
       reasonText.contains("UTF-16"), "The window must state the detected encoding: \(reasonText)")
 
     app.typeKey("s", modifierFlags: .command)
-    let ok = app.buttons["OK"]
+    // NSDocument presents the save error as a sheet on the document window
+    // (or an app-level dialog); its only button dismisses it. "OK" is the
+    // AppKit-localized default, with a first-button fallback for other
+    // localizations — the intent is that the error appears and is dismissed.
+    let sheet = app.sheets.firstMatch
+    let dialog = app.dialogs.firstMatch
     XCTAssertTrue(
-      ok.waitForExistence(timeout: 10), "Cmd+S must fail with the encoding error, not write back")
-    ok.click()
+      sheet.waitForExistence(timeout: 5) || dialog.waitForExistence(timeout: 5),
+      "Cmd+S must fail with the encoding error, not write back")
+    let ok = app.buttons["OK"]
+    if ok.waitForExistence(timeout: 2) {
+      ok.click()
+    } else {
+      let fallback = sheet.exists ? sheet.buttons.firstMatch : dialog.buttons.firstMatch
+      XCTAssertTrue(fallback.waitForExistence(timeout: 5))
+      fallback.click()
+    }
     XCTAssertEqual(
       try Data(contentsOf: fileURL), bytes, "Cmd+S must never modify the original file")
 
