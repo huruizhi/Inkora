@@ -66,6 +66,19 @@ M0 两项执行尚未交付时，已独立派发 [Sandbox 本地图片约束研�
 | INK-RES-001 | 研究 `408d2642834530658b72939ef741f5a19101363a`，一手依据与七场景已接收；无运行时权限验收结论 | `10924b8b-564b-48fc-81c0-2e8df68ac355` 已归档，回读 closed，2026-11-08T12:13:37.488Z |
 | INK-PROT-003 的 Luna 尝试 | GPT-6-Luna / medium 两轮提前结束，只有读取，分支仍为 c76a200、无代码改动；保留失败原因及有限诊断，不作为交付 | `925ffe8f-15f9-480b-bfec-8e21de6c09df` 已归档，回读 closed，2026-11-08T12:19:19.683Z |
 
-当前 INK-PROT-003 已在同一干净 workspace `wks_c496417af8c06274` / 分支 `task/INK-PROT-003-source-eol-review` 交给 OMP GLM-5.3 / low，host/agent 为 `srv_MEqRNkRW6fSx` / `2a271324-54c2-46a6-9037-fdc84692fece`，创建回执 running，notifyOnFinish 已启用。任务限定为源码草稿 EOL/no-op 修正、重建离线产物和独立样稿支持矩阵，不改生产代码或预期样稿，不并发操纵桌面。
+该阶段 INK-PROT-003 在同一干净 workspace `wks_c496417af8c06274` / 分支 `task/INK-PROT-003-source-eol-review` 交给 OMP GLM-5.3 / low，host/agent 为 `srv_MEqRNkRW6fSx` / `2a271324-54c2-46a6-9037-fdc84692fece`，初始回执 running，notifyOnFinish 已启用。任务限定为源码草稿 EOL/no-op 修正、重建离线产物和独立样稿支持矩阵，不改生产代码或预期样稿，不并发操纵桌面。最新交接见后文。
 
 用户要求按难度选择模型，本轮已执行[分层调度规则](model-routing.md)。高成本原执行者不再承担普通后续任务；任务失败采用明确诊断和成本合适的交接，不自动升级最贵模型。所有原型产物和样稿工作区保留供固定提交复核。
+
+### INK-PROT-003 交接完成与后续派工
+
+- 固定交付 `692493508d4b5ac78f0b212045aae32a8b59b90e`，管理者已核实本地/远端一致、工作区干净并读取 CROSS-VALIDATION。源码 EOL/no-op 修正中还发现并修复原型按钮/textarea 重复 ID，旧证据不能按真正 textarea 行为解释。
+- 执行回报：原型 15 项检查、lint 和 111 项既有编辑器回归通过；独立样稿 01/04/07/08 在可执行字节范围通过，09 仍缺选区映射，其它样稿暴露载入、marks/attrs、split、含混缓冲等失败。报告只作为阶段证据，M0 不通过。
+- `2a271324-54c2-46a6-9037-fdc84692fece` 已交接归档，回读 closed，archivedAt=`2026-11-08T12:34:35.668Z`；分支和工作区保留。
+
+| 后续任务 | 固定起点与范围 | Host / Agent / Workspace | 模型与状态 |
+| --- | --- | --- | --- |
+| INK-PROT-004：样稿语义审计 | c85e189；只读规范和独立解析，审计06/11的 Enter/段落/换行语义及01的Unicode描述；有依据才更正oracle，不接触原型以迎合输出 | srv_MEqRNkRW6fSx / fb89ab9b-ce31-4152-a346-27c3744f4fea / wks_abf264ce8c124ffc | OMP GLM-5.3 / low，创建回执 running |
+| INK-PROT-005：保护片段/含混输入 | 6924935；只改原型，修正case02和case10，保留原文/输入/可信投影并阻断不安全保存 | srv_MEqRNkRW6fSx / 54622b76-6057-4797-bfdc-e7cf10f55144 / wks_cc9d6c53f3180f42 | OMP GLM-5.3 / high，创建回执 running |
+
+两项均 notifyOnFinish，工作分支分别为 `task/INK-PROT-004-fixture-semantics` 和 `task/INK-PROT-005-protected-boundaries`。其它 links、marks、通用映射、历史、实际 WKWebView/IME 等缺口继续保留，不能以有限修正缩减总体验收目标。

@@ -3,7 +3,7 @@
 Type: prototype
 Labels: wayfinder:prototype
 Status: claimed
-Assignee: OMP 2a271324-54c2-46a6-9037-fdc84692fece; manager root
+Assignee: OMP 54622b76-6057-4797-bfdc-e7cf10f55144; manager root
 Blocked by: 04
 Parent: ../map.md
 
@@ -19,7 +19,7 @@ Parent: ../map.md
 
 初始通过 Paseo 派发 Codex 实现原型、OMP 独立准备验收样稿，具体任务、模型、host、workspace、Agent ID 和后续核验步骤见 [M0 调度记录](../execution/M0-dispatch.md)。创建回执均为 running；初始派发不构成交付或门槛通过结论。
 
-原型 c76a200、独立样稿 c85e189 已交付，原执行 Agent 均已归档。当前由 INK-PROT-003 在独立分支修正源码 EOL/no-op 并交叉核验；源码语义变化后的选区映射、通用原文范围、历史分组、真实 WKWebView/IME 与 HITL 仍有缺口，不关闭本票。当前模型分工见[成本与难度调度规则](../execution/model-routing.md)。
+原型 c76a200、独立样稿 c85e189 已交付，原执行 Agent 均已归档。INK-PROT-003 又交付 `692493508d4b5ac78f0b212045aae32a8b59b90e`：修复真实 textarea 的重复 ID、EOL/no-op 并交叉核验。发现多项失败，执行者已归档，当前分派 INK-PROT-004 独立审计样稿语义、INK-PROT-005 修正保护片段与含混输入。源码语义变化后的选区映射、通用原文范围、历史分组、真实 WKWebView/IME 与 HITL 仍有缺口，不关闭本票。当前模型分工见[成本与难度调度规则](../execution/model-routing.md)。
 
 ### 最小验证范围
 
