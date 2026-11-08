@@ -2,8 +2,8 @@
 
 Type: prototype
 Labels: wayfinder:prototype
-Status: open
-Assignee: None
+Status: claimed
+Assignee: root / Paseo INK-PROT-011
 Blocked by: 06
 Parent: ../map.md
 
@@ -22,3 +22,11 @@ Parent: ../map.md
 - 明确最低系统与当前系统分别实际执行了什么；没有环境时保留未执行项，不冒称 macOS 14 已通过。
 
 通过证据回写本票并供规格使用；发现政策无法安全实现时记录具体反例，由管理者按用户授权调整推荐方案。正式图片功能仍需通过 M0 架构门槛后单独规格和实施验收。
+
+## 执行安排
+
+用户已授权管理者按推荐自主推进。INK-PROT-011 先实现隔离原生文件状态/所有权journal与故障注入，并尝试真正签名Sandbox进程的非GUI读写探针。所有文件使用独立容器/唯一scratch会话，不访问真实用户内容；只新增 `prototypes/local-assets/`，无生产集成。
+
+Host / Agent / Workspace：`srv_MEqRNkRW6fSx` / `1da3379f-18dd-414b-b036-f8124a95bb67` / `wks_3c98f8b2ad411c85`。分支 `task/INK-PROT-011-local-assets-platform`，固定基线 `36e636578798510d240b23520122c88578cf3fe5`；OMP GLM-5.3 / low，notifyOnFinish 已开启。
+
+这是本票的首部分，不缩减上述完整验收标准。文件/目录面板、拖放/粘贴、书签跨重启和WK资源broker的实际授权行为不在该执行者本轮范围，继续待后续持UI锁与preflight验证；普通scratch读写不算Sandbox授权证据，无法无GUI运行Sandbox时明确留空。票据保持claimed，不能因首部分构建或数据检查成功而解决。

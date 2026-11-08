@@ -113,3 +113,23 @@ M0 两项执行尚未交付时，已独立派发 [Sandbox 本地图片约束研�
 - 管理者将已交付原型 6924935、审计样稿 484ee81 和修正宿主 952d571 接入独立分支 `task/INK-PROT-008-m0-integration`。Paseo workspace `wks_226155065e188d3f`，路径 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-008-m0-integration`；未合并产品主干。
 - 管理者实际复跑样稿 557 项数据检查，并在集成提交 `82731d26fd57226abc681d45dd13c8a578c86e5a` 实跑宿主 `make ... verify`，编译/签名/资源与版本信息检查通过；尚未运行 App/WKWebView/IME。来源与待办见集成分支 `editor/prototypes/M0-INTEGRATION.md`。
 - 007 Agent `fd9b1530-878f-4a55-a570-913cf49c7c0c` 已及时归档，回读 closed，archivedAt=`2026-11-08T12:59:37.438Z`；其工作区和构建证据保留。005、006继续独立执行，完成后按固定提交汇入008并安排后续集成，不因宿主通过构建关闭M0。
+
+### INK-PROT-005/006 接收、复跑与回收
+
+- 005固定交付 `6b0c33e43a0f40603faf6c06937d99c98b6be57b`，本地/远端一致且干净，范围仅fidelity/。管理者合并到008并实际复跑构建、严格类型、21项检查，以及审计后样稿02/10的三条变体，字节/含混缓冲/保存阻断/主动修复检查通过。存盘判据仍仅内存模拟，普通文本两个美元符号等反例仍过度保守阻断。
+- 005 Agent `54622b76-6057-4797-bfdc-e7cf10f55144` 已归档，回读closed，archivedAt=`2026-11-08T13:02:55.239Z`，工作区保留。
+- 006固定交付 `598312093ffef5413ae0a45c36ce24008c94b50e`，本地/远端一致且干净，仅3个新增文件。管理者合并到008并实际复跑selection-check 15项通过；模块未与UI接线，09旧crossval的PASS仅字节。006文档建议的“映射失败回退重置”不采纳，后续接线必须保留草稿与可信选区、明确提示。
+- 006 Agent `62168a02-a1de-484e-b029-39d9a2cfa942` 已归档，回读closed，archivedAt=`2026-11-08T13:04:47.428Z`，工作区保留。
+- 当前008集成提交 `7fe11b36c0981f2d57d9866320702a966c47866a` 已推送；管理者重新构建宿主verify通过，Info/manifest与该提交及新HTML hash一致，未启动App/IME。完整来源和hash见008分支 `editor/prototypes/M0-INTEGRATION.md`。
+
+### 后续三项并行执行
+
+无配置profile，按实际可用OMP GLM-5.3选择成本档；全部notifyOnFinish=true，创建回执running。
+
+| 任务 | 起点/范围 | Agent / Workspace | 模型与分支 |
+| --- | --- | --- | --- |
+| INK-PROT-009 引用链接/图片混排 | 7c497a7；修复case03载入及全部实际动作，保留引用拼写/原始字节，不加载外部资源 | 76dcc654-9019-45e8-b9f9-06975476f4a8 / wks_1dfa405440d777d8 | GLM-5.3 high；task/INK-PROT-009-reference-links |
+| INK-PROT-010 源码选区与历史接线 | 7fe11b3；将006接入main/model，实际UI入口验证09、方向/no-op/失败保留/pending修复 | dfca34b3-7c84-4be5-bb43-1958a791383c / wks_6b6c1315e303a8f3 | GLM-5.3 high；task/INK-PROT-010-selection-integration |
+| INK-PROT-011 本地资源平台首部分 | 36e6365；仅prototypes/local-assets/，隔离持久化/所有权/失败注入与非GUI Sandbox探针 | 1da3379f-18dd-414b-b036-f8124a95bb67 / wks_3c98f8b2ad411c85 | GLM-5.3 low；task/INK-PROT-011-local-assets-platform |
+
+三者host均为srv_MEqRNkRW6fSx；009/010可能在model/main交叠，固定提交汇合时按语义处理并复跑组合场景。011属于平台票14的首部分，GUI授权/书签跨启动/WK broker等仍待验证，不因首部分完成关闭父票。各执行者均禁止操纵桌面和修改生产/独立样稿，不直接合并main或宣告M0通过。
