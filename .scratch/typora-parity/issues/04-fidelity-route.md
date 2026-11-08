@@ -4,12 +4,14 @@ Type: grilling
 Labels: wayfinder:grilling
 Status: open
 Assignee: None
-Blocked by: 02
+Blocked by: 02, 03
 Parent: ../map.md
 
 ## Question
 
 在 Markdown 保真要求保持不变的前提下，如何演进现有内核，使未编辑范围保留原文、未知语法可安全共存，并支持必要的源码编辑？应优先采用哪条候选路径，哪项不确定性需要原型证明？
+
+先读取[首个里程碑范围](03-first-milestone.md)中的用户决定，再评估候选路线。当前代码和研究中描述的整篇源码回退是既有行为，不代表它满足首阶段的目标体验。
 
 ## Resolution criteria
 
