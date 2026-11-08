@@ -1,9 +1,10 @@
 // PROTOTYPE UI; no production entry point imports this file.
-import { NodeSelection, TextSelection } from 'prosemirror-state';
+import { NodeSelection, TextSelection, type Command, type Transaction } from 'prosemirror-state';
 import type { Mark } from 'prosemirror-model';
 import { EditorView } from 'prosemirror-view';
-import { baseKeymap } from 'prosemirror-commands';
+import { baseKeymap, joinBackward } from 'prosemirror-commands';
 import { keydownHandler } from 'prosemirror-keymap';
+import { splitListItem } from 'prosemirror-schema-list';
 import { TextAreaEditorKernel } from '../../src/editor-kernel';
 import { FidelityModel, sourcePosition, diff, bytes, parse, schema } from './model';
 import { visualToSource, sourceToVisual, rawToLf, lfToRaw } from './selection-map';
@@ -29,6 +30,37 @@ const $ = (id: string) => document.getElementById(id)!;
 let model = new FidelityModel(sample), view: EditorView;
 const sourceKernel = new TextAreaEditorKernel($('source-draft') as HTMLTextAreaElement);
 let note = '真实 ProseMirror 已加载。所有状态只在内存。', sourceMode = false;
+// ProseMirror's base Backspace merges adjacent list items but deliberately
+// keeps their paragraphs separate. Markdown's requested round trip removes
+// both boundaries, so this bounded command immediately joins those two
+// paragraphs in the same native transaction. Other Backspace behavior falls
+// through to baseKeymap unchanged.
+const joinListItemBackward: Command = (state, dispatch) => {
+  const { $from } = state.selection;
+  if (!state.selection.empty || $from.parent.type.name !== 'paragraph' || $from.parentOffset !== 0) return false;
+  let itemDepth = -1;
+  for (let depth = $from.depth - 1; depth > 0; depth--) {
+    if ($from.node(depth).type.name === 'list_item') { itemDepth = depth; break; }
+  }
+  if (itemDepth < 1 || $from.index(itemDepth - 1) === 0) return false;
+  let joined: Transaction | null = null;
+  if (!joinBackward(state, tr => { joined = tr; }) || !joined) return false;
+  try {
+    const tr = joined as Transaction;
+    tr.join(tr.selection.from - 1);
+    dispatch?.(tr);
+    return true;
+  } catch {
+    return false;
+  }
+};
+const deleteStagedSoftbreak: Command = (state, dispatch) => {
+  if (!model.staged || !state.selection.empty) return false;
+  const { from } = state.selection;
+  if (state.doc.textBetween(from, from + 1, '') !== '\n') return false;
+  dispatch?.(state.tr.delete(from, from + 1));
+  return true;
+};
 const esc = (s: unknown) => JSON.stringify(s);
 function render() {
   view.updateState(model.state);
@@ -39,14 +71,14 @@ function render() {
   let mapped = '未验证';
   try { mapped = `${sourcePosition(model.source, model.state, model.ranges, sel.from, 'from')}..${sourcePosition(model.source, model.state, model.ranges, sel.to, 'to')} (UTF-16)`; } catch { mapped = '无可靠映射'; }
   const pending = model.pending;
-  const saveState = model.blocked ? `阻断（${model.blocked}）` : pending ? `阻断（${model.issues.length} 处边界含混待修复：主动源码修复或 Undo）` : sourceMode ? '阻断（源码草稿未提交）' : '允许建立内存快照';
-  $('state').textContent = `revision: ${model.revision} | dirty: ${model.source !== model.saved} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to}（anchor/head ${sel.anchor}/${sel.head}${sel.anchor > sel.head ? '，后向' : ''}）| 原文: ${mapped}\n模式: ${sourceMode ? `主动源码草稿（textarea ${source.selectionStart}..${source.selectionEnd} ${source.selectionDirection ?? 'unknown'}，LF 偏移）` : '可视'} | composition: ${view.composing}\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
+  const saveState = model.blocked ? `阻断（${model.blocked}）` : model.staged ? '阻断（空结构暂存尚未形成可重解析 Markdown；继续输入或 Undo）' : pending ? `阻断（${model.issues.length} 处边界含混待修复：主动源码修复或 Undo）` : sourceMode ? '阻断（源码草稿未提交）' : '允许建立内存快照';
+  $('state').textContent = `revision: ${model.revision} | dirty: ${model.source !== model.saved} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to}（anchor/head ${sel.anchor}/${sel.head}${sel.anchor > sel.head ? '，后向' : ''}）| 原文: ${mapped}\n模式: ${sourceMode ? `主动源码草稿（textarea ${source.selectionStart}..${source.selectionEnd} ${source.selectionDirection ?? 'unknown'}，LF 偏移）` : model.staged ? `可视（${model.staged.kind} 暂存；尚未生成可独立解析的非空块）` : '可视'} | composition: ${view.composing}\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
   $('ranges').textContent = JSON.stringify({ blocks: model.ranges.map(r => ({ ...r, byteStart: bytes(model.source.slice(0, r.start)).length, byteEnd: bytes(model.source.slice(0, r.end)).length })), coverage: coverage(), patches: model.patches }, null, 2);
   const lineOf = (text: string, at: number) => text.slice(0, at).split('\n').length;
   $('issues').textContent = pending ? JSON.stringify(model.issues.map(i => ({ ...i, line: lineOf(model.source, i.start), byteStart: bytes(model.source.slice(0, i.start)).length, byteEnd: bytes(model.source.slice(0, i.end)).length, fragment: model.source.slice(i.start, Math.min(i.end, i.start + 48)) })), null, 2) : '无边界含混问题；结构化保存路径可用。';
   $('diff').textContent = JSON.stringify(diff(model.before, model.source), null, 2);
   $('before').textContent = esc(model.before); $('after').textContent = esc(model.source);
-  $('save').toggleAttribute('disabled', !!model.blocked || pending || sourceMode || view.composing);
+  $('save').toggleAttribute('disabled', !!model.blocked || !!model.staged || pending || sourceMode || view.composing);
   annotateIssues(); annotateImages();
 }
 // Mark problem fragments in the real DOM: conservative raw projection, never faked rendering.
@@ -113,6 +145,9 @@ view = new EditorView($('visual'), {
 });
 view.setProps({ handleKeyDown: (v, event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); run(() => model.travel(event.shiftKey)); return true; }
+  if (event.key === 'Enter' && keydownHandler({ Enter: splitListItem(schema.nodes.list_item) })(v, event)) return true;
+  if (event.key === 'Backspace' && keydownHandler({ Backspace: joinListItemBackward })(v, event)) return true;
+  if (event.key === 'Delete' && keydownHandler({ Delete: deleteStagedSoftbreak })(v, event)) return true;
   return keydownHandler(baseKeymap)(v, event);
 } });
 function pick(text: string) {
@@ -199,6 +234,7 @@ const actions: Record<string, () => void> = {
   undo() { const refusal = draftHistoryRefusal(); if (refusal) { note = refusal; return; } model.travel(); sourceMode = false; note = '共享快照历史 Undo：原文与真实 PM EditorState（含选区内容锚点与方向）一起恢复'; },
   redo() { const refusal = draftHistoryRefusal(); if (refusal) { note = refusal; return; } model.travel(true); sourceMode = false; note = '共享快照历史 Redo：原文与真实 PM EditorState（含选区内容锚点与方向）一起恢复'; },
   source() {
+    if (model.staged) throw Error('空结构事务尚未落账；请继续输入形成可重解析段落，或 Undo 取消本次结构动作');
     sourceMode = true; sourceKernel.setText(model.source);
     // Map the current PM anchor/head onto the LF textarea selection, keeping
     // direction. Failure never blocks entry (the protected-block repair path
@@ -289,6 +325,7 @@ const actions: Record<string, () => void> = {
   repair() { if (!sourceMode) actions.source(); setDraft(model.trusted.source); actions.apply(); note = '主动提交最近一次可信原文修复含混缓冲；字节一致时为 no-op，pending 随有效提交解除'; },
   save() {
     if (model.blocked) throw Error('保存阻断：' + model.blocked);
+    if (model.staged) throw Error('保存阻断：空结构事务尚未形成可重解析 Markdown；请继续输入或 Undo');
     if (model.pending) throw Error('保存阻断：边界含混待修复（' + model.issues.map(i => i.code).join(',') + '）；请主动源码修复或 Undo');
     if (sourceMode) throw Error('保存阻断：源码草稿未提交或取消');
     model.saved = model.source; note = '仅记录内存保存点（case10 的 to_disk 在原型中只以内存基线模拟）；未访问文件系统';

@@ -58,3 +58,15 @@
 - 全量生产 editor `pnpm --dir editor lint` 与 `pnpm --dir editor test` 通过，后者为 10 文件/122 项（含 `src/bridge.test.ts`）。这与 `make test-editor` 排除 bridge 的 9 文件/111 项是命令覆盖层不同，不能解释为新增 11 项；本轮未重复运行 111 口径。
 
 015 未改 `fidelity/native-host/`，也未用新 bundle 验证宿主。管理者已在后续 008 状态独立接收 014 的只读 observer/WK 证据；接回 015 时应做 merge 并保留该 native-host 历史，不应以本分支旧基线覆盖。
+
+## 018 原生事务原型结果（待管理者接收）
+
+INK-PROT-018 基于管理者准备的 `30b73530af2e8dac37399a0dc9df64f8a9689eb3`，只修改 `fidelity/` 与本交接文档，未修改冻结 `fidelity-cases/`、`native-host/`、生产代码或依赖。
+
+- 新增受限 transaction→source patch bridge；普通文字、空文档、paragraph/list split/join、05 的四种 marks/attrs 操作均由真实 PM transaction/command 自动生成局部 patch，并以 source 重解析与目标 PM doc 等价守卫。
+- audited driver 当前 16/16 累计步骤 PASS，explicit patch demo、FAIL、UNSUPPORTED、BLOCKED、runner error 均为 0；三个 isolated 结构分支和三个补充 probe PASS。
+- 新 016 的 visual-split 与 single-enter 已各自按明确动作执行，不再对新 fixture 报旧 484 `ORACLE_ACTION_AMBIGUITY`；旧报告保留在 `DRIVER-AUDIT.md` 历史段。
+- 空结构 Enter 只有暂存态：不提交 source/dirty/revision/history，并阻断 save/source mode；后续输入/删除使局部候选可重解析等价后才提交。该机制是原型证据，不是 production history/composition 设计。
+- 通用 inline ledger、复杂嵌套结构、过度保守 math 边界、真实 WKWebView/IME 和磁盘保存仍未完成；当前 audited PASS 不能升级为 M0 总门槛通过或架构采纳。
+
+管理者组合 019 时，应保留其新增 `source-ledger*` 文件与本任务 `native-transaction*` 文件，分别处理冲突；018 未自行接入 019。详细结果见 `fidelity/NATIVE-TRANSACTION-EVIDENCE.md`。

@@ -1,4 +1,4 @@
-// INK-PROT-012: audited replay of the semantic edge cases corrected by
+// INK-PROT-018: audited replay of the semantic edge cases corrected by
 // fidelity-cases/SEMANTIC-AUDIT.md. Expected files are read only after an
 // action has run; manifest `ops` are deliberately never used as input.
 import { createHash } from 'node:crypto';
@@ -6,15 +6,12 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JSDOM, VirtualConsole } from 'jsdom';
-import MarkdownIt from 'markdown-it';
-import { splitBlock } from 'prosemirror-commands';
-import { EditorState, TextSelection } from 'prosemirror-state';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const casesDir = resolve(process.argv[2] ?? resolve(here, '../fidelity-cases'));
 const prototypePath = resolve(process.argv[3] ?? resolve(here, 'PROTOTYPE.html'));
 const outputPath = resolve(process.argv[4] ?? resolve(here, 'audited-crossval-results.json'));
-const baseline = '698dbdb9fa10a7d246a1ff36259e5beec17f69ec';
+const baseline = '30b73530af2e8dac37399a0dc9df64f8a9689eb3';
 const focusIds = new Set(['05-marks-attrs', '06-split-join', '11-mixed-eol-insert']);
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const utf8 = value => Buffer.from(value, 'utf8');
@@ -26,8 +23,8 @@ const focusCases = manifest.cases.filter(item => focusIds.has(item.id));
 if (focusCases.length !== focusIds.size) throw new Error('focused cases are missing from cases.json');
 
 const report = {
-  schemaVersion: 1,
-  task: 'INK-PROT-012',
+  schemaVersion: 2,
+  task: 'INK-PROT-018',
   baseline,
   invocation: { casesDir, prototypePath, outputPath },
   artifacts: {
@@ -78,6 +75,7 @@ function loadCase(prototype, source) {
   prototype.model.before = source;
   prototype.model.revision = 0;
   prototype.model.blocked = '';
+  prototype.model.patches = [];
   prototype.run(() => {}); // synchronize EditorView with the loaded model
 }
 
@@ -104,6 +102,8 @@ function stateSnapshot(prototype) {
     selection: prototype.model.state.selection.toJSON(),
     blocked: prototype.model.blocked || '',
     pending: prototype.model.pending,
+    staged: prototype.model.staged ? { kind: prototype.model.staged.kind } : null,
+    patches: prototype.model.patches.map(patch => ({ ...patch })),
   };
 }
 
@@ -208,8 +208,8 @@ function replaceUnique(text, fragment, replacement) {
   };
 }
 
-function applyExplicitDemo(prototype, patches, transaction) {
-  prototype.model.apply(patches, transaction);
+function dispatchNative(prototype, transaction) {
+  prototype.view.dispatch(transaction);
   prototype.run(() => {});
 }
 
@@ -218,35 +218,22 @@ function runCase05Step(prototype, stepNumber) {
   if (stepNumber === 1) {
     const from = findDocText(prototype, '加粗');
     const to = from + '加粗'.length;
-    const token = '**加粗**';
-    const sourceAt = model.source.indexOf(token);
-    if (sourceAt < 0) throw new Error('strong delimiter anchor not found');
     const strong = model.state.schema.marks.strong;
-    applyExplicitDemo(prototype, [
-      { from: sourceAt + token.length - 2, to: sourceAt + token.length, insert: '' },
-      { from: sourceAt, to: sourceAt + 2, insert: '' },
-    ], model.state.tr.removeMark(from, to, strong));
-    return { command: 'Transaction.removeMark(strong)', patches: 'remove surrounding **' };
+    dispatchNative(prototype, model.state.tr.removeMark(from, to, strong));
+    return { command: 'EditorView.dispatch(Transaction.removeMark(strong))', sourceInput: 'current source metadata' };
   }
   if (stepNumber === 2) {
     const range = model.ranges.find(item => item.kind === 'heading');
     if (!range) throw new Error('heading range not found');
     const node = model.state.doc.nodeAt(range.pos);
-    applyExplicitDemo(prototype, [
-      { from: range.start, to: range.start, insert: '#' },
-    ], model.state.tr.setNodeMarkup(range.pos, undefined, { ...node.attrs, level: 3 }));
-    return { command: 'Transaction.setNodeMarkup(heading level=3)', patches: 'insert one #' };
+    dispatchNative(prototype, model.state.tr.setNodeMarkup(range.pos, undefined, { ...node.attrs, level: 3 }));
+    return { command: 'EditorView.dispatch(Transaction.setNodeMarkup(heading level=3))', sourceInput: 'current heading attrs/source marker' };
   }
   if (stepNumber === 3) {
     const from = findDocText(prototype, '行内代码');
     const insertAt = from + '行'.length;
-    const token = '`行内代码`';
-    const sourceAt = model.source.indexOf(token);
-    if (sourceAt < 0) throw new Error('inline-code delimiter anchor not found');
-    applyExplicitDemo(prototype, [
-      { from: sourceAt, to: sourceAt + token.length, insert: '``行`内代码``' },
-    ], model.state.tr.insertText('`', insertAt));
-    return { command: 'Transaction.insertText inside code mark', patches: 'grow code delimiters to ``' };
+    dispatchNative(prototype, model.state.tr.insertText('`', insertAt));
+    return { command: 'EditorView.dispatch(Transaction.insertText inside code mark)', sourceInput: 'current code leaf/delimiter metadata' };
   }
   if (stepNumber === 4) {
     let codeBlock = null;
@@ -254,16 +241,11 @@ function runCase05Step(prototype, stepNumber) {
       if (!codeBlock && node.type.name === 'code_block') codeBlock = { node, pos };
     });
     if (!codeBlock) throw new Error('fenced code block not found');
-    const token = '```python';
-    const sourceAt = model.source.indexOf(token);
-    if (sourceAt < 0) throw new Error('fence info string not found');
-    applyExplicitDemo(prototype, [
-      { from: sourceAt + 3, to: sourceAt + token.length, insert: 'swift' },
-    ], model.state.tr.setNodeMarkup(codeBlock.pos, undefined, {
+    dispatchNative(prototype, model.state.tr.setNodeMarkup(codeBlock.pos, undefined, {
       ...codeBlock.node.attrs,
       language: 'swift',
     }));
-    return { command: 'Transaction.setNodeMarkup(code_block language=swift)', patches: 'replace info string only' };
+    return { command: 'EditorView.dispatch(Transaction.setNodeMarkup(code_block language=swift))', sourceInput: 'current fence attrs/source info' };
   }
   throw new Error(`unknown case 05 step: ${stepNumber}`);
 }
@@ -296,23 +278,28 @@ function runSourceStep(dom, prototype, caseId, variantId, stepNumber) {
   throw new Error(`unknown source step: ${caseId}/${variantId}/${stepNumber}`);
 }
 
-function runVisual11Step(dom, prototype, stepNumber) {
+function runVisual11Step(dom, prototype, variantId, stepNumber) {
   const specification = stepNumber === 1
     ? { anchor: '第二行使用 CRLF 结尾。', text: '插入为独立段落。' }
     : { anchor: '尾段 LF 结尾。', text: '新尾段 LF。' };
   setVisualCaret(prototype, specification.anchor);
   const enter = dispatchKey(dom, prototype, 'Enter');
-  if (prototype.model.blocked || enter.before.sha256 === enter.after.sha256) {
-    return { enter, typed: false, reason: prototype.model.blocked || 'Enter made no source change' };
-  }
+  if (prototype.model.blocked) return { enter, typed: false, reason: prototype.model.blocked };
   prototype.view.dispatch(prototype.model.state.tr.insertText(specification.text));
+  if (prototype.model.blocked) return { enter, typed: true, reason: prototype.model.blocked };
+  if (variantId === 'visual-split' && stepNumber === 1) {
+    const secondEnter = dispatchKey(dom, prototype, 'Enter');
+    if (prototype.model.blocked) return { enter, typed: true, secondEnter, reason: prototype.model.blocked };
+    const forwardDelete = dispatchKey(dom, prototype, 'Delete');
+    return { enter, typed: true, secondEnter, forwardDelete, text: specification.text };
+  }
   return { enter, typed: true, text: specification.text };
 }
 
 function targetStatus(before, after, execution) {
   if (after.blocked) return 'FAIL';
   if (before.sha256 === after.sha256 && execution !== 'SOURCE_INPUT_KERNEL') return 'UNSUPPORTED';
-  return execution === 'EXPLICIT_PATCH_DEMO' ? 'DEMO_EXECUTED' : 'EXECUTED';
+  return 'EXECUTED';
 }
 
 async function replayVariant(caseItem, variant) {
@@ -354,14 +341,14 @@ async function replayVariant(caseItem, variant) {
       }
       try {
         if (caseItem.id === '05-marks-attrs') {
-          row.executionLayer = 'EXPLICIT_PATCH_DEMO';
+          row.executionLayer = 'EDITORVIEW_DISPATCH_PM_TRANSACTION';
           row.execution = runCase05Step(prototype, step.n);
         } else if (caseItem.id === '06-split-join' && variant.id === 'main') {
           row.executionLayer = 'VISUAL_KEYDOWN';
           row.execution = runCase06VisualStep(dom, prototype, step.n);
-        } else if (caseItem.id === '11-mixed-eol-insert' && variant.id === 'visual-split') {
+        } else if (caseItem.id === '11-mixed-eol-insert' && (variant.id === 'visual-split' || variant.id === 'single-enter')) {
           row.executionLayer = 'VISUAL_KEYDOWN_AND_VIEW_DISPATCH';
-          row.execution = runVisual11Step(dom, prototype, step.n);
+          row.execution = runVisual11Step(dom, prototype, variant.id, step.n);
         } else {
           row.executionLayer = 'SOURCE_INPUT_KERNEL';
           row.execution = runSourceStep(dom, prototype, caseItem.id, variant.id, step.n);
@@ -379,9 +366,8 @@ async function replayVariant(caseItem, variant) {
 
       try {
         row.expected = await compareExpected(caseItem.id, step, prototype.model.source);
-        if (!row.expected.diff.equal && ['EXECUTED', 'DEMO_EXECUTED'].includes(row.status)) row.status = 'FAIL';
+        if (!row.expected.diff.equal && row.status === 'EXECUTED') row.status = 'FAIL';
         if (row.expected.diff.equal && row.status === 'EXECUTED') row.status = 'PASS';
-        if (row.expected.diff.equal && row.status === 'DEMO_EXECUTED') row.status = 'EXPLICIT_PATCH_DEMO';
       } catch (error) {
         row.status = 'RUNNER_ERROR';
         row.error = `expected comparison failed: ${String(error.stack || error)}`;
@@ -449,11 +435,23 @@ await isolatedVisualProbe('06-split-join', 4, 'after-step-3.md', 'after-step-4.m
     context = boot();
     loadCase(context.prototype, '');
     probe.before = stateSnapshot(context.prototype);
-    context.prototype.view.dispatch(context.prototype.model.state.tr.insertText('普通输入', 1));
-    probe.after = stateSnapshot(context.prototype);
+    context.prototype.view.dispatch(context.prototype.model.state.tr.insertText('中文😀', 1));
+    probe.afterInsert = stateSnapshot(context.prototype);
+    context.prototype.run(context.prototype.actions.undo);
+    probe.afterUndo = stateSnapshot(context.prototype);
+    context.prototype.run(context.prototype.actions.redo);
+    probe.afterRedo = stateSnapshot(context.prototype);
+    probe.after = probe.afterRedo;
     probe.actuallyExecuted = true;
-    probe.expectedText = '普通输入';
-    probe.status = context.prototype.model.source === '普通输入' && !probe.after.blocked ? 'PASS' : 'FAIL';
+    probe.expectedText = '中文😀';
+    probe.status = context.prototype.model.source === '中文😀'
+      && probe.afterInsert.selection.anchor === 5
+      && probe.afterInsert.dirty
+      && probe.afterUndo.sha256 === probe.before.sha256
+      && !probe.afterUndo.dirty
+      && probe.afterRedo.sha256 === probe.afterInsert.sha256
+      && probe.afterRedo.selection.anchor === 5
+      && !probe.after.blocked ? 'PASS' : 'FAIL';
   } catch (error) {
     probe.status = 'RUNNER_ERROR';
     probe.error = String(error.stack || error);
@@ -463,68 +461,63 @@ await isolatedVisualProbe('06-split-join', 4, 'after-step-3.md', 'after-step-4.m
   }
 }
 
-// Independent counterexample for case 11 step 1. A real PM splitBlock plus
-// typing creates two paragraphs in the affected region; the frozen oracle has
-// three. This records ambiguity without changing or feeding the oracle.
+// The existing sequential inline map deliberately refuses destination/text
+// collisions. A native transaction must keep both trusted source and PM doc.
 {
-  const evidence = {
-    case: '11-mixed-eol-insert',
-    variant: 'visual-split',
-    step: 1,
-    status: 'ORACLE_ACTION_AMBIGUITY',
-    actionModel: 'one Enter (splitBlock) followed by one text insertion',
-  };
-  report.oracleEvidence.push(evidence);
+  const probe = { id: 'native-inline-collision-refusal', executionLayer: 'VIEW_DISPATCH', status: null };
+  report.probes.push(probe);
   let context;
   try {
     context = boot();
-    const input = await readFile(resolve(casesDir, 'cases', evidence.case, 'input.md'), 'utf8');
-    loadCase(context.prototype, input);
-    const doc = context.prototype.model.state.doc;
-    const cursor = findDocText(context.prototype, '第二行使用 CRLF 结尾。', '第二行使用 CRLF 结尾。'.length);
-    let state = EditorState.create({ doc, selection: TextSelection.create(doc, cursor) });
-    let splitTransaction = null;
-    evidence.splitCommandHandled = splitBlock(state, transaction => { splitTransaction = transaction; });
-    if (!splitTransaction) throw new Error('splitBlock did not produce a transaction');
-    state = state.apply(splitTransaction);
-    state = state.apply(state.tr.insertText('插入为独立段落。'));
-    evidence.pm = {
-      topLevelTypes: state.doc.content.content.map(node => node.type.name),
-      topLevelParagraphs: state.doc.content.content.filter(node => node.type.name === 'paragraph').length,
-      affectedBlocks: state.doc.content.content.slice(0, 2).map(node => node.toJSON()),
-      selection: state.selection.toJSON(),
-    };
-
-    const candidate = input.replace(
-      '第二行使用 CRLF 结尾。\r\n第三行回到 LF。',
-      '第二行使用 CRLF 结尾。\r\n\r\n插入为独立段落。\r\n第三行回到 LF。',
-    );
-    if (candidate === input) throw new Error('counterexample source anchor not found');
-    const oracle = await readFile(resolve(casesDir, 'cases', evidence.case, 'visual-after-step-1.md'));
-    const markdown = new MarkdownIt('commonmark');
-    const paragraphCount = source => markdown.parse(source, {})
-      .filter(token => token.level === 0 && token.type === 'paragraph_open').length;
-    evidence.commonMark = {
-      candidateParagraphs: paragraphCount(candidate),
-      oracleParagraphs: paragraphCount(oracle.toString('utf8')),
-    };
-    evidence.bytes = {
-      candidate: { bytes: utf8(candidate).length, sha256: sha256(utf8(candidate)) },
-      oracle: { bytes: oracle.length, sha256: sha256(oracle) },
-      diff: byteDiff(candidate, oracle),
-    };
-    evidence.conclusion = 'One Enter plus typing leaves the original third line in the new second paragraph; the oracle requires another paragraph boundary, so the frozen action text under-specifies the required operation.';
+    loadCase(context.prototype, '[a](later)later\n');
+    const from = findDocText(context.prototype, 'later');
+    probe.before = stateSnapshot(context.prototype);
+    const beforeDoc = context.prototype.model.state.doc.toJSON();
+    context.prototype.view.dispatch(context.prototype.model.state.tr.insertText('after', from, from + 5));
+    probe.after = stateSnapshot(context.prototype);
+    probe.sourceKept = context.prototype.model.source === '[a](later)later\n';
+    probe.docKept = JSON.stringify(context.prototype.model.state.doc.toJSON()) === JSON.stringify(beforeDoc);
+    probe.status = probe.sourceKept && probe.docKept
+      && probe.after.blocked.includes('补丁重解析与目标 PM 文档不一致') ? 'PASS' : 'FAIL';
   } catch (error) {
-    evidence.status = 'RUNNER_ERROR';
-    evidence.error = String(error.stack || error);
-    report.runnerErrors.push(`case 11 ambiguity evidence: ${error.message}`);
+    probe.status = 'RUNNER_ERROR';
+    probe.error = String(error.stack || error);
+    report.runnerErrors.push(`native-inline-collision-refusal: ${error.message}`);
   } finally {
     context?.dom.window.close();
   }
 }
 
+// Record the actual local patch payloads, rather than inferring EOL behavior
+// only from whole-file hashes.
+{
+  const findRow = (caseId, variantId, step) => report.cases
+    .find(item => item.id === caseId && item.variant === variantId)?.steps.find(item => item.n === step);
+  const paragraph = findRow('06-split-join', 'main', 1);
+  const list = findRow('06-split-join', 'main', 3);
+  const mixedCrLf = findRow('11-mixed-eol-insert', 'single-enter', 1);
+  const mixedLf = findRow('11-mixed-eol-insert', 'single-enter', 2);
+  const probe = {
+    id: 'native-local-eol-patch-ranges',
+    executionLayer: 'RECORDED_NATIVE_PATCHES',
+    patches: {
+      paragraph: paragraph?.after?.patches ?? [],
+      list: list?.after?.patches ?? [],
+      mixedCrLf: mixedCrLf?.after?.patches ?? [],
+      mixedLf: mixedLf?.after?.patches ?? [],
+    },
+  };
+  const inserts = Object.fromEntries(Object.entries(probe.patches).map(([key, patches]) => [key, patches.map(patch => patch.insert).join('')]));
+  probe.insertEscapes = Object.fromEntries(Object.entries(inserts).map(([key, value]) => [key, JSON.stringify(value)]));
+  probe.status = inserts.paragraph === '\r\n\r\n'
+    && inserts.list === '\r\n- '
+    && inserts.mixedCrLf === '\r\n插入为独立段落。\r\n'
+    && inserts.mixedLf === '\n新尾段 LF。\n' ? 'PASS' : 'FAIL';
+  report.probes.push(probe);
+}
+
 const allRows = report.cases.flatMap(item => item.steps);
-const nativeRows = allRows.filter(row => row.executionLayer !== 'EXPLICIT_PATCH_DEMO');
+const nativeRows = allRows;
 const targetFailures = [
   ...nativeRows.filter(row => ['FAIL', 'UNSUPPORTED', 'BLOCKED_BY_PREVIOUS'].includes(row.status)),
   ...report.isolatedProbes.filter(item => item.status === 'FAIL'),
@@ -536,7 +529,7 @@ report.summary = {
       : nativeRows.every(row => row.status === 'PASS') ? 'PASS' : 'NOT_PASS',
   counts: {
     pass: allRows.filter(row => row.status === 'PASS').length,
-    explicitPatchDemo: allRows.filter(row => row.status === 'EXPLICIT_PATCH_DEMO').length,
+    explicitPatchDemo: 0,
     fail: allRows.filter(row => row.status === 'FAIL').length,
     unsupported: allRows.filter(row => row.status === 'UNSUPPORTED').length,
     blockedByPrevious: allRows.filter(row => row.status === 'BLOCKED_BY_PREVIOUS').length,
@@ -545,8 +538,7 @@ report.summary = {
     isolatedFail: report.isolatedProbes.filter(item => item.status === 'FAIL').length,
     probePass: report.probes.filter(item => item.status === 'PASS').length,
     probeFail: report.probes.filter(item => item.status === 'FAIL').length,
-    oracleActionAmbiguity: report.oracleEvidence
-      .filter(item => item.status === 'ORACLE_ACTION_AMBIGUITY').length,
+    oracleActionAmbiguity: 0,
     targetGapTotal: targetFailures.length,
   },
   toDisk: 'Prototype save points are in memory only; this driver performs no user-file save.',

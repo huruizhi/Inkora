@@ -222,8 +222,8 @@
       "passed": true
     },
     {
-      "action": "unsupported native split",
-      "blocked": "Error: 结构/marks 事务需使用专用演示操作；此次操作已阻断",
+      "action": "uncalibrated raw split refusal",
+      "blocked": "Error: 该原生事务尚未支持（replace）；可信原文与 PM 状态保持不变",
       "trustedBytesPreserved": true
     },
     {

@@ -43,9 +43,9 @@
 
 ## 保留的非 PASS 与反例
 
-- 全量旧驱动中 01/04/07/08 仍通过；05 的序列仍缺 removeMark/行内代码定界符重写能力，06/11 的单换行结构 split 与 PM 目标不等价。本任务不把这些输出升级为新产品 oracle，也不实现其原生桥接。
-- 审计驱动会按审计后 oracle 重放 05/结构/空文档/11；其 NOT_PASS 是预期的真实差异，详见 `DRIVER-AUDIT.md`、`audited-crossval-results.json` 与 `COMBINED-EVIDENCE.md`。
+- `crossval.mjs` 的 05/06/11 分支仍是 015 前的专用按钮/旧动作实现，只用于历史对照，不是当前 native oracle；本轮实际复跑中这些旧分支仍输出差异。02/03/09/10 目标回归继续 PASS。
+- 当前 05/06/11、空文档与新 016 动作由 `audited-crossval.mjs` 重放：16/16 累计步骤、三个 isolated 分支与三个 probe 全 PASS，explicit demo 为 0。详见 `DRIVER-AUDIT.md`、`NATIVE-TRANSACTION-EVIDENCE.md` 与 `audited-crossval-results.json`。
 - `[a](later)later` 目标/正文碰撞和转义显示文字仍安全拒绝并阻断保存；不宣称通用 inline map 完成。
 - 真实 WKWebView、系统中文 IME、磁盘写入/重开、Sandbox 与图片资源访问未执行。
 
-结论：case03 真实链接语义与 09 源码选区闭环在同一最终 bundle 中通过，02/10 无回归；这仍不是 M0 结论。
+结论：case03 真实链接语义与 09 源码选区闭环在同一最终 bundle 中通过，02/10 无回归；05/06/11 当前结论以 audited native driver 为准。这仍不是 M0 结论。

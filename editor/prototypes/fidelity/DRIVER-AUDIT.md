@@ -1,4 +1,41 @@
-# INK-PROT-012 Audited Driver 审计报告
+# Audited Driver 审计报告
+
+## INK-PROT-018 当前结果（2026-11-08）
+
+当前 driver 已升级为 schemaVersion 2，基线 `30b73530af2e8dac37399a0dc9df64f8a9689eb3`。执行结果为 **PASS**，但只表示隔离原型中本次矩阵通过，不表示 M0、生产架构、桌面、WKWebView、IME 或磁盘保存通过。
+
+- 16 个累计步骤全部 PASS：05/main 4、06/main 4、06/softbreak 2、11/main 2、11/visual-split 2、11/single-enter 2。
+- `EXPLICIT_PATCH_DEMO=0`。05 四步由 driver 只构造真实 PM transaction 并交给 `EditorView.dispatch`；source patch 全由 model/native bridge 基于当前 source 元数据推导。
+- 06 main 的 Enter/Backspace 与列表 split/join 由 jsdom DOM `keydown` 进入真实 keymap/command；三个冻结前置状态的 isolated 分支也 PASS。
+- 11 visual-split 按新 016 动作执行 Enter→输入→Enter→forward Delete；single-enter 单独执行。expected 仍只在动作完成后读取；当前不再把旧 484 歧义结论应用到新 5d02043 fixture，`oracleActionAmbiguity=0`。
+- 空文档 `中文😀` visual 输入、选区、dirty、Undo/Redo PASS；`[a](later)later` 原生修改被安全拒绝且 source/doc 不变；CRLF/LF 实际局部 patch ranges PASS。
+- runner error、FAIL、UNSUPPORTED、BLOCKED_BY_PREVIOUS 均为 0。结果固定在 `audited-crossval-results.json`。
+
+执行层：
+
+- `EDITORVIEW_DISPATCH_PM_TRANSACTION`：05 marks/attrs；普通 PM transaction，不向 model 提供 patch。
+- `VISUAL_KEYDOWN`：06 Enter/Backspace/list commands。
+- `VISUAL_KEYDOWN_AND_VIEW_DISPATCH`：11 Enter/Delete 为 keydown，jsdom 不生成浏览器 beforeinput，文字由真实 PM `insertText` dispatch。
+- `SOURCE_INPUT_KERNEL`：06 softbreak、11 main，仍走 textarea `input` 与生产 `TextAreaEditorKernel`。
+- `VIEW_DISPATCH`：空文档与安全拒绝 probe。
+
+driver 从不读取或执行 `manifest.ops`；expected 在动作后读取。每步记录 source SHA/bytes、selection、dirty、revision、history、pending/blocked/staged 与实际 patch ranges。原型 `to_disk` 始终只是内存保存点。
+
+复现：
+
+```sh
+node --check editor/prototypes/fidelity/audited-crossval.mjs
+node editor/prototypes/fidelity/audited-crossval.mjs \
+  editor/prototypes/fidelity-cases \
+  editor/prototypes/fidelity/PROTOTYPE.html \
+  editor/prototypes/fidelity/audited-crossval-results.json
+```
+
+完整 native bridge、空结构暂存、EOL 与环境边界见 `NATIVE-TRANSACTION-EVIDENCE.md`。
+
+## INK-PROT-012 / 015 历史报告（已被上节当前结果取代）
+
+以下内容原样保留当时的 NOT_PASS、explicit demo 与旧 484 动作歧义证据，用于历史追溯；不得继续作为新 5d02043 fixture 或当前 bundle 的状态结论。
 
 ## 结论
 

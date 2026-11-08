@@ -76,3 +76,16 @@ node editor/prototypes/fidelity/audited-crossval.mjs \
 - 未修改 `fidelity/native-host/`；未用本次新 bundle 验证宿主，也未覆盖管理者独立接收的 014 observer/WK 证据。
 
 结论：009 链接/图片语义、010 源码选区接线和 012 审计驱动已在同一最终 bundle 中完成集成与可复现验证；M0 总门槛仍未通过。
+
+## INK-PROT-018 后续原生事务接入（2026-11-08）
+
+本节是基于 `30b73530af2e8dac37399a0dc9df64f8a9689eb3` 的后续结果；上文保留为 015 当时的历史快照，不再代表当前 audited native 能力。
+
+- 新增 `native-transaction.ts`，将受限真实 PM transaction/command 转成局部 source patch，并在进入 source/history 前重解析与目标 PM doc 等价校验；不调用 serializer。
+- audited driver 升级为 INK-PROT-018/schemaVersion 2。05 不再调用 `model.apply(patches, tr)`，四步全部由 `EditorView.dispatch(tr)`；06/11 结构动作走真实 jsdom keydown/keymap，文字走 PM transaction。
+- 新 016 的 `visual-split`（Enter→输入→Enter→forward Delete）和 `single-enter` 分开执行并各自命中 oracle；当前结果不再报告旧 484 `ORACLE_ACTION_AMBIGUITY`，旧解释只作为历史保留在 `DRIVER-AUDIT.md` 下半部。
+- 当前 `audited-crossval-results.json` 汇总：16 PASS、0 explicit demo、0 fail/unsupported/blocked/runner error；三个 isolated 结构分支与三个补充 probe 全 PASS。
+- 空文档中文/emoji visual 输入、selection/dirty、Undo/Redo 通过；`[a](later)later` 仍作为正确安全拒绝；CRLF paragraph/list 与 mixed-EOL CRLF/LF 的实际 patch ranges 已记录。
+- 02/03/09/10、selection 15 项无回归；冻结样稿仍为 11 例/49 步/582 项，未修改。
+
+详细执行层与限制见 `NATIVE-TRANSACTION-EVIDENCE.md`。本节仍只证明 jsdom/内存原型；未执行桌面 App、真实 WKWebView、系统 IME 或生产磁盘保存，不能将 audited PASS 写成 M0 总门槛或生产架构采纳。

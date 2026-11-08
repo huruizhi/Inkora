@@ -7,6 +7,7 @@ import { inkoraNodeSpecs, inkoraMarkSpecs, type InkoraNodeName, type InkoraMarkN
 import { inkoraMarkdownParser } from '../../src/markdown-codec';
 import { parseProtectedMarkdown } from '../../src/protected-markdown';
 import { analyzeMarkdownSafety } from '../../src/markdown-safety';
+import { advanceStagedText, planNativeTransaction } from './native-transaction';
 
 export type Range = { start: number; end: number; pos: number; size: number; kind: string; issue?: string };
 export type Patch = { from: number; to: number; insert: string };
@@ -187,6 +188,13 @@ export class FidelityModel {
   revision = 0; blocked = ''; patches: Patch[] = []; before: string;
   past: Array<{ source: string; state: EditorState }> = [];
   future: Array<{ source: string; state: EditorState }> = [];
+  staged: null | {
+    baseSource: string;
+    baseState: EditorState;
+    candidate: string;
+    sourceCaret: number;
+    kind: string;
+  } = null;
   constructor(source: string) {
     const parsed = parse(source); this.source = this.saved = this.before = source;
     this.ranges = parsed.ranges; this.issues = parsed.issues;
@@ -194,25 +202,26 @@ export class FidelityModel {
     this.trusted = { source, state: this.state };
   }
   get pending() { return this.issues.length > 0; }
-  commitClean(source: string, state: EditorState, patches: Patch[]) {
+  commitClean(source: string, state: EditorState, patches: Patch[], previous = { source: this.source, state: this.state }) {
     const parsed = parse(source);
     if (parsed.issues.length || !parsed.doc.eq(state.doc)) throw Error('补丁重解析与目标 PM 文档不一致');
-    this.past.push({ source: this.source, state: this.state }); this.future = [];
+    this.past.push(previous); this.future = [];
     this.before = this.source; this.source = source; this.state = state;
     this.ranges = parsed.ranges; this.issues = []; this.patches = patches; this.blocked = ''; this.revision++;
-    this.trusted = { source, state };
+    this.trusted = { source, state }; this.staged = null;
   }
   // The buffer keeps the user's ambiguous input; the view is the conservative
   // projection of that exact buffer (problem fragment marked as raw). Structured
   // saving is blocked until a fix or undo restores a clean re-parse.
-  commitPending(source: string, patches: Patch[]) {
+  commitPending(source: string, patches: Patch[], previous = { source: this.source, state: this.state }) {
     const parsed = parse(source);
-    this.past.push({ source: this.source, state: this.state }); this.future = [];
+    this.past.push(previous); this.future = [];
     this.before = this.source; this.source = source;
     this.state = EditorState.create({ doc: parsed.doc });
-    this.ranges = parsed.ranges; this.issues = parsed.issues; this.patches = patches; this.blocked = ''; this.revision++;
+    this.ranges = parsed.ranges; this.issues = parsed.issues; this.patches = patches; this.blocked = ''; this.revision++; this.staged = null;
   }
   apply(patches: Patch[], tr: Transaction) {
+    if (this.staged) throw Error('存在尚未落账的原生结构事务；请先继续输入或 Undo');
     let candidate = this.source;
     for (const p of [...patches].sort((a, b) => b.from - a.from)) candidate = candidate.slice(0, p.from) + p.insert + candidate.slice(p.to);
     const parsed = parse(candidate);
@@ -221,28 +230,82 @@ export class FidelityModel {
   }
   transaction(tr: Transaction) {
     if (!tr.docChanged) { this.state = this.state.apply(tr); return; }
-    if (tr.steps.length !== 1) throw Error('仅验证单步文本事务；多步事务已阻断');
-    const step = tr.steps[0].toJSON();
-    if (step.stepType !== 'replace' || step.structure || step.slice?.openStart || step.slice?.openEnd || step.slice?.content?.some((n: { type: string }) => n.type !== 'text')) throw Error('结构/marks 事务需使用专用演示操作；此次操作已阻断');
-    const from = sourcePosition(this.source, this.state, this.ranges, step.from, 'from');
-    const to = sourcePosition(this.source, this.state, this.ranges, step.to, 'to');
-    if (from > to || (step.from === step.to && from !== to)) throw Error('选区边界无法唯一映射到原文（定界符之间或跨叶）；此次操作已阻断');
-    const insert = (step.slice?.content ?? []).map((n: { text: string }) => n.text).join('');
+    if (this.staged) {
+      const stage = this.staged;
+      const next = advanceStagedText(stage.candidate, stage.sourceCaret, this.state, tr);
+      const target = this.state.apply(tr);
+      const parsed = parse(next.candidate);
+      if (parsed.issues.length) {
+        let prefix = 0;
+        while (prefix < stage.baseSource.length && prefix < next.candidate.length && stage.baseSource[prefix] === next.candidate[prefix]) prefix++;
+        let oldEnd = stage.baseSource.length, newEnd = next.candidate.length;
+        while (oldEnd > prefix && newEnd > prefix && stage.baseSource[oldEnd - 1] === next.candidate[newEnd - 1]) { oldEnd--; newEnd--; }
+        this.commitPending(next.candidate, [{ from: prefix, to: oldEnd, insert: next.candidate.slice(prefix, newEnd) }], { source: stage.baseSource, state: stage.baseState });
+        return;
+      }
+      if (!parsed.doc.eq(target.doc)) {
+        stage.candidate = next.candidate;
+        stage.sourceCaret = next.sourceCaret;
+        this.state = target;
+        return;
+      }
+      let prefix = 0;
+      while (prefix < stage.baseSource.length && prefix < next.candidate.length && stage.baseSource[prefix] === next.candidate[prefix]) prefix++;
+      let oldEnd = stage.baseSource.length, newEnd = next.candidate.length;
+      while (oldEnd > prefix && newEnd > prefix && stage.baseSource[oldEnd - 1] === next.candidate[newEnd - 1]) { oldEnd--; newEnd--; }
+      this.commitClean(next.candidate, target, [{ from: prefix, to: oldEnd, insert: next.candidate.slice(prefix, newEnd) }], { source: stage.baseSource, state: stage.baseState });
+      return;
+    }
+    const step = tr.steps[0]?.toJSON() as { stepType?: string; from?: number; to?: number; slice?: { content?: Array<{ text?: string }> } } | undefined;
+    const insert = step?.stepType === 'replace' && !step.slice?.content?.some(n => n.text === undefined)
+      ? (step.slice?.content ?? []).map(n => n.text ?? '').join('') : '';
     // PM drops inclusive:false marks when their entire text leaf is replaced.
     // Preserve the exact source leaf's marks for a replacement contained in
     // one text node; otherwise the source re-parse would correctly reject the
     // now-unlinked target doc. Insertions at a mark boundary remain untouched.
-    if (step.from < step.to && insert) {
+    if (step?.from !== undefined && step.to !== undefined && step.from < step.to && insert) {
+      const { from, to } = step;
       let marks: readonly import('prosemirror-model').Mark[] | undefined;
       this.state.doc.descendants((node, pos) => {
-        if (marks || !node.isText || step.from < pos || step.to > pos + node.nodeSize) return;
+        if (marks || !node.isText || from < pos || to > pos + node.nodeSize) return;
         marks = node.marks;
       });
-      for (const mark of marks ?? []) tr.addMark(step.from, step.from + insert.length, mark);
+      for (const mark of marks ?? []) tr.addMark(from, from + insert.length, mark);
     }
-    this.apply([{ from, to, insert }], tr);
+    const plan = planNativeTransaction(
+      this.source,
+      this.state,
+      this.ranges,
+      tr,
+      (position, side = 'any') => sourcePosition(this.source, this.state, this.ranges, position, side),
+    );
+    const target = this.state.apply(tr);
+    const parsed = parse(plan.candidate);
+    if (parsed.issues.length) {
+      if (plan.kind === 'text' || plan.kind === 'empty-text') { this.commitPending(plan.candidate, plan.patches); return; }
+      throw Error('原生结构/标记事务候选触发含混边界；可信原文与 PM 状态保持不变');
+    }
+    if (parsed.doc.eq(target.doc)) {
+      this.commitClean(plan.candidate, target, plan.patches);
+      return;
+    }
+    if (plan.mayStage && plan.sourceCaret !== undefined) {
+      this.staged = {
+        baseSource: this.source,
+        baseState: this.state,
+        candidate: plan.candidate,
+        sourceCaret: plan.sourceCaret,
+        kind: plan.kind,
+      };
+      this.state = target;
+      this.patches = [];
+      this.blocked = '';
+      return;
+    }
+    throw Error('补丁重解析与目标 PM 文档不一致；可信状态未提交');
   }
   sourceEdit(source: string) {
+    if (this.staged) throw Error('存在尚未落账的原生结构事务；请先继续输入或 Undo');
     // Byte-identical no-op: keep bytes/dirty/revision/history untouched.
     if (source === this.source) return true;
     const parsed = parse(source);
@@ -253,6 +316,13 @@ export class FidelityModel {
     return same;
   }
   travel(redo = false) {
+    if (this.staged) {
+      if (redo) return;
+      this.state = this.staged.baseState;
+      this.source = this.staged.baseSource;
+      this.staged = null; this.patches = []; this.blocked = '';
+      return;
+    }
     const from = redo ? this.future : this.past, to = redo ? this.past : this.future;
     const entry = from.pop(); if (!entry) return;
     to.push({ source: this.source, state: this.state }); this.before = this.source;

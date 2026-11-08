@@ -72,11 +72,12 @@ results.push({ action: 'native PM replace emoji', byteDiff: p.diff(initial,p.mod
 p.model.sourceEdit('\uFEFF' + initial);
 step('text'); assert.ok(p.model.source.startsWith('\uFEFF')); assert.ok(p.model.source.includes('\r\n'));
 results.push({ action: 'BOM / mixed EOL body edit', passed: true });
-// Unsupported structural transaction is rejected, never silently serialized.
+// A raw split at a position different from the current selection has no
+// calibrated native-command anchor and is rejected, never silently serialized.
 step('reset'); const old = p.model.source;
 p.model.state.doc.descendants((n,pos) => { if(n.isText && n.text.includes('中文正文')) at=pos+2; });
 p.view.dispatch(p.model.state.tr.split(at)); assert.ok(p.model.blocked); assert.equal(p.model.source,old);
-results.push({ action: 'unsupported native split', blocked: p.model.blocked, trustedBytesPreserved:true });
+results.push({ action: 'uncalibrated raw split refusal', blocked: p.model.blocked, trustedBytesPreserved:true });
 // Source draft no-op via the production TextAreaEditorKernel round trip.
 step('reset');
 {
