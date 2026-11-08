@@ -73,10 +73,23 @@ const deleteStagedSoftbreak: Command = (state, dispatch) => {
   return true;
 };
 const esc = (s: unknown) => JSON.stringify(s);
-function render() {
-  view.updateState(model.state);
+function compositionState() {
+  const visual = view.composing;
+  const source = sourceKernel.composing;
+  return { visual, source, active: visual || source };
+}
+function compositionLabel() {
+  const { visual, source } = compositionState();
+  if (visual && source) return 'visual + source';
+  if (visual) return 'visual';
+  if (source) return 'source';
+  return 'none';
+}
+function render(syncEditors = true) {
+  const composition = compositionState();
+  if (syncEditors) view.updateState(model.state);
   const source = $('source-draft') as HTMLTextAreaElement;
-  if (!sourceMode) sourceKernel.setText(model.source);
+  if (syncEditors && !sourceMode) sourceKernel.setText(model.source);
   source.readOnly = !sourceMode;
   const sel = model.state.selection;
   let mapped = '未验证';
@@ -84,13 +97,14 @@ function render() {
   if (sourceSelection.ok) mapped = `${sourceSelection.anchor}..${sourceSelection.head} (UTF-16, ledger)`;
   const pending = model.pending;
   const saveState = model.blocked ? `阻断（${model.blocked}）` : model.staged ? '阻断（空结构暂存尚未形成可重解析 Markdown；继续输入或 Undo）' : pending ? `阻断（${model.issues.length} 处边界含混待修复：主动源码修复或 Undo）` : sourceMode ? '阻断（源码草稿未提交）' : '允许建立内存快照';
-  $('state').textContent = `revision: ${model.revision} | dirty: ${model.dirty} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to}（anchor/head ${sel.anchor}/${sel.head}${sel.anchor > sel.head ? '，后向' : ''}）| 原文: ${mapped}\n模式: ${sourceMode ? `主动源码草稿（textarea ${source.selectionStart}..${source.selectionEnd} ${source.selectionDirection ?? 'unknown'}，LF 偏移）` : model.staged ? `可视（${model.staged.kind} 暂存；尚未生成可独立解析的非空块）` : '可视'} | composition: ${view.composing}\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
+  $('state').textContent = `revision: ${model.revision} | dirty: ${model.dirty} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to}（anchor/head ${sel.anchor}/${sel.head}${sel.anchor > sel.head ? '，后向' : ''}）| 原文: ${mapped}\n模式: ${sourceMode ? `主动源码草稿（textarea ${source.selectionStart}..${source.selectionEnd} ${source.selectionDirection ?? 'unknown'}，LF 偏移）` : model.staged ? `可视（${model.staged.kind} 暂存；尚未生成可独立解析的非空块）` : '可视'} | composition: ${compositionLabel()}（visual=${composition.visual}, source=${composition.source}）\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
   $('ranges').textContent = JSON.stringify({ blocks: model.ranges.map(r => ({ ...r, byteStart: bytes(model.source.slice(0, r.start)).length, byteEnd: bytes(model.source.slice(0, r.end)).length })), coverage: coverage(), patches: model.patches }, null, 2);
   const lineOf = (text: string, at: number) => text.slice(0, at).split('\n').length;
   $('issues').textContent = pending ? JSON.stringify(model.issues.map(i => ({ ...i, line: lineOf(model.source, i.start), byteStart: bytes(model.source.slice(0, i.start)).length, byteEnd: bytes(model.source.slice(0, i.end)).length, fragment: model.source.slice(i.start, Math.min(i.end, i.start + 48)) })), null, 2) : '无边界含混问题；结构化保存路径可用。';
   $('diff').textContent = JSON.stringify(diff(model.before, model.source), null, 2);
   $('before').textContent = esc(model.before); $('after').textContent = esc(model.source);
-  $('save').toggleAttribute('disabled', !!model.blocked || !!model.staged || pending || sourceMode || view.composing);
+  for (const button of document.querySelectorAll('button')) button.toggleAttribute('disabled', composition.active);
+  $('save').toggleAttribute('disabled', composition.active || !!model.blocked || !!model.staged || pending || sourceMode);
   annotateIssues(); annotateImages();
 }
 // Mark problem fragments in the real DOM: conservative raw projection, never faked rendering.
@@ -148,7 +162,11 @@ function coverage() {
   return all;
 }
 function run(action: () => void) {
-  if (view.composing) { note = 'composition 中禁止演示按钮与保存；真实 IME 尚待验收'; render(); return; }
+  if (compositionState().active) {
+    note = `${compositionLabel()} composition 中拒绝会修改视图、草稿、模式或历史的操作；未刷新编辑器、未强制提交候选，真实 IME 尚待验收`;
+    render(false);
+    return;
+  }
   try { action(); } catch (error) { model.blocked = String(error); note = '操作被拒绝，可信原文与 PM 文档未变；可主动进入源码修复。'; }
   render();
 }
@@ -159,8 +177,14 @@ view = new EditorView($('visual'), {
     catch (error) { model.blocked = String(error); }
     render();
   },
-  handleDOMEvents: { compositionend() { setTimeout(render, 0); return false; }, compositionstart() { setTimeout(render, 0); return false; } },
+  handleDOMEvents: {
+    compositionend() { setTimeout(() => render(), 0); return false; },
+    compositionstart() { setTimeout(() => render(false), 0); return false; },
+  },
 });
+const sourceDraft = $('source-draft') as HTMLTextAreaElement;
+sourceDraft.addEventListener('compositionstart', () => render(false));
+sourceDraft.addEventListener('compositionend', () => setTimeout(() => render(), 0));
 view.setProps({ handleKeyDown: (v, event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); run(() => model.travel(event.shiftKey)); return true; }
   if (event.key === 'Enter' && keydownHandler({ Enter: splitListItem(schema.nodes.list_item) })(v, event)) return true;
@@ -391,5 +415,5 @@ scenarios.forEach(s => { const b = document.createElement('button'); b.textConte
   s.steps.forEach((id, i) => { const step = document.createElement('button'); step.textContent = `${i + 1}. ${$(id).textContent}`; step.onclick = () => run(actions[id]); $('guide').append(step); });
 }); $('tabs').append(b); });
 // Read-only diagnostics for reproducible non-UI checks; no claimed IME coverage.
-Object.assign(window, { fidelityPrototype: { get model() { return model; }, get sourceMode() { return sourceMode; }, get lastSelectionMap() { return lastSelectionMap; }, actions, run, parse, diff, view, sourcePosition, FidelityModel, mixedSample, malformedSample, samples: { default: sample, mixed: mixedSample, malformed: malformedSample } } });
+Object.assign(window, { fidelityPrototype: { get model() { return model; }, get sourceMode() { return sourceMode; }, get sourceComposing() { return sourceKernel.composing; }, get composing() { return compositionState().active; }, get lastSelectionMap() { return lastSelectionMap; }, actions, run, parse, diff, view, sourcePosition, FidelityModel, mixedSample, malformedSample, samples: { default: sample, mixed: mixedSample, malformed: malformedSample } } });
 render();
