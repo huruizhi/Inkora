@@ -10,7 +10,6 @@ INK-020 在 NSDocument 的 FIFO revisioned snapshot 保存流水线内校验磁�
 | 移动/重命名 | presentedItemDidMove | 跟随 fileURL，系统更新标题，副标题说明已移动；保留编辑、history 和 dirty。移动期间已排队的旧路径保存失败，可在新路径重试 |
 | 删除/废纸篓 | deletion 回调、路径不存在或移入 .Trash/.Trashes | 保留编辑器，强制保留 dirty，副标题提示删除；禁止重建原路径，只能另存或取消 |
 | 编码不受支持 | 读取时检测 UTF-16/UTF-32 BOM 或非法 UTF-8（`ENC-002`，INK-053） | 只读错误窗口：副标题与正文说明原因和转换建议；Save / Save As 一律以编码错误失败，dirty 恒为 false，关闭无保存确认，不产生恢复草稿，不进入 Open Recent |
-
 | bare CR | 复用 INK-052 换行分类的 bare CR 路由，原生写盘层同步防守（INK-054） | 整篇只读，副标题与转换按钮说明原因；Command-Option-L 显式统一为 LF、dirty、不自动保存；转换不可撤销，保存前原文件不变；不产生只读草稿，保留最近文件 |
 
 取消不接受新的磁盘基线，再次 Save 仍会询问。保留编辑直接进入 Save As，不提供冲突后的一键覆盖；选择新路径仍由系统处理覆盖确认。另存回冲突原路径也会被状态检查拒绝。
