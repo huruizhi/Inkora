@@ -2,8 +2,8 @@
 
 Type: research
 Labels: wayfinder:research
-Status: open
-Assignee: None
+Status: resolved
+Assignee: research_fidelity
 Blocked by: None
 Parent: ../map.md
 
@@ -17,4 +17,12 @@ Parent: ../map.md
 
 ## Evidence
 
-研究结果写入 ../research/02-fidelity-feasibility.md；完成后在 Answer 中记录结论和边界。
+研究文件：`.scratch/typora-parity/research/02-fidelity-feasibility.md`，位于独立分支 `task/INK-PLAN-001-research-fidelity`。研究分支提交后，在 Answer 中固定证据提交链接，不合并研究分支。
+
+## Answer
+
+事实研究完成，技术路线尚未选定。当前 dirty structured snapshot 会整篇序列化，缺少 FID-002 要求的原文范围映射与最小补丁；未知语法整篇回退，跨模式的 selection/history/dirty 尚无契约。`prepareMarkdownSave` 的工具函数不能证明实际 snapshot 路径已执行同一闸门。
+
+现有 ProseMirror 仍可作为候选。下一轮比较“PM + 原文范围补丁”和“原文权威 + PM 投影”，先证明局部改动、未知片段、任务单字符切换和撤销历史；研究不替代原型验收，也未决定换内核或引入依赖。
+
+证据：[固定版本研究](https://github.com/huruizhi/Inkora/blob/9a171f6482d1df12e8dc699f37c0e47d79f1289d/.scratch/typora-parity/research/02-fidelity-feasibility.md)。官方 API 来源及未验证项见研究文件。本票仅运行文档 diff 校验，未运行产品测试、构建或真实 IME 验收。
