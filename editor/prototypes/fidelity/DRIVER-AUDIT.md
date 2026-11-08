@@ -33,6 +33,8 @@ node editor/prototypes/fidelity/audited-crossval.mjs \
 
 完整 native bridge、空结构暂存、EOL 与环境边界见 `NATIVE-TRANSACTION-EVIDENCE.md`。
 
+管理者在 4afe4ca 后补充的 staged 历史/移动光标反例不改变上述冻结矩阵结果，但证明该矩阵未覆盖 stage 的任意 selection。修正后新增 `native-transaction-stage-check.mjs`：4/4 PASS，并固定完整 source/doc/selection/candidate/anchors/dirty/save/history 快照；当前 audited 16+3+3 也已重跑保持 PASS。
+
 ## INK-PROT-012 / 015 历史报告（已被上节当前结果取代）
 
 以下内容原样保留当时的 NOT_PASS、explicit demo 与旧 484 动作歧义证据，用于历史追溯；不得继续作为新 5d02043 fixture 或当前 bundle 的状态结论。

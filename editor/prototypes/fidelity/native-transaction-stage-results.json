@@ -1,0 +1,564 @@
+{
+  "task": "INK-PROT-018",
+  "status": "PASS",
+  "checks": [
+    {
+      "id": "enter-undo-redo-type",
+      "entered": {
+        "source": "ab\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ab"
+                }
+              ]
+            },
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 5,
+          "head": 5
+        },
+        "stage": {
+          "candidate": "ab\n\n\n",
+          "anchors": [
+            {
+              "pmPos": 5,
+              "sourceOffset": 4
+            }
+          ],
+          "kind": "paragraph-split"
+        },
+        "dirty": true,
+        "revision": 1,
+        "saveDisabled": true,
+        "past": 1,
+        "future": 0
+      },
+      "undone": {
+        "source": "ab\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ab"
+                }
+              ]
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 3,
+          "head": 3
+        },
+        "stage": null,
+        "dirty": false,
+        "revision": 2,
+        "saveDisabled": false,
+        "past": 0,
+        "future": 1
+      },
+      "redone": {
+        "source": "ab\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ab"
+                }
+              ]
+            },
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 5,
+          "head": 5
+        },
+        "stage": {
+          "candidate": "ab\n\n\n",
+          "anchors": [
+            {
+              "pmPos": 5,
+              "sourceOffset": 4
+            }
+          ],
+          "kind": "paragraph-split"
+        },
+        "dirty": true,
+        "revision": 3,
+        "saveDisabled": true,
+        "past": 1,
+        "future": 0
+      },
+      "committed": {
+        "source": "ab\n\nZ\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ab"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Z"
+                }
+              ]
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 6,
+          "head": 6
+        },
+        "stage": null,
+        "dirty": true,
+        "revision": 4,
+        "saveDisabled": false,
+        "past": 2,
+        "future": 0
+      },
+      "undoCommitted": {
+        "source": "ab\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ab"
+                }
+              ]
+            },
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 5,
+          "head": 5
+        },
+        "stage": {
+          "candidate": "ab\n\n\n",
+          "anchors": [
+            {
+              "pmPos": 5,
+              "sourceOffset": 4
+            }
+          ],
+          "kind": "paragraph-split"
+        },
+        "dirty": true,
+        "revision": 5,
+        "saveDisabled": true,
+        "past": 1,
+        "future": 1
+      },
+      "redoCommitted": {
+        "source": "ab\n\nZ\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ab"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Z"
+                }
+              ]
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 6,
+          "head": 6
+        },
+        "stage": null,
+        "dirty": true,
+        "revision": 6,
+        "saveDisabled": false,
+        "past": 2,
+        "future": 0
+      }
+    },
+    {
+      "id": "move-caret-edit-complete",
+      "movedEdit": {
+        "source": "ab\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "aXb"
+                }
+              ]
+            },
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 3,
+          "head": 3
+        },
+        "stage": {
+          "candidate": "aXb\n\n\n",
+          "anchors": [
+            {
+              "pmPos": 6,
+              "sourceOffset": 5
+            },
+            {
+              "pmPos": 3,
+              "sourceOffset": 2
+            }
+          ],
+          "kind": "paragraph-split"
+        },
+        "dirty": true,
+        "revision": 2,
+        "saveDisabled": true,
+        "past": 2,
+        "future": 0
+      },
+      "beforeMovedEdit": {
+        "source": "ab\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ab"
+                }
+              ]
+            },
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 2,
+          "head": 2
+        },
+        "stage": {
+          "candidate": "ab\n\n\n",
+          "anchors": [
+            {
+              "pmPos": 5,
+              "sourceOffset": 4
+            },
+            {
+              "pmPos": 2,
+              "sourceOffset": 1
+            }
+          ],
+          "kind": "paragraph-split"
+        },
+        "dirty": true,
+        "revision": 3,
+        "saveDisabled": true,
+        "past": 1,
+        "future": 1
+      },
+      "completed": {
+        "source": "aXb\n\nY\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "aXb"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Y"
+                }
+              ]
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 7,
+          "head": 7
+        },
+        "stage": null,
+        "dirty": true,
+        "revision": 5,
+        "saveDisabled": false,
+        "past": 3,
+        "future": 0
+      },
+      "undoCompleted": {
+        "source": "ab\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "aXb"
+                }
+              ]
+            },
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 6,
+          "head": 6
+        },
+        "stage": {
+          "candidate": "aXb\n\n\n",
+          "anchors": [
+            {
+              "pmPos": 6,
+              "sourceOffset": 5
+            },
+            {
+              "pmPos": 3,
+              "sourceOffset": 2
+            }
+          ],
+          "kind": "paragraph-split"
+        },
+        "dirty": true,
+        "revision": 6,
+        "saveDisabled": true,
+        "past": 2,
+        "future": 1
+      },
+      "redoCompleted": {
+        "source": "aXb\n\nY\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "aXb"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Y"
+                }
+              ]
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 7,
+          "head": 7
+        },
+        "stage": null,
+        "dirty": true,
+        "revision": 7,
+        "saveDisabled": false,
+        "past": 3,
+        "future": 0
+      }
+    },
+    {
+      "id": "history-branch-invalidation",
+      "branch": {
+        "source": "aNb\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "aNb"
+                }
+              ]
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 3,
+          "head": 3
+        },
+        "stage": null,
+        "dirty": true,
+        "revision": 5,
+        "saveDisabled": false,
+        "past": 1,
+        "future": 0
+      },
+      "futureAfterBranch": 0
+    },
+    {
+      "id": "unknown-staged-transaction-refusal",
+      "before": {
+        "source": "ab\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ab"
+                }
+              ]
+            },
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 2,
+          "head": 2
+        },
+        "stage": {
+          "candidate": "ab\n\n\n",
+          "anchors": [
+            {
+              "pmPos": 5,
+              "sourceOffset": 4
+            },
+            {
+              "pmPos": 2,
+              "sourceOffset": 1
+            }
+          ],
+          "kind": "paragraph-split"
+        },
+        "dirty": true,
+        "revision": 1,
+        "saveDisabled": true,
+        "past": 1,
+        "future": 0
+      },
+      "after": {
+        "source": "ab\n",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ab"
+                }
+              ]
+            },
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "selection": {
+          "type": "text",
+          "anchor": 2,
+          "head": 2
+        },
+        "stage": {
+          "candidate": "ab\n\n\n",
+          "anchors": [
+            {
+              "pmPos": 5,
+              "sourceOffset": 4
+            },
+            {
+              "pmPos": 2,
+              "sourceOffset": 1
+            }
+          ],
+          "kind": "paragraph-split"
+        },
+        "dirty": true,
+        "revision": 1,
+        "saveDisabled": true,
+        "past": 1,
+        "future": 0
+      },
+      "blocked": "Error: 暂存结构之后的非文字事务尚未支持"
+    }
+  ]
+}

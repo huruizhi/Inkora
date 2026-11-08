@@ -96,7 +96,7 @@ function stateSnapshot(prototype) {
     sha256: sha256(utf8(source)),
     bytes: Buffer.byteLength(source),
     mode: prototype.sourceMode ? 'source' : 'visual',
-    dirty: source !== prototype.model.saved,
+    dirty: prototype.model.dirty,
     revision: prototype.model.revision,
     history: { past: prototype.model.past.length, future: prototype.model.future.length },
     selection: prototype.model.state.selection.toJSON(),

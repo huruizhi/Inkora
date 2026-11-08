@@ -7,13 +7,27 @@ import { inkoraNodeSpecs, inkoraMarkSpecs, type InkoraNodeName, type InkoraMarkN
 import { inkoraMarkdownParser } from '../../src/markdown-codec';
 import { parseProtectedMarkdown } from '../../src/protected-markdown';
 import { analyzeMarkdownSafety } from '../../src/markdown-safety';
-import { advanceStagedText, planNativeTransaction } from './native-transaction';
+import { advanceStagedText, planNativeTransaction, stagedSourcePosition, type NativeAnchor } from './native-transaction';
 
 export type Range = { start: number; end: number; pos: number; size: number; kind: string; issue?: string };
 export type Patch = { from: number; to: number; insert: string };
 // A boundary issue keeps the raw fragment visible (protected projection),
 // marks the problem scope and blocks structured saves. It never fails the load.
 export type Issue = { code: string; start: number; end: number; message: string };
+type StagedTransaction = {
+  candidate: string;
+  anchors: NativeAnchor[];
+  kind: string;
+};
+type HistoryEntry = {
+  source: string;
+  state: EditorState;
+  staged: StagedTransaction | null;
+  trusted: { source: string; state: EditorState };
+  blocked: string;
+  patches: Patch[];
+  before: string;
+};
 const tokenizer = new MarkdownIt('commonmark', { html: false }).enable(['table', 'strikethrough']);
 export const bytes = (s: string) => new TextEncoder().encode(s);
 export function diff(a: string, b: string) {
@@ -181,20 +195,37 @@ export function sourcePosition(source: string, state: EditorState, ranges: Range
   if (found === undefined) throw Error('选区不能安全映射到原文（空段、转义或重复文本）');
   return found;
 }
+// Markdown cannot represent a trailing empty paragraph or a softbreak moved to
+// the very start of a freshly split paragraph. These are the only doc.eq
+// differences allowed to remain staged; every other mismatch is rejected.
+function stageComparable(doc: PMNode): PMNode {
+  const blocks: PMNode[] = [];
+  doc.forEach(node => {
+    if (node.type.name !== 'paragraph') { blocks.push(node); return; }
+    const children: PMNode[] = [];
+    node.forEach((child, _offset, index) => {
+      if (index === 0 && child.isText && child.text!.startsWith('\n')) {
+        const text = child.text!.replace(/^\n+/, '');
+        if (text) children.push(schema.text(text, child.marks));
+      } else children.push(child);
+    });
+    const paragraph = node.type.create(node.attrs, children, node.marks);
+    if (paragraph.content.size) blocks.push(paragraph);
+  });
+  if (!blocks.length) blocks.push(schema.nodes.paragraph.create());
+  return schema.topNodeType.createChecked(null, blocks);
+}
+function stageEquivalent(parsed: PMNode, target: PMNode): boolean {
+  return stageComparable(parsed).eq(stageComparable(target));
+}
 export class FidelityModel {
   source: string; saved: string; state: EditorState; ranges: Range[]; issues: Issue[] = [];
   // Last clean (re-parse safe) snapshot; repair restores it byte-exactly.
   trusted: { source: string; state: EditorState };
   revision = 0; blocked = ''; patches: Patch[] = []; before: string;
-  past: Array<{ source: string; state: EditorState }> = [];
-  future: Array<{ source: string; state: EditorState }> = [];
-  staged: null | {
-    baseSource: string;
-    baseState: EditorState;
-    candidate: string;
-    sourceCaret: number;
-    kind: string;
-  } = null;
+  past: HistoryEntry[] = [];
+  future: HistoryEntry[] = [];
+  staged: StagedTransaction | null = null;
   constructor(source: string) {
     const parsed = parse(source); this.source = this.saved = this.before = source;
     this.ranges = parsed.ranges; this.issues = parsed.issues;
@@ -202,7 +233,41 @@ export class FidelityModel {
     this.trusted = { source, state: this.state };
   }
   get pending() { return this.issues.length > 0; }
-  commitClean(source: string, state: EditorState, patches: Patch[], previous = { source: this.source, state: this.state }) {
+  get dirty() { return this.source !== this.saved || this.staged !== null; }
+  private cloneStage(stage: StagedTransaction | null): StagedTransaction | null {
+    return stage ? { ...stage, anchors: stage.anchors.map(anchor => ({ ...anchor })) } : null;
+  }
+  private snapshot(): HistoryEntry {
+    return {
+      source: this.source,
+      state: this.state,
+      staged: this.cloneStage(this.staged),
+      trusted: this.trusted,
+      blocked: this.blocked,
+      patches: this.patches.map(patch => ({ ...patch })),
+      before: this.before,
+    };
+  }
+  private restore(entry: HistoryEntry) {
+    this.source = entry.source;
+    this.state = entry.state;
+    this.staged = this.cloneStage(entry.staged);
+    this.trusted = entry.trusted;
+    this.blocked = entry.blocked;
+    this.patches = entry.patches.map(patch => ({ ...patch }));
+    this.before = entry.before;
+    const parsed = parse(this.source);
+    this.ranges = parsed.ranges;
+    this.issues = parsed.issues;
+  }
+  private candidatePatch(candidate: string): Patch[] {
+    let from = 0;
+    while (from < this.source.length && from < candidate.length && this.source[from] === candidate[from]) from++;
+    let oldEnd = this.source.length, newEnd = candidate.length;
+    while (oldEnd > from && newEnd > from && this.source[oldEnd - 1] === candidate[newEnd - 1]) { oldEnd--; newEnd--; }
+    return [{ from, to: oldEnd, insert: candidate.slice(from, newEnd) }];
+  }
+  commitClean(source: string, state: EditorState, patches: Patch[], previous = this.snapshot()) {
     const parsed = parse(source);
     if (parsed.issues.length || !parsed.doc.eq(state.doc)) throw Error('补丁重解析与目标 PM 文档不一致');
     this.past.push(previous); this.future = [];
@@ -213,7 +278,7 @@ export class FidelityModel {
   // The buffer keeps the user's ambiguous input; the view is the conservative
   // projection of that exact buffer (problem fragment marked as raw). Structured
   // saving is blocked until a fix or undo restores a clean re-parse.
-  commitPending(source: string, patches: Patch[], previous = { source: this.source, state: this.state }) {
+  commitPending(source: string, patches: Patch[], previous = this.snapshot()) {
     const parsed = parse(source);
     this.past.push(previous); this.future = [];
     this.before = this.source; this.source = source;
@@ -229,31 +294,47 @@ export class FidelityModel {
     this.commitClean(candidate, this.state.apply(tr), patches);
   }
   transaction(tr: Transaction) {
-    if (!tr.docChanged) { this.state = this.state.apply(tr); return; }
+    if (!tr.docChanged) {
+      const next = this.state.apply(tr);
+      if (this.staged && !next.selection.eq(this.state.selection)) {
+        const mapSelection = (position: number) => {
+          try { return stagedSourcePosition(this.staged!.candidate, next, this.staged!.anchors, position, 'from'); }
+          catch { return stagedSourcePosition(this.staged!.candidate, next, this.staged!.anchors, position, 'to'); }
+        };
+        const anchor = mapSelection(next.selection.anchor);
+        const head = mapSelection(next.selection.head);
+        this.staged.anchors = [
+          ...this.staged.anchors,
+          { pmPos: next.selection.anchor, sourceOffset: anchor },
+          { pmPos: next.selection.head, sourceOffset: head },
+        ].filter((item, index, all) => all.findIndex(other => other.pmPos === item.pmPos && other.sourceOffset === item.sourceOffset) === index);
+      }
+      this.state = next;
+      return;
+    }
     if (this.staged) {
       const stage = this.staged;
-      const next = advanceStagedText(stage.candidate, stage.sourceCaret, this.state, tr);
+      const previous = this.snapshot();
+      const next = advanceStagedText(stage.candidate, stage.anchors, this.state, tr);
       const target = this.state.apply(tr);
       const parsed = parse(next.candidate);
       if (parsed.issues.length) {
-        let prefix = 0;
-        while (prefix < stage.baseSource.length && prefix < next.candidate.length && stage.baseSource[prefix] === next.candidate[prefix]) prefix++;
-        let oldEnd = stage.baseSource.length, newEnd = next.candidate.length;
-        while (oldEnd > prefix && newEnd > prefix && stage.baseSource[oldEnd - 1] === next.candidate[newEnd - 1]) { oldEnd--; newEnd--; }
-        this.commitPending(next.candidate, [{ from: prefix, to: oldEnd, insert: next.candidate.slice(prefix, newEnd) }], { source: stage.baseSource, state: stage.baseState });
+        this.commitPending(next.candidate, this.candidatePatch(next.candidate), previous);
         return;
       }
       if (!parsed.doc.eq(target.doc)) {
+        if (!stageEquivalent(parsed.doc, target.doc)) throw Error('暂存候选与目标 PM 文档存在空结构之外的差异；现态保持不变');
+        this.past.push(previous); this.future = [];
         stage.candidate = next.candidate;
-        stage.sourceCaret = next.sourceCaret;
+        stage.anchors = next.anchors;
         this.state = target;
+        this.before = this.source;
+        this.patches = this.candidatePatch(next.candidate);
+        this.blocked = '';
+        this.revision++;
         return;
       }
-      let prefix = 0;
-      while (prefix < stage.baseSource.length && prefix < next.candidate.length && stage.baseSource[prefix] === next.candidate[prefix]) prefix++;
-      let oldEnd = stage.baseSource.length, newEnd = next.candidate.length;
-      while (oldEnd > prefix && newEnd > prefix && stage.baseSource[oldEnd - 1] === next.candidate[newEnd - 1]) { oldEnd--; newEnd--; }
-      this.commitClean(next.candidate, target, [{ from: prefix, to: oldEnd, insert: next.candidate.slice(prefix, newEnd) }], { source: stage.baseSource, state: stage.baseState });
+      this.commitClean(next.candidate, target, this.candidatePatch(next.candidate), previous);
       return;
     }
     const step = tr.steps[0]?.toJSON() as { stepType?: string; from?: number; to?: number; slice?: { content?: Array<{ text?: string }> } } | undefined;
@@ -290,16 +371,19 @@ export class FidelityModel {
       return;
     }
     if (plan.mayStage && plan.sourceCaret !== undefined) {
+      if (!stageEquivalent(parsed.doc, target.doc)) throw Error('原生结构候选与目标 PM 文档存在不可暂存差异；可信状态未提交');
+      const previous = this.snapshot();
+      this.past.push(previous); this.future = [];
       this.staged = {
-        baseSource: this.source,
-        baseState: this.state,
         candidate: plan.candidate,
-        sourceCaret: plan.sourceCaret,
+        anchors: [{ pmPos: target.selection.from, sourceOffset: plan.sourceCaret }],
         kind: plan.kind,
       };
       this.state = target;
-      this.patches = [];
+      this.before = this.source;
+      this.patches = plan.patches;
       this.blocked = '';
+      this.revision++;
       return;
     }
     throw Error('补丁重解析与目标 PM 文档不一致；可信状态未提交');
@@ -316,21 +400,11 @@ export class FidelityModel {
     return same;
   }
   travel(redo = false) {
-    if (this.staged) {
-      if (redo) return;
-      this.state = this.staged.baseState;
-      this.source = this.staged.baseSource;
-      this.staged = null; this.patches = []; this.blocked = '';
-      return;
-    }
     const from = redo ? this.future : this.past, to = redo ? this.past : this.future;
     const entry = from.pop(); if (!entry) return;
-    to.push({ source: this.source, state: this.state }); this.before = this.source;
-    this.source = entry.source; this.state = entry.state;
-    const parsed = parse(this.source);
-    this.ranges = parsed.ranges; this.issues = parsed.issues;
-    if (!parsed.issues.length) this.trusted = { source: entry.source, state: entry.state };
-    this.patches = []; this.blocked = ''; this.revision++;
+    to.push(this.snapshot());
+    this.restore(entry);
+    this.revision++;
   }
-  select(from: number, to = from) { this.state = this.state.apply(this.state.tr.setSelection(TextSelection.create(this.state.doc, from, to))); }
+  select(from: number, to = from) { this.transaction(this.state.tr.setSelection(TextSelection.create(this.state.doc, from, to))); }
 }

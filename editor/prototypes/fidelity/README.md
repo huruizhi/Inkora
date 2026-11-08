@@ -7,7 +7,7 @@
 ## 文件与入口
 
 - `model.ts`：原文范围、复用生产 specs/parser tokens 的 prototype schema/parser、PM 事务、局部补丁、重解析等价守卫、pending 与共享历史。
-- `native-transaction.ts` / `NATIVE-TRANSACTION-EVIDENCE.md`：受限原生事务到局部原文补丁的桥接、空结构暂存、原生 audited 矩阵与边界证据。
+- `native-transaction.ts` / `native-transaction-stage-check.mjs` / `native-transaction-stage-results.json` / `NATIVE-TRANSACTION-EVIDENCE.md`：受限原生事务到局部原文补丁的桥接、空结构暂存回归、原生 audited 矩阵与边界证据。
 - `main.ts`：真实 EditorView、源码草稿、双向选区接线、演示操作、行内链接目标操作与图片原文占位。
 - `selection-map.ts` / `selection-check.mjs` / `SELECTION-EVIDENCE.md`：双向选区映射、15 项模块检查与证据。
 - `shell.html` / `build.mjs` / `PROTOTYPE.html`：模板、离线构建器和由最终源码重建的单文件产物。
@@ -37,7 +37,7 @@ node editor/prototypes/fidelity/crossval.mjs \
 
 候选补丁只拼接未改范围，不整篇序列化；候选必须重解析且 `doc.eq(targetPMDoc)`，否则不提交可信 source/history。文本叶按块内 PM 顺序映射到原文，`sourcePosition` 用 `side` 区分共享边界；CRLF 再换算回原始 UTF-16 偏移。完整替换 `inclusive:false` 的 link/image 文本叶时，只继承同一源叶的 marks。
 
-INK-PROT-018 新增受限 native bridge：空文档文字、paragraph/list split/join、remove strong、ATX heading level、行内 code 定界符增长与 fenced code language 均由真实 PM transaction/command 自动推导局部 patch。Markdown 无法表达的新建空段只暂存 PM state 与局部候选，不改 source/dirty/history 且阻断保存；后续输入/删除使候选可重解析等价后才原子提交。其它多步/跨叶/含未建模 source 元数据的事务仍明确拒绝。
+INK-PROT-018 新增受限 native bridge：空文档文字、paragraph/list split/join、remove strong、ATX heading level、行内 code 定界符增长与 fenced code language 均由真实 PM transaction/command 自动推导局部 patch。Markdown 无法表达的新建空段保存为带显式 PM/source anchors 的 staged 快照：source 字节暂未提交，但 dirty/revision/history 与保存阻断真实反映可视变更；Undo/Redo 完整恢复 stage，后续移动选区和输入继续更新一致候选，重解析等价后才提交 source。其它多步/跨叶/含未建模 source 元数据的事务仍明确拒绝。
 
 真实链接语义与 010 选区接线在同一 prototype schema 上工作：
 
@@ -60,6 +60,8 @@ INK-PROT-018 新增受限 native bridge：空文档文字、paragraph/list split
 完整命令、最终 HTML hash、生产层命令口径和审计驱动结果见 `COMBINED-EVIDENCE.md`。
 
 INK-PROT-018 的 audited native 矩阵为 16/16 累计步骤 PASS、三个独立结构分支 PASS、三个补充 probe PASS，`EXPLICIT_PATCH_DEMO=0`；05、06、11 与空文档 visual 输入均已走真实事务/命令。动作入口、局部 EOL patch、Undo/Redo、jsdom 与真实环境边界见 `NATIVE-TRANSACTION-EVIDENCE.md`。
+
+管理者补充的 staged 反例由 `native-transaction-stage-check.mjs` 固化：4 条真实 EditorView/keydown 回归覆盖 stage Undo/Redo、移动光标后的 candidate ownership、完成空段、history 分支失效与未知事务原子拒绝；结果写入 `native-transaction-stage-results.json`。
 
 ## 明确限制与反例
 

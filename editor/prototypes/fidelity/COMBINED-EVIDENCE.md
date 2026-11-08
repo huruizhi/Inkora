@@ -86,6 +86,7 @@ node editor/prototypes/fidelity/audited-crossval.mjs \
 - 新 016 的 `visual-split`（Enter→输入→Enter→forward Delete）和 `single-enter` 分开执行并各自命中 oracle；当前结果不再报告旧 484 `ORACLE_ACTION_AMBIGUITY`，旧解释只作为历史保留在 `DRIVER-AUDIT.md` 下半部。
 - 当前 `audited-crossval-results.json` 汇总：16 PASS、0 explicit demo、0 fail/unsupported/blocked/runner error；三个 isolated 结构分支与三个补充 probe 全 PASS。
 - 空文档中文/emoji visual 输入、selection/dirty、Undo/Redo 通过；`[a](later)later` 仍作为正确安全拒绝；CRLF paragraph/list 与 mixed-EOL CRLF/LF 的实际 patch ranges 已记录。
+- 4afe4ca 后管理者发现 staged 空段未进入 Redo 且移动 selection 后仍沿用旧 source caret。修正提交新增完整 staged history snapshot 与 PM/source anchors；四条真实 EditorView 回归覆盖 Enter Undo/Redo、移动后输入/完成、已有 future 分支失效和未知事务拒绝，结果见 `native-transaction-stage-results.json`。
 - 02/03/09/10、selection 15 项无回归；冻结样稿仍为 11 例/49 步/582 项，未修改。
 
 详细执行层与限制见 `NATIVE-TRANSACTION-EVIDENCE.md`。本节仍只证明 jsdom/内存原型；未执行桌面 App、真实 WKWebView、系统 IME 或生产磁盘保存，不能将 audited PASS 写成 M0 总门槛或生产架构采纳。

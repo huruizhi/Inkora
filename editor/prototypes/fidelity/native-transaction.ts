@@ -6,6 +6,7 @@ import type { EditorState, Transaction } from 'prosemirror-state';
 
 export type NativeRange = { start: number; end: number; pos: number; size: number; kind: string };
 export type NativePatch = { from: number; to: number; insert: string };
+export type NativeAnchor = { pmPos: number; sourceOffset: number };
 
 export type NativePlan = {
   patches: NativePatch[];
@@ -247,32 +248,87 @@ export function planNativeTransaction(
   throw Error(`该原生事务尚未支持（${step.stepType ?? 'unknown'}）；可信原文与 PM 状态保持不变`);
 }
 
+function normalizedToRaw(candidate: string, normalizedOffset: number): number {
+  let raw = 0;
+  let normalized = 0;
+  while (normalized < normalizedOffset) {
+    if (candidate.slice(raw, raw + 2) === '\r\n') raw++;
+    raw++;
+    normalized++;
+  }
+  return raw;
+}
+
+// A staged document may contain an empty paragraph that Markdown cannot yet
+// represent. Text leaves still align monotonically with the local candidate;
+// explicit anchors own positions (notably empty-block carets) with no leaf.
+export function stagedSourcePosition(
+  candidate: string,
+  state: EditorState,
+  anchors: readonly NativeAnchor[],
+  position: number,
+  side: 'from' | 'to',
+): number {
+  const exact = anchors.filter(anchor => anchor.pmPos === position);
+  if (exact.length) {
+    const offsets = new Set(exact.map(anchor => anchor.sourceOffset));
+    if (offsets.size !== 1) throw Error('暂存选区锚点对应多个原文位置');
+    return exact[0].sourceOffset;
+  }
+
+  const normalized = candidate.replace(/\r\n/g, '\n');
+  let cursor = 0;
+  let found: number | undefined;
+  state.doc.descendants((node, pos) => {
+    if (!node.isText) return;
+    const index = normalized.indexOf(node.text!, cursor);
+    if (index < 0) throw Error(`暂存文本叶无法按顺序映射：${JSON.stringify(node.text)}`);
+    const end = pos + node.nodeSize;
+    const inside = side === 'from' ? pos <= position && position < end : pos < position && position <= end;
+    if (inside) {
+      const offset = normalizedToRaw(candidate, index + position - pos);
+      if (found !== undefined && found !== offset) throw Error('暂存选区边界有多个原文映射');
+      found = offset;
+    }
+    cursor = index + node.text!.length;
+  });
+  if (found === undefined) throw Error('暂存选区不能安全映射到候选原文');
+  return found;
+}
+
+function mapSourceAnchor(anchor: number, patch: NativePatch): number {
+  if (anchor < patch.from) return anchor;
+  if (anchor > patch.to) return anchor + patch.insert.length - (patch.to - patch.from);
+  return patch.from + patch.insert.length;
+}
+
 export function advanceStagedText(
   candidate: string,
-  sourceCaret: number,
+  anchors: readonly NativeAnchor[],
   state: EditorState,
   tr: Transaction,
-): { candidate: string; patch: NativePatch; sourceCaret: number } {
+): { candidate: string; patch: NativePatch; anchors: NativeAnchor[] } {
   if (tr.steps.length !== 1) throw Error('暂存结构之后仅接受单步文字事务');
   const step = tr.steps[0].toJSON() as Record<string, any>;
   const insert = textSlice(step);
   if (insert === null) throw Error('暂存结构之后的非文字事务尚未支持');
-  const caret = state.selection.from;
-  let from = sourceCaret;
-  let to = sourceCaret;
-  if (step.from === caret && step.to === caret) {
-    // insertion at the staged caret
-  } else if (step.from === caret && step.to === caret + 1) {
-    to += candidate.startsWith('\r\n', to) ? 2 : 1;
-  } else if (step.to === caret && step.from === caret - 1) {
-    from -= candidate.slice(Math.max(0, from - 2), from) === '\r\n' ? 2 : 1;
-  } else {
-    throw Error('暂存结构之后的文字事务不在已校准光标处');
-  }
+  const from = stagedSourcePosition(candidate, state, anchors, step.from, 'from');
+  const to = stagedSourcePosition(candidate, state, anchors, step.to, 'to');
+  if (from > to || (step.from === step.to && from !== to)) throw Error('暂存选区边界无法唯一映射到候选原文');
   const patch = { from, to, insert };
+  const targetSelection = tr.selection;
+  const mapped = anchors.map(anchor => ({
+    pmPos: tr.mapping.map(anchor.pmPos, 1),
+    sourceOffset: mapSourceAnchor(anchor.sourceOffset, patch),
+  }));
+  if (targetSelection.empty) mapped.push({
+    pmPos: targetSelection.from,
+    sourceOffset: patch.from + insert.length,
+  });
+  const deduped = mapped.filter((anchor, index, all) => all.findIndex(item => item.pmPos === anchor.pmPos && item.sourceOffset === anchor.sourceOffset) === index);
   return {
     candidate: applyNativePatches(candidate, [patch]),
     patch,
-    sourceCaret: from + insert.length,
+    anchors: deduped,
   };
 }

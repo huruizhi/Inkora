@@ -14,7 +14,7 @@
     },
     "prototype": {
       "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-018-native-transactions/editor/prototypes/fidelity/PROTOTYPE.html",
-      "sha256": "7882c53b940bcf6c462960e205883d481737ac1d50664f37ac5a2e7bb0bc4c67"
+      "sha256": "1ff35e60dbe58a9573d4ffde46c65f268f48821dd3ffdec2ad5addf9e9f69fc3"
     },
     "inputs": {
       "05-marks-attrs": {
@@ -1491,10 +1491,10 @@
                 "sha256": "0b4e136a39ad9a432f8de66078f0800798080c855195b803d45cdeb53521b05c",
                 "bytes": 173,
                 "mode": "visual",
-                "dirty": false,
-                "revision": 0,
+                "dirty": true,
+                "revision": 1,
                 "history": {
-                  "past": 0,
+                  "past": 1,
                   "future": 0
                 },
                 "selection": {
@@ -1507,7 +1507,13 @@
                 "staged": {
                   "kind": "paragraph-split"
                 },
-                "patches": []
+                "patches": [
+                  {
+                    "from": 31,
+                    "to": 31,
+                    "insert": "\r\n\r\n"
+                  }
+                ]
               }
             },
             "typed": true,
@@ -1520,9 +1526,9 @@
                 "bytes": 201,
                 "mode": "visual",
                 "dirty": true,
-                "revision": 1,
+                "revision": 2,
                 "history": {
-                  "past": 1,
+                  "past": 2,
                   "future": 0
                 },
                 "selection": {
@@ -1546,9 +1552,9 @@
                 "bytes": 201,
                 "mode": "visual",
                 "dirty": true,
-                "revision": 1,
+                "revision": 3,
                 "history": {
-                  "past": 1,
+                  "past": 3,
                   "future": 0
                 },
                 "selection": {
@@ -1561,7 +1567,13 @@
                 "staged": {
                   "kind": "paragraph-split"
                 },
-                "patches": []
+                "patches": [
+                  {
+                    "from": 43,
+                    "to": 43,
+                    "insert": "\r\n\r\n"
+                  }
+                ]
               }
             },
             "forwardDelete": {
@@ -1573,9 +1585,9 @@
                 "bytes": 201,
                 "mode": "visual",
                 "dirty": true,
-                "revision": 1,
+                "revision": 3,
                 "history": {
-                  "past": 1,
+                  "past": 3,
                   "future": 0
                 },
                 "selection": {
@@ -1588,16 +1600,22 @@
                 "staged": {
                   "kind": "paragraph-split"
                 },
-                "patches": []
+                "patches": [
+                  {
+                    "from": 43,
+                    "to": 43,
+                    "insert": "\r\n\r\n"
+                  }
+                ]
               },
               "after": {
                 "sha256": "8578d9dfc3a6d4b8a9aadd2ce26e335410755d9909f42820ff6c33b7332374c8",
                 "bytes": 203,
                 "mode": "visual",
                 "dirty": true,
-                "revision": 2,
+                "revision": 4,
                 "history": {
-                  "past": 2,
+                  "past": 4,
                   "future": 0
                 },
                 "selection": {
@@ -1624,9 +1642,9 @@
             "bytes": 203,
             "mode": "visual",
             "dirty": true,
-            "revision": 2,
+            "revision": 4,
             "history": {
-              "past": 2,
+              "past": 4,
               "future": 0
             },
             "selection": {
@@ -1682,9 +1700,9 @@
             "bytes": 203,
             "mode": "visual",
             "dirty": true,
-            "revision": 2,
+            "revision": 4,
             "history": {
-              "past": 2,
+              "past": 4,
               "future": 0
             },
             "selection": {
@@ -1713,9 +1731,9 @@
                 "bytes": 203,
                 "mode": "visual",
                 "dirty": true,
-                "revision": 2,
+                "revision": 4,
                 "history": {
-                  "past": 2,
+                  "past": 4,
                   "future": 0
                 },
                 "selection": {
@@ -1739,9 +1757,9 @@
                 "bytes": 203,
                 "mode": "visual",
                 "dirty": true,
-                "revision": 2,
+                "revision": 5,
                 "history": {
-                  "past": 2,
+                  "past": 5,
                   "future": 0
                 },
                 "selection": {
@@ -1754,7 +1772,13 @@
                 "staged": {
                   "kind": "paragraph-split"
                 },
-                "patches": []
+                "patches": [
+                  {
+                    "from": 100,
+                    "to": 100,
+                    "insert": "\n\n"
+                  }
+                ]
               }
             },
             "typed": true,
@@ -1765,9 +1789,9 @@
             "bytes": 220,
             "mode": "visual",
             "dirty": true,
-            "revision": 3,
+            "revision": 6,
             "history": {
-              "past": 3,
+              "past": 6,
               "future": 0
             },
             "selection": {
@@ -1897,10 +1921,10 @@
                 "sha256": "0b4e136a39ad9a432f8de66078f0800798080c855195b803d45cdeb53521b05c",
                 "bytes": 173,
                 "mode": "visual",
-                "dirty": false,
-                "revision": 0,
+                "dirty": true,
+                "revision": 1,
                 "history": {
-                  "past": 0,
+                  "past": 1,
                   "future": 0
                 },
                 "selection": {
@@ -1913,7 +1937,13 @@
                 "staged": {
                   "kind": "paragraph-split"
                 },
-                "patches": []
+                "patches": [
+                  {
+                    "from": 31,
+                    "to": 31,
+                    "insert": "\r\n\r\n"
+                  }
+                ]
               }
             },
             "typed": true,
@@ -1924,9 +1954,9 @@
             "bytes": 201,
             "mode": "visual",
             "dirty": true,
-            "revision": 1,
+            "revision": 2,
             "history": {
-              "past": 1,
+              "past": 2,
               "future": 0
             },
             "selection": {
@@ -1982,9 +2012,9 @@
             "bytes": 201,
             "mode": "visual",
             "dirty": true,
-            "revision": 1,
+            "revision": 2,
             "history": {
-              "past": 1,
+              "past": 2,
               "future": 0
             },
             "selection": {
@@ -2013,9 +2043,9 @@
                 "bytes": 201,
                 "mode": "visual",
                 "dirty": true,
-                "revision": 1,
+                "revision": 2,
                 "history": {
-                  "past": 1,
+                  "past": 2,
                   "future": 0
                 },
                 "selection": {
@@ -2039,9 +2069,9 @@
                 "bytes": 201,
                 "mode": "visual",
                 "dirty": true,
-                "revision": 1,
+                "revision": 3,
                 "history": {
-                  "past": 1,
+                  "past": 3,
                   "future": 0
                 },
                 "selection": {
@@ -2054,7 +2084,13 @@
                 "staged": {
                   "kind": "paragraph-split"
                 },
-                "patches": []
+                "patches": [
+                  {
+                    "from": 98,
+                    "to": 98,
+                    "insert": "\n\n"
+                  }
+                ]
               }
             },
             "typed": true,
@@ -2065,9 +2101,9 @@
             "bytes": 218,
             "mode": "visual",
             "dirty": true,
-            "revision": 2,
+            "revision": 4,
             "history": {
-              "past": 2,
+              "past": 4,
               "future": 0
             },
             "selection": {
@@ -2601,7 +2637,13 @@
         "blocked": "",
         "pending": false,
         "staged": null,
-        "patches": []
+        "patches": [
+          {
+            "from": 0,
+            "to": 0,
+            "insert": "中文😀"
+          }
+        ]
       },
       "after": {
         "sha256": "e973a1c1b41c5c9f4fbac31fcc311536dfffd003bfb914580455170a599953fa",
@@ -2621,7 +2663,13 @@
         "blocked": "",
         "pending": false,
         "staged": null,
-        "patches": []
+        "patches": [
+          {
+            "from": 0,
+            "to": 0,
+            "insert": "中文😀"
+          }
+        ]
       },
       "actuallyExecuted": true,
       "expectedText": "中文😀"

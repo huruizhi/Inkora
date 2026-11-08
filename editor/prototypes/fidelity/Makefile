@@ -8,5 +8,6 @@ lint:
 	$(PNPM) --dir $(EDITOR) exec tsc -p prototypes/fidelity/tsconfig.json
 test: build lint
 	node check.mjs
+	node native-transaction-stage-check.mjs
 run: build
 	open PROTOTYPE.html
