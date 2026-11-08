@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { JSDOM, VirtualConsole } from 'jsdom';
+import { TextSelection } from 'prosemirror-state';
 
 const here = new URL('.', import.meta.url);
 const html = await readFile(new URL('PROTOTYPE.html', here), 'utf8');
@@ -40,6 +41,32 @@ function compositionReplace(from, to, insert, id) {
   p.view.dispatch(p.model.state.tr.insertText(insert, from, to).setMeta('composition', id));
   assert.equal(p.model.blocked, '');
   return { from, to: from + insert.length };
+}
+
+function logicalState() {
+  return {
+    source: model.source,
+    doc: model.state.doc.toJSON(),
+    selection: model.state.selection.toJSON(),
+    staged: model.staged ? JSON.parse(JSON.stringify(model.staged)) : null,
+    trusted: {
+      source: model.trusted.source,
+      doc: model.trusted.state.doc.toJSON(),
+      selection: model.trusted.state.selection.toJSON(),
+    },
+    blocked: model.blocked,
+    pending: model.pending,
+    dirty: model.dirty,
+    saved: model.saved,
+    before: model.before,
+    patches: JSON.parse(JSON.stringify(model.patches)),
+    ranges: JSON.parse(JSON.stringify(model.ranges)),
+    issues: JSON.parse(JSON.stringify(model.issues)),
+    revision: model.revision,
+    past: model.past.length,
+    future: model.future.length,
+    saveDisabled: dom.window.document.getElementById('save').disabled,
+  };
 }
 
 function assertSafeEquivalent(label) {
@@ -102,6 +129,32 @@ assert.equal(model.future.length, beforeRefusal.future);
 assertSafeEquivalent('rejected operation');
 assert.equal(dom.window.document.getElementById('save').disabled, true, 'actual equivalence failure must remain save-blocked');
 
+// The rejection did not create a document state. A direct Undo that really
+// restores the preceding safe history point invalidates that operation-only
+// diagnostic without needing an intervening successful edit.
+p.run(p.actions.undo);
+assert.equal(model.source, baseline.source);
+assert.ok(model.state.doc.eq(baseline.doc));
+assert.equal(model.state.selection.anchor, compositionAt);
+assert.equal(model.state.selection.head, compositionAt);
+assertSafeEquivalent('direct undo after refusal');
+assert.equal(model.blocked, '', 'direct Undo to a safe history point retained the current rejection');
+assert.equal(dom.window.document.getElementById('save').disabled, false);
+
+// With the composition kept in future, another refused transaction must not
+// prevent a direct Redo from restoring that independently safe future point.
+const baselineRejectedAt = findText('保护块之后的中文。', '保护块之后的中文。'.length);
+p.view.dispatch(model.state.tr.insertText(' ', baselineRejectedAt));
+assert.match(model.blocked, /可信状态未提交/);
+assert.equal(model.future.length, 1);
+p.run(p.actions.redo);
+assert.equal(model.source, beforeRefusal.source);
+assert.ok(model.state.doc.eq(beforeRefusal.doc));
+assert.deepEqual(model.state.selection.toJSON(), beforeRefusal.selection);
+assertSafeEquivalent('direct redo after refusal');
+assert.equal(model.blocked, '', 'direct Redo to a safe history point retained the current rejection');
+assert.equal(dom.window.document.getElementById('save').disabled, false);
+
 // A later valid edit commits normally and clears the transient diagnostic.
 const editAt = findText('中文正文');
 p.view.dispatch(model.state.tr.insertText('有效正文', editAt, editAt + '中文正文'.length));
@@ -145,7 +198,58 @@ assert.deepEqual(model.state.selection.toJSON(), edited.selection);
 assertSafeEquivalent('redo restore');
 assert.equal(model.blocked, '', 'valid Redo restore retained a rejected-operation diagnostic');
 assert.equal(dom.window.document.getElementById('save').disabled, false);
+
+// Restoring an actually pending snapshot invalidates an operation diagnostic,
+// but pending itself must continue to block save.
+model.sourceEdit(p.samples.malformed);
+p.run(() => {});
+assert.equal(model.pending, true);
+const pending = { source: model.source, doc: model.state.doc };
+p.run(p.actions.undo);
+assert.equal(model.pending, false);
+const safeTail = findText('保护块之后的中文。中文', '保护块之后的中文。中文'.length);
+p.view.dispatch(model.state.tr.insertText(' ', safeTail));
+assert.match(model.blocked, /可信状态未提交/);
+p.run(p.actions.redo);
+assert.equal(model.source, pending.source);
+assert.ok(model.state.doc.eq(pending.doc));
+assert.equal(model.pending, true);
+assert.equal(model.blocked, '');
+assert.equal(dom.window.document.getElementById('save').disabled, true, 'restored pending state must remain save-blocked');
+
+// A staged empty structure is likewise blocked by staged state after a real
+// restoration, independently of operation diagnostics.
+model.sourceEdit('ab\n');
+model.past.length = 0;
+model.future.length = 0;
+model.saved = model.source;
+model.before = model.source;
+model.blocked = '';
+p.run(() => {});
+p.view.dispatch(model.state.tr.setSelection(TextSelection.create(model.state.doc, 3)));
+p.view.dispatch(model.state.tr.split(3));
+assert.ok(model.staged);
+const staged = logicalState();
+p.run(p.actions.undo);
+assert.equal(model.staged, null);
+p.run(p.actions.redo);
+assert.deepEqual(logicalState().staged, staged.staged);
+assert.equal(model.blocked, '');
+assert.equal(dom.window.document.getElementById('save').disabled, true, 'restored staged state must remain save-blocked');
+
+// Empty-history Undo/Redo are true no-ops: they cannot manufacture a
+// successful restoration or clear a real rejection.
+model.past.length = 0;
+model.future.length = 0;
+p.run(() => {});
+p.view.dispatch(model.state.tr.split(2));
+assert.match(model.blocked, /暂存结构之后的非文字事务尚未支持/);
+const beforeNoopTravel = logicalState();
+p.run(p.actions.undo);
+assert.deepEqual(logicalState(), beforeNoopTravel, 'empty-history Undo changed state or cleared the rejection');
+p.run(p.actions.redo);
+assert.deepEqual(logicalState(), beforeNoopTravel, 'empty-history Redo changed state or cleared the rejection');
 assert.deepEqual(errors, []);
 
 dom.window.close();
-console.log('history save readiness: 1/1 PASS (real IME retest required)');
+console.log('history save readiness: 5/5 PASS (real IME retest required)');

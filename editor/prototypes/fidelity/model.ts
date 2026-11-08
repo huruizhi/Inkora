@@ -449,6 +449,18 @@ export class FidelityModel {
     this.compositionHistory = null;
   }
   private restore(entry: HistoryEntry) {
+    const parsed = parse(entry.source);
+    if (entry.staged) {
+      // A staged snapshot is intentionally not parse-equivalent yet, but its
+      // candidate, projected PM document and explicit anchors must still form
+      // a valid staged ledger before it can become the current state.
+      this.stagedLedger(entry.staged, entry.state);
+    } else if (!parsed.doc.eq(entry.state.doc)) {
+      throw Error('历史快照原文与 PM 文档不一致；现态保持不变');
+    } else if (!parsed.issues.length
+      && (entry.trusted.source !== entry.source || !entry.trusted.state.doc.eq(entry.state.doc))) {
+      throw Error('历史快照可信状态不一致；现态保持不变');
+    }
     this.source = entry.source;
     this.state = entry.state;
     this.staged = this.cloneStage(entry.staged);
@@ -458,7 +470,6 @@ export class FidelityModel {
     // must never resurrect that stale diagnostic on an otherwise safe state.
     this.patches = entry.patches.map(patch => ({ ...patch }));
     this.before = entry.before;
-    const parsed = parse(this.source);
     this.ranges = parsed.ranges;
     this.issues = parsed.issues;
   }
@@ -634,9 +645,15 @@ export class FidelityModel {
   travel(redo = false) {
     this.finishCompositionHistory();
     const from = redo ? this.future : this.past, to = redo ? this.past : this.future;
-    const entry = from.pop(); if (!entry) return;
-    to.push(this.snapshot());
+    const entry = from.at(-1); if (!entry) return;
+    const current = this.snapshot();
     this.restore(entry);
+    from.pop();
+    to.push(current);
+    // Only a real, validated history restoration invalidates the most recent
+    // rejected-operation diagnostic. Pending and staged save blockers remain
+    // represented by their restored document state, not by `blocked`.
+    this.blocked = '';
     this.revision++;
   }
   select(from: number, to = from) { this.transaction(this.state.tr.setSelection(TextSelection.create(this.state.doc, from, to))); }
