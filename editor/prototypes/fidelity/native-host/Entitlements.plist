@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Sandbox：默认拒绝，仅下列例外 -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- 按 docs/adr/0003：沙盒 WKWebView 连接系统 WebContent 进程需要；
+	     不代表允许联网：导航白名单 + 副本内 CSP connect-src 'none' 仍禁止 HTTP(S)。 -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>
