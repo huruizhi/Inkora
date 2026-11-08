@@ -98,3 +98,21 @@ python3 editor/prototypes/fidelity-cases/verify.py
 - 05 仅证明显式 patch 与 PM 目标文档一致；没有 native command 证据。
 - 11 visual-split 的冻结动作存在独立证实的歧义；在 oracle 决策前，不应以实现迎合预期字节。
 - 未触碰 `model.ts`、`main.ts`、HTML、旧 `check.mjs` / `crossval.mjs`、独立样稿、生产代码或依赖。
+
+## INK-PROT-015 最终 bundle 重跑
+
+INK-PROT-015 将本 driver 以固定提交 `70597e0697cbaeb3df60680496c71213353cbd98` 合入后，指定本工作区审计样稿与组合后的最终 HTML 重新执行：
+
+```sh
+node --check editor/prototypes/fidelity/audited-crossval.mjs
+node editor/prototypes/fidelity/audited-crossval.mjs \
+  editor/prototypes/fidelity-cases \
+  editor/prototypes/fidelity/PROTOTYPE.html \
+  editor/prototypes/fidelity/audited-crossval-results.json
+# 预期且实际：NOT_PASS，exit 1
+```
+
+- 最终 HTML SHA-256：`f37dd72cd8c665b2224eda3a23b702445a170843f65c029319396dbf1c3b7cf4`。
+- 结果：4 PASS、4 EXPLICIT_PATCH_DEMO、2 FAIL、4 BLOCKED_BY_PREVIOUS、3 isolated FAIL、1 empty visual probe FAIL、1 ORACLE_ACTION_AMBIGUITY、runnerErrors=0。
+- 结果仍为 `NOT_PASS`；009 的真实 link/image 语义与 010 的选区接线没有掩盖结构、空文档 visual 输入和原生 marks/attrs 的缺口。
+- driver 必须使用本工作区审计样稿；旧 `c85e1890` 样稿不含审计新增的 `visual-after-step-*` 文件，不能作为本 driver 的输入目录。

@@ -13,7 +13,7 @@
 - `check.mjs` / `evidence.json`：jsdom 载入真实 bundle 的组合检查及结果。
 - `crossval.mjs` / `CROSS-VALIDATION.md`：只读驱动 INK-PROT-002 冻结样稿的交叉验证。
 - `BOUNDARY-EVIDENCE.md`：保护边界与 pending/save gate 证据。
-- `REFERENCE-EVIDENCE.md`：真实链接语义、case03 SHA、inline ledger 反例及原 009/010 冲突面；其中“010 修改 model”的旧描述应按真实 diff 校正为 010 未修改 `model.ts`。
+- `REFERENCE-EVIDENCE.md`：真实链接语义、case03 SHA、inline ledger 反例及原 009/010 冲突面；已按真实 diff 校正为 010 未修改 `model.ts`。
 - `INTEGRATION-SELECTION-EVIDENCE.md`：源码往返/历史选区接线、失败不静默重置、空文档与纯保护块回退证据。
 - `DRIVER-AUDIT.md` / `audited-crossval.mjs` / `audited-crossval-results.json`：审计后 oracle 的独立重放驱动与结果。
 
@@ -24,9 +24,9 @@ make -C editor/prototypes/fidelity build
 make -C editor/prototypes/fidelity lint
 make -C editor/prototypes/fidelity test
 node editor/prototypes/fidelity/selection-check.mjs \
-  /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-002-fidelity-cases/editor/prototypes/fidelity-cases
+  editor/prototypes/fidelity-cases
 node editor/prototypes/fidelity/crossval.mjs \
-  /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-002-fidelity-cases/editor/prototypes/fidelity-cases \
+  editor/prototypes/fidelity-cases \
   editor/prototypes/fidelity/PROTOTYPE.html
 ```
 

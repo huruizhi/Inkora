@@ -1,6 +1,6 @@
 # CROSS-VALIDATION：fidelity 原型 × INK-PROT-002 冻结样稿
 
-交叉核验日期：2026-11-08。样稿 worktree 固定为 `c85e1890b2ef3938dd6853d97977d28ac54b309e`，只读且未修改预期。本轮组合真实链接语义与源码选区接线；02/10 边界见 `BOUNDARY-EVIDENCE.md`，03 见 `REFERENCE-EVIDENCE.md`，09 见 `INTEGRATION-SELECTION-EVIDENCE.md`。
+交叉核验日期：2026-11-08。输入为本工作区已接入的审计样稿，固定来源 `484ee81d924efd2a1038e8421b146f4ae5d5b743`，只读且未修改预期。本轮组合真实链接语义与源码选区接线；02/10 边界见 `BOUNDARY-EVIDENCE.md`，03 见 `REFERENCE-EVIDENCE.md`，09 见 `INTEGRATION-SELECTION-EVIDENCE.md`。
 
 ## 方法
 
