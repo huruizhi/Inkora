@@ -131,3 +131,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 020最终aa6c04f已接收纯模块。管理者复跑strict TS、16组（含原19次冻结构建）及fixture582通过；BOM-only唯一source1、BOM+空白候选从1开始，缩进代码EOF不映射parser补出的虚拟LF。018/020 Agent均归档，证据工作区保留；纯模块仍未接入008实际事务/选区。
 
 022准备基线fc1cdff组合511709f+aa6c04f，已交独立Agent替换真实编辑链路的贪心定位并补组合证据。安全拒绝复杂未覆盖语法、最坏O(n²)/内存、过度保守数学边界、源码草稿文本级撤销、真实WK/IME/磁盘保存等仍未完成，不能把当前矩阵PASS当M0总门槛或生产架构采纳。
+
+022交付整理期间，管理者只读复核发现解析/ledger同错反例：正文`outside [x][ref]`后，代码围栏内放`[ref]: /wrong`，围栏外真实定义`[ref]: /right`。当前HTML的真实PM link为/wrong且ledger成功；同一输入用锁定markdown-it commonmark独立parse，env.references.REF.href为/right，围栏内容保持字面。model与ledger全文件行regex收定义造成代码内部定义污染正文；二者一致不构成独立语义证明。message dce5a806-b39c-4192-ba7b-7500a6e52172已要求按实际块归属修两处并补code/引用/编辑/往返独立预期，不改冻结样稿或降低保真要求。022继续修正，尚未接收。

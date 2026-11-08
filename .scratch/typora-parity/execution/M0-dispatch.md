@@ -333,3 +333,5 @@ message `702a8638-813c-4629-8862-b6b135c0f8ee`已交同Agent修元数据symlink/
 022经同轮实时状态核实仍running、无待授权，代码与非UI测试可独立继续。当前不是整个目标无进展的阻塞，也不重复启动桌面验证Agent；待可审阅新bundle就绪且桌面可用时，再持锁重新preflight。没有把本次环境未执行记为架构失败或验收通过。
 
 022实际活动显示02/03/09已过，10的程序化源码value将caret留EOF而新ledger拒绝非可视gap；native audit仍有runner/probe问题，未形成交付。管理者已通过message `12f5dc9e-1f45-4976-83e4-5ff3ed687dbd`澄清：可纠正驱动到真实内容锚点，但另须覆盖普通用户在源码EOF提交/UndoRedo，不能仅移动测试光标避开常见路径。有效语法与光标映射分别判断；ledger无默认nearest，UI若选择EOF/间隙的相邻owner边界必须显式调用并显示reason/snapped，不能重置文档头或丢草稿。此为本次原型边界与证据要求，不提前解决依赖M0的正式产品交互票。
+
+022仍running、未固定交付时，管理者阅读接线证据和定义扫描发现context污染：正文[x][ref]、围栏内[ref]:/wrong、围栏外[ref]:/right；当前HTML实际PM href=/wrong且sourceLedger成功，但锁定markdown-it CommonMark独立env为/right。定位model.refs和ledger.parseDefinitions的全文件行regex不能识别代码归属；已通过message `dce5a806-b39c-4192-ba7b-7500a6e52172`要求在当前任务内修实际reference环境及词法范围、补只有代码定义/合法首次定义/真实编辑往返的语义和字节组合。不因PM/ledger同错自洽或仅模块PASS接受，未改执行者文件/原型预期。
