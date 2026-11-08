@@ -208,3 +208,22 @@ Luna Agent `b4bf1578-0239-48a4-88a4-487802462ed1` 已结束，但只新增未跟
 - 013 Agent `a61d140e-4132-4e58-ab01-fdab17e966f4` 已及时归档，回读closed，archivedAt=`2026-11-08T13:55:26.345Z`；工作区保留。
 - 空闲槽位用于已获用户确认的M0真实WK/中文IME专项 INK-PROT-014，基线 `def2002cd281f567de9adea192c25b1b1673d4a1`，分支 `task/INK-PROT-014-wk-ime-runtime`；host/agent/workspace为 `srv_MEqRNkRW6fSx` / `c5d1a216-1a93-4831-9678-7f8bb7c50848` / `wks_41bdef266cb1ee55`。GPT-5.6-Sol/medium/default档，notifyOnFinish开启，创建回执running。
 - 014只改native-host诊断/证据，使用独立原型App，须持生产UI锁并在取锁后desktop preflight，前台App进程结束后由包装器释放锁。系统输入法须真实键序与marked/composition证据，不用注入中文或模拟事件冒充；缺权限/锁屏/工具能力时记录实际未执行，不绕过系统授权。仅内存save不是NSDocument磁盘保存。009/012继续各自执行，014不能宣称验证了尚未合入的009版本或资源票14。
+
+### 真实引用语义与审计驱动接收
+
+- 009最终提交 `70bc4da914bf2e42b86ea5c3b1d3b3004f27c80b`（前一提交62c73cc），本地/远端一致、干净，整段字面化已被真实link mark/DOM、结构与邻近marks取代。管理者实跑build/tsc/28项检查及02/03/10全部变体通过；未重跑生产122项（执行者已报告运行），未运行WK/IME/磁盘。inline目标/正文碰撞、转义仍安全拒绝，图片仅局部原文占位。009 Agent `5b1a6728-12c9-46b4-ad89-502bcdc12e2c` 已归档，回读closed，archivedAt=`2026-11-08T14:02:42.768Z`。
+- 012最终提交 `70597e0697cbaeb3df60680496c71213353cbd98`，仅新增3文件，本地/远端一致、干净。管理者实际重跑node语法检查、audited driver（结果写忽略的artifacts/logs/ink-prot-012-manager-results.json）和verify.py557项。runner rc1/NOT_PASS、错误0：source4步PASS、05四步EXPLICIT_PATCH_DEMO；06/11原生结构操作与空文档visual输入失败；11单Enter动作与三段oracle歧义以独立PM/解析计数复现。驱动本身验收通过，不把目标失败当runner未完成。012 Agent `353d654a-6628-41c5-8d48-63f131ceca1b` 已归档，回读closed，archivedAt=`2026-11-08T14:02:32.574Z`。
+- 两个任务工作区与固定证据保留。009和010分支的测试数量不能相加称为组合通过；下一任务负责真实手工整合与组合回归。
+
+### 组合集成与动作再审派发
+
+全部使用当前已发现Codex GPT-5.6-Sol、full-access/default档/notifyOnFinish=true，host统一srv_MEqRNkRW6fSx；无profile。当前014真实WK专项仍独立执行。
+
+| 任务 | 固定起点/范围 | Agent / Workspace | 分支与档位 |
+| --- | --- | --- | --- |
+| INK-PROT-015 链接与选区组合集成 | def2002；合并009的70bc4da与012的70597e0，保留010选区/草稿/空文档与009schema/marks，组合回归，不实现新结构功能 | 95ba831b-bd41-4b5a-b4ed-7b034b19ce0b / wks_fe72da7873a19790 | task/INK-PROT-015-link-selection-integration；high |
+| INK-PROT-016 混合换行视觉动作独立再审 | 484ee81；仅fidelity-cases，独立PM/规范推导，保留原三段字节oracle并明确复合动作，新增单Enter语义覆盖，不读原型实现输出 | 23e699cd-6516-44ab-9fcd-fec30b8a3718 / wks_acbfee4074f32dc1 | task/INK-PROT-016-visual-action-semantics；medium |
+
+创建回执running，不据此宣称完成。016不为当前原型失败改预期；015先沿用冻结484样稿，后续接受新审计后再更新动作driver。组合就绪后优先补已证实的原生空文档/结构/marks事务桥接，仍按M0门槛验证而非锁定架构或直接产品化。
+
+测试计数口径已核对：make test-editor排除src/bridge.test.ts（既有111/9文件）；009执行的pnpm --dir editor test不排除Bridge（122/10文件）。这是命令覆盖范围差异，不是本次新增11项回归，也不能以数量判断覆盖提升；已通知015按实际命令分层报告。
