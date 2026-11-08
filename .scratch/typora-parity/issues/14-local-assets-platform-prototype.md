@@ -46,3 +46,5 @@ Host / Agent / Workspace：`srv_MEqRNkRW6fSx` / `1da3379f-18dd-414b-b036-f8124a9
 执行Agent已归档，工作区/证据保留。本票仍claimed由管理者维护，不因为首部分成功而解决：内存journal不能跨重启恢复；图片识别仍为保守正则；NSOpenPanel授权、拖放/粘贴、书签跨启动、WK资源broker、路径安全完整矩阵与macOS 14实机仍须后续验证。M0的WK/IME专项由另一原型执行，不等于本票的资源授权/加载验收。
 
 管理者进一步核对013源码：OwnershipJournal只有进程内存entries，DraftSession每次新UUID，没有从持久记录重建草稿/保存阶段的入口。已派INK-PROT-021在固定a60b7b9上补持久会话/每操作记录与真实子进程中断恢复，范围仍仅`prototypes/local-assets/`。普通scratch跨进程证据不能替代上述完整Sandbox/UI矩阵；本票保持claimed。host/agent/workspace及验收约束见[执行记录](../execution/M0-dispatch.md)。
+
+021首稿f745f6c的8个真实SIGKILL恢复窗口与10负例、原14模型/严格Sandbox检查已由管理者重跑通过，但额外审计发现元数据文件symlink未拒绝、manifest与事件矛盾能误报saved、最终确认后外部目标变化仍报saved。已交同Agent修正并补真实新进程负例，暂不接收该恢复协议，不以测试矩阵PASS解决父票。

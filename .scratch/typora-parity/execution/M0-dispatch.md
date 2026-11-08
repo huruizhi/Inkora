@@ -309,3 +309,11 @@ INK-RES-002首轮`28d5ab0731414c20c5f1cec6c146322509f91cb7`已推送且干净，
 - list_profiles为空且inspect_provider核实，选Codex GPT-5.6-Sol/high、full-access/default档、notifyOnFinish=true；跨事务/暂存/源码历史定位接线使用较高推理档，不升级6.1-Sol。创建回执running，无通过结论。
 - 范围fidelity及M0-INTEGRATION，不改fixtures/native-host/生产/依赖/桌面。实际替换model/selection-map贪心，证明href/title/body碰撞、escape/entity、BOM/CRLF/代码/hardbreak/空结构及staged混排组合；禁止旧文本搜索成功fallback、默认nearest、整篇源码回退。保留所有有效测试，旧默认吸附若需迁移必须显式请求并保留端点/方向断言及说明，不可削弱判据。
 - 021继续独立资源跨进程恢复；当前两名执行者，无闲置完成Agent。022验收后再接008及安排新bundle真实WK/IME，当前M0未过。
+
+### 021首轮恢复审计与限定修正
+
+021固定`f745f6c2cd4fe4f9b823fc17ef1df90305008c56`已推送/干净，仅local-assets目录。管理者实跑make check（旧14场景、9项判定、签名Sandbox EPERM及同fixture对照）和restart-check（8个不同worker/recovery PID的SIGKILL窗口、10负例）均通过；复跑后仅还原本轮生成证据字节，未改执行者代码，临时scratch/探针会话已由各脚本清理。
+
+实际代码与额外新进程探针揭示三项未覆盖缺陷：manifest最终组件换为指向受控scratch外JSON的symlink仍accepted；导入后仅篡改manifest的saved/dirty/checkpoint就返回recorded-saved，尽管event只有5条且目标/资源不存在；完整正常保存后外部改目标，planned/observed SHA不同仍返回recorded-saved。现有负例不足以证明恢复记录可信；只读不删除也不能代替元数据访问边界及状态一致性。
+
+message `702a8638-813c-4629-8862-b6b135c0f8ee`已交同Agent修元数据symlink/实际event确认与manifest一致性/保存后外部变化及不可读与不存在区分，要求保留正常intent崩溃前缀、旧8+10和成功对照。021暂不接收、未归档闲置或合并；Agent继续工作，父票14仍claimed，平台/产品/断电耐久验收不外推。
