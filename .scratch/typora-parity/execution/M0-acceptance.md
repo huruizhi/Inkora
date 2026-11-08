@@ -141,3 +141,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 准备新宿主时发现两项确定缺口：旧observer以source!=saved计算dirty，漏报staged；main.run只看PM composing，忽略现成sourceKernel.composing。后者在【合成信号仅测guard，不是真IME】下实际重现：source a+LF，源码草稿a中+LF，compositionstart后input，再点apply会误走no-op退出sourceMode并清掉草稿。023补只读诊断，024补操作守卫和保留草稿回归；不把合成信号回归当真实组合输入通过。新App与人工验收要等这两项修正验收后固定，屏幕仍需可用会话。
 
 023已接收270716e并FF入008源码。管理者重跑只读observer回归、native-host verify/签名资源检查，独立核对source/bundle/observer hash、script原字节及最终baseline/Info一致；dirty getter与staged诊断修复。未启动App、024getter当前仅兼容mock，尚不是合并后真实组合输入证据；008现有旧artifact不得直接拿来代表新宿主。024仍执行，后续最终HEAD重建与人工物理键盘验收未完成。
+
+024固定0ac441b已接收。管理者重跑37+4+16+4、ledger17、selection15、native16+3+3、fixture582通过，并重放组合信号期间apply保留草稿/上屏后提交的原始反例（仍非真IME）。原Agent已归档；008以merge接入023/024为5fbeb10，重新跑组合检查、observer-check与宿主verify，实际getters/只读snapshot组合检查通过。最终HTML为c863900…c81090，manifest/Info/HEAD与source/bundle/script/observer hash一致；详见[人工验收清单](M0-human-acceptance.md)。再次preflight仍屏幕锁定/78，未启动App。已用异步问题询问真人解锁与物理键盘配合，未收到答复不推定可用或通过；M0未过。

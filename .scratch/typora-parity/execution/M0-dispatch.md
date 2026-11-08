@@ -356,3 +356,11 @@ Host均srv_MEqRNkRW6fSx，full-access/default档/notifyOnFinish=true，list_prof
 023工作区本轮artifact baseline270716e，HTML source=e2e259f…ffd3f6、bundle=d171ec7d…dccb737、observer=2aa57f69…b68696d；024组合信号尚只以普通mock证明兼容，需其合入后再用实际getters复核。Agent `799844f3-1976-4b6f-98af-2ccacff7d7d2`已归档closed，`2026-11-08T16:09:21.818Z`，工作区/证据保留。008源码已FF270716e并推送，008旧artifacts不外推为更新后的可运行验收成品；待024合入最终HEAD统一重建。
 
 当前仅024继续源码composition守卫。屏幕预检锁定与真IME缺证保持独立，不因宿主静态构建/合成guard检查通过就关闭M0或HITL。
+
+### 024接收、最终宿主与人工配合入口
+
+024固定`0ac441b36195be8dda5be586db82547b986cfef8`远端一致/干净；管理者实跑37+4+16+4、ledger17、selection15、native16+3+3、verify582及原始合成信号guard反例通过，未称真IME。Agent `12b99bf1-8d0f-4ba0-806e-aac1d3d3e563`归档closed，`2026-11-08T16:14:29.246Z`，工作区保留。
+
+008在270716e上merge024为`5fbeb109ac5a4158b50014b39b3864163ae8625a`并推送，干净。管理者在最终HEAD实跑fidelity组合检查、observer-check与native-host verify；另用实际prototype getters联合observer验证source composition信号守卫，均通过且明确非真IME。最终签名产物清单/HEAD/Info与各hash核对通过，source=c863900…c81090、bundle=df25ee90…cab8373、script=a60f78cb…932080、observer=2aa57f69…b68696d，脚本字节一致。
+
+同轮持锁preflight再次明确屏幕锁定/exit78（pid32953），未启动App，包装器退出释放锁。现无运行或闲置完成执行Agent。已向用户发送异步问题：是否现在能解锁并用物理键盘配合约5分钟；选项为“现在可以配合/稍后再验收”，未答复不等于确认。固定产物、前台持锁命令与逐项结果入口见[M0-human-acceptance.md](M0-human-acceptance.md)。M0/架构/完整开发路线不标完成；真实新版本WK、IME及用户审阅保持待验收。
