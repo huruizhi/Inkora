@@ -227,3 +227,29 @@ Luna Agent `b4bf1578-0239-48a4-88a4-487802462ed1` 已结束，但只新增未跟
 创建回执running，不据此宣称完成。016不为当前原型失败改预期；015先沿用冻结484样稿，后续接受新审计后再更新动作driver。组合就绪后优先补已证实的原生空文档/结构/marks事务桥接，仍按M0门槛验证而非锁定架构或直接产品化。
 
 测试计数口径已核对：make test-editor排除src/bridge.test.ts（既有111/9文件）；009执行的pnpm --dir editor test不排除Bridge（122/10文件）。这是命令覆盖范围差异，不是本次新增11项回归，也不能以数量判断覆盖提升；已通知015按实际命令分层报告。
+
+### WK运行专项接收与系统IME键码后续
+
+- 014交付 `afe85724a0b98acae7c0810de003b92d7858d2ac`，本地/远端一致、干净，仅native-host六文件。A层真实WK基础路径有条件通过，保护数学块源码插入仍存在真实映射/pending边界；B层因Computer Use逐键路径只出现insertText/isComposing=false、无候选/组合事件，保持未执行。未验证009、生产App或NSDocument。输入源恢复U.S.、App正常退出和UI锁释放已记证据。
+- 管理者读取证据与runtime.log（122232B）存在，独立build/verify通过并核对HTML/script/observer hash；未重放桌面操作。014 Agent `c5d1a216-1a93-4831-9678-7f8bb7c50848` 已归档，回读closed，archivedAt=`2026-11-08T14:12:20.055Z`，工作区/日志保留。
+- 008已从def2002快进至afe8572，native-host Git tree与交付完全一致，再次verify通过；HTML source/bundle hash仍182fcee/123726e，observer SHA为28f0fa8c…0b33d4f。015基于def2002的核心组合继续执行，交付后以merge接入008保留新native-host，不要求重启/rebase，已发协调消息。
+- 新派INK-PROT-017：只读检查公开CoreGraphics键码投递权限，获准时才在受UI锁/preflight保护的隔离宿主验证真实IME；不申请权限/改TCC/借身份绕过，不用Unicode直插/JS事件当组合。缺权限则记录具体事实并保留人工物理键盘验收。当前仅创建回执running，无B层通过结论。
+- 017 host/agent/workspace：`srv_MEqRNkRW6fSx` / `d52fdd6b-0a6c-443f-90b3-d335a400fb42` / `wks_1b21c2960cb24ac5`；分支`task/INK-PROT-017-system-ime-keypath`，固定起点afe8572，GPT-5.6-Sol/medium/default档/notifyOnFinish=true。当前执行者为015组合、016独立动作审计、017系统IME路径，均不宣告M0通过。
+
+### 组合、动作审计及键码路径三项接收回收
+
+- 016固定 `5d02043342c6dcb585baf41c069346b15d541fe6`，本地/远端一致、干净。管理者实跑独立PM/CommonMark3项与verify.py：11例49步582项通过；另核对旧visual-split的ops/expected元数据与既有Markdown未改。三段目标明确需要Enter→输入→Enter→前向Delete，新增single-enter两段覆盖。016 Agent `23e699cd-6516-44ab-9fcd-fec30b8a3718` 已归档，closed，`2026-11-08T14:25:11.837Z`。
+- 015固定 `97b681ffc87991e66a6b7159ec36440d1a908d6f` 与017固定 `50fae06979013ddcdb5e3242a6e47ae264c33c03`，均核实远端一致、干净，已merge接回008为 `3aab70587837f9d3108b2020c53263d4a40449bc`并推送，保留014 native-host。管理者实跑37组合检查、15模块、02/03/09/10、旧484 audited driver（rc1/NOT_PASS/错误0）及host/probe编译verify通过；没有把旧目标失败变成通过。
+- 017只读CGPreflightPostEventAccess为false/rc77，未启动UI或发键；管理者在组合008复跑也得到false/77。输入源保持当时实际Sogou，不强行还原为旧014的U.S.；没有新增授权或改TCC。B层仍需真人物理键盘，不阻止继续自动可做的内核修正，也不假称系统IME完成。
+- 015 Agent `95ba831b-bd41-4b5a-b4ed-7b034b19ce0b` 与017 Agent `d52fdd6b-0a6c-443f-90b3-d335a400fb42` 已归档，回读closed，时间分别 `2026-11-08T14:31:02.884Z`、`2026-11-08T14:31:03.047Z`。全部工作区/证据保留；新组合f37dd72没有重跑真实WK，014只覆盖182fcee。
+
+### 原生事务与词法范围两路并行
+
+准备基线 `30b73530af2e8dac37399a0dc9df64f8a9689eb3` = 008组合3aab705 + 独立016固定5d02043。仅018/019工作区含新582项样稿，008当前旧driver仍冻结484，禁止混用版本。两项Codex GPT-5.6-Sol/high、full-access/default档/notifyOnFinish=true，无profile，创建回执running。
+
+| 任务 | 范围 | Agent / Workspace | 分支 |
+| --- | --- | --- | --- |
+| INK-PROT-018 原生编辑事务保真桥接 | 真EditorView/PM命令自动产生局部patch，补空文档visual、paragraph/list split/join、marks/attrs，并更新driver适配016；不改样稿/native-host/生产 | 753c2e3a-8e25-44b5-bb6d-393e74717f24 / wks_406e1054497d4e77 | task/INK-PROT-018-native-transactions |
+| INK-PROT-019 词法原文范围账本 | 只新增source-ledger模块/检查/证据，区分label/href/正文、转义/实体与重复内容，替代猜测性搜索；不接线/不改018现有文件 | df31e64f-b5e5-4228-934b-3a35e3eec64b / wks_271caea7e2d6b9ac | task/INK-PROT-019-inline-source-ledger |
+
+Host均为srv_MEqRNkRW6fSx。两者接口/文件边界已协调，018暂用旧映射保留反例，不等待019；模块通过也不当UI接线通过。后续组合后继续全门槛核验，当前不锁架构，不宣告M0或路线完成。
