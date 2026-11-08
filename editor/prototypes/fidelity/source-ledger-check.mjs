@@ -383,5 +383,64 @@ function record(name, details) {
   record('有规模可重复测量（非复杂度证明）', { utf16: source.length, blocks: parsed.ranges.length, runsMs: samples });
 }
 
+// 15. A BOM is a file prefix, never a legal insertion point before itself.
+// Empty/blank documents retain the prefix and expose only post-BOM raw gaps.
+{
+  for (const source of ['\uFEFF', '\uFEFF\n\n']) {
+    const snapshot = source;
+    const bytesBefore = Buffer.from(source, 'utf8');
+    const { ledger } = ledgerFor(source);
+    const first = 1;
+    const last = source.length;
+    const plain = visualToSource(ledger, 1, 1);
+    if (first === last) assert.deepEqual(plain, { ok: true, anchor: first, head: first, snapped: [] });
+    else {
+      assert.equal(plain.ok, false);
+      assert.deepEqual(plain.candidates, [first, last]);
+    }
+    assert.deepEqual(visualToSource(ledger, 1, 1, { collapsedAffinity: 'right' }), { ok: true, anchor: first, head: first, snapped: [] });
+    assert.deepEqual(visualToSource(ledger, 1, 1, { collapsedAffinity: 'left' }), { ok: true, anchor: last, head: last, snapped: [] });
+    assert.deepEqual(sourceToVisual(ledger, first, first), { ok: true, anchor: 1, head: 1, snapped: [] });
+    assert.deepEqual(sourceToVisual(ledger, last, last), { ok: true, anchor: 1, head: 1, snapped: [] });
+    assert.equal(sourceToVisual(ledger, 0, 0).ok, false);
+    assert.equal(source, snapshot);
+    assert.deepEqual(Buffer.from(source, 'utf8'), bytesBefore);
+    assert.equal(source.charCodeAt(0), 0xFEFF);
+    assert.ok(ledger.spans.some(span => !span.visible && span.sourceStart === 0 && span.sourceEnd >= 1));
+  }
+  record('BOM 后空文档合法 gap', { bomOnly: [1], bomBlank: [1, 3] });
+}
+
+// 16. markdown-it may append a logical final newline to an indented-code
+// token at EOF. The ledger projects only source bytes that really exist.
+{
+  const cases = [
+    { source: '    code', codeStart: 4, codeEnd: 8, text: 'code' },
+    { source: '\tcode', codeStart: 1, codeEnd: 5, text: 'code' },
+    { source: '    one\n    two', codeStart: 4, codeEnd: 15, text: 'one\ntwo' },
+    { source: '\uFEFF    code', codeStart: 5, codeEnd: 9, text: 'code' },
+    { source: '\uFEFF\tcode', codeStart: 2, codeEnd: 6, text: 'code' },
+  ];
+  const details = [];
+  for (const expected of cases) {
+    const snapshot = expected.source;
+    const bytesBefore = Buffer.from(expected.source, 'utf8');
+    const { parsed, ledger } = ledgerFor(expected.source);
+    assert.equal(parsed.doc.firstChild.type.name, 'code_block');
+    assert.equal(parsed.doc.firstChild.textContent, expected.text);
+    const textStart = leafPosition(parsed.doc, expected.text, 0);
+    const textEnd = textStart + expected.text.length;
+    assert.equal(visualToSource(ledger, textStart, textStart, { collapsedAffinity: 'right' }).anchor, expected.codeStart);
+    assert.equal(visualToSource(ledger, textEnd, textEnd, { collapsedAffinity: 'left' }).anchor, expected.codeEnd);
+    assert.equal(sourceToVisual(ledger, expected.codeStart, expected.codeStart).anchor, textStart);
+    assert.equal(sourceToVisual(ledger, expected.codeEnd, expected.codeEnd).anchor, textEnd);
+    assert.ok(ledger.spans.every(span => span.sourceStart >= 0 && span.sourceEnd <= expected.source.length));
+    assert.equal(expected.source, snapshot);
+    assert.deepEqual(Buffer.from(expected.source, 'utf8'), bytesBefore);
+    details.push({ sourceLength: expected.source.length, raw: [expected.codeStart, expected.codeEnd], pm: [textStart, textEnd] });
+  }
+  record('缩进代码 EOF 无换行真实 span', { cases: details });
+}
+
 console.log(`\nPASS: ${results.length} 组独立来源断言；真实 model.parse/PM 文档路径；临时 bundle 已清理。`);
 console.log(JSON.stringify(results, null, 2));

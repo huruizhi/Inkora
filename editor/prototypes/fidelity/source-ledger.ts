@@ -494,15 +494,17 @@ function hiddenRaw(state: ScanState, start: number, end: number, role: SourceRol
   if (end > start) state.spans.push({ sourceStart: start, sourceEnd: end, role, syntax, visible: false, detail });
 }
 
-function codeLineContent(line: ReturnType<typeof lineTable>[number], style: 'fenced' | 'indented', fenceIndent: number): { start: number; text: string } {
+function codeLineContent(line: ReturnType<typeof lineTable>[number], style: 'fenced' | 'indented', fenceIndent: number, minimumStart = line.start): { start: number; text: string } {
+  const rawStart = Math.max(line.start, minimumStart);
+  const rawText = line.text.slice(rawStart - line.start);
   if (style === 'fenced') {
     let removed = 0;
-    while (removed < fenceIndent && line.text[removed] === ' ') removed++;
-    return { start: line.start + removed, text: line.text.slice(removed) };
+    while (removed < fenceIndent && rawText[removed] === ' ') removed++;
+    return { start: rawStart + removed, text: rawText.slice(removed) };
   }
-  if (line.text.startsWith('    ')) return { start: line.start + 4, text: line.text.slice(4) };
-  if (line.text.startsWith('\t')) return { start: line.start + 1, text: line.text.slice(1) };
-  if (line.text.trim() === '') return { start: line.contentEnd, text: '' };
+  if (rawText.startsWith('    ')) return { start: rawStart + 4, text: rawText.slice(4) };
+  if (rawText.startsWith('\t')) return { start: rawStart + 1, text: rawText.slice(1) };
+  if (rawText.trim() === '') return { start: line.contentEnd, text: '' };
   throw Error(`缩进代码行 ${line.start} 缺少可审计的四空格或 tab 前缀`);
 }
 
@@ -538,15 +540,20 @@ function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: 
   }
 
   const logical: Array<{ char: string; start: number; end: number; lineEnding: boolean }> = [];
-  for (const line of contentLines) {
-    const content = codeLineContent(line, style, fenceIndent);
-    hiddenRaw(state, line.start, content.start, 'block-prefix', style === 'fenced' ? 'fence-content-indent' : 'indented-code-prefix');
+  for (let lineIndex = 0; lineIndex < contentLines.length; lineIndex++) {
+    const line = contentLines[lineIndex];
+    const lineStart = style === 'indented' && lineIndex === 0 ? Math.max(line.start, range.start) : line.start;
+    const content = codeLineContent(line, style, fenceIndent, lineStart);
+    hiddenRaw(state, lineStart, content.start, 'block-prefix', style === 'fenced' ? 'fence-content-indent' : 'indented-code-prefix');
     for (let i = 0; i < content.text.length; i++) logical.push({ char: content.text[i], start: content.start + i, end: content.start + i + 1, lineEnding: false });
     if (line.end > line.contentEnd) logical.push({ char: '\n', start: line.contentEnd, end: line.end, lineEnding: true });
   }
-  const projected = token.content.endsWith('\n') ? token.content.slice(0, -1) : token.content;
   const logicalText = logical.map(unit => unit.char).join('');
-  if (logicalText !== token.content) throw Error(`代码块原文投影与 token.content 不一致：raw=${JSON.stringify(logicalText)} token=${JSON.stringify(token.content)}`);
+  // markdown-it appends a logical final newline to indented-code token.content
+  // even when EOF has no EOL byte. Projection is derived from physical source
+  // units, then checked against the real PM node below; no synthetic source
+  // position is created for the parser-only newline.
+  const projected = logicalText.endsWith('\n') ? logicalText.slice(0, -1) : logicalText;
   let logicalIndex = 0;
   for (const part of segmenter.segment(projected)) {
     const length = part.segment.length;
@@ -749,7 +756,8 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         if (node.isTextblock && node.childCount === 0) emptyTextblocks.push(pos + 1);
       });
       if (emptyTextblocks.length !== 1) throw Error('无块原文没有唯一的 PM 空 textblock 插入位置');
-      const anchors = source.length === 0 ? [0] : [0, source.length];
+      const firstBoundary = source.startsWith('\uFEFF') ? 1 : 0;
+      const anchors = source.length === firstBoundary ? [firstBoundary] : [firstBoundary, source.length];
       for (const sourceOffset of anchors) allSpans.push({
         sourceStart: sourceOffset,
         sourceEnd: sourceOffset,

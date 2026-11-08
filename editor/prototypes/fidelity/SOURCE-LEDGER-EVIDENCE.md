@@ -16,6 +16,8 @@
 
 020 补上三类此前明确缺口：`fence`/`code_block` 块 token 直接建立逐行代码原文所有权；两种 CommonMark hardbreak 映射为真实 PM atom；空文档、纯空白、仅定义及空 textblock/code block 使用零宽插入锚点。固定起点上 case05 input 的范围 `72..100` 可重跑得到“有 PM 文本但没有可审计 inline token”；修改后 input 与四个 after 状态均能构建。
 
+首轮 `8923def` 后的限定修正又封闭两个保真边界：只有 BOM 的文档把唯一插入边界设为 BOM 后的 UTF-16 offset 1，BOM 加空白的前候选也从 1 开始；缩进代码在 EOF 无物理换行时只投影真实源码单元，不把 markdown-it 补入 `token.content` 的逻辑换行伪造成 source span。
+
 ## 纯 API 与坐标契约
 
 ```ts
@@ -35,6 +37,8 @@ debugSourceLedger(ledger): string
 - PM `hard_break` 不是文本叶：其 `nodeSize=1`，账本以 `projection:'atom'` 将 PM `[pos,pos+1]` 绑定到完整的 `"  \n"`/`"  \r\n"` 或 `"\\\n"`/`"\\\r\n"` 原文 span。atom 左右边界分别映射 marker 起点和行尾终点；marker/CRLF 内部拒绝。
 - 零宽 `insertion-anchor` 只用于真实空 textblock 的内容位置（节点 `pos+1`）。空 heading/quote/list 锚定在各自块前缀之后；空 fenced code 锚定 opening EOL 后、closing fence 前。
 - 空源码只有一个 source 边界。纯空白或仅引用定义有“前/后”两个合法 gap；PM→source 默认返回候选并失败，调用方必须给 `collapsedAffinity:'right'`（前）或 `'left'`（后）。不会静默重置到文档头，也不会跨块借用下一个正文锚点。
+- BOM 是文件前缀而不是正文前 gap：只有 `BOM` 时唯一边界为 1；`BOM + 空白` 的候选为 `[1, source.length]`。offset 0 不映射，BOM span 保留为非可视原文，模块不删除或吞并它。
+- 缩进代码投影以物理 source 行为准。markdown-it 在无尾换行 EOF 处补给 `token.content` 的逻辑 `\n` 没有 source offset；账本既不创建零长伪换行，也不写回换行，最终仍以真实 PM code text 全量校验。
 
 ## 支持表
 
@@ -53,9 +57,9 @@ debugSourceLedger(ledger): string
 | 缺失引用定义 | 与真实 parser 一致，整段保持字面可视文本 | `[Missing][nope]` |
 | protected_block | 仅记录不可视 protected span，内部无伪文本锚点 | 块内 source→visual 拒绝 |
 | fenced code block | opening/closing marker、info、indent 非可视；内容按物理行和 UTF-16/CRLF 建立 `code-text` | BOM、4→5 长围栏、info、多行 CRLF、无文件尾换行、空块 |
-| indented code block | 每行四空格或 tab 前缀非可视；内容与内部换行按字面映射 | 反引号、美元和 Markdown marker 保持字面 |
+| indented code block | 每行四空格或 tab 前缀非可视；内容与真实内部换行按字面映射 | 空格/tab、单/多行 EOF 无 LF、BOM 组合 |
 | hardbreak | 双空格与反斜线写法分别拥有完整 raw span，对应真实 `hard_break` atom | atom 两侧选区与内部拒绝 |
-| 空文档/纯空白/仅定义 | 显式零宽插入锚点；多个 gap 强制 affinity | 文档头/尾候选，不默认 nearest |
+| 空文档/纯空白/仅定义 | 显式零宽插入锚点；多个 gap 强制 affinity；BOM 后才是首个合法 gap | 默认/left/right 与 source→visual，不默认 nearest |
 | 空 heading/quote/list/code block | 锚定块自身可视插入位置，不跨块猜测 | `#`、`>`、`- `、空 fence |
 
 ## 明确边界与反例
@@ -71,7 +75,7 @@ debugSourceLedger(ledger): string
 
 ## 独立来源断言
 
-`source-ledger-check.mjs` 在拼装 fixture 时同步记录 expected raw span；expected 不读取账本结果，也不调用旧 `sourcePosition`。脚本用 Vite 临时打包真实 `model.ts` 与新模块，随后立即删除临时入口/产物。通过的 14 组覆盖：
+`source-ledger-check.mjs` 在拼装 fixture 时同步记录 expected raw span；expected 不读取账本结果，也不调用旧 `sourcePosition`。脚本用 Vite 临时打包真实 `model.ts` 与新模块，随后立即删除临时入口/产物。通过的 16 组覆盖：
 
 1. `[a](later "later")later` 的 href/title/body 三重同字；正文内部映射准确，另外两处拒绝。
 2. `\*` 与 `&amp;amp;` 显示两端映射；entity raw 内部、emoji surrogate 中间、组合 grapheme 中间拒绝。
@@ -87,6 +91,8 @@ debugSourceLedger(ledger): string
 12. 空文档、纯空白、仅定义、空 heading/quote/list/code block 的 expected source/PM 插入位置；块间 gap 拒绝。
 13. 读取冻结 `cases.json` 但不修改它：15 个 variant input 加 case05 四个 after 状态，共 19 次真实 `model.parse()` + `buildSourceLedger()`。
 14. 10,560 UTF-16、160 块、三次重复构建的有规模测量。
+15. `BOM` 与 `BOM + 空白` 的默认/left/right、source→visual、offset 0 拒绝和 BOM 前缀不变。
+16. 四空格/tab 缩进代码的单行、多行末尾无 LF，以及 BOM 组合；断言真实 PM 文本端点、raw offset 和所有 span 不越过 source length。
 
 典型调试输出：
 
@@ -121,12 +127,12 @@ debugSourceLedger(ledger): string
 ## 实际命令与结果
 
 ```sh
-/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm \
-  --dir editor exec tsc -p prototypes/fidelity/source-ledger-tsconfig.json
+editor/node_modules/.bin/tsc \
+  -p editor/prototypes/fidelity/source-ledger-tsconfig.json
 # PASS（strict TypeScript，无输出）
 
 node editor/prototypes/fidelity/source-ledger-check.mjs
-# PASS：14 组独立来源断言；真实 model.parse/PM 路径；临时 bundle 已清理
+# PASS：16 组独立来源断言；真实 model.parse/PM 路径；临时 bundle 已清理
 # 冻结 fixture input + case05 after：19 次构建通过
 
 python3 editor/prototypes/fidelity-cases/verify.py
