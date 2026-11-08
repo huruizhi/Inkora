@@ -54,6 +54,33 @@ final class DocumentOpenUITests: AcceptanceTestCase {
   }
 
   @MainActor
+  func testBareCRReadOnlyConvertsWithKeyboardWithoutSaving() throws {
+    let directory = try makeTemporaryDirectory()
+    let url = directory.appendingPathComponent("Bare CR.md")
+    let original = Data("<x>中文</x>\r第二行\r\n".utf8)
+    try original.write(to: url)
+    let app = try openWithLaunchServices(url)
+    defer {
+      app.terminate()
+      try? FileManager.default.removeItem(at: directory)
+    }
+    let window = app.windows["Bare CR.md"]
+    XCTAssertTrue(window.waitForExistence(timeout: 10))
+    let convert = window.buttons["ConvertBareCRToLF"]
+    XCTAssertTrue(convert.waitForExistence(timeout: 10))
+    XCTAssertTrue(window.staticTexts["BareCRExplanation"].exists)
+    app.typeKey("l", modifierFlags: [.command, .option])
+    XCTAssertTrue(convert.waitForNonExistence(timeout: 5))
+    XCTAssertEqual(try Data(contentsOf: url), original, "Conversion must not autosave")
+    app.typeKey("s", modifierFlags: .command)
+    let saved = NSPredicate { _, _ in
+      (try? Data(contentsOf: url)) == Data("<x>中文</x>\n第二行\n".utf8)
+    }
+    expectation(for: saved, evaluatedWith: nil)
+    waitForExpectations(timeout: 10)
+  }
+
+  @MainActor
   func testInvalidUTF8OpensAReadOnlyErrorWindowWithoutAnEditor() throws {
     let temporaryDirectory = try makeTemporaryDirectory()
     let fileURL = temporaryDirectory.appendingPathComponent("Invalid UTF8.md")

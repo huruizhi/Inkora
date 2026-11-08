@@ -7,3 +7,6 @@ editor/test/fixtures/markdown/crlf.expected.md -diff -merge -text
 
 # INK-052: shared runtime/native golden bytes must never be normalized.
 tests/fixtures/crlf-structured*.md -diff -merge -text
+
+# INK-054: read-only inputs and explicit LF conversion goldens.
+tests/fixtures/bare-cr*.md -diff -merge -text

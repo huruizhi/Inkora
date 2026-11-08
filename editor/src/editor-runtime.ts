@@ -198,17 +198,39 @@ class SourceEditorRuntime implements EditorRuntime {
   }
 }
 
+// EOL-003: keep exact bytes independent of textarea's LF normalization.
+class ReadOnlyEditorRuntime implements EditorRuntime {
+  private readonly textArea: HTMLTextAreaElement;
+  readonly status = { dirty: false, canUndo: false, canRedo: false };
+  readonly composing = false;
+
+  constructor(parent: HTMLElement, private readonly text: string) {
+    this.textArea = document.createElement("textarea");
+    this.textArea.id = "editor";
+    this.textArea.readOnly = true;
+    this.textArea.setAttribute("aria-label", "Markdown source (read only: bare CR)");
+    this.textArea.value = text;
+    parent.append(this.textArea);
+  }
+
+  getText(): string { return this.text; }
+  markSaved(_text: string): void {}
+  undo(): boolean { return false; }
+  redo(): boolean { return false; }
+  focus(): void { this.textArea.focus(); }
+  destroy(): void { this.textArea.remove(); }
+}
+
 export function createEditorRuntime(
   parent: HTMLElement,
   text: string,
   onChange: RuntimeChangeListener,
 ): EditorRuntime {
   parent.replaceChildren();
-  // Keep bare CR distinct so its future read-only route (INK-054) can be
-  // added without changing the uniform-CRLF editing path.
   const endings = classifyLineEndings(text);
+  if (endings === "bare_cr") return new ReadOnlyEditorRuntime(parent, text);
   const input = structuredInput(text);
-  if (endings !== "bare_cr" && endings !== "mixed" &&
+  if (endings !== "mixed" &&
       analyzeMarkdownSafety(input).structuredSaveAllowed) {
     try {
       // CRLF support must not introduce unrelated codec normalization diffs.

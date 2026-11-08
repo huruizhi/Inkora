@@ -14,9 +14,9 @@
 
 - 未修改文档的保存逐字节一致：未编辑时 snapshot 返回原始文本，不经过 codec（`FID-001`，`EOL-001`）。
 - 源码模式（textarea）：内核记录每个原始换行边界（LF / CRLF / bare CR）。textarea 的值按 HTML 规范归一化为 LF，`getText()` 逐行恢复原边界；新插入的换行按 `EOL-002` 继承插入点所在行的样式，当前行无样式时回退最近前一行、文档首个换行样式，空文档使用 LF。
-- 模式选择（INK-052）：`line-endings.ts` 区分 LF、纯 CRLF、混合 LF/CRLF 和 bare CR。纯 CRLF 在语法安全且 LF codec 往返不会改写其他内容时进入结构化模式；解析前转为 LF，snapshot 输出时整篇恢复 CRLF（包括代码块内部），保留基线全部尾部换行。若 codec 会改写未编辑空白，则回退源码模式（`FID-005`）。混合换行与 bare CR 继续进入源码模式，逐边界保留；bare CR 独立分类，供 #54 接入只读策略。
+- 模式选择（INK-052）：`line-endings.ts` 区分 LF、纯 CRLF、混合 LF/CRLF 和 bare CR。纯 CRLF 在语法安全且 LF codec 往返不会改写其他内容时进入结构化模式；解析前转为 LF，snapshot 输出时整篇恢复 CRLF（包括代码块内部），保留基线全部尾部换行。若 codec 会改写未编辑空白，则回退源码模式（`FID-005`）。混合 LF/CRLF 继续进入源码模式，逐边界保留；bare CR 独立分类并优先进入只读源码视图（INK-054）。
 - 结构化模式（LF 文档）：编辑后 `getText()` 序列化并按 `EOL-004` 恢复基线的尾部换行——原文以 `\n` 结尾则输出保持结尾，原文没有则不添加。codec 本身从不添加尾部换行（见 `docs/markdown-codec.md`）。
-- bare CR 文档当前进入源码模式，编辑时逐边界恢复 CR（`SYN-D008` 的保留部分）；规范的「整篇只读 + 显式转换」未实现，见「已知边界」。
+- bare CR 文档整篇只读（`EOL-003`）：正文可选择/复制，snapshot 保留原文；Save、Save As、直接写盘均拒绝，dirty 恒为 false，不产生草稿。窗口副标题复用 `DocumentFileState.bareCR`；按钮 `ConvertBareCRToLF` 或 Command-Option-L 显式把整篇 CRLF / CR / LF 统一为 LF，保留 BOM、Unicode 和尾部换行数量。转换立即 dirty、可编辑，不自动保存。转换是不可撤销的会话边界（界面明确说明），后续正文编辑保留 Undo/Redo；撤销到转换基线仍 dirty，成功保存后才清除。bare CR 文档正文可读且可转换，视为成功打开，保留 Open Recent 与重启恢复记录。
 
 ## Unicode（`ENC-003` / `ENC-004` / `ENC-005`）
 
@@ -34,13 +34,13 @@
 | `F-EOL-001`（LF + 尾部换行） | `tests/fixtures/utf8-bom.md`（LF 内容含尾部换行）与既有 no-final-newline 对照；结构化编辑保留尾部换行由 editor-runtime 测试覆盖 | 已覆盖 |
 | `F-EOL-002`（全 CRLF 无尾部换行） | `tests/fixtures/crlf.md` roundtrip；`testEditedSnapshotKeepsCRLFLineEndingsAndUnicode`（编辑后仍不添加尾部换行）；`editor/test/fixtures/markdown/crlf.*.md`（codec 归一化行为）；`tests/fixtures/crlf-structured{,-final}.{input,expected}.md`（Vitest 结构化编辑和 WKWebView snapshot / BOM 写盘，含尾部空行对照） | 已覆盖 |
 | `F-EOL-003`（LF/CRLF 混合插入继承） | `tests/fixtures/mixed-eol.md`（含 bare CR 对照）；editor-kernel 混合换行测试（逐边界保留 + `EOL-002` 继承） | 已覆盖 |
-| `F-EOL-004`（bare CR 只读） | `mixed-eol.md` roundtrip 与 bare-CR 源码编辑测试（`EOL-003` roundtrip 部分） | 部分：只读与显式转换未实现 |
+| `F-EOL-004`（bare CR 只读） | `bare-cr{,-lf,-crlf}.{input,expected}.md`；Vitest 只读/转换后编辑历史；XCTest 保存闸门、无草稿、BOM golden、转换 dirty 与 Bridge Undo | 已覆盖；UI 未验证 |
 | `F-WSP-001` / `F-WSP-002`（空白保真） | 既有 codec fixtures（basic/nested/code）与 no-final-newline 覆盖部分空白；专项混合空白 fixture 未建 | 部分 |
 | 文件名边界（issue 范围） | `testFilenamesWithEmojiZWJAndCombiningCharactersRoundTrip`、`testFileURLLoadsMarkdownAndUsesFilenameForTheWindowTitle` | 已覆盖 |
 
 ## 已知边界（与规范的差异）
 
 1. ~~`ENC-002` 的「文档以只读错误状态打开」未实现~~：INK-053 已实现只读错误状态；上一差异消除。剩余边界：只读错误窗口不提供“文件已在外部转换为 UTF-8”的自动重载，用户需关闭后重新打开。
-2. `EOL-003` / `SYN-D008` 的「bare CR 整篇只读 + 显式转换后才可编辑」未实现：bare CR 文档进入源码模式，可编辑且逐边界恢复 CR。编辑不会破坏原边界，但比规范承诺的更宽松。
+2. INK-054 已落地 `EOL-003` / `SYN-D008` 只读与显式 LF 转换。转换本身不可撤销：现有 Bridge 只管理单会话正文历史，避免跨只读边界导致权限、dirty 与历史不同步；保存前原文件保持不变。只读期间不自动重载外部修改，需关闭重开；转换后保存仍执行磁盘冲突校验。
 3. `ENC-005` 偏移换算没有实现面（Bridge 只传完整文本）。
 4. `FID-002` 的完整原始范围映射（结构化局部编辑的字节切片证明）不属于本任务；codec 的结构保留能力与边界见 `docs/markdown-codec.md`。

@@ -25,9 +25,89 @@ final class InkoraDocumentTests: XCTestCase {
       let document = InkoraDocument()
 
       try document.read(from: original, ofType: "net.daringfireball.markdown")
+      if fixture == "mixed-eol" {
+        XCTAssertTrue(document.isBareCRReadOnly)
+        XCTAssertEqual(Data(document.text.utf8), original)
+        XCTAssertThrowsError(try document.data(ofType: markdownType)) {
+          XCTAssertEqual($0 as? DocumentFileState, .bareCR)
+        }
+        continue
+      }
       let saved = try document.data(ofType: "net.daringfireball.markdown")
 
       XCTAssertEqual(saved, original, "Fixture changed: \(fixture)")
+    }
+  }
+
+  @MainActor
+  func testBareCRReadOnlyConversionGoldenAndSaveGates() async throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    for name in ["bare-cr", "bare-cr-lf", "bare-cr-crlf"] {
+      for bom in [Data(), Data([0xEF, 0xBB, 0xBF])] {
+        let original = try fixtureData(named: name + ".input")
+        let expected = try fixtureData(named: name + ".expected")
+        let source = directory.appendingPathComponent(name + ".md")
+        let destination = directory.appendingPathComponent(name + "-copy.md")
+        try? FileManager.default.removeItem(at: destination)
+        try (bom + original).write(to: source)
+        var snapshotText = String(decoding: expected, as: UTF8.self)
+        var snapshotID = ""
+        let document = InkoraDocument(snapshotRequester: { completion in
+          completion(
+            .success(BridgeSnapshot(documentID: snapshotID, revision: 0, text: snapshotText)))
+        })
+        try document.read(from: source, ofType: markdownType)
+        document.fileURL = source
+        document.refreshFileState()
+        let oldID = document.bridgeDocumentID
+        XCTAssertEqual(document.fileState, .bareCR)
+        XCTAssertTrue(document.isBareCRReadOnly)
+        XCTAssertFalse(document.isDocumentEdited)
+        XCTAssertEqual(Data(document.text.utf8), original)
+        XCTAssertThrowsError(try document.data(ofType: markdownType))
+        XCTAssertThrowsError(
+          try document.write(
+            to: destination, ofType: markdownType,
+            for: .saveAsOperation, originalContentsURL: nil))
+        for operation in [NSDocument.SaveOperationType.saveOperation, .saveAsOperation] {
+          let error = await save(
+            document, to: operation == .saveOperation ? source : destination,
+            operation: operation)
+          XCTAssertEqual(error as? DocumentFileState, .bareCR)
+        }
+        let store = RecoveryStore(directory: directory.appendingPathComponent(UUID().uuidString))
+        document.configureRecovery(store: store)
+        // Even an erroneous editor notification cannot dirty the read-only native state.
+        document.editorDidChangeState(
+          BridgeEditorState(
+            documentID: oldID, revision: 1,
+            dirty: true, canUndo: true, canRedo: false))
+        document.captureRecovery()
+        try document.writeRecovery(BridgeSnapshot(documentID: oldID, revision: 1, text: "wrong"))
+        XCTAssertFalse(document.isDocumentEdited)
+        XCTAssertTrue(store.discover().drafts.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+        document.convertBareCRToLF()
+        snapshotID = document.bridgeDocumentID
+        XCTAssertNotEqual(snapshotID, oldID)
+        XCTAssertFalse(document.isBareCRReadOnly)
+        XCTAssertTrue(document.isDocumentEdited)
+        XCTAssertEqual(try document.data(ofType: markdownType), bom + expected)
+        XCTAssertEqual(try Data(contentsOf: source), bom + original)
+        // Undo of subsequent edits back to the converted baseline is still unsaved.
+        document.editorDidChangeState(
+          BridgeEditorState(
+            documentID: snapshotID, revision: 0,
+            dirty: false, canUndo: false, canRedo: true))
+        XCTAssertTrue(document.isDocumentEdited)
+        snapshotText = document.text
+        let error = await save(document, to: destination, operation: .saveAsOperation)
+        XCTAssertNil(error)
+        XCTAssertEqual(try Data(contentsOf: destination), bom + expected)
+        XCTAssertFalse(document.isDocumentEdited)
+        document.close()
+      }
     }
   }
 

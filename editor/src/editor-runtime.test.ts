@@ -140,17 +140,35 @@ describe("editor runtime", () => {
     runtime.destroy();
   });
 
-  it("keeps a bare-CR document byte-identical through an edit in source mode", () => {
+  it.each(["bare-cr", "bare-cr-lf", "bare-cr-crlf"])("blocks edits in read-only golden %s", (name) => {
     const { dom, parent } = stubBrowserEnvironment();
-    const original = "first\rsecond";
+    const original = readFileSync(new URL(`../../tests/fixtures/${name}.input.md`, import.meta.url), "utf8");
     const runtime = createEditorRuntime(parent, original, () => {});
     const textArea = parent.querySelector<HTMLTextAreaElement>("textarea");
     if (!textArea) throw new Error("Expected source mode for bare CR document");
 
     textArea.value = "first\nchanged\nsecond";
     textArea.dispatchEvent(new dom.window.Event("input"));
-    expect(runtime.getText()).toBe("first\rchanged\rsecond");
+    expect(textArea.readOnly).toBe(true);
+    expect(runtime.getText()).toBe(original);
+    expect(runtime.status).toEqual({ dirty: false, canUndo: false, canRedo: false });
+    expect(runtime.undo()).toBe(false);
+    expect(runtime.redo()).toBe(false);
     runtime.destroy();
+    const expected = readFileSync(new URL(`../../tests/fixtures/${name}.expected.md`, import.meta.url), "utf8");
+    const converted = createEditorRuntime(parent, expected, () => {});
+    const editable = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    expect(editable.readOnly).toBe(false);
+    expect(converted.getText()).toBe(expected);
+    expect(converted.undo()).toBe(false);
+    editable.value = expected + "编辑";
+    editable.dispatchEvent(new dom.window.Event("input"));
+    expect(converted.status.dirty).toBe(true);
+    expect(converted.undo()).toBe(true);
+    expect(converted.getText()).toBe(expected);
+    expect(converted.redo()).toBe(true);
+    expect(converted.getText()).toBe(expected + "编辑");
+    converted.destroy();
   });
 
   function structuredRuntimeWithSession(original: string): {

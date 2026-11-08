@@ -13,7 +13,9 @@ final class EditorWebViewTests: XCTestCase {
     )
     let controller = EditorViewController(document: document, resourceBundle: bundle)
     controller.loadViewIfNeeded()
-    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    let webView = try XCTUnwrap(
+      (controller.view as? WKWebView)
+        ?? controller.view.subviews.compactMap { $0 as? WKWebView }.first)
 
     let value = try await waitForJavaScriptValue(
       in: webView,
@@ -54,7 +56,9 @@ final class EditorWebViewTests: XCTestCase {
     try document.read(from: Data(initialText.utf8), ofType: "net.daringfireball.markdown")
     let controller = EditorViewController(document: document, resourceBundle: bundle)
     controller.loadViewIfNeeded()
-    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    let webView = try XCTUnwrap(
+      (controller.view as? WKWebView)
+        ?? controller.view.subviews.compactMap { $0 as? WKWebView }.first)
 
     _ = try await waitForJavaScriptValue(
       in: webView,
@@ -609,12 +613,22 @@ final class EditorWebViewTests: XCTestCase {
       let controller = try XCTUnwrap(
         document.windowControllers.first?.contentViewController
       )
-      let webView = try XCTUnwrap(controller.view as? WKWebView)
+      let webView = try XCTUnwrap(
+        (controller.view as? WKWebView)
+          ?? controller.view.subviews.compactMap { $0 as? WKWebView }.first)
       let ready = try await waitForJavaScriptValue(
         in: webView,
         script: "window.inkora !== undefined && document.querySelector('#editor') !== null"
       ) { $0 as? Bool == true }
       XCTAssertEqual(ready as? Bool, true, "Editor did not load: \(fixture)")
+
+      if fixture == "mixed-eol" {
+        let snapshot = try await requestText(from: controller as! EditorViewController)
+        XCTAssertEqual(Data(snapshot.utf8), original)
+        XCTAssertThrowsError(try document.data(ofType: "net.daringfireball.markdown"))
+        document.close()
+        continue
+      }
 
       let outputDirectory = FileManager.default.temporaryDirectory
         .appendingPathComponent("InkoraTests-\(UUID().uuidString)", isDirectory: true)
@@ -697,7 +711,9 @@ final class EditorWebViewTests: XCTestCase {
         try document.read(from: bom + input, ofType: "net.daringfireball.markdown")
         let controller = EditorViewController(document: document, resourceBundle: bundle)
         controller.loadViewIfNeeded()
-        let webView = try XCTUnwrap(controller.view as? WKWebView)
+        let webView = try XCTUnwrap(
+          (controller.view as? WKWebView)
+            ?? controller.view.subviews.compactMap { $0 as? WKWebView }.first)
         _ = try await waitForJavaScriptValue(
           in: webView,
           script: "document.querySelector('#editor.ProseMirror') !== null"
@@ -744,6 +760,65 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testBareCRConversionButtonLoadsEditableSessionWithUndo() async throws {
+    let document = InkoraDocument(editorResourceBundle: Bundle(for: Self.self))
+    try document.read(
+      from: Data("<x>中文</x>\r第二行\r\n".utf8),
+      ofType: "net.daringfireball.markdown")
+    document.makeWindowControllers()
+    defer { document.close() }
+    let controller = try XCTUnwrap(
+      document.windowControllers.first?.contentViewController as? EditorViewController)
+    let stack = try XCTUnwrap(controller.view as? NSStackView)
+    let button = try XCTUnwrap(stack.views.compactMap { $0 as? NSButton }.first)
+    XCTAssertEqual(button.accessibilityIdentifier(), "ConvertBareCRToLF")
+    XCTAssertEqual(button.keyEquivalent, "l")
+    XCTAssertEqual(button.keyEquivalentModifierMask, [.command, .option])
+    let webView = try XCTUnwrap(stack.views.compactMap { $0 as? WKWebView }.first)
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('#editor')?.readOnly"
+    ) { $0 as? Bool == true }
+    button.performClick(nil)
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('#editor')?.readOnly"
+    ) { $0 as? Bool == false }
+    let converted = try await requestText(from: controller)
+    XCTAssertEqual(converted, "<x>中文</x>\n第二行\n")
+    XCTAssertTrue(document.isDocumentEdited)
+    XCTAssertFalse(
+      controller.canPerformEditorCommand(.undo), "Conversion is an explicit irreversible boundary")
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const editor = document.querySelector('#editor');
+        editor.value = '<x>修改</x>\\n第二行\\n';
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      })()
+      """)
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('#editor').value"
+    ) { ($0 as? String)?.contains("修改") == true }
+    try await waitForEditorCommand(.undo, enabled: true, in: controller)
+    controller.performEditorCommand(.undo)
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('#editor').value"
+    ) { $0 as? String == "<x>中文</x>\n第二行\n" }
+    XCTAssertTrue(document.isDocumentEdited)
+    XCTAssertFalse(document.isBareCRReadOnly)
+    try await waitForEditorCommand(.redo, enabled: true, in: controller)
+    controller.performEditorCommand(.redo)
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('#editor').value"
+    ) { ($0 as? String)?.contains("修改") == true }
+    XCTAssertTrue(document.isDocumentEdited)
+  }
+
+  @MainActor
   func testMixedAndBareCRRemainInSourceMode() async throws {
     for input in ["first\r\nsecond\nthird", "first\rsecond", "first\rsecond\r\nthird"] {
       let (document, controller, webView) = try await loadedEditor(initialText: input)
@@ -751,6 +826,9 @@ final class EditorWebViewTests: XCTestCase {
         try await webView.evaluateJavaScript(
           "document.querySelector('#editor') instanceof HTMLTextAreaElement") as? Bool
       XCTAssertEqual(source, true)
+      let readOnly =
+        try await webView.evaluateJavaScript("document.querySelector('#editor').readOnly") as? Bool
+      XCTAssertEqual(readOnly, document.isBareCRReadOnly)
       let snapshot = try await requestText(from: controller)
       XCTAssertEqual(snapshot, input)
       document.close()
@@ -884,7 +962,9 @@ final class EditorWebViewTests: XCTestCase {
     try document.read(from: Data(initialText.utf8), ofType: "net.daringfireball.markdown")
     let controller = EditorViewController(document: document, resourceBundle: bundle)
     controller.loadViewIfNeeded()
-    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    let webView = try XCTUnwrap(
+      (controller.view as? WKWebView)
+        ?? controller.view.subviews.compactMap { $0 as? WKWebView }.first)
     _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
       // HTML textarea.value normalizes CRLF/CR to LF; disk/snapshot assertions
       // below still require the original line endings byte for byte.

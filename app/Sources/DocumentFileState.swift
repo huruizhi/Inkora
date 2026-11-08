@@ -16,7 +16,7 @@ struct DocumentDiskVersion: Equatable, Sendable {
 }
 
 enum DocumentFileState: String, Error, LocalizedError {
-  case current, readOnly, externalChange, deleted, moved, unsupportedEncoding
+  case current, readOnly, externalChange, deleted, moved, unsupportedEncoding, bareCR
 
   var errorDescription: String? {
     switch self {
@@ -25,6 +25,7 @@ enum DocumentFileState: String, Error, LocalizedError {
     case .externalChange: "文件已在应用外修改"
     case .deleted: "文件已删除或移入废纸篓，请另存为"
     case .moved: "文件已移动，已跟随新路径"
+    case .bareCR: "含 bare CR 换行，整篇只读；请显式转换为 LF 后编辑"
     case .unsupportedEncoding: "文件编码不受支持，只读打开"
     }
   }
