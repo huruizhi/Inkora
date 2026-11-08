@@ -1,8 +1,8 @@
 # M0 真实 WKWebView / 中文输入人工验收
 
-Status: prepared; runtime and human review pending
+Status: executed with failure; IME history fix and physical retest pending
 
-本记录用于[原型票11](../issues/11-incremental-fidelity-prototype.md)的第五项门槛，不是正式产品验收。2026-11-09 已完成以下固定版本的非UI检查与签名构建；桌面预检仍为屏幕锁定（exit78），尚未启动本版本 App。已向用户询问解锁及物理键盘配合时间，未收到答复时保持待验收。
+本记录用于[原型票11](../issues/11-incremental-fidelity-prototype.md)的第五项门槛，不是正式产品验收。2026-11-09 用户解锁并配合物理键盘，已在以下固定版本完成本轮真实WK/搜狗输入法局部检查。可视组合撤销暴露中间拼音，判失败；M0仍未通过，已派025修复并保留修复后真人复验。
 
 ## 固定产物
 
@@ -47,7 +47,20 @@ INKORA_UI_LOCK_TIMEOUT=30 scripts/ci/with-ui-lock.sh \
 | 层级 | 状态 |
 | --- | --- |
 | 最终组合非UI检查、只读observer与签名构建 | PASS，固定上述HEAD/hash |
-| 本版本真实WK运行 | NOT_EXECUTED |
-| 系统中文IME与物理键盘 | NOT_EXECUTED |
-| 用户交互审阅 | PENDING |
+| 本版本真实WK运行 | 本轮输入/模式/历史/内存保存点实际执行；有明确失败 |
+| 系统中文IME与物理键盘 | 用户确认搜狗；两区真实组合已记录；可视Undo暴露拼音FAIL |
+| 用户交互审阅 | 完成本轮指定输入，不代表整体审阅通过 |
 | 正式产品磁盘保存/资源权限/最低OS | 独立阶段门槛，未由本原型证明 |
+
+## 2026-11-09 本轮实测与失败交接
+
+用户确认本轮使用搜狗输入法并以物理键盘完成两区上屏。桌面preflight通过，008固定App以前台PID52179、包装器PID52173持UI锁运行。初次用户没看到窗口，经AX Raise并回到编辑区域后继续；实际用户在保护块后末段输入，非最初定位的第一段。
+
+- 可视区seq24–74：compositionstart/update/end、insertCompositionText/insertFromComposition及isComposing=true真实记录；组合期snapshot composing=true/saveDisabled=true。最后为“中文测试”，revision23/past23。Undo一次回“中文”，再Undo出现“中文ce'shi”（revision25/past21/future2），明确FAIL；Redo两次恢复。不得将23条中间事务当作正确用户历史。
+- 源码区seq81–222：含一次取消组合，随后上屏“ 源码验证”；组合期sourceComposing/combined=true，revision27/past23不变。提交revision28/past24，PM caret75/raw179；Undo回caret70和“中文测试”，Redo回“中文测试 源码验证”。原文字节diff仅增加空格及四字。
+- 内存保存点dirty=false，Undo dirty=true，Redo dirty=false；不是NSDocument磁盘证明。
+- Cmd+W/Cmd+Q未关闭最小宿主；管理者核对精确PID/路径后SIGTERM，仅终止本次App，包装器exit143。已检查PID52179/52173均不存在，UI锁目录已释放；不记正常Quit。未由管理者修改输入源/系统权限。
+
+原始272条运行记录、构建清单、SHA及详细实际AX现象保存在025准备提交`6f35866306a13bd5bcbbf6070f8bb739b0d30e8b`（分支`task/INK-PROT-025-ime-history`）的`editor/prototypes/fidelity/{IME-HITL-025.md,ime-hitl-025-runtime.txt,ime-hitl-025-summary.json}`，原始log SHA256=`f171c649dcf8a6dedc99b39bffd596434c088694d030ece991a6262e13af8176`。初始材料捕获时输入法待确认；本段及管理者给执行者的补充消息记录用户随后确认“搜狗”，不倒改原日志。
+
+待验证：025自动回归及独立复核、修复后的物理键盘撤销/取消/替换与组合期操作矩阵、用户整体审阅、最低系统/正式磁盘等。原型票11保持claimed，架构票12依赖不解除。

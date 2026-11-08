@@ -143,3 +143,7 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 023已接收270716e并FF入008源码。管理者重跑只读observer回归、native-host verify/签名资源检查，独立核对source/bundle/observer hash、script原字节及最终baseline/Info一致；dirty getter与staged诊断修复。未启动App、024getter当前仅兼容mock，尚不是合并后真实组合输入证据；008现有旧artifact不得直接拿来代表新宿主。024仍执行，后续最终HEAD重建与人工物理键盘验收未完成。
 
 024固定0ac441b已接收。管理者重跑37+4+16+4、ledger17、selection15、native16+3+3、fixture582通过，并重放组合信号期间apply保留草稿/上屏后提交的原始反例（仍非真IME）。原Agent已归档；008以merge接入023/024为5fbeb10，重新跑组合检查、observer-check与宿主verify，实际getters/只读snapshot组合检查通过。最终HTML为c863900…c81090，manifest/Info/HEAD与source/bundle/script/observer hash一致；详见[人工验收清单](M0-human-acceptance.md)。再次preflight仍屏幕锁定/78，未启动App。已用异步问题询问真人解锁与物理键盘配合，未收到答复不推定可用或通过；M0未过。
+
+### 真实搜狗输入：发现历史门槛失败
+
+008固定5fbeb10已在解锁桌面运行，用户搜狗输入法/物理键盘完成可视“中文测试”与源码“ 源码验证”。真实composition及组合期saveDisabled已记录，源码提交/跨模式UndoRedo/内存保存点局部通过。可视Undo两次显示中间拼音`中文ce'shi`，明确失败；见[M0人工记录](M0-human-acceptance.md)。原始证据025准备6f35866已冻结推送，025独立Agent修历史边界，不改原运行证据为通过。11保持claimed，12仍依赖11；M0未通过。本轮不再把“真实IME未执行”当唯一缺口，而以已执行且发现失败继续修正并复验。

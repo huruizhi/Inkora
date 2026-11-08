@@ -364,3 +364,9 @@ Host均srv_MEqRNkRW6fSx，full-access/default档/notifyOnFinish=true，list_prof
 008在270716e上merge024为`5fbeb109ac5a4158b50014b39b3864163ae8625a`并推送，干净。管理者在最终HEAD实跑fidelity组合检查、observer-check与native-host verify；另用实际prototype getters联合observer验证source composition信号守卫，均通过且明确非真IME。最终签名产物清单/HEAD/Info与各hash核对通过，source=c863900…c81090、bundle=df25ee90…cab8373、script=a60f78cb…932080、observer=2aa57f69…b68696d，脚本字节一致。
 
 同轮持锁preflight再次明确屏幕锁定/exit78（pid32953），未启动App，包装器退出释放锁。现无运行或闲置完成执行Agent。已向用户发送异步问题：是否现在能解锁并用物理键盘配合约5分钟；选项为“现在可以配合/稍后再验收”，未答复不等于确认。固定产物、前台持锁命令与逐项结果入口见[M0-human-acceptance.md](M0-human-acceptance.md)。M0/架构/完整开发路线不标完成；真实新版本WK、IME及用户审阅保持待验收。
+
+### 真实搜狗输入失败与025派发
+
+用户已解锁并配合，008固定5fbeb10以锁包装器/desktop preflight启动。两区真实composition及上屏、源码提交往返和内存保存点已执行；可视Undo两次重新暴露`ce'shi`，判失败，详情见[M0人工验收](M0-human-acceptance.md)。原始日志272条已冻结并提交推送025准备`6f35866306a13bd5bcbbf6070f8bb739b0d30e8b`，008/生产未改；本轮App按精确PID终止、锁已释放。用户确认输入法“搜狗”，补充消息已送执行者。
+
+INK-PROT-025：Agent `5bc9f083-65b4-438f-b6d6-1aab0be62311`，workspace `wks_a648906c270621f7`，host `srv_MEqRNkRW6fSx`；worktree `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-025-ime-history`，分支`task/INK-PROT-025-ime-history`。list_profiles为空，list_models核实GPT-5.6-Sol/high支持；full-access/default/notifyOnFinish=true，创建回执running。仅fidelity核心/测试/重建HTML/新证据，禁止GUI、native-host既有代码、生产、依赖、冻结样稿及3个原始运行材料。按diagnosing-bugs先实际红回归/最小化/排序假设，再修composition历史边界；禁止清历史、过滤拼音、禁Undo来假通过。自动通过后仍须管理者独立复核和真实修复后物理键盘复验，不宣告M0通过。完成通知即核验并及时归档，不轮询或重复启动。
