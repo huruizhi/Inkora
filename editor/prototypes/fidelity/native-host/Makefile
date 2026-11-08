@@ -30,7 +30,7 @@ MACOS_DIR   := $(CONTENTS)/MacOS
 RES_DIR     := $(CONTENTS)/Resources
 OBSERVER_JS := Resources/runtime-observer.js
 
-.PHONY: build verify observer-check probe probe-preflight run clean
+.PHONY: build verify observer-check source-authority-observer-check probe probe-preflight run clean
 
 PROBE_BIN := $(ARTIFACTS)/ime-keypath-probe
 
@@ -85,6 +85,9 @@ verify: build
 
 observer-check:
 	node observer-check.mjs
+
+source-authority-observer-check:
+	node source-authority-observer-check.mjs
 
 # INK-PROT-017: 独立、非沙盒的公开 CoreGraphics 键码路径探针。
 # preflight 只读取当前进程已有权限；探针源码不调用权限申请 API。

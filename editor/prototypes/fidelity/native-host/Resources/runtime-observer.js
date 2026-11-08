@@ -1,12 +1,12 @@
 // INK-PROT-023: read-only runtime observation. Never synthesizes DOM/input events.
 (() => {
   "use strict";
-  const version = "ink-prot-023-observer-v2";
+  const version = "ink-prot-031-observer-v3";
   let sequence = 0;
 
   const targetName = (target) => {
     if (!(target instanceof Element)) return "unknown";
-    if (target.id === "source-draft") return "source-draft";
+    if (target.id === "source-draft" || (target.id === "source" && target.tagName === "TEXTAREA")) return "source-draft";
     if (target.closest(".ProseMirror")) return "prosemirror";
     return target.id || target.tagName.toLowerCase();
   };
@@ -42,7 +42,9 @@
       const prototype = globalThis.fidelityPrototype;
       const model = prototype?.model;
       const view = prototype?.view;
-      const textarea = document.getElementById("source-draft");
+      const textarea = document.getElementById("source-draft")
+        ?? document.querySelector("textarea#source");
+      const authority = globalThis.sourceAuthorityPrototype?.controller;
       const selection = model?.state?.selection;
       const modelDirty = model?.dirty;
       const staged = model?.staged;
@@ -80,7 +82,19 @@
           selectionDirection: textarea.selectionDirection,
         } : null,
         activeElement: targetName(document.activeElement),
-        saveDisabled: Boolean(document.getElementById("save")?.disabled),
+        saveDisabled: Boolean((document.getElementById("save")
+          ?? document.querySelector('button[data-command="save"]'))?.disabled),
+        sourceAuthority: authority ? {
+          currentRaw: authority.currentRaw,
+          savedRaw: authority.savedRaw,
+          rawSelection: { ...authority.rawSelection },
+          saveEligible: authority.saveEligible,
+          sourceAccessible: authority.sourceAccessible,
+          draftDirty: authority.draftDirty,
+          draftRaw: authority.draft?.raw ?? null,
+          epoch: authority.epoch,
+          unresolvedIntent: authority.unresolvedIntent?.description ?? null,
+        } : null,
       };
     },
   });
