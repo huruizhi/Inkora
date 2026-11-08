@@ -1,7 +1,7 @@
 import AppKit
 import XCTest
 
-final class RecentFilesUITests: XCTestCase {
+final class RecentFilesUITests: AcceptanceTestCase {
   override func setUpWithError() throws {
     continueAfterFailure = false
   }
@@ -215,7 +215,7 @@ final class RecentFilesUITests: XCTestCase {
 
   @MainActor
   private func launchApplication(defaultsSuite: String) -> XCUIApplication {
-    let app = XCUIApplication()
+    let app = diagnosticApplication()
     app.launchArguments = [
       "-ApplePersistenceIgnoreState", "YES",
       "-INKTestDefaultsSuite", defaultsSuite,
@@ -245,7 +245,7 @@ final class RecentFilesUITests: XCTestCase {
     process.waitUntilExit()
     XCTAssertEqual(process.terminationStatus, 0, "open -a did not launch the app")
 
-    let app = XCUIApplication()
+    let app = diagnosticApplication()
     var isRunning = app.wait(for: .runningForeground, timeout: 15)
     if !isRunning {
       app.activate()

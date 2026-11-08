@@ -1,7 +1,7 @@
 import AppKit
 import XCTest
 
-final class DocumentOpenUITests: XCTestCase {
+final class DocumentOpenUITests: AcceptanceTestCase {
   override func setUpWithError() throws {
     continueAfterFailure = false
   }
@@ -322,6 +322,8 @@ final class DocumentOpenUITests: XCTestCase {
     if !keep.waitForExistence(timeout: 2) { app.typeKey("s", modifierFlags: .command) }
     XCTAssertTrue(keep.waitForExistence(timeout: 10))
     XCTAssertTrue(app.buttons["重新加载"].exists)
+    capture("file-conflict", app: app)
+    XCTAssertTrue(app.buttons["FileStateButton1"].exists)
     keep.click()
     try chooseFilePath(copy, button: "Save", in: app)
     let saved = await waitForFile(copy, containing: "local edits")
@@ -376,6 +378,8 @@ final class DocumentOpenUITests: XCTestCase {
     app.launch()
     let recover = app.buttons["恢复"]
     XCTAssertTrue(recover.waitForExistence(timeout: 10))
+    capture("crash-recovery", app: app)
+    XCTAssertTrue(app.buttons["RecoveryButton0"].exists)
     recover.click()
     let recoveredEditor = app.textViews.matching(
       NSPredicate(format: "value CONTAINS %@", "recover this unsaved text")
@@ -423,14 +427,14 @@ final class DocumentOpenUITests: XCTestCase {
 
   @MainActor
   private func launchApplication(arguments: [String] = []) -> XCUIApplication {
-    let app = XCUIApplication()
+    let app = diagnosticApplication(fixedPresentation: true)
     let isolation =
       arguments.contains("--inkora-test-recovery-session")
       ? []
       : ["--inkora-test-recovery-session", UUID().uuidString]
     app.launchArguments =
       [
-        "-ApplePersistenceIgnoreState", "YES",
+        "-ApplePersistenceIgnoreState", "YES", "-AppleInterfaceStyle", "Light",
         "-INKTestDefaultsSuite", "InkoraUITests-\(UUID().uuidString)",
       ] + isolation + arguments
     app.launch()

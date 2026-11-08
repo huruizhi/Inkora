@@ -44,6 +44,23 @@ final class BridgeDiagnostics {
     logger.log(
       "event=\(name, privacy: .public) request_id=\(requestID, privacy: .public) revision=\(revision, privacy: .public) category=\(category, privacy: .public)"
     )
+    if Bundle.main.bundleIdentifier == "com.huruizhi.Inkora.UITesting",
+      let path = ProcessInfo.processInfo.environment["INKORA_MARKDOWN_SNAPSHOT_SOURCE"]
+    {
+      let url = URL(fileURLWithPath: path).appendingPathExtension("log")
+      let line = "event=\(name) request_id=\(requestID) revision=\(revision) category=\(category)\n"
+      // Test-only log contains metadata, never the document body.
+      try? FileManager.default.createDirectory(
+        at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+      if !FileManager.default.fileExists(atPath: url.path) {
+        _ = FileManager.default.createFile(atPath: url.path, contents: nil)
+      }
+      if let handle = try? FileHandle(forWritingTo: url) {
+        defer { try? handle.close() }
+        _ = try? handle.seekToEnd()
+        try? handle.write(contentsOf: Data(line.utf8))
+      }
+    }
     sink?(event)
   }
 }

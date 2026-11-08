@@ -1,6 +1,60 @@
 import XCTest
 
 final class BridgeProtocolTests: XCTestCase {
+  func testCommandValidationRejectsMissingFieldsAndUnsafeRevisions() throws {
+    let valid: [String: Any] = [
+      "protocolVersion": 1, "type": "loadDocument", "requestID": "r",
+      "documentID": "d", "revision": 0, "text": "",
+    ]
+    let invalid: [(String, Any?, BridgeProtocolValidationError)] = [
+      ("protocolVersion", 2, .unsupportedVersion),
+      ("requestID", "", .missingField("requestID")),
+      ("documentID", "", .missingField("documentID")),
+      ("text", nil, .missingField("text")),
+      ("revision", -1, .invalidRevision),
+      ("revision", BridgeProtocolV1.maxSafeRevision + 1, .invalidRevision),
+    ]
+    for (key, value, expected) in invalid {
+      var json = valid
+      json[key] = value
+      let command = try JSONDecoder().decode(
+        BridgeNativeCommand.self, from: JSONSerialization.data(withJSONObject: json))
+      XCTAssertThrowsError(try command.validate()) {
+        XCTAssertEqual($0 as? BridgeProtocolValidationError, expected, key)
+      }
+    }
+    for revision in [0, BridgeProtocolV1.maxSafeRevision] {
+      try BridgeNativeCommand.loadDocument(
+        requestID: "r", documentID: "d", revision: revision, text: ""
+      ).validate()
+    }
+  }
+
+  func testSnapshotEventValidationRejectsMissingFieldsAndUnsafeRevisions() throws {
+    let valid: [String: Any] = [
+      "protocolVersion": 1, "type": "snapshotReady", "requestID": "r",
+      "documentID": "d", "revision": 0, "text": "",
+    ]
+    for key in ["requestID", "documentID", "revision", "text"] {
+      var json = valid
+      json.removeValue(forKey: key)
+      let event = try JSONDecoder().decode(
+        BridgeEditorEvent.self, from: JSONSerialization.data(withJSONObject: json))
+      XCTAssertThrowsError(try event.validate()) {
+        XCTAssertEqual($0 as? BridgeProtocolValidationError, .missingField(key))
+      }
+    }
+    for revision in [-1, BridgeProtocolV1.maxSafeRevision + 1] {
+      var json = valid
+      json["revision"] = revision
+      let event = try JSONDecoder().decode(
+        BridgeEditorEvent.self, from: JSONSerialization.data(withJSONObject: json))
+      XCTAssertThrowsError(try event.validate()) {
+        XCTAssertEqual($0 as? BridgeProtocolValidationError, .invalidRevision)
+      }
+    }
+  }
+
   func testLoadDocumentRoundTripsMarkdownBytes() throws {
     let markdown = "# 中文\r\n\r\nemoji: 🖋️"
     let command = BridgeNativeCommand.loadDocument(

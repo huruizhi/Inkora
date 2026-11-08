@@ -303,6 +303,10 @@ final class EditorWebViewTests: XCTestCase {
 
     let recoveryView = try XCTUnwrap(controller.view as? EditorRecoveryView)
     XCTAssertTrue(recoveryView.messageLabel.stringValue.contains("resources are missing"))
+    XCTAssertEqual(recoveryView.accessibilityIdentifier(), "EditorRecovery")
+    XCTAssertEqual(recoveryView.retryButton.accessibilityIdentifier(), "ReloadEditorButton")
+    XCTAssertEqual(recoveryView.retryButton.accessibilityRole(), .button)
+    XCTAssertEqual(recoveryView.retryButton.title, "Reload Editor")
   }
 
   @MainActor

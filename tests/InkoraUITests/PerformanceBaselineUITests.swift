@@ -10,7 +10,7 @@ import XCTest
 //   * launch/peak-physical-memory — XCTest physical memory peak of the app.
 // XCTApplicationLaunchMetric additionally records system launch timings in
 // the .xcresult bundle.
-final class PerformanceBaselineUITests: XCTestCase {
+final class PerformanceBaselineUITests: AcceptanceTestCase {
   private let launchCount = 5
 
   override func setUpWithError() throws {
@@ -21,8 +21,9 @@ final class PerformanceBaselineUITests: XCTestCase {
     continueAfterFailure = false
   }
 
+  @MainActor
   func testApplicationLaunchBenchmarks() throws {
-    let app = XCUIApplication()
+    let app = diagnosticApplication()
     var first: Double?
     var warm: [Double] = []
 
@@ -53,8 +54,9 @@ final class PerformanceBaselineUITests: XCTestCase {
   }
 
   /// System launch metric evidence recorded into the .xcresult bundle.
+  @MainActor
   func testApplicationLaunchMetric() throws {
-    let app = XCUIApplication()
+    let app = diagnosticApplication()
     let options = XCTMeasureOptions()
     options.invocationOptions = []
     measure(metrics: [XCTApplicationLaunchMetric()], options: options) {
@@ -71,7 +73,7 @@ final class PerformanceBaselineUITests: XCTestCase {
   /// XCTest samples the target process without spawning restricted tools.
   @MainActor
   func testApplicationMemoryMetric() {
-    let app = XCUIApplication()
+    let app = diagnosticApplication()
     app.launch()
     XCTAssertTrue(app.waitForExistence(timeout: 10), "app did not launch")
     defer { app.terminate() }
