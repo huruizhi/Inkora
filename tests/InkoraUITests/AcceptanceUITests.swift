@@ -53,7 +53,10 @@ final class AcceptanceUITests: AcceptanceTestCase {
     app.typeText("Open")
     app.typeKey(.downArrow, modifierFlags: [])
     app.typeKey(.rightArrow, modifierFlags: [])
-    XCTAssertTrue(app.menuItems[url.lastPathComponent].isHittable)
+    let recentEntry = app.menuBars.menuBarItems["File"].menuItems["Open Recent"]
+      .menuItems[url.lastPathComponent]
+    XCTAssertTrue(recentEntry.isHittable)
+    XCTAssertTrue(recentEntry.isSelected)
     app.typeText("Keyboard")
     app.typeKey(.return, modifierFlags: [])
     XCTAssertTrue(window.waitForExistence(timeout: 10))

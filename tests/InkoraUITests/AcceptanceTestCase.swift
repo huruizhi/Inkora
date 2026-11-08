@@ -76,7 +76,9 @@ class AcceptanceTestCase: XCTestCase {
 
   @MainActor
   func capture(_ name: String, app: XCUIApplication) {
-    let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+    let dialog = app.dialogs.firstMatch
+    let target = dialog.exists ? dialog : app.windows.firstMatch
+    let attachment = XCTAttachment(screenshot: target.screenshot())
     attachment.name = "acceptance-\(name)"
     attachment.lifetime = .keepAlways
     add(attachment)
