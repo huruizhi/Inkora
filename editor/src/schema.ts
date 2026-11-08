@@ -111,12 +111,15 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
     content: "block+",
   },
   paragraph: {
+    // DOM changes must retain Markdown soft breaks instead of collapsing to spaces.
+    whitespace: "pre",
     content: "inline*",
     group: "block",
     parseDOM: [{ tag: "p" }],
     toDOM: (): DOMOutputSpec => ["p", 0],
   },
   heading: {
+    whitespace: "pre",
     attrs: {
       level: {
         default: 1,

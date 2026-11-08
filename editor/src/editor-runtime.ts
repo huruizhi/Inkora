@@ -2,6 +2,7 @@ import { EditorView } from "prosemirror-view";
 import { InkoraEditorSession } from "./editor-session";
 import { TextAreaEditorKernel } from "./editor-kernel";
 import { parseMarkdown, serializeMarkdown } from "./markdown-codec";
+import { classifyLineEndings, structuredInput, structuredOutput, type LineEndings } from "./line-endings";
 import { analyzeMarkdownSafety } from "./markdown-safety";
 
 export interface EditorRuntimeStatus {
@@ -27,13 +28,15 @@ class StructuredEditorRuntime implements EditorRuntime {
   private readonly session: InkoraEditorSession;
   private readonly view: EditorView;
   private compositionTimer: number | undefined;
+  private readonly lineEndings: LineEndings;
 
   constructor(
     parent: HTMLElement,
     private savedText: string,
     onChange: RuntimeChangeListener,
   ) {
-    this.session = new InkoraEditorSession(parseMarkdown(savedText));
+    this.lineEndings = classifyLineEndings(savedText);
+    this.session = new InkoraEditorSession(parseMarkdown(structuredInput(savedText)));
     let view: EditorView;
     view = new EditorView(parent, {
       state: this.session.state,
@@ -63,18 +66,12 @@ class StructuredEditorRuntime implements EditorRuntime {
     if (!this.status.dirty) {
       return this.savedText;
     }
-    const output = serializeMarkdown(this.session.state.doc);
-    // EOL-004: the presence of a final newline is document state; restore it
-    // when the serializer's LF-only output dropped it.
-    if (this.savedText.endsWith("\n") && !output.endsWith("\n")) {
-      return `${output}\n`;
-    }
-    return output;
+    return structuredOutput(serializeMarkdown(this.session.state.doc), this.savedText, this.lineEndings);
   }
 
   markSaved(text: string): void {
     this.savedText = text;
-    this.session.markSaved(parseMarkdown(text));
+    this.session.markSaved(parseMarkdown(structuredInput(text)));
     if (!this.composing) this.view.updateState(this.session.state);
   }
 
@@ -207,11 +204,18 @@ export function createEditorRuntime(
   onChange: RuntimeChangeListener,
 ): EditorRuntime {
   parent.replaceChildren();
-  // EOL-001/EOL-003: the structured serializer emits LF only, so documents
-  // containing any CR stay in source mode where the kernel preserves every
-  // original line boundary.
-  if (!text.includes("\r") && analyzeMarkdownSafety(text).structuredSaveAllowed) {
+  // Keep bare CR distinct so its future read-only route (INK-054) can be
+  // added without changing the uniform-CRLF editing path.
+  const endings = classifyLineEndings(text);
+  const input = structuredInput(text);
+  if (endings !== "bare_cr" && endings !== "mixed" &&
+      analyzeMarkdownSafety(input).structuredSaveAllowed) {
     try {
+      // CRLF support must not introduce unrelated codec normalization diffs.
+      if (endings === "crlf" &&
+          structuredOutput(serializeMarkdown(parseMarkdown(input)), text) !== text) {
+        return new SourceEditorRuntime(parent, text, onChange);
+      }
       return new StructuredEditorRuntime(parent, text, onChange);
     } catch {
       parent.replaceChildren();

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { TextSelection } from "prosemirror-state";
 import { afterEach, describe, expect, it } from "vitest";
@@ -121,7 +122,7 @@ describe("editor runtime", () => {
     runtime.destroy();
   });
 
-  it("routes documents containing CR to source mode even when structurally safe", () => {
+  it.each(["# Safe heading\r\n\nBody 👩‍💻\r\n", "# Heading\rBody"])("routes mixed or bare CR to source mode: %j", (original) => {
     const dom = new JSDOM("<!doctype html><main id='app'></main>");
     Object.defineProperty(globalThis, "document", {
       configurable: true,
@@ -129,7 +130,6 @@ describe("editor runtime", () => {
     });
     const parent = dom.window.document.querySelector<HTMLElement>("#app");
     if (!parent) throw new Error("Missing test parent");
-    const original = "# Safe heading\r\n\r\nBody 👩‍💻\r\n";
 
     const runtime = createEditorRuntime(parent, original, () => {});
     const textArea = parent.querySelector<HTMLTextAreaElement>("textarea");
@@ -169,6 +169,101 @@ describe("editor runtime", () => {
     const runtimeWithSession = runtime as unknown as { session: InkoraEditorSession };
     return { dom, runtime, session: runtimeWithSession.session };
   }
+
+  it.each(["crlf-structured", "crlf-structured-final"])(
+    "edits CRLF golden %s with exact snapshots and saved history",
+    (name) => {
+      const fixture = (suffix: string) => readFileSync(
+        new URL(`../../tests/fixtures/${name}.${suffix}.md`, import.meta.url), "utf8",
+      );
+      const original = fixture("input");
+      const expected = fixture("expected");
+      const { runtime, session } = structuredRuntimeWithSession(original);
+      expect(runtime.getText()).toBe(original);
+      let position = -1;
+      session.state.doc.descendants((node, pos) => {
+        if (node.isText && node.text?.startsWith("正文")) position = pos;
+      });
+      expect(position).toBeGreaterThan(0);
+      session.dispatch(session.state.tr.insertText("改后", position));
+      expect(runtime.getText()).toBe(expected);
+      expect(runtime.status.dirty).toBe(true);
+      runtime.markSaved(expected);
+      expect(runtime.status.dirty).toBe(false);
+      expect(runtime.undo()).toBe(true);
+      expect(runtime.getText()).toBe(original);
+      expect(runtime.status.dirty).toBe(true);
+      expect(runtime.redo()).toBe(true);
+      expect(runtime.getText()).toBe(expected);
+      expect(runtime.status.dirty).toBe(false);
+      // An older save acknowledgement must not clear a newer edit.
+      session.dispatch(session.state.tr.insertText("新", position));
+      runtime.markSaved(expected);
+      expect(runtime.status.dirty).toBe(true);
+      expect(runtime.getText()).toBe(expected.replace("改后正文", "新改后正文"));
+      runtime.destroy();
+    },
+  );
+
+  it("remembers CRLF after saving an edit that temporarily removes all boundaries", () => {
+    const { runtime, session } = structuredRuntimeWithSession("first\r\nsecond");
+    session.dispatch(session.state.tr.delete(6, 7));
+    expect(runtime.getText()).toBe("firstsecond");
+    runtime.markSaved(runtime.getText());
+    session.dispatch(session.state.tr.insertText("\n", 6));
+    expect(runtime.getText()).toBe("first\r\nsecond");
+    runtime.destroy();
+  });
+
+  it("restores newly inserted boundaries to CRLF, including inside code", () => {
+    const { runtime, session } = structuredRuntimeWithSession("```text\r\n代码\r\n```\r\n");
+    session.dispatch(session.state.tr.insertText("新行\n", 1));
+    expect(runtime.getText()).toBe("```text\r\n新行\r\n代码\r\n```\r\n");
+    runtime.destroy();
+  });
+
+  it.each([
+    "| A | B |\r\n| --- | --- |\r\n| 原文 | 数据 |\r\n",
+    "<div>\r\n原文\r\n</div>\r\n",
+  ])("retains unsupported raw CRLF content in source edits: %j", (original) => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const runtime = createEditorRuntime(parent, original, () => {});
+    const editor = parent.querySelector("textarea");
+    if (!editor) throw new Error("Expected source mode");
+    editor.value = original.replace(/\r\n/g, "\n").replace("原文", "改后原文");
+    editor.dispatchEvent(new dom.window.Event("input"));
+    expect(runtime.getText()).toBe(original.replace("原文", "改后原文"));
+    runtime.destroy();
+  });
+
+  it("keeps CRLF documents requiring unrelated normalization in source mode", () => {
+    const { parent } = stubBrowserEnvironment();
+    const original = "# Heading\r\n\r\n\r\nBody  \r\n";
+    const runtime = createEditorRuntime(parent, original, () => {});
+    expect(parent.querySelector("textarea")).not.toBeNull();
+    expect(runtime.getText()).toBe(original);
+    runtime.destroy();
+  });
+
+  it("aggregates CRLF composition without changing selection or saved baseline", () => {
+    const { runtime, session } = structuredRuntimeWithSession("正文\r\n");
+    session.beginComposition();
+    session.dispatch(session.state.tr.insertText("中文", 1));
+    const selection = session.state.selection;
+    runtime.markSaved("正文\r\n");
+    expect(runtime.composing).toBe(true);
+    expect(runtime.undo()).toBe(false);
+    expect(runtime.redo()).toBe(false);
+    expect(session.state.selection.eq(selection)).toBe(true);
+    expect(session.status.revision).toBe(0);
+    session.endComposition();
+    expect(session.status.revision).toBe(1);
+    expect(runtime.getText()).toBe("中文正文\r\n");
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("正文\r\n");
+    expect(runtime.status.dirty).toBe(false);
+    runtime.destroy();
+  });
 
   it("preserves the trailing newline of a structured document after edits", () => {
     const { runtime, session } = structuredRuntimeWithSession(

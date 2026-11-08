@@ -4,3 +4,6 @@ tests/fixtures/utf8-bom.md -diff -merge -text
 tests/fixtures/mixed-eol.md -diff -merge -text
 editor/test/fixtures/markdown/crlf.input.md -diff -merge -text
 editor/test/fixtures/markdown/crlf.expected.md -diff -merge -text
+
+# INK-052: shared runtime/native golden bytes must never be normalized.
+tests/fixtures/crlf-structured*.md -diff -merge -text
