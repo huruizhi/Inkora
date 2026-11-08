@@ -276,6 +276,41 @@
       "savedBytes": 66,
       "reopenedClean": true,
       "mathFragmentRawExact": true
+    },
+    {
+      "action": "reference links / image / bare URL literal leaves",
+      "loadClean": true,
+      "literalRanges": 2,
+      "editsByteExact": true,
+      "defsKept": true,
+      "undoByteExact": true
+    },
+    {
+      "action": "duplicate display text / same-URL definitions",
+      "secondOccurrenceEdited": true,
+      "firstUntouched": true,
+      "sameUrlDefsKept": true
+    },
+    {
+      "action": "missing reference definition",
+      "loadsClean": true,
+      "editable": true
+    },
+    {
+      "action": "whitespace around definitions",
+      "gapsClean": true,
+      "bytesKept": true
+    },
+    {
+      "action": "BOM + CRLF reference doc",
+      "bomKept": true,
+      "crlfKept": true,
+      "undoByteExact": true
+    },
+    {
+      "action": "link inside list refused explicitly",
+      "refused": true,
+      "trustedStateKept": true
     }
   ],
   "unexecuted": [

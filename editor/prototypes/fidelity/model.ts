@@ -7,11 +7,15 @@ import { parseMarkdown } from '../../src/markdown-codec';
 import { parseProtectedMarkdown } from '../../src/protected-markdown';
 import { analyzeMarkdownSafety } from '../../src/markdown-safety';
 
-export type Range = { start: number; end: number; pos: number; size: number; kind: string; issue?: string };
+export type Range = { start: number; end: number; pos: number; size: number; kind: string; issue?: string; literal?: string };
 export type Patch = { from: number; to: number; insert: string };
 // A boundary issue keeps the raw fragment visible (protected projection),
 // marks the problem scope and blocks structured saves. It never fails the load.
 export type Issue = { code: string; start: number; end: number; message: string };
+// Ranges whose inline stream resolves any link/image construction get a
+// conservative literal leaf: the exact source bytes as one editable text
+// node (identity mapping for every patch), never a raw block, never a
+// silently rewritten delimiter form. Full inline ledgers are out of scope.
 const tokenizer = new MarkdownIt('commonmark', { html: false }).enable(['table', 'strikethrough']);
 export const bytes = (s: string) => new TextEncoder().encode(s);
 export function diff(a: string, b: string) {
@@ -20,6 +24,17 @@ export function diff(a: string, b: string) {
   while (from < xe && from < ye && x[from] === y[from]) from++;
   while (xe > from && ye > from && x[xe - 1] === y[ye - 1]) { xe--; ye--; }
   return { from, beforeEnd: xe, afterEnd: ye, removed: [...x.slice(from, xe)], added: [...y.slice(from, ye)], prefixEqual: x.slice(0, from).every((v, i) => v === y[i]), suffixEqual: x.slice(xe).every((v, i) => v === y[ye + i]) };
+}
+// True when the range's inline stream resolves any link or image
+// construction (inline link, full/collapsed/shortcut reference with the
+// document's definitions, reference image, or <autolink>). Bare URLs are
+// linkify-off plain text and are detected via the gfm_autolink risk instead.
+function streamHasLinkOrImage(normalized: string, refs: string): boolean {
+  for (const token of tokenizer.parse(normalized + '\n\n' + refs, {})) {
+    if (token.type === 'link_open' || token.type === 'image') return true;
+    for (const child of token.children ?? []) if (child.type === 'link_open' || child.type === 'image') return true;
+  }
+  return false;
 }
 export function parse(source: string) {
   const starts = [0];
@@ -45,7 +60,7 @@ export function parse(source: string) {
     const risks = analyzeMarkdownSafety(normalized).risks;
     const maskedRisks = analyzeMarkdownSafety(masked).risks;
     const protect = () => schema.nodes.protected_block.create({ raw, kind: 'metadata' });
-    let node: PMNode, issue: Issue | undefined;
+    let node: PMNode, issue: Issue | undefined, rangeLiteral = '';
     if (/^\$\$\n[\s\S]*\n\$\$$/.test(masked)) {
       node = protect(); // 稳定可识别的块级数学围栏：整段原字节保留
     } else if (token.type === 'fence' && token.info.trim() === 'mermaid' && /^(`{3,}|~{3,})mermaid\n[\s\S]*\n(?:`{3,}|~{3,})$/.test(masked)) {
@@ -65,18 +80,35 @@ export function parse(source: string) {
       if (protectedDoc && protectedDoc.childCount === 1 && protectedDoc.firstChild?.type.name === 'protected_block') {
         node = schema.nodes.protected_block.create({ raw, kind: protectedDoc.firstChild.attrs.kind });
       } else {
-        if (risks.some(r => r.code !== 'task_list')) throw Error('不支持的语法边界：' + risks.map(r => r.code).join(','));
-        const parsed = parseMarkdown(normalized + '\n\n' + refs);
-        if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
-        node = parsed.firstChild!;
-        if (node.type.name === 'code_block' && !node.attrs.closed) {
-          issue = { code: 'code_fence', start, end, message: '代码围栏未闭合：已保留原文片段并阻断结构化保存' };
-          node = protect();
+        // Link/image inline ledger is not built this round. When the range
+        // resolves any link/image construction (inline link, full/collapsed/
+        // shortcut reference, reference image, <autolink>) or carries a bare
+        // URL / inline image risk, keep the exact source bytes as one editable
+        // literal leaf: identity mapping for patches, delimiters and paths
+        // byte-preserved, every edit still behind the re-parse guard.
+        const linky = streamHasLinkOrImage(normalized, refs) || risks.some(r => r.code === 'gfm_autolink' || r.code === 'image');
+        if (risks.some(r => !['task_list', 'gfm_autolink', 'image'].includes(r.code))) throw Error('不支持的语法边界：' + risks.map(r => r.code).join(','));
+        if (linky) {
+          const blockType = token.type.replace(/_open$/, '');
+          if (blockType !== 'paragraph' && blockType !== 'heading') throw Error('链接/图片暂只支持段落与标题的保守字面表示：' + blockType);
+          const type = blockType === 'heading' ? schema.nodes.heading : schema.nodes.paragraph;
+          const attrs = blockType === 'heading' ? { level: Number(token.tag.slice(1)), style: token.markup === '=' || token.markup === '-' ? 'setext' : 'atx' } : null;
+          node = type.createChecked(attrs, schema.text(normalized));
+          rangeLiteral = '链接/图片/裸 URL：源码字面可编辑叶（保守投影，重解析守卫不变）';
+        } else {
+          const parsed = parseMarkdown(normalized + '\n\n' + refs);
+          if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
+          node = parsed.firstChild!;
+          if (node.type.name === 'code_block' && !node.attrs.closed) {
+            issue = { code: 'code_fence', start, end, message: '代码围栏未闭合：已保留原文片段并阻断结构化保存' };
+            node = protect();
+          }
         }
       }
     }
     const range: Range = { start, end, pos, size: node.nodeSize, kind: node.type.name };
     if (issue) { range.issue = issue.message; issues.push(issue); }
+    if (rangeLiteral) range.literal = rangeLiteral;
     ranges.push(range);
     nodes.push(node); pos += node.nodeSize; cursor = end;
   }

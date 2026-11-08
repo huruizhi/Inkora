@@ -33,7 +33,7 @@ function render() {
   $('diff').textContent = JSON.stringify(diff(model.before, model.source), null, 2);
   $('before').textContent = esc(model.before); $('after').textContent = esc(model.source);
   $('save').toggleAttribute('disabled', !!model.blocked || pending || sourceMode || view.composing);
-  annotateIssues();
+  annotateIssues(); annotateLiterals();
 }
 // Mark problem fragments in the real DOM: conservative raw projection, never faked rendering.
 function annotateIssues() {
@@ -47,6 +47,17 @@ function annotateIssues() {
     el.classList.toggle('protected-issue', flagged);
     el.title = flagged ? `边界含混：${r.issue}（UTF-16 ${r.start}..${r.end}）` : '保留原文的预览；暂不支持块内编辑';
   }
+}
+// Conservative literal leaves (links/images/bare URLs) stay real editable
+// paragraphs; mark them so the projection is visible, never faked as links.
+function annotateLiterals() {
+  const tops = view.dom.children;
+  model.ranges.forEach((r, i) => {
+    const el = tops[i] as HTMLElement | undefined;
+    if (!el || !r.literal) return;
+    el.classList.add('literal-inline');
+    el.title = `${r.literal}（UTF-16 ${r.start}..${r.end}）：链接/图片/裸 URL 定界符与定义字节原样，编辑仍走局部补丁与重解析守卫`;
+  });
 }
 function coverage() {
   let cursor = 0; const all: Array<{ start: number; end: number; owner: string }> = [];

@@ -55,6 +55,7 @@ function srcPos(p, docPos) { return p.sourcePosition(p.model.source, p.model.sta
 const results = [];
 const docTypes = m => { const k = []; m.state.doc.forEach(n => k.push(n.type.name)); return k; };
 const fragments = m => m.ranges.filter(r => r.kind === 'protected_block').map(r => m.source.slice(r.start, r.end));
+const defsOf = m => m.source.match(/^[^\S\n]{0,3}\[[^\]\n]+\]:[^\n]*/gm)?.join('\n') ?? '';
 
 async function runCase(id, variant, file, steps, opts = {}) {
   const r = { case: id, variant, steps: [] };
@@ -76,6 +77,8 @@ async function runCase(id, variant, file, steps, opts = {}) {
       catch (e) { r.load = 'blocked: ' + e.message; dom.window.close(); return; }
     }
     initialFrags = fragments(p.model);
+    const initialDefs = opts.defs ? defsOf(p.model) : null;
+    if (opts.defs) r.literalRanges = p.model.ranges.filter(x => x.literal).length;
     for (const st of steps) {
       const rec = { n: st.n, how: st.how, outcome: '', sha: sha(p.model.source), dirty: p.model.source !== p.model.saved };
       r.steps.push(rec);
@@ -96,7 +99,7 @@ async function runCase(id, variant, file, steps, opts = {}) {
         }
         else if (st.how === 'undo') p.run(p.actions.undo);
         else if (st.how === 'redo') p.run(p.actions.redo);
-        else if (st.how === 'save') p.run(p.actions.save);
+        else if (st.how === 'save') { p.run(p.actions.save); rec.savedSha = sha(p.model.saved); }
         else if (st.how === 'noop') { p.run(p.actions.source); p.run(p.actions.apply); }
         else if (st.how === 'openObserve') {
           rec.issues = p.model.issues.map(i => ({ code: i.code, line: p.model.source.slice(0, i.start).split('\n').length, utf16: [i.start, i.end] }));
@@ -143,9 +146,10 @@ async function runCase(id, variant, file, steps, opts = {}) {
         rec.sha = sha(p.model.source); rec.dirty = p.model.source !== p.model.saved;
         const nowFrags = fragments(p.model);
         rec.fragsKept = initialFrags !== null && nowFrags.length === initialFrags.length && nowFrags.every((f, i) => f === initialFrags[i]);
+        if (initialDefs !== null) rec.refsKept = defsOf(p.model) === initialDefs;
         if (st.expect) {
           rec.expectSha = await fileSha(`${CASES}/cases/${id}/${st.expect}`);
-          const base = !rec.blocked && rec.sha === rec.expectSha;
+          const base = !rec.blocked && rec.sha === rec.expectSha && (initialDefs === null || rec.refsKept);
           if (st.how === 'visualPending') rec.outcome = base && rec.pending && rec.saveDisabled && rec.docTypes.includes('heading') && rec.docTypes.includes('paragraph') ? 'PASS' : 'FAIL';
           else if (st.how === 'saveBlocked') rec.outcome = rec.blockedBySave.includes('保存阻断') && rec.sha === rec.expectSha && rec.savedSha === rec.expectSha ? 'PASS (blocked path; nothing written)' : 'FAIL';
           else if (st.how === 'sourceSave') rec.outcome = base && !rec.pendingAfterFix && rec.savedEqBuffer ? 'PASS' : 'FAIL';
@@ -157,7 +161,7 @@ async function runCase(id, variant, file, steps, opts = {}) {
           rec.outcome = rec.reopenedIssues === 0 && rec.reopenedDocTypes.includes('heading') && rec.reopenedDocTypes.includes('paragraph') && rec.reopenedDocTypes.includes('protected_block') ? 'PASS' : 'FAIL';
         } else if (st.how === 'classify') {
           rec.outcome = 'OBSERVED';
-        } else rec.outcome = rec.blocked ? 'BLOCKED' : 'OBSERVED';
+        } else rec.outcome = rec.blocked ? 'BLOCKED' : (initialDefs !== null && rec.refsKept === false ? 'FAIL (引用定义被改动)' : 'OBSERVED');
       } catch (e) { rec.outcome = 'ERROR'; rec.error = e.message; rec.sha = sha(p.model.source); rec.blocked = p.model.blocked || ''; }
     }
   } finally { try { dom.window.close(); } catch {} }
@@ -178,7 +182,10 @@ await runCase('02-protected-whitespace', 'main', 'input.md', [
 ], { open: 'openMixed' });
 await runCase('03-reference-links', 'main', 'input.md', [
   S(1, 'visual', 'after-step-1.md', { find: 'Inkora 文档', replace: 'Inkora 手册' }),
-]);
+  S(2, 'visual', 'after-step-2.md', { find: '![图标]', replace: '![图示]' }),
+  S(3, 'visual', 'after-step-3.md', { find: '(https://example.com/inkora ', replace: '(https://example.com/inkora-v2 ' }),
+  S(4, 'save', 'after-step-3.md'),
+], { defs: true });
 await runCase('04-task-toggle-crlf', 'main', 'input.md', [
   S(1, 'visual', 'after-step-1.md', { find: '[ ] 中文样稿就绪', replace: '[x] 中文样稿就绪' }),
   S(2, 'visual', 'after-step-2.md', { find: '[X] 大写', replace: '[ ] 大写' }),
