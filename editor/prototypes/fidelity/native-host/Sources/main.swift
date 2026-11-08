@@ -11,6 +11,7 @@ struct ResourceInfo {
     let bundleSHA: String
     let baseline: String
     let cspInjected: Bool
+    let observerSHA: String
 
     static func load() -> ResourceInfo {
         let b = Bundle.main.infoDictionary
@@ -20,17 +21,23 @@ struct ResourceInfo {
             sourceSHA: s("FidelitySourceSHA256"),
             bundleSHA: s("FidelityBundleSHA256"),
             baseline: s("FidelityBuildBaseline"),
-            cspInjected: s("FidelityCSPInjected") == "1"
+            cspInjected: s("FidelityCSPInjected") == "1",
+            observerSHA: s("FidelityObserverSHA256")
         )
     }
 }
 
 @MainActor
-final class HostAppDelegate: NSObject, NSApplicationDelegate {
+final class HostAppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler {
     let info = ResourceInfo.load()
     var window: NSWindow!
     var webView: WKWebView!
     var diagnostics: NSTextField!
+    var lastSnapshotSignature: Data?
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let content = NSView(frame: NSRect(x: 0, y: 0, width: 1280, height: 800))
@@ -47,6 +54,15 @@ final class HostAppDelegate: NSObject, NSApplicationDelegate {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .nonPersistent()
         config.suppressesIncrementalRendering = false
+        if let observerURL = Bundle.main.url(forResource: "runtime-observer", withExtension: "js"),
+           let observerSource = try? String(contentsOf: observerURL, encoding: .utf8) {
+            config.userContentController.addUserScript(WKUserScript(
+                source: observerSource,
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            ))
+            config.userContentController.add(self, name: "runtimeObserver")
+        }
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.translatesAutoresizingMaskIntoConstraints = false
         webView.navigationDelegate = self
@@ -76,6 +92,13 @@ final class HostAppDelegate: NSObject, NSApplicationDelegate {
         self.window = window
 
         updateDiagnostics(pageStatus: "loading")
+        emit(kind: "host", payload: [
+            "event": "launch",
+            "baseline": info.baseline,
+            "source_sha256": info.sourceSHA,
+            "bundled_sha256": info.bundleSHA,
+            "observer_sha256": info.observerSHA,
+        ])
 
         guard let entry = Bundle.main.url(forResource: "entry", withExtension: "html") else {
             updateDiagnostics(pageStatus: "ERROR: entry.html missing from bundle")
@@ -93,16 +116,48 @@ final class HostAppDelegate: NSObject, NSApplicationDelegate {
             "baseline \(info.baseline) | entry \(info.entryName) | source \(String(info.sourceSHA.prefix(12))) → bundled \(String(info.bundleSHA.prefix(12))) (\(csp)) | page: \(pageStatus)"
     }
 
-    /// 可选最小诊断：读取 window.fidelityPrototype（若原型暴露）。
-    /// 不引入生产 Bridge，不驱动任何自动化验收。
+    func emit(kind: String, payload: Any) {
+        let record: [String: Any] = [
+            "kind": kind,
+            "timestamp": ISO8601DateFormatter().string(from: Date()),
+            "payload": payload,
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]),
+              let line = String(data: data, encoding: .utf8) else { return }
+        print("INKORA_RUNTIME \(line)")
+        fflush(stdout)
+    }
+
+    func userContentController(
+        _ userContentController: WKUserContentController,
+        didReceive message: WKScriptMessage
+    ) {
+        guard message.name == "runtimeObserver" else { return }
+        emit(kind: "dom-event", payload: message.body)
+    }
+
+    /// 只读取 M0 验收所需的有限标量；不序列化模型/视图循环对象，不驱动页面。
     func pollPrototypeState() {
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, let webView = self.webView else { return }
-                webView.evaluateJavaScript("JSON.stringify(window.fidelityPrototype ?? null) ?? \"null\"") { result, error in
+                webView.evaluateJavaScript("window.__inkoraRuntimeObserver?.snapshot?.() ?? null") { result, error in
                     let status: String
                     if let error { status = "no prototype state (\(error.localizedDescription))" }
-                    else if let s = result as? String { status = "fidelityPrototype=\(s.prefix(120))" }
+                    else if let snapshot = result as? [String: Any] {
+                        let signature = try? JSONSerialization.data(
+                            withJSONObject: snapshot,
+                            options: [.sortedKeys]
+                        )
+                        if signature != self.lastSnapshotSignature {
+                            self.emit(kind: "snapshot", payload: snapshot)
+                            self.lastSnapshotSignature = signature
+                        }
+                        let revision = snapshot["revision"] ?? "?"
+                        let mode = (snapshot["sourceMode"] as? Bool) == true ? "source" : "visual"
+                        let composing = snapshot["composing"] ?? false
+                        status = "revision=\(revision) mode=\(mode) composing=\(composing) observer=\(self.info.observerSHA.prefix(12))"
+                    }
                     else { status = "loaded (no state)" }
                     self.updateDiagnostics(pageStatus: status)
                 }

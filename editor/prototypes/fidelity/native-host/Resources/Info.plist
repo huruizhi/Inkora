@@ -33,5 +33,7 @@
 	<string>__FIDELITY_BASELINE__</string>
 	<key>FidelityCSPInjected</key>
 	<string>__FIDELITY_CSP_INJECTED__</string>
+	<key>FidelityObserverSHA256</key>
+	<string>__FIDELITY_OBSERVER_SHA__</string>
 </dict>
 </plist>

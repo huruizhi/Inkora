@@ -28,6 +28,7 @@ APP_DIR     := $(ARTIFACTS)/$(APP_NAME).app
 CONTENTS    := $(APP_DIR)/Contents
 MACOS_DIR   := $(CONTENTS)/MacOS
 RES_DIR     := $(CONTENTS)/Resources
+OBSERVER_JS := Resources/runtime-observer.js
 
 .PHONY: build verify run clean
 
@@ -43,24 +44,29 @@ build:
 	python3 scripts/prepare_entry.py $(ENTRY_HTML) $(RES_DIR)/entry.html $(CSP_INJECT) \
 		> $(ARTIFACTS)/entry-report.json
 	cat $(ARTIFACTS)/entry-report.json
+	cp $(OBSERVER_JS) $(RES_DIR)/runtime-observer.js
 	# 3) 版本元数据：每次从模板全新生成，写入真实 SHA/基线，无残留
 	BASELINE=$$(cd $(ROOT) && git rev-parse HEAD); \
 	SRC_SHA=$$(shasum -a 256 $(ENTRY_HTML) | cut -d' ' -f1); \
 	BUNDLED_SHA=$$(python3 -c "import json;print(json.load(open('$(ARTIFACTS)/entry-report.json'))['bundled_sha256'])"); \
+	OBSERVER_SHA=$$(shasum -a 256 $(OBSERVER_JS) | cut -d' ' -f1); \
 	CSP_FLAG=$$(python3 -c "import json;print('1' if json.load(open('$(ARTIFACTS)/entry-report.json'))['csp_inserted'] else '0')"); \
 	sed -e "s|__FIDELITY_ENTRY_NAME__|$$(basename $(ENTRY_HTML))|" \
 	    -e "s|__FIDELITY_SOURCE_SHA__|$$SRC_SHA|" \
 	    -e "s|__FIDELITY_BUNDLE_SHA__|$$BUNDLED_SHA|" \
 	    -e "s|__FIDELITY_BASELINE__|$$BASELINE|" \
+	    -e "s|__FIDELITY_OBSERVER_SHA__|$$OBSERVER_SHA|" \
 	    -e "s|__FIDELITY_CSP_INJECTED__|$$CSP_FLAG|" \
 	    Resources/Info.plist > $(CONTENTS)/Info.plist
 	# 4) manifest（在签名前固化内容哈希，签名信息单独记录）
 	BASELINE=$$(cd $(ROOT) && git rev-parse HEAD); \
 	SDK=$$(sw_vers -productVersion); XCODE=$$(xcodebuild -version | tr '\n' ' '); \
-	python3 -c "import json; \
+	OBSERVER_SHA=$$(shasum -a 256 $(OBSERVER_JS) | cut -d' ' -f1); \
+	python3 -c "import json,sys; \
 	r=json.load(open('$(ARTIFACTS)/entry-report.json')); \
-	m={'bundle_id':'$(BUNDLE_ID)','baseline_commit':'$$BASELINE','os':'$$SDK','toolchain':'$$XCODE','entry':r}; \
-	json.dump(m,open('$(ARTIFACTS)/build-manifest.json','w'),indent=2,ensure_ascii=False)"
+	o={'path':'Resources/runtime-observer.js','sha256':sys.argv[1]}; \
+	m={'bundle_id':'$(BUNDLE_ID)','baseline_commit':'$$BASELINE','os':'$$SDK','toolchain':'$$XCODE','entry':r,'runtime_observer':o}; \
+	json.dump(m,open('$(ARTIFACTS)/build-manifest.json','w'),indent=2,ensure_ascii=False)" "$$OBSERVER_SHA"
 	# 5) 最后统一 ad-hoc 签名（Hardened Runtime + entitlements，entitlements 改动必然触发重签）
 	codesign --force --sign - --timestamp=none --options runtime \
 		--entitlements Entitlements.plist $(APP_DIR)

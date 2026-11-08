@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "task": "INK-PROT-014",
+  "executed_at": "2026-11-08T14:00:00Z",
+  "overall": "partial",
+  "m0_gate": "not_declared_passed",
+  "fixed_html_baseline": "def2002cd281f567de9adea192c25b1b1673d4a1",
+  "environment": {
+    "os": "macOS 27.2 (26B123)",
+    "architecture": "arm64",
+    "xcode": "27.2 (27B52)",
+    "sdk": "27.2"
+  },
+  "bundle": {
+    "identifier": "com.huruizhi.Inkora.FidelityPrototype",
+    "sandboxed": true,
+    "signing": "ad-hoc hardened runtime",
+    "source_html_sha256": "182fceeaae5daecf3b9d4e160d4c2f336090e58b5b81e1458471e356832382a9",
+    "bundled_html_sha256": "123726e72175c8e110addfa0bb4244f66a930c493a4a43cfa2f8d365337c0c7a",
+    "source_script_sha256": "98a7ca0d191edcf91c394a2487a1fed1122859fab671bccd2eaa25ac7bd110af",
+    "bundled_script_sha256": "98a7ca0d191edcf91c394a2487a1fed1122859fab671bccd2eaa25ac7bd110af",
+    "script_bytes_identical": true,
+    "runtime_observer": {
+      "version": "ink-prot-014-observer-v1",
+      "sha256": "28f0fa8cebfb0dde5c4e1b2f12b86667baf14ac771539acf230fa1cde0b33d4f",
+      "behavior": "read-only DOM event listener and scalar snapshot provider"
+    }
+  },
+  "ui_isolation": {
+    "lock": "/tmp/inkora-ui-tests.lock",
+    "preflight_mode": "desktop",
+    "preflight": "passed",
+    "foreground_process_held_lock": true,
+    "final_exit": "native close button, wrapper exit 0",
+    "lock_released": true,
+    "formal_inkora_app_used": false
+  },
+  "layer_a": {
+    "status": "passed_with_findings",
+    "cases": [
+      {
+        "id": "wk-load",
+        "status": "passed",
+        "operation": "launch foreground FidelityHost executable",
+        "observed": "real ProseMirror loaded at revision 0; source and bundled SHA visible"
+      },
+      {
+        "id": "pm-transactions-history",
+        "status": "passed",
+        "operation": "local Chinese edit; add strong mark; Undo; Redo",
+        "observed": "revision 0 to 4; content, source, selection and history changed and restored"
+      },
+      {
+        "id": "visual-selection-replace",
+        "status": "passed",
+        "operation": "select visible text Chinese body; physical U.S. key events w,k",
+        "observed": "selection replaced with wk; cursor collapsed after replacement"
+      },
+      {
+        "id": "source-mode-save-barrier",
+        "status": "passed",
+        "operation": "enter active source mode",
+        "observed": "sourceMode true; textarea writable; saveDisabled true"
+      },
+      {
+        "id": "source-roundtrip-format",
+        "status": "passed",
+        "operation": "change reference-definition spacing through active source roundtrip",
+        "observed": "revision incremented; semantic PM content and visual selection preserved"
+      },
+      {
+        "id": "source-protected-boundary",
+        "status": "finding",
+        "operation": "insert src immediately before protected math block and submit",
+        "observed": "first submit rejected at unmappable protected-block cursor; safe-anchor retry committed but entered math pending and disabled save; Undo restored consistency"
+      },
+      {
+        "id": "mixed-protected-fragments",
+        "status": "passed",
+        "operation": "open mixed BOM/math/comment/footnote/callout sample",
+        "observed": "editable surrounding paragraphs and protected fragments rendered together; initial source remained byte-identical"
+      },
+      {
+        "id": "memory-save-point",
+        "status": "passed",
+        "operation": "click memory save point",
+        "observed": "dirty became false; no NSDocument or disk save claimed"
+      },
+      {
+        "id": "pending-save-block-and-repair",
+        "status": "passed",
+        "operation": "make malformed math source; observe barrier; actively repair",
+        "observed": "pending true and save disabled, then pending false and save enabled after repair"
+      }
+    ]
+  },
+  "layer_b": {
+    "status": "not_executed",
+    "original_input_source": "com.apple.keylayout.US",
+    "available_chinese_sources": [
+      "com.apple.inputmethod.SCIM.ITABC",
+      "com.sogou.inputmethod.pinyin"
+    ],
+    "probe": {
+      "selected_source": "com.sogou.inputmethod.pinyin",
+      "target": "prosemirror visible body",
+      "key_sequence": ["z", "h", "o", "n", "g", "w", "e", "n"],
+      "transport": "Computer Use pressKey",
+      "observed_events": "8 beforeinput/input pairs; inputType insertText; isComposing false",
+      "composition_events": 0,
+      "candidate_window_observed": false,
+      "inserted_literal": "zhongwen",
+      "conclusion": "tool keyboard path bypassed IME; probe is not IME evidence"
+    },
+    "unexecuted_requirements": [
+      "visible-body system IME composition and commit",
+      "active-source-textarea system IME composition and commit",
+      "composition-time save and mode-switch behavior",
+      "IME selection replacement and cursor validation",
+      "IME transaction Undo and Redo"
+    ],
+    "prohibited_substitutes_used": false,
+    "restored_input_source": "com.apple.keylayout.US"
+  },
+  "out_of_scope_or_unverified": [
+    "INK-PROT-009 independent fix version",
+    "production Inkora.app",
+    "NSDocument disk save, reopen, conflict, or recovery",
+    "remaining M0 marks, structure, and native-save gaps"
+  ],
+  "validation": [
+    {
+      "command": "make -C editor/prototypes/fidelity/native-host verify",
+      "status": "passed"
+    },
+    {
+      "command": "make test-ci",
+      "status": "passed"
+    },
+    {
+      "command": "python3 -m json.tool editor/prototypes/fidelity/native-host/INK-PROT-014-evidence.json",
+      "status": "passed"
+    },
+    {
+      "command": "plutil -lint editor/prototypes/fidelity/native-host/Resources/Info.plist editor/prototypes/fidelity/native-host/Entitlements.plist",
+      "status": "passed"
+    },
+    {
+      "command": "node --check editor/prototypes/fidelity/native-host/Resources/runtime-observer.js",
+      "status": "passed"
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    },
+    {
+      "command": "make lint",
+      "status": "blocked",
+      "detail": "production Swift lint ran; editor lint could not start because .tools/node_modules/.bin/pnpm is absent; dependency installation was prohibited"
+    },
+    {
+      "command": "make test-non-ui",
+      "status": "not_executed",
+      "detail": "requires the same absent pnpm toolchain; dependency installation was prohibited"
+    },
+    {
+      "command": "xcrun swift-format lint --strict editor/prototypes/fidelity/native-host/Sources/main.swift",
+      "status": "failed_non_gate",
+      "detail": "native-host is outside the repository Swift lint path; strict standalone lint reports the prototype file's existing indentation, semicolon, and line-length style"
+    }
+  ],
+  "reproducible_sources": {
+    "build_verify_log": "artifacts/logs/INK-PROT-014/final-build-verify.log",
+    "runtime_log": "artifacts/logs/INK-PROT-014/runtime.log",
+    "final_lifecycle_log": "artifacts/logs/INK-PROT-014/final-runtime.log",
+    "build_manifest": "editor/prototypes/fidelity/native-host/artifacts/build-manifest.json",
+    "entry_report": "editor/prototypes/fidelity/native-host/artifacts/entry-report.json"
+  }
+}

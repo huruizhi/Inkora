@@ -6,9 +6,13 @@
 ## 组成
 
 - `Sources/main.swift`：AppKit 单窗口 + `WKWebView`，底部诊断栏显示构建基线、
-  入口文件名、源文件/副本 SHA256、CSP 状态与页面状态；每秒以
-  `evaluateJavaScript("JSON.stringify(window.fidelityPrototype ?? null)")`
-  做最小状态读取（可选诊断，不驱动自动化验收）。
+  入口文件名、源文件/副本 SHA256、CSP 状态与页面状态；每秒只读取
+  `sourceMode`、revision/pending/selection、`view.composing` 等有限标量，状态变化时
+  以 `INKORA_RUNTIME` JSONL 写到 stdout（可选诊断，不驱动自动化验收）。
+  关闭最后窗口会正常退出宿主，确保 UI 锁包装器可随进程退出释放锁。
+- `Resources/runtime-observer.js`：只读监听真实 DOM composition/input/focus/selection
+  事件并提供有限状态快照；不合成事件、不写原型模型。observer SHA 独立写入
+  Info.plist 与 manifest，不能把“原 HTML 未变”误作“没有额外 instrumentation”。
   导航白名单：仅允许本 bundle `Resources/` 内 `file:` URL 与 `about:`；其余一律取消。
 - `Resources/Info.plist`：模板（占位符由构建脚本写入实际值）。
 - `Entitlements.plist`：App Sandbox + `com.apple.security.network.client`
@@ -57,7 +61,7 @@ img-src data: blob:; font-src data:; connect-src 'none'`。
 保障仅剩宿主导航白名单（file:/about:），页面自身的 fetch/外链不受 CSP
 约束——只在入口已自带等价 CSP 时使用。
 
-## 本轮实际构建记录（2026-11-08）
+## INK-PROT-007 构建记录（2026-11-08）
 
 - 基线：`692493508d4b5ac78f0b212045aae32a8b59b90e`（分支 `task/INK-PROT-007-wkwebview-host`）
 - 工具链：Xcode 27.2 (27B52)，`swiftc -O -target arm64-apple-macos14.0`
@@ -72,6 +76,51 @@ img-src data: blob:; font-src data:; connect-src 'none'`。
   entitlements = app-sandbox + network.client。
 - **未执行**：`run`、任何 App 启动、桌面操作、WKWebView 运行时行为、系统 IME。
   本任务不做且不宣称以上通过。
+
+## INK-PROT-014 运行验收（2026-11-08）
+
+专项在固定 HTML 基线 `def2002cd281f567de9adea192c25b1b1673d4a1` 上执行；结论为
+**A 有条件通过、B 未执行（工具键盘路径绕过 IME）**，因此不宣告 M0 通过。
+逐操作机器可读记录见 `INK-PROT-014-evidence.json`。
+
+- 环境：macOS 27.2 / arm64；Xcode 27.2 (27B52)，macOS SDK 27.2。
+- 隔离 bundle：`com.huruizhi.Inkora.FidelityPrototype`，App Sandbox，ad-hoc +
+  Hardened Runtime；未安装或覆盖正式 `Inkora.app`。
+- HTML source/bundled/script SHA 与 observer SHA 在 Info.plist、manifest、窗口诊断栏
+  三处核对；原型 script 字节一致。
+- 全程使用生产 `scripts/ci/with-ui-lock.sh`，取锁后运行 `ui-preflight.sh desktop`，
+  前台 App 进程退出前锁一直存在；最终点击原生关闭按钮正常退出，包装器返回 0 并释放锁。
+- A：真实 PM 加载、按钮事务、可视选区替换、Undo/Redo、主动源码模式、格式往返、
+  混排保护片段、内存保存点、pending 保存阻断与主动修复均取得真实 WKWebView 状态证据。
+  手工把 `src` 插到数学保护块前时，首次提交因保护块内无可视锚点被拒；移到安全锚点
+  后可提交，但触发 math pending 与保存阻断，Undo 可恢复。该真实边界未为通过而缩减。
+- B 探针：原输入源为 U.S.；`ctrl+space` 实际选择已安装的搜狗拼音后，Computer Use
+  逐键 `pressKey(z,h,o,n,g,w,e,n)` 直接产生 8 组 `insertText`，全部
+  `isComposing=false`，无候选窗、无 `compositionstart/update/end`，页面得到字面量
+  `zhongwen`。这只能证明工具键盘路径绕过 IME，不能证明系统 IME；因此正文/源码
+  textarea 的真实组合输入、组合期间保存/切换、选区替换及 Undo/Redo 均保持未执行。
+  未用 `typeText`、粘贴中文、`evaluateJavaScript` 或合成 composition 事件冒充。
+- 收尾：输入源恢复 U.S.，无 `FidelityHost` 残留进程，生产 UI 锁已释放。
+
+复现构建与非 UI 校验：
+
+```sh
+make -C editor/prototypes/fidelity/native-host verify
+```
+
+复现运行时启动必须让前台可执行文件存活于包装器内：
+
+```sh
+scripts/ci/with-ui-lock.sh scripts/ci/ui-preflight.sh desktop \
+  editor/prototypes/fidelity/native-host/artifacts/FidelityHost.app/Contents/MacOS/FidelityHost
+```
+
+本次校验结果：宿主 `verify`、`make test-ci`、JSON/plist/JavaScript 语法、
+`git diff --check` 均通过。仓库 `make lint` 已完成生产 Swift lint，但因本 worktree
+没有 `.tools/node_modules/.bin/pnpm` 而在 editor lint 前失败；遵守“不安装依赖”的任务
+约束，未运行 `make setup`，同样依赖 pnpm 的 `make test-non-ui` 未执行。native-host
+不在仓库 Swift lint 路径中；额外对其运行严格 `swift-format lint` 时，报告了该原型文件
+既有的四空格/分号/行长风格，不作为通过项。
 
 ## 后续人工验证步骤（持 UI 锁 + preflight 后）
 
