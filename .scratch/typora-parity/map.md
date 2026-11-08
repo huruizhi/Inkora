@@ -50,3 +50,8 @@ Status: open
 - 本次地图不实施产品代码，也不把尚未决策的领域预拆为实施任务。
 - AI 辅助、多人协作、跨平台、云端图床上传属于独立路线。
 - Typora 界面的像素级复刻、Mac App Store 分发不在目标内。
+
+
+## Current M0 execution pointer
+
+028 committee consensus and frozen029 contract now guide one isolated030 source-authoritative/PM projection prototype. See [consensus](execution/M0-source-authority-consensus.md). Accepted integration remains ea63941;027 is partial evidence, not adopted.11 stays claimed and12 remains dependent; no production architecture or M0 pass is declared.

@@ -1,6 +1,6 @@
 # M0 原文、编辑投影与保存边界复核
 
-Status: committee analysis pending; no architecture adopted
+Status: committee consensus recorded; contract frozen; bounded prototype running; no architecture adopted
 
 ## 已确认事实
 
@@ -42,3 +42,6 @@ host为srv_MEqRNkRW6fSx，两workspace均固定7607079、独立branch/worktree�
 已将双方完整论证和同一交叉问题交两名新上下文委员，继续使用同一两个workspace/基线/只读硬约束。Codex de854022-23e5-4f57-b080-ebd7fdab8de1；OMP GLM 8c331853-44a0-47b4-b84d-d46f15936c40，模型/模式沿用5.6-Sol high和GLM5.3 high，profiles仍空。两者创建running且notifyOnFinish=true，不轮询或催促。
 
 交叉草案见reviews/028-cross-check.md：隔离验证不等于重写内核；settle可为内部迁移接口，但需唯一公开当前字节权威、每个已接受编辑即时一致、save不改变投影/光标/历史。重开字节保留不证明续写边界正确；source-primary也不能被未经验证地描述成任意PM编辑永不拒绝。允许必要语法映射规则，不按kind计数机械判断；需要共享原文/保存/源码/历史契约与真实安全负例。等待双方是否接受此有限方案或提供实质反例，尚未采纳架构。
+
+
+Current decision pointer: [M0-source-authority-consensus.md](M0-source-authority-consensus.md). Earlier pending sections are historical review records.

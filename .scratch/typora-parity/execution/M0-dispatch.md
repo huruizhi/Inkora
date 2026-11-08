@@ -422,3 +422,13 @@ INK-PROT-027 Agent7e29964b-772d-465b-a2ff-80fd3d93072e，workspace wks_a4f3a9969
 Codex首轮dc14147b…建议C隔离验证/A落地，GLM首轮ff88157f…建议B统一settle/A落地并设失败转C；均认为PM可复用、数据权威须诚实转向当前原文字节。完整意见已从各自activity的最终回答取回，保留至reviews/INK-REV-028{a,b}.md，未把截断通知当完整结论。两者只读工作树clean。原Codex于2026-11-08T19:02:17.901Z归档closed，原OMP于19:05:20.181Z归档（provider idle/archivedAt非空，非运行）。GLM本轮真实返回成功，不再把旧429当当前全局状态。
 
 未凭共同原则宣布实施共识。profiles再次为空，沿用已发现的两个不同family，分别在原wks_04d9eb8e03cfe611和wks_0940ccd779fd77d1创建交叉委员de854022-23e5-4f57-b080-ebd7fdab8de1（Codex5.6-Sol/high/default/full-access）、8c331853-44a0-47b4-b84d-d46f15936c40（OMP GLM5.3/high/full），notifyOnFinish=true。相同prompt传递双方完整意见与共同草案，只读、不写代码/文件、不跑构建测试、不起GUI。澄清C可为复用现代码的隔离验证；B可为内部迁移，但不能Save时才承认当前字节或让源码/历史读旧source；不能用C作“任何编辑永不拒绝”的承诺，亦不能把重开字节等同caret/续写证明。待回答收敛，不轮询/催促。未新增workspace，仅两个复核条目继续。
+
+### 028共识接收、029契约冻结与030单一原型
+
+两轮交叉报告已完整保存reviews/INK-REV-028a-cross.md与028b-cross.md。双方同意source-authoritative/PM投影边界，settle在接受编辑时发生而非Save触发；C为隔离验证非重写UI。重开后Undo只撤销新epoch，需真实raw→visual定位续b，不以原文保留推定affinity正确。对kind计数的程度差异由管理者以公共不变量与实际反例裁决，非声称所有启发式逐字一致；详见M0-source-authority-consensus.md。最终不采纳架构、不关M0。
+
+交叉Agent8c331853…与de854022…finished后已立即archive；两review工作树均7607079/clean，310文件各逐字节备份且committee Git bundle verify后，wks_04d9eb8e03cfe611与wks_0940ccd779fd77d1均archive_workspace/removedDirectory=true。累计33个已结束workspaces回收，四个委员均归档，不再留只读完成条目。
+
+INK-SPEC-029由管理者在本地独立worktree /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-SPEC-029、branch task/INK-SPEC-029-source-authority-contract冻结纯文档/数据，base7607079，commit6e6e2b8eb1f4ff49e3765cef4052daa419405eee已推送/clean。CONTRACT与ORACLES.json SHA=c53b2f9c54357a624c7ccd7a1e4a7d1ccf272f665d871de96f686bc46e031d08；JSON、字面值UTF-16插入/UTF-8 hex一致性及锁定CommonMark soft/hardbreak smoke已检查，不是原型运行。新术语用domain-modeling格式，原型按LOGIC形态但保真测试/必要既有打包由用户要求优先。
+
+INK-PROT-030：Agent b8560dcd-b9a8-4cc0-9c15-e5c1bf6b493a，workspace wks_aa63ecfcc29de8fa，host srv_MEqRNkRW6fSx；worktree /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-030-source-authority-projection；branch task/INK-PROT-030-source-authority-projection，固定6e6e2b8。profiles为空、provider核实后GPT-5.6-Sol/high/default/full-access/notifyOnFinish=true，创建回执running。只新增editor/prototypes/source-authority/，不动旧控制原型/fixture/契约/生产/native-host/依赖；真实EditorView+公开控制器、单HTML自由操作与主链引导，内存/scratch/真实WK/IME分层。先设计边界报告（不等额外审批），再一个有界实现，失败给最小反例不继续散补丁；完成后独立核验、回收两层。

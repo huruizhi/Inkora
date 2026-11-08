@@ -52,3 +52,5 @@ INK-PROT-004 已交付新样稿 `484ee81d924efd2a1038e8421b146f4ae5d5b743`，保
 026最终ea63941已由管理者旧红/新绿独立矩阵与真实WK普通输入保存恢复路径接收，已进入008；执行Agent和workspace均备份回收。当前本地验证目录为主仓.worktrees/INK-PROT-008-VERIFY。真实WK发现的合法空格输入拒绝，已由正确caret原生alpha/space/beta红回归确认会丢分隔符，027正修。该基础写作缺口不能当作安全拒绝的最终体验；本票保持claimed、12依赖不解除，最新完整物理IME/整体审阅未过。
 
 027交付7607079未被接收完整验收：管理者确认连续输入14组通过，但合法尾随空格在当前视图无法save/主动source，虽候选已可parse/reopen，仍是原写作闭环缺口。执行Agent/workspace已备份回收，部分成果保留。已交paseo-committee只读比较统一源/投影边界、安全finalize及source-primary验证路径，见execution/M0-projection-boundary-review.md；不据子集PASS解决本票或锁12架构。
+
+当前执行方向更新：028两轮共同建议隔离验证统一source-authoritative/PM投影边界，保留PM；不再在008叠加staged/save入口特例。029已冻结契约和oracle（6e6e2b8），030在新目录实现一个有界原型。合法尾随空格完整保存/源码/重开续写主链、负例与最新真实IME/用户审阅都需证据；本票claimed，12仍依赖11。共识和不适用推断边界见execution/M0-source-authority-consensus.md。
