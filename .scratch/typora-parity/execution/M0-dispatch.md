@@ -416,3 +416,9 @@ INK-PROT-027 Agent7e29964b-772d-465b-a2ff-80fd3d93072e，workspace wks_a4f3a9969
 执行Agent7e29964b-772d-465b-a2ff-80fd3d93072e收到finished即归档，closed/archivedAt=2026-11-08T18:50:02.162Z。原027workspace已备份310文件逐字节、bundle verify、HEAD与live origin核对后归档；累计31个已结束执行workspace回收。新复核副本独立固定同7607079，不能把旧worktree原路径当存在。
 
 已使用paseo-committee：profiles为空，provider discovery后Codex5.6-Sol/high/default/full-access与OMP zhipu-coding-plan/glm-5.3/high/full两个不同family，同问题级prompt、fresh context、notifyOnFinish=true、严格no edits/code/GUI/build，不轮询催促。Codex Agent dc14147b-c7e2-4e94-ab54-22042c5132b7 / wks_04d9eb8e03cfe611，branch task/INK-REV-028a-projection-boundary；OMP Agent ff88157f-a62d-420e-8aff-f2b317081eec / wks_0940ccd779fd77d1，branch task/INK-REV-028b-source-authority；host srv_MEqRNkRW6fSx。真实GLM配额不能由列表推定恢复，失败只据通知处理不循环重试。两者输出后交叉观点至收敛，再生成有限验证序列，当前不再堆内核补丁。详见[M0投影边界复核](M0-projection-boundary-review.md)。
+
+### 028第一轮意见与交叉复核
+
+Codex首轮dc14147b…建议C隔离验证/A落地，GLM首轮ff88157f…建议B统一settle/A落地并设失败转C；均认为PM可复用、数据权威须诚实转向当前原文字节。完整意见已从各自activity的最终回答取回，保留至reviews/INK-REV-028{a,b}.md，未把截断通知当完整结论。两者只读工作树clean。原Codex于2026-11-08T19:02:17.901Z归档closed，原OMP于19:05:20.181Z归档（provider idle/archivedAt非空，非运行）。GLM本轮真实返回成功，不再把旧429当当前全局状态。
+
+未凭共同原则宣布实施共识。profiles再次为空，沿用已发现的两个不同family，分别在原wks_04d9eb8e03cfe611和wks_0940ccd779fd77d1创建交叉委员de854022-23e5-4f57-b080-ebd7fdab8de1（Codex5.6-Sol/high/default/full-access）、8c331853-44a0-47b4-b84d-d46f15936c40（OMP GLM5.3/high/full），notifyOnFinish=true。相同prompt传递双方完整意见与共同草案，只读、不写代码/文件、不跑构建测试、不起GUI。澄清C可为复用现代码的隔离验证；B可为内部迁移，但不能Save时才承认当前字节或让源码/历史读旧source；不能用C作“任何编辑永不拒绝”的承诺，亦不能把重开字节等同caret/续写证明。待回答收敛，不轮询/催促。未新增workspace，仅两个复核条目继续。

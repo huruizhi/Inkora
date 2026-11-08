@@ -32,3 +32,13 @@ host为srv_MEqRNkRW6fSx，两workspace均固定7607079、独立branch/worktree�
 ## 决策状态
 
 等待两名委员结论及分歧收敛，再记录有限的后续设计/原型验收路径。11仍claimed，12仍未锁架构；不继续并行修改内核，不扩大到表格/主题/导出或生产接入。
+
+## 第一轮返回与交叉复核
+
+两位均已独立返回，完整意见留档于reviews/INK-REV-028a.md和reviews/INK-REV-028b.md。共同认可PM可复用、candidate已承担最新用户文档职责、相同合法字节不能因路径不同而禁save/source。分歧：Codex建议先隔离source-primary投影原型C再以A落地；GLM建议先统一settle协议B→A，按明确失败阈值再做C。第一轮并非最终共识，个别架构推断/生产漂移等观点不自动作为管理者实测事实。
+
+原Codex委员dc14147b…已closed/archivedAt=2026-11-08T19:02:17.901Z；原OMP委员ff88157f…已archivedAt=2026-11-08T19:05:20.181Z（其provider状态为idle，非running）。两worktree未修改/clean，复核仍需交叉收敛，因此保留这两个workspace用于后续阶段，不新开侧栏workspace。
+
+已将双方完整论证和同一交叉问题交两名新上下文委员，继续使用同一两个workspace/基线/只读硬约束。Codex de854022-23e5-4f57-b080-ebd7fdab8de1；OMP GLM 8c331853-44a0-47b4-b84d-d46f15936c40，模型/模式沿用5.6-Sol high和GLM5.3 high，profiles仍空。两者创建running且notifyOnFinish=true，不轮询或催促。
+
+交叉草案见reviews/028-cross-check.md：隔离验证不等于重写内核；settle可为内部迁移接口，但需唯一公开当前字节权威、每个已接受编辑即时一致、save不改变投影/光标/历史。重开字节保留不证明续写边界正确；source-primary也不能被未经验证地描述成任意PM编辑永不拒绝。允许必要语法映射规则，不按kind计数机械判断；需要共享原文/保存/源码/历史契约与真实安全负例。等待双方是否接受此有限方案或提供实质反例，尚未采纳架构。
