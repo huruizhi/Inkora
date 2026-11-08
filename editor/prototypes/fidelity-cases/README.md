@@ -69,7 +69,7 @@ python3 editor/prototypes/fidelity-cases/verify.py
 ### 01 中文与 emoji 局部替换
 
 - 输入含：标题、两段中文、ZWJ 家庭 emoji（7 标量 / 25 字节）、旗帜 emoji、预组合 `café`（`63 61 66 C3 A9`）与分解 `cafe+U+0301`（`63 61 66 65 CC 81`）各一处。
-- 步骤：①「原文字节」→「原始字节」；② 👨‍👩‍👧‍👦→🧑‍🤝‍🧑（25B→20B，UTF-16 单元 14→8，长度变化暴露按 UTF-16 截断/偏移错位的实现）；③ 🇨🇳→🇯🇵（同字节数不同码点）；④ 观测两种重音全程不归一化。
+- 步骤：①「原文字节」→「原始字节」；② 👨‍👩‍👧‍👦→🧑‍🤝‍🧑（25B→18B、7→5 标量、11→8 UTF-16 单元，长度变化暴露按 UTF-16 截断/偏移错位的实现）；③ 🇨🇳→🇯🇵（同字节数不同码点）；④ 观测两种重音全程不归一化。
 - 不得改动：标题、另一 emoji、末段、全部换行与两种重音的字节表示。
 
 ### 02 保护片段前后空白（含 BOM）
@@ -97,7 +97,8 @@ python3 editor/prototypes/fidelity-cases/verify.py
 
 ### 06 split/join（CRLF）
 
-- 步骤：① 段内「拆分点」后 Enter（新边界必须继承 **CRLF**）；② 合并回一段（**往返后字节须与输入 sha256 相同**）；③ 列表项「衔接点」后 Enter（新列表项按第 5 节用 `- ` 标记；若实现为懒延续则记差异与实际字节）；④ 合并回（往返 sha256 相同）。
+- 步骤（main 变体，视觉）：① 段内「拆分点」后 Enter **拆分为两个段落**——CommonMark 新段落必须空行分隔，预期插入 CRLF 空行（2 个新边界均继承 **CRLF**）；只插单个 CRLF（同段落 softbreak）记为差异；② 合并回一段（**往返后字节须与输入 sha256 相同**）；③ 列表项「衔接点」后 Enter（新列表项按第 5 节用 `- ` 标记，单 CRLF；若实现为懒延续则记差异与实际字节）；④ 合并回（往返 sha256 相同）。
+- softbreak 变体（源码模式）：① 段内插入单个 CRLF 软换行（继承 CRLF）；② 删除合并回（往返 sha256 相同）。该变体仅覆盖单换行 EOL 继承，不作为段落拆分判定。
 
 ### 07 Undo/Redo 粒度与字节态
 
@@ -122,13 +123,14 @@ python3 editor/prototypes/fidelity-cases/verify.py
 ### 11 LF/CRLF 混合局部插入
 
 - 输入换行序列（8 个边界）：LF、CRLF、LF、空行 CRLF、CRLF、CRLF、空行 LF、LF。
-- 步骤：① CRLF 行末 Enter 插入新行（新边界继承 **CRLF**）；② LF 末行 Enter 插入新行（新边界继承 **LF**，原尾部换行保持）。
-- **字节判据**：保存后与 `after-step-N.md` 逐字节一致，全部原始边界不变（无论结构化或源码路径执行，字节相同）。
-- **模式判据**：原型支持混合 EOL 可视结构化编辑记通过；若按 EOL-001 现状整篇源码，字节判据仍适用，但「混合 EOL 可视编辑」记现状差异，不判为已满足新体验。
+- main 变体（源码模式单换行继承局部 EOL）：① CRLF 行末 Enter 插入新行（新边界继承 **CRLF**，结果为同段落 softbreak）；② LF 末行 Enter 插入新行（新边界继承 **LF**，原尾部换行保持）。
+- visual-split 变体（视觉 Enter 段落拆分，不得降级为源码判定）：① 「第二行使用 CRLF 结尾。」行尾 Enter 创建新段落并输入文本（新空行的 4 个边界继承 **CRLF**）；② 尾段行尾 Enter 创建新段落（2 个新边界继承 **LF**，原尾部换行保持）。若混合 EOL 文档按 EOL-001 现状整篇源码、无法执行视觉 Enter，记「现状差异、未执行」。
+- **字节判据**：保存后与对应 `after-step-N.md` / `visual-after-step-N.md` 逐字节一致，除声明吸收/新增边界外全部原始边界不变。
+- **模式判据**：main 变体为源码字节覆盖；混合 EOL 可视结构化编辑由 visual-split 变体判定，按 EOL-001 现状整篇源码时记现状差异，不判为已满足新体验。
 
 ## 高价值边界（交叉核验优先盯）
 
-1. 01-②：ZWJ emoji 替换的标量/UTF-16/字节三种长度不一致（25B/7 标量/14 UTF-16 → 20B/5/8）。
+1. 01-②：ZWJ emoji 替换的标量/UTF-16/字节三种长度不一致（25B/7 标量/11 UTF-16 → 18B/5/8）。
 2. 02-①：BOM + D 级片段混排文档的零修改保存与「不自动整篇源码」。
 3. 04-①②：CRLF + 无尾部换行下的单字符切换（不得补换行）。
 4. 05-③：行内代码定界符最短增长（`1 对 backtick → 1 对 double-backtick`）。
@@ -159,3 +161,15 @@ $ node -e 'const m=JSON.parse(require("fs").readFileSync("editor/prototypes/fide
 ```
 
 字节抽检（xxd / python 计数，独立于生成器逻辑）：02 BOM `EF BB BF`、行尾双空格 ×1、连续空行 ×1、正文制表符 ×1；01 预组合 `C3 A9` ×1 与分解 `CC 81` ×1 共存；04 尾字节为 `。` 无换行；10 malformed 末尾为 `$$\n\int_0^1 x\,dx\n`（无闭合）；11 八个换行边界 LF/CRLF 序列与设计一致；05-③ 为 `` ``行`内代码`` ``。
+
+## 语义审计自校验记录（2026-11-08，INK-PROT-004）
+
+```text
+$ python3 editor/prototypes/fidelity-cases/verify.py
+用例: 11  步骤: 47 (byte-exact 34 / state-ref 8 / operational 5)
+检查通过 557 项，失败 0 项
+全部通过
+exit=0
+```
+
+变更要点：06 main 步骤①改为空行段落拆分（CRLF×2）、新增 06 softbreak 变体（单 CRLF 软换行）；11 main 明确为源码模式单换行、新增 11 visual-split 变体（视觉 Enter 段落拆分，CRLF/LF 各一步）；01 emoji 长度说明修正为实测值（25→18 字节、11→8 UTF-16 单元）。依据与独立 markdown-it 证明见 `SEMANTIC-AUDIT.md`。

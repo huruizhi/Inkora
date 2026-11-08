@@ -66,7 +66,7 @@
               "verdict": "byte-exact",
               "mode": "visual",
               "action": "视觉模式：将 ZWJ 家庭 emoji 👨‍👩‍👧‍👦 整体替换为 🧑‍🤝‍🧑。",
-              "edit_scope": "仅该 emoji 的 25 字节（7 个 Unicode 标量）替换为 20 字节（5 个标量）。",
+              "edit_scope": "仅该 emoji 的 25 字节（7 个 Unicode 标量、11 个 UTF-16 单元）替换为 18 字节（5 个标量、8 个 UTF-16 单元）。",
               "delimiter_scope": "无。",
               "ops": [
                 {
@@ -76,7 +76,7 @@
               ],
               "acceptance": [
                 "保存后文件字节与 after-step-2.md 完全一致。",
-                "替换前后 UTF-16 code unit 数与码点数不同（25→20 字节、14→8 个 UTF-16 单元）；若原型按 UTF-16 长度截断或偏移错位，会在邻接「 」空格或「家」字上产生字节差异，据此判定失败。",
+                "替换前后三种长度均不同（25→18 字节、7→5 个 Unicode 标量、11→8 个 UTF-16 单元）；若原型按 UTF-16 长度截断或偏移错位，会在邻接「 」空格或「家」字上产生字节差异，据此判定失败。",
                 "其余范围（含另一个 emoji 与组合字符行）逐字节不变。"
               ],
               "expect": {
@@ -565,36 +565,37 @@
               "n": 1,
               "verdict": "byte-exact",
               "mode": "visual",
-              "action": "视觉模式：光标置于第一段「拆分点」之后按 Enter 拆分段落。",
-              "edit_scope": "在「拆分点」与「在句中」之间插入 1 个换行边界。",
-              "delimiter_scope": "新换行必须继承当前行 CRLF（EOL-002）；不添加列表/引用等任何新定界符。",
+              "action": "视觉模式：光标置于第一段「拆分点」之后按 Enter 拆分为两个段落。",
+              "edit_scope": "在「拆分点」与「在句中」之间形成段落边界：插入 1 个空行（2 个换行边界）。",
+              "delimiter_scope": "CommonMark 中新段落必须由空行分隔：预期在「拆分点」后插入 CRLF+CRLF（空行），两个新边界均继承当前行 CRLF（EOL-002）；不添加列表/引用等任何新定界符。",
               "ops": [
                 {
                   "find": "拆分点在句中",
-                  "replace": "拆分点\r\n在句中"
+                  "replace": "拆分点\r\n\r\n在句中"
                 }
               ],
               "acceptance": [
-                "保存后文件字节与 after-step-1.md 完全一致。",
-                "其余 5 个原有 CRLF 边界逐字节不变。"
+                "保存后文件字节与 after-step-1.md 完全一致（预期为两个独立段落：markdown-it commonmark 解析为 2 个 paragraph 块，而非 1 个含 softbreak 的段落）。",
+                "其余 5 个原有 CRLF 边界逐字节不变。",
+                "若实现只插入单个 CRLF（结果仍是同一段落内的 softbreak），记为失败/差异，不得以「同段落软换行」冒充段落拆分；单 CRLF 软换行继承由 softbreak 变体单独覆盖。"
               ],
               "expect": {
                 "file": "after-step-1.md",
                 "to_disk": true,
-                "bytes": 135,
-                "sha256": "50a99d1bbade647f983e120456e9cee2dd60f53330120bd8d0726a97a4c2034c"
+                "bytes": 137,
+                "sha256": "b1f831639f870662e4de2b75490f9337e463f3c843577924dc52cc4cf16a537f"
               }
             },
             {
               "n": 2,
               "verdict": "byte-exact",
               "mode": "visual",
-              "action": "视觉模式：光标置于新行行首（或上一行行尾）按 Backspace（或 Delete）合并回一段。",
-              "edit_scope": "仅删除第 1 步插入的 CRLF 边界。",
+              "action": "视觉模式：光标置于新段落行首（或上一段落行尾）按 Backspace（或 Delete）合并回一段。",
+              "edit_scope": "仅删除第 1 步插入的空行（2 个 CRLF 边界）。",
               "delimiter_scope": "无新增定界符。",
               "ops": [
                 {
-                  "find": "拆分点\r\n在句中",
+                  "find": "拆分点\r\n\r\n在句中",
                   "replace": "拆分点在句中"
                 }
               ],
@@ -653,6 +654,60 @@
                 "file": "after-step-4.md",
                 "to_disk": true,
                 "bytes": 133,
+                "sha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29"
+              }
+            }
+          ]
+        },
+        {
+          "id": "softbreak",
+          "files": {
+            "input.md": {
+              "bytes": 133,
+              "sha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29",
+              "bom": false,
+              "eol": "crlf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "source",
+              "action": "源码模式：光标置于第一段「拆分点」之后按 Enter 插入单个换行（软换行；CommonMark 下结果仍是同一段落内的 softbreak，不是新段落）。",
+              "edit_scope": "在「拆分点」与「在句中」之间插入 1 个 CRLF 边界。",
+              "delimiter_scope": "新换行继承当前行 CRLF（EOL-002）；不添加任何定界符、不额外补空行。",
+              "ops": [
+                {
+                  "find": "拆分点在句中",
+                  "replace": "拆分点\r\n在句中"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 softbreak-after-step-1.md 完全一致；其余 5 个原有 CRLF 边界逐字节不变。",
+                "本步只覆盖单换行的 EOL 继承字节，不作为段落拆分的判定（段落拆分见 main 变体）。"
+              ],
+              "expect": {
+                "file": "softbreak-after-step-1.md",
+                "to_disk": true,
+                "bytes": 135,
+                "sha256": "50a99d1bbade647f983e120456e9cee2dd60f53330120bd8d0726a97a4c2034c"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "state-ref",
+              "mode": "source",
+              "action": "源码模式：删除第 1 步插入的 CRLF，合并回一行。",
+              "edit_scope": "仅删除第 1 步插入的 CRLF 边界。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "插入→删除往返后文件字节与输入完全一致（sha256 相同）。"
+              ],
+              "expect": {
+                "file": "input.md",
                 "sha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29"
               }
             }
@@ -1227,10 +1282,10 @@
             {
               "n": 1,
               "verdict": "byte-exact",
-              "mode": "either",
-              "action": "光标置于「第二行使用 CRLF 结尾。」行尾，按 Enter 并输入「插入行继承 CRLF。」。",
-              "edit_scope": "在第 2 行后插入 1 行新文本（含新行边界）。",
-              "delimiter_scope": "新换行边界必须继承当前行的 CRLF（EOL-002）。",
+              "mode": "source",
+              "action": "源码模式：光标置于「第二行使用 CRLF 结尾。」行尾，按 Enter 并输入「插入行继承 CRLF。」（单个换行；CommonMark 下结果仍是同段落 softbreak，不是新段落）。",
+              "edit_scope": "在第 2 行后插入 1 行新文本（含 1 个新换行边界）。",
+              "delimiter_scope": "新换行边界必须继承当前行的 CRLF（EOL-002）；不额外补空行。",
               "ops": [
                 {
                   "find": "第二行使用 CRLF 结尾。",
@@ -1239,7 +1294,7 @@
               ],
               "acceptance": [
                 "字节判据：保存后文件字节与 after-step-1.md 完全一致；原有全部 LF/CRLF 边界逐字节不变。",
-                "模式判据：若原型在混合 EOL 文档上提供可视结构化编辑，记录为通过；若按 EOL-001 现状整篇进入源码模式，则本步在源码模式执行，字节判据仍适用，但「混合 EOL 可视编辑」记为现状差异，不判为已满足新体验。"
+                "模式判据：本步为源码单换行的字节覆盖；混合 EOL 文档上的可视结构化编辑由 visual-split 变体判定，不得以本步源码结果冒充可视编辑已满足。"
               ],
               "expect": {
                 "file": "after-step-1.md",
@@ -1251,8 +1306,8 @@
             {
               "n": 2,
               "verdict": "byte-exact",
-              "mode": "either",
-              "action": "光标置于「尾段 LF 结尾。」行尾，按 Enter 并输入「新尾行 LF。」。",
+              "mode": "source",
+              "action": "源码模式：光标置于「尾段 LF 结尾。」行尾，按 Enter 并输入「新尾行 LF。」（单个换行，同段落 softbreak）。",
               "edit_scope": "在末行后插入 1 行新文本。",
               "delimiter_scope": "新换行边界继承 LF；原尾部换行保持（EOL-004）。",
               "ops": [
@@ -1263,13 +1318,75 @@
               ],
               "acceptance": [
                 "字节判据：保存后文件字节与 after-step-2.md 完全一致；第 1 步的 CRLF 新行与全部原始边界不变。",
-                "模式判据：同第 1 步，分别记录实际编辑模式与结果。"
+                "模式判据：同第 1 步；实际编辑模式与结果分别记录。"
               ],
               "expect": {
                 "file": "after-step-2.md",
                 "to_disk": true,
                 "bytes": 214,
                 "sha256": "5bfdb425deceb7dffaba36252ddc76dae8c536b820c907a7348d436575b82c62"
+              }
+            }
+          ]
+        },
+        {
+          "id": "visual-split",
+          "files": {
+            "input.md": {
+              "bytes": 173,
+              "sha256": "0b4e136a39ad9a432f8de66078f0800798080c855195b803d45cdeb53521b05c",
+              "bom": false,
+              "eol": "mixed",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标置于「第二行使用 CRLF 结尾。」行尾按 Enter 创建新段落，并输入「插入为独立段落。」。",
+              "edit_scope": "将原 3 行同段落在第 2 行后拆为两个段落，新段落插入其间：markdown-it commonmark 解析应为 3 个 paragraph 块（第 1 行+第 2 行 / 插入段 / 第 3 行）。",
+              "delimiter_scope": "CommonMark 新段落须空行分隔：第 2 行后与插入段后各插入 1 个空行，4 个新换行边界均继承当前行 CRLF（EOL-002）；原第 2→3 行 CRLF 边界被段落重组吸收，其余原始边界不变。",
+              "ops": [
+                {
+                  "find": "第二行使用 CRLF 结尾。\r\n第三行回到 LF。",
+                  "replace": "第二行使用 CRLF 结尾。\r\n\r\n插入为独立段落。\r\n\r\n第三行回到 LF。"
+                }
+              ],
+              "acceptance": [
+                "字节判据：保存后文件字节与 visual-after-step-1.md 完全一致；除声明吸收的边界外全部原始 LF/CRLF 边界逐字节不变。",
+                "模式判据：若原型按 EOL-001 现状对混合 EOL 文档整篇进入源码模式、无法执行视觉 Enter，本步记「现状差异、未执行」；不得以源码模式单换行结果（main 变体字节）冒充视觉段落拆分通过。"
+              ],
+              "expect": {
+                "file": "visual-after-step-1.md",
+                "to_disk": true,
+                "bytes": 203,
+                "sha256": "8578d9dfc3a6d4b8a9aadd2ce26e335410755d9909f42820ff6c33b7332374c8"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标置于「尾段 LF 结尾。」行尾按 Enter 创建新段落，并输入「新尾段 LF。」。",
+              "edit_scope": "尾段之后新增 1 个独立段落：解析应为原段落 + 新段落共 2 个 paragraph 块。",
+              "delimiter_scope": "新段落须空行分隔：2 个新换行边界继承当前行 LF（EOL-002）；原尾部换行保持（EOL-004）。",
+              "ops": [
+                {
+                  "find": "尾段 LF 结尾。\n",
+                  "replace": "尾段 LF 结尾。\n\n新尾段 LF。\n"
+                }
+              ],
+              "acceptance": [
+                "字节判据：保存后文件字节与 visual-after-step-2.md 完全一致；第 1 步结果与全部原始边界不变。",
+                "模式判据：同第 1 步；无法执行视觉 Enter 时记现状差异，不得降级判定。"
+              ],
+              "expect": {
+                "file": "visual-after-step-2.md",
+                "to_disk": true,
+                "bytes": 220,
+                "sha256": "61aca3d39289c0e2d83b21a4465ca7249076de9d413ec7372c014a59f172be8d"
               }
             }
           ]
