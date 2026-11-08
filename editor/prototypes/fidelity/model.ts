@@ -116,6 +116,8 @@ export class FidelityModel {
     this.apply([{ from, to, insert: (step.slice?.content ?? []).map((n: { text: string }) => n.text).join('') }], tr);
   }
   sourceEdit(source: string) {
+    // Byte-identical no-op: keep bytes/dirty/revision/history untouched.
+    if (source === this.source) return true;
     const parsed = parse(source);
     // Source -> visual selection mapping is conservative: only preserve exact PM docs.
     const same = parsed.doc.eq(this.state.doc);

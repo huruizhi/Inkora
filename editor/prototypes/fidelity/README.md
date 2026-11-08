@@ -9,7 +9,7 @@
 - `model.ts`：原文范围、PM 文档/事务、补丁重解析校验、共享历史快照、真实 UTF-8 diff。
 - `main.ts`：真实 EditorView、直接输入、演示操作、可见状态、源码草稿与场景。
 - `shell.html`：页面模板；不是可运行产物。
-- `build.mjs`：用现有锁定 Vite 8.3.6 打包仓库 PM 依赖及生产 schema/parser/保护块预览，将 IIFE 内联为 `PROTOTYPE.html`。用户已允许此项打包例外；不新增依赖。产物无外部 JS/CSS/字体。
+- `build.mjs`：由管理者选择复用仓库现有锁定 Vite 8.3.6 工具链，打包 PM 依赖及生产 schema/parser/保护块预览，将 IIFE 内联为 `PROTOTYPE.html`；不新增依赖。产物无外部 JS/CSS/字体。
 - `PROTOTYPE.html`：已提交的可直接打开产物（使用现有 Vite 压缩）。
 - `check.mjs` / `evidence.json`：现有 jsdom 上运行真实 bundle 的非 UI 场景校验与计算结果；无新测试框架。
 - `UI-EVIDENCE.md`：本轮真实 Chrome 的可见交互记录，与 WKWebView/IME 区分。
@@ -31,15 +31,15 @@ make -C editor/prototypes/fidelity test
 
 原文为保存依据，PM 为编辑状态。MarkdownIt 顶层行范围记录覆盖块；空白、换行、BOM 与引用定义作为间隙单独显示。文本叶只在所属块内唯一定位后才允许生成补丁；CRLF 映射回原始偏移。操作候选补丁只拼接未改范围，不整篇序列化；候选原文必须重解析且 `doc.eq(targetPMDoc)`，否则不提交原文或 PM 文档。原文偏移为 UTF-16，另显示 UTF-8 字节偏移和实际字节 diff。diff 是最长公共前缀/后缀后的包络，可能从多字节字符中间开始；它不是合法 UTF-8 文本切片。完整原文转义可用于复核。
 
-非 UI 11 项真实计算校验已通过，细节见 `evidence.json`：正文、粗体 marks、标题 attrs、任务单字符、split/join 的实际补丁；源码仅格式变化的 selection 保留与跨模式 Undo/Redo；畸形边界阻断且可信字节/文档不变；真实 PM 事务替换 emoji；BOM 与混合 EOL；不支持的原生结构 split 被拒绝。
+非 UI 15 项真实计算校验已通过，细节见 `evidence.json`：正文、粗体 marks、标题 attrs、任务单字符、split/join 的实际补丁；源码仅格式变化的 selection 保留与跨模式 Undo/Redo；畸形边界阻断且可信字节/文档不变；真实 PM 事务替换 emoji；BOM 与混合 EOL；不支持的原生结构 split 被拒绝；本轮新增：源码草稿 no-op 往返（字节/dirty/revision/history 全不变）、仅改一处格式时其余 CRLF/LF 逐字节保留、CRLF 行内新换行继承 `\r\n` 且 Undo 字节精确还原、取消草稿不改可信内容并重置 textarea。
 
-执行命令与结果（2026-11-08）：
+执行命令与结果（2026-11-08，INK-PROT-003 修正轮）：
 
 ```sh
 node editor/prototypes/fidelity/build.mjs
-# PASS，生成单文件（首次运行适配 Vite 返回数组后重跑成功）
+# PASS，重建单文件 PROTOTYPE.html
 make -C editor/prototypes/fidelity test
-# PASS：专用严格类型检查 + 11 项场景校验
+# PASS：专用严格类型检查 + 15 项场景校验
 make lint PNPM=/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm
 # PASS：swift-format 与生产 TS 检查
 make test-editor PNPM=/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm
@@ -54,7 +54,7 @@ make test-editor PNPM=/Users/rayhu/Documents/projects/Inkora/.tools/node_modules
 2. **marks/attrs 范围有限。** 专用粗体插入与一级 ATX → 二级标题通过。通用 marks 去除/嵌套、link href/title 修改没有实现；不能据此宣告全 marks/attrs 验收完成。
 3. **任务仍是列表内文字。** `[ ]` → `[x]` 只替换一个字符，复用真实列表 PM 文本；没有新增任务 schema/checkbox 控件。
 4. **高级边界识别是有限适配。** 表格/wiki 复用生产 `parseProtectedMarkdown`，保护预览复用生产 schema；独立公式围栏、Mermaid 与脚注片段借用相同 protected_block（按 raw 呈现）。非精确围栏、元数据等输入可能拒绝；不是全面高级语法支持。不能修改保护块 raw 的可视内容；主动源码可修改。
-5. **共享历史为原型快照。** 每个实际 PM 事务保存 EditorState + 原文，源码提交进入同一栈；不是生产 prosemirror-history 分组方案。源码语义不变时 selection 保留；语义变化后明确重置，**选区映射门槛未通过**。源码 textarea 在浏览器中会规范化换行，提交可能主动修改 EOL；实际 diff 会显示，历史保留旧字节。用户必须查看转义可信原文才能核对 CRLF。
+5. **共享历史为原型快照。** 每个实际 PM 事务保存 EditorState + 原文，源码提交进入同一栈；不是生产 prosemirror-history 分组方案。源码语义不变时 selection 保留；语义变化后明确重置，**选区映射门槛未通过**。源码草稿复用生产 `TextAreaEditorKernel`：textarea 换行虽被浏览器规范化，内核按行记录原始 CRLF/LF 并在提交时逐字节还原，新换行继承当前行样式，BOM 原样保留；无修改提交为 no-op（不改字节/dirty/revision/history），但 **语义变化后的 selection mapping 与 history 分组仍未通过、不在本轮范围**。
 6. **IME 未验证。** 直接 PM composition 事务不被演示按钮 guard 拦截；composition 期间按钮与保存拒绝执行。但系统 IME、光标稳定性、组合历史分组与保存快照边界仍待真实 WKWebView 验收。
 7. **故障恢复保守。** 有映射/语法错误时保留可信原文/视图、禁用保存，并留下主动源码草稿；有效源码提交或 Undo 可解除阻断。源码草稿不是独立历史，Undo 或重置会离开草稿；无文件恢复/冲突机制。
 8. **独立样稿待交叉验证。** 本轮只使用自建临时样稿，不修改 OMP 的范围/预期；待管理者固定其提交后再验收。

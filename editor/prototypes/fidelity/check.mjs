@@ -54,6 +54,46 @@ step('reset'); const old = p.model.source;
 p.model.state.doc.descendants((n,pos) => { if(n.isText && n.text.includes('中文正文')) at=pos+2; });
 p.view.dispatch(p.model.state.tr.split(at)); assert.ok(p.model.blocked); assert.equal(p.model.source,old);
 results.push({ action: 'unsupported native split', blocked: p.model.blocked, trustedBytesPreserved:true });
+// Source draft no-op via the production TextAreaEditorKernel round trip.
+step('reset');
+{
+  const m = p.model, snap = { source: m.source, saved: m.saved, revision: m.revision, past: m.past.length, future: m.future.length };
+  step('source'); step('apply');
+  assert.equal(m.source, snap.source); assert.equal(m.saved, snap.saved);
+  assert.equal(m.revision, snap.revision); assert.equal(m.past.length, snap.past); assert.equal(m.future.length, snap.future);
+  results.push({ action: 'source draft no-op round trip', bytesDirtyRevisionHistoryUnchanged: true });
+}
+// Draft with one format change keeps every other CRLF/LF byte.
+{
+  const crlf = (p.model.source.match(/\r\n/g) || []).length;
+  step('format'); assert.ok(p.model.source.includes('[ref]:   '));
+  assert.equal((p.model.source.match(/\r\n/g) || []).length, crlf);
+  assert.ok(p.model.source.includes('😀 e\u0301')); assert.ok(p.model.source.includes('\r\n\r\n中文'));
+  results.push({ action: 'draft format-only edit', crlfCountPreserved: true });
+}
+// A newline inserted in a CRLF line inherits CRLF; undo restores exact bytes.
+{
+  const before = p.model.source;
+  const src = dom.window.document.getElementById('source-draft');
+  p.run(p.actions.source);
+  src.value = src.value.replace('# 原型标题\n', '# 原型\n标题\n'); src.dispatchEvent(new dom.window.Event('input'));
+  p.run(p.actions.apply);
+  assert.ok(p.model.source.includes('# 原型\r\n标题'));
+  p.run(p.actions.undo);
+  assert.equal(p.model.source, before);
+  results.push({ action: 'draft newline inherits CRLF', inherited: '\r\n', undoByteExact: true });
+}
+// Canceling a modified draft leaves trusted content and the textarea untouched.
+{
+  const m = p.model, snap = { source: m.source, revision: m.revision, past: m.past.length };
+  const src = dom.window.document.getElementById('source-draft');
+  p.run(p.actions.source);
+  src.value = src.value.replace('中文正文', '草稿改动'); src.dispatchEvent(new dom.window.Event('input'));
+  p.run(p.actions.cancel);
+  assert.equal(m.source, snap.source); assert.equal(m.revision, snap.revision); assert.equal(m.past.length, snap.past);
+  assert.equal(src.value, m.source.replace(/\r\n/g, '\n'));
+  results.push({ action: 'draft cancel', trustedUnchanged: true, textareaReset: true });
+}
 assert.deepEqual(errors, []);
 const report = { environment: 'Node + jsdom (non-UI only)', baseline: '57aeaac18e41c7191b1be851b284aae8c1b1bbae', results, unexecuted: ['WKWebView', 'system Chinese IME', 'native save/reopen', 'HITL', 'independent OMP fixtures'] };
 await writeFile(new URL('evidence.json',here), JSON.stringify(report,null,2)+'\n');

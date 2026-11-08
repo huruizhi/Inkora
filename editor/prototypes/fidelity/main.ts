@@ -2,18 +2,20 @@
 import { EditorView } from 'prosemirror-view';
 import { baseKeymap } from 'prosemirror-commands';
 import { keydownHandler } from 'prosemirror-keymap';
+import { TextAreaEditorKernel } from '../../src/editor-kernel';
 import { FidelityModel, sourcePosition, diff, bytes, parse } from './model';
 import { inkoraSchema as schema } from '../../src/schema';
 
 export const sample = '# 原型标题\r\n\r\n中文正文  特殊\t空白 😀 e\u0301 保持。\r\n\r\n参考 [文档][ref] 与正文。\n\n[ref]: <https://example.invalid> "标题"\n\n- [ ] 任务一\r\n\r\n$$\nx^2 + y^2\n$$\n\n| 表头 | 值 |\n| --- | --- |\n| 原文 | 保留 |\n\n保护块之后的中文。\n';
 const $ = (id: string) => document.getElementById(id)!;
 let model = new FidelityModel(sample), view: EditorView;
+const sourceKernel = new TextAreaEditorKernel($('source-draft') as HTMLTextAreaElement);
 let note = '真实 ProseMirror 已加载。所有状态只在内存。', sourceMode = false;
 const esc = (s: unknown) => JSON.stringify(s);
 function render() {
   view.updateState(model.state);
-  const source = $('source') as HTMLTextAreaElement;
-  if (!sourceMode) source.value = model.source;
+  const source = $('source-draft') as HTMLTextAreaElement;
+  if (!sourceMode) sourceKernel.setText(model.source);
   source.readOnly = !sourceMode;
   const sel = model.state.selection;
   let mapped = '未验证';
@@ -58,6 +60,10 @@ function patchSelection(insert: string) {
   const { from, to } = model.state.selection;
   model.apply([{ from: sourcePosition(model.source, model.state, model.ranges, from), to: sourcePosition(model.source, model.state, model.ranges, to), insert }], model.state.tr.insertText(insert, from, to));
 }
+// Programmatic draft edits go through the real input path so the kernel
+// tracks line endings and user-change state exactly like typed input.
+const setDraft = (value: string) => { const source = $('source-draft') as HTMLTextAreaElement; source.value = value; source.dispatchEvent(new Event('input')); };
+
 const actions: Record<string, () => void> = {
   reset() { model = new FidelityModel(sample); sourceMode = false; note = '重新加载隔离样稿（混合 LF/CRLF）'; },
   text() { pick('中文正文'); patchSelection('中文改写'); note = '正文通过真实 PM 文本事务与局部补丁更新'; },
@@ -88,16 +94,18 @@ const actions: Record<string, () => void> = {
   },
   undo() { model.travel(); sourceMode = false; note = '共享快照历史 Undo：原文与真实 PM EditorState 一起恢复'; },
   redo() { model.travel(true); sourceMode = false; note = '共享快照历史 Redo'; },
-  source() { sourceMode = true; ($('source') as HTMLTextAreaElement).value = model.source; note = '主动编辑源码草稿；可信视图保留且禁止保存'; },
+  source() { sourceMode = true; sourceKernel.setText(model.source); note = '主动编辑源码草稿（复用生产 TextAreaEditorKernel，保真 CRLF/LF/BOM）；可信视图保留且禁止保存'; },
   apply() {
     if (!sourceMode) throw Error('请先主动进入源码');
-    const same = model.sourceEdit(($('source') as HTMLTextAreaElement).value);
+    const text = sourceKernel.getText();
+    if (text === model.source) { sourceMode = false; model.blocked = ''; note = '草稿与可信原文逐字节一致：no-op 提交，不改字节/dirty/revision/history'; return; }
+    const same = model.sourceEdit(text);
     sourceMode = false; note = same ? '源码修改完成；语义相同，保留 PM selection，仍计入 dirty/history' : '源码修改完成；结构变化的 selection 尚不支持映射，明确重置到首个可选位置';
   },
-  cancel() { sourceMode = false; note = '取消草稿；错误仍需有效源码提交或 Undo 才能解除'; },
-  format() { actions.source(); ($('source') as HTMLTextAreaElement).value = model.source.replace('[ref]: ', '[ref]:   '); actions.apply(); },
-  malformed() { actions.source(); ($('source') as HTMLTextAreaElement).value = model.source.replace('\n$$\n\n|', '\n$\n\n|'); actions.apply(); },
-  repair() { if (!sourceMode) actions.source(); ($('source') as HTMLTextAreaElement).value = model.source; actions.apply(); note = '主动提交可信原文修复草稿；未自动切换模式'; },
+  cancel() { sourceMode = false; note = '取消草稿；textarea 由可信原文重置，可信内容不变；错误仍需有效源码提交或 Undo 才能解除'; },
+  format() { actions.source(); setDraft(($('source-draft') as HTMLTextAreaElement).value.replace('[ref]: ', '[ref]:   ')); actions.apply(); },
+  malformed() { actions.source(); setDraft(($('source-draft') as HTMLTextAreaElement).value.replace('\n$$\n\n|', '\n$\n\n|')); actions.apply(); },
+  repair() { if (!sourceMode) actions.source(); setDraft(model.source); actions.apply(); note = '主动提交可信原文修复草稿；字节一致时为 no-op 并解除阻断'; },
   save() { if (model.blocked || sourceMode) throw Error('保存阻断'); model.saved = model.source; note = '仅记录内存保存点；未访问文件系统，未验证原生保存'; },
 };
 for (const [id, action] of Object.entries(actions)) $(id).addEventListener('click', () => run(action));

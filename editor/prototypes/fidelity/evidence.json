@@ -210,6 +210,24 @@
       "action": "unsupported native split",
       "blocked": "Error: 结构/marks 事务需使用专用演示操作；此次操作已阻断",
       "trustedBytesPreserved": true
+    },
+    {
+      "action": "source draft no-op round trip",
+      "bytesDirtyRevisionHistoryUnchanged": true
+    },
+    {
+      "action": "draft format-only edit",
+      "crlfCountPreserved": true
+    },
+    {
+      "action": "draft newline inherits CRLF",
+      "inherited": "\r\n",
+      "undoByteExact": true
+    },
+    {
+      "action": "draft cancel",
+      "trustedUnchanged": true,
+      "textareaReset": true
     }
   ],
   "unexecuted": [
