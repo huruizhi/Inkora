@@ -1,0 +1,371 @@
+{
+  "baseline": "5fbeb109ac5a4158b50014b39b3864163ae8625a",
+  "manifest": {
+    "bundle_id": "com.huruizhi.Inkora.FidelityPrototype",
+    "baseline_commit": "5fbeb109ac5a4158b50014b39b3864163ae8625a",
+    "os": "27.2",
+    "toolchain": "Xcode 27.2 Build version 27B52 ",
+    "entry": {
+      "source": "../PROTOTYPE.html",
+      "dest": "artifacts/FidelityHost.app/Contents/Resources/entry.html",
+      "csp_requested": true,
+      "csp_inserted": true,
+      "csp_source": "injected-by-host",
+      "csp_meta": "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'\">",
+      "source_sha256": "c86390037282e71e4187aaea46fe92354f12c669373f3d4c1be69d2287c81090",
+      "bundled_sha256": "df25ee909a326fb87a74f2b5187b8c7c2cf01553593102a0261985260cab8373",
+      "source_script_sha256": "a60f78cb3f19c0099477955ce037f3fa6effe9ce78d1eca79030a34120932080",
+      "bundled_script_sha256": "a60f78cb3f19c0099477955ce037f3fa6effe9ce78d1eca79030a34120932080",
+      "script_bytes_identical": true
+    },
+    "runtime_observer": {
+      "path": "Resources/runtime-observer.js",
+      "sha256": "2aa57f6906dd5afe0dd9a9e3bd4ad8d149f4534afd25e7d754632d66eb68696d"
+    }
+  },
+  "rawLogSHA256": "f171c649dcf8a6dedc99b39bffd596434c088694d030ece991a6262e13af8176",
+  "inputMethod": "pending user confirmation",
+  "physicalInput": "user confirmed visual 已经上屏 and source 源码已上屏",
+  "realComposition": {
+    "prosemirror": {
+      "starts": [
+        {
+          "time": "2026-11-08T17:09:50Z",
+          "sequence": 6
+        },
+        {
+          "time": "2026-11-08T17:10:12Z",
+          "sequence": 24
+        },
+        {
+          "time": "2026-11-08T17:10:13Z",
+          "sequence": 54
+        }
+      ],
+      "ends": [
+        {
+          "time": "2026-11-08T17:09:50Z",
+          "sequence": 17,
+          "data": "收到"
+        },
+        {
+          "time": "2026-11-08T17:10:13Z",
+          "sequence": 53,
+          "data": "中文"
+        },
+        {
+          "time": "2026-11-08T17:10:14Z",
+          "sequence": 74,
+          "data": "测试"
+        }
+      ],
+      "composingInputEvents": 42,
+      "composingSnapshots": [
+        {
+          "kind": "snapshot",
+          "payload": {
+            "activeElement": "prosemirror",
+            "blocked": null,
+            "composing": true,
+            "dirty": true,
+            "future": 0,
+            "past": 14,
+            "pending": false,
+            "revision": 14,
+            "saveDisabled": true,
+            "selection": {
+              "anchor": 75,
+              "from": 75,
+              "head": 75,
+              "to": 75
+            },
+            "sourceComposing": false,
+            "sourceMode": false,
+            "staged": false,
+            "stagedKind": null,
+            "textarea": {
+              "readOnly": true,
+              "selectionDirection": "none",
+              "selectionEnd": 174,
+              "selectionStart": 174
+            },
+            "version": "ink-prot-023-observer-v2"
+          },
+          "timestamp": "2026-11-08T17:10:13Z"
+        },
+        {
+          "kind": "snapshot",
+          "payload": {
+            "activeElement": "prosemirror",
+            "blocked": null,
+            "composing": true,
+            "dirty": true,
+            "future": 0,
+            "past": 20,
+            "pending": false,
+            "revision": 20,
+            "saveDisabled": true,
+            "selection": {
+              "anchor": 73,
+              "from": 73,
+              "head": 73,
+              "to": 73
+            },
+            "sourceComposing": false,
+            "sourceMode": false,
+            "staged": false,
+            "stagedKind": null,
+            "textarea": {
+              "readOnly": true,
+              "selectionDirection": "none",
+              "selectionEnd": 172,
+              "selectionStart": 172
+            },
+            "version": "ink-prot-023-observer-v2"
+          },
+          "timestamp": "2026-11-08T17:10:14Z"
+        }
+      ]
+    },
+    "source-draft": {
+      "starts": [
+        {
+          "time": "2026-11-08T17:12:22Z",
+          "sequence": 81
+        },
+        {
+          "time": "2026-11-08T17:12:25Z",
+          "sequence": 122
+        },
+        {
+          "time": "2026-11-08T17:12:30Z",
+          "sequence": 185
+        }
+      ],
+      "ends": [
+        {
+          "time": "2026-11-08T17:12:24Z",
+          "sequence": 120,
+          "data": ""
+        },
+        {
+          "time": "2026-11-08T17:12:30Z",
+          "sequence": 183,
+          "data": "源码"
+        },
+        {
+          "time": "2026-11-08T17:12:32Z",
+          "sequence": 222,
+          "data": "验证"
+        }
+      ],
+      "composingInputEvents": 72,
+      "composingSnapshots": [
+        {
+          "kind": "snapshot",
+          "payload": {
+            "activeElement": "source-draft",
+            "blocked": null,
+            "composing": true,
+            "dirty": true,
+            "future": 0,
+            "past": 23,
+            "pending": false,
+            "revision": 27,
+            "saveDisabled": true,
+            "selection": {
+              "anchor": 70,
+              "from": 70,
+              "head": 70,
+              "to": 70
+            },
+            "sourceComposing": true,
+            "sourceMode": true,
+            "staged": false,
+            "stagedKind": null,
+            "textarea": {
+              "readOnly": false,
+              "selectionDirection": "none",
+              "selectionEnd": 172,
+              "selectionStart": 172
+            },
+            "version": "ink-prot-023-observer-v2"
+          },
+          "timestamp": "2026-11-08T17:12:23Z"
+        },
+        {
+          "kind": "snapshot",
+          "payload": {
+            "activeElement": "source-draft",
+            "blocked": null,
+            "composing": true,
+            "dirty": true,
+            "future": 0,
+            "past": 23,
+            "pending": false,
+            "revision": 27,
+            "saveDisabled": true,
+            "selection": {
+              "anchor": 70,
+              "from": 70,
+              "head": 70,
+              "to": 70
+            },
+            "sourceComposing": true,
+            "sourceMode": true,
+            "staged": false,
+            "stagedKind": null,
+            "textarea": {
+              "readOnly": false,
+              "selectionDirection": "none",
+              "selectionEnd": 174,
+              "selectionStart": 174
+            },
+            "version": "ink-prot-023-observer-v2"
+          },
+          "timestamp": "2026-11-08T17:12:24Z"
+        },
+        {
+          "kind": "snapshot",
+          "payload": {
+            "activeElement": "source-draft",
+            "blocked": null,
+            "composing": true,
+            "dirty": true,
+            "future": 0,
+            "past": 23,
+            "pending": false,
+            "revision": 27,
+            "saveDisabled": true,
+            "selection": {
+              "anchor": 70,
+              "from": 70,
+              "head": 70,
+              "to": 70
+            },
+            "sourceComposing": true,
+            "sourceMode": true,
+            "staged": false,
+            "stagedKind": null,
+            "textarea": {
+              "readOnly": false,
+              "selectionDirection": "none",
+              "selectionEnd": 177,
+              "selectionStart": 177
+            },
+            "version": "ink-prot-023-observer-v2"
+          },
+          "timestamp": "2026-11-08T17:12:26Z"
+        },
+        {
+          "kind": "snapshot",
+          "payload": {
+            "activeElement": "source-draft",
+            "blocked": null,
+            "composing": true,
+            "dirty": true,
+            "future": 0,
+            "past": 23,
+            "pending": false,
+            "revision": 27,
+            "saveDisabled": true,
+            "selection": {
+              "anchor": 70,
+              "from": 70,
+              "head": 70,
+              "to": 70
+            },
+            "sourceComposing": true,
+            "sourceMode": true,
+            "staged": false,
+            "stagedKind": null,
+            "textarea": {
+              "readOnly": false,
+              "selectionDirection": "none",
+              "selectionEnd": 173,
+              "selectionStart": 173
+            },
+            "version": "ink-prot-023-observer-v2"
+          },
+          "timestamp": "2026-11-08T17:12:28Z"
+        },
+        {
+          "kind": "snapshot",
+          "payload": {
+            "activeElement": "source-draft",
+            "blocked": null,
+            "composing": true,
+            "dirty": true,
+            "future": 0,
+            "past": 23,
+            "pending": false,
+            "revision": 27,
+            "saveDisabled": true,
+            "selection": {
+              "anchor": 70,
+              "from": 70,
+              "head": 70,
+              "to": 70
+            },
+            "sourceComposing": true,
+            "sourceMode": true,
+            "staged": false,
+            "stagedKind": null,
+            "textarea": {
+              "readOnly": false,
+              "selectionDirection": "none",
+              "selectionEnd": 175,
+              "selectionStart": 175
+            },
+            "version": "ink-prot-023-observer-v2"
+          },
+          "timestamp": "2026-11-08T17:12:29Z"
+        },
+        {
+          "kind": "snapshot",
+          "payload": {
+            "activeElement": "source-draft",
+            "blocked": null,
+            "composing": true,
+            "dirty": true,
+            "future": 0,
+            "past": 23,
+            "pending": false,
+            "revision": 27,
+            "saveDisabled": true,
+            "selection": {
+              "anchor": 70,
+              "from": 70,
+              "head": 70,
+              "to": 70
+            },
+            "sourceComposing": true,
+            "sourceMode": true,
+            "staged": false,
+            "stagedKind": null,
+            "textarea": {
+              "readOnly": false,
+              "selectionDirection": "none",
+              "selectionEnd": 176,
+              "selectionStart": 176
+            },
+            "version": "ink-prot-023-observer-v2"
+          },
+          "timestamp": "2026-11-08T17:12:30Z"
+        }
+      ]
+    }
+  },
+  "historyVerdict": "FAIL: after visual 中文测试, Undo twice exposed 中文ce'shi; Redo twice restored 中文测试",
+  "sourceApply": "PASS observed revision27 ->28; PM caret70 ->75; patch inserted space+源码验证 only; Undo/Redo restored content/caret",
+  "memorySavepoint": "PASS observed revision30 dirtyfalse; Undo31 dirtytrue; Redo32 dirtyfalse",
+  "uiCleanup": "Cmd+W and Cmd+Q did not close this minimal host; root sent SIGTERM only to verified owned PID52179; foreground wrapper exit143",
+  "limitations": [
+    "not full M0 acceptance",
+    "no actual macOS14 runtime",
+    "no NSDocument disk persistence",
+    "no complete composition guard action matrix",
+    "candidate window was not captured during composition; real events and user confirmation recorded",
+    "post-fix physical retest required"
+  ]
+}
