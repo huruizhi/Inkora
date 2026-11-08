@@ -2,12 +2,28 @@
 
 本地与 GitHub Actions 使用同一组 Make 目标。测试本身不得读取用户目录、个人配置或公网；`make setup` 仅负责安装和解析开发依赖。
 
-Agent 本地只运行非 UI 目标，UI 目标由 CI 执行，以避免占用开发者桌面。
+Agent 本地只运行非 UI 目标，以避免占用开发者桌面；UI 套件仅按下述规则在 CI 中按需运行。
 
 CI workflow 只能通过 `workflow_dispatch` 手动触发，不再在 push 到 main 时自动运行：合并前
 必须在已 rebase 到最新 main 的分支上手动触发并通过；需要时也可以在 main 上手动触发。
 合并规则：分支必须基于最新 main 且 CI 通过，一次只合并一个 PR；合并后其余分支需重新
 rebase 到新 main 再触发 CI。
+
+默认 CI 不运行任何 UI 测试（经用户批准，2026-11-08）：runner 就是开发者本机，UI 测试需要
+解锁桌面和 Automation Mode，会占用桌面。默认路径只运行 lint、`make test-non-ui`（编辑器、
+Bridge、native、CI 脚本）、`make release-bundle-check`（Release 离线资源检查，不启动 App）
+与轻量 `make bench`。
+
+UI 套件（`make test-document-open-ui` + `make test-ui-release`）只在两种情况下运行，通过
+`gh workflow run CI --ref <branch> -f ui-tests=true` 触发：发布前（release gate）；用户
+明确要求时。普通 PR，包括改动菜单、快捷键、对话框、窗口或文档生命周期流程
+（AppDelegate、InkoraDocument、RecoveryCoordinator、EditorViewController 的原生视图）的
+PR，只跑默认 CI 即可合并；这类 PR 必须在描述中写明“UI 未验证”，并列出受影响的 UI 测试
+名称，以便发布前集中验证。
+
+已知取舍（经用户批准，2026-11-08）：UI 回归会推迟到发布前才被发现；发布前那一轮 UI
+失败时，需要回溯多个 PR 定位。只有 UI 套件覆盖的能力：菜单与快捷键、对话框流程、最近
+文件、Finder 打开、键盘可达性、无障碍审计、Release 启动；默认 CI 路径不提供这些覆盖。
 
 `make setup` 将固定版本的 pnpm 安装到被忽略的 `.tools/`，避免 Homebrew 滚动版本或 Intel/Apple Silicon 架构差异改变构建结果。
 
@@ -18,6 +34,8 @@ rebase 到新 main 再触发 CI。
 | `make test-editor` | Bridge 以外的编辑器模型与行为测试 |
 | `make test-bridge` | TypeScript + Swift Bridge v1 contract tests |
 | `make test-native` | 全部 XCTest 单元与 WKWebView 集成测试 |
+| `make test-non-ui` | 编辑器、Bridge、native XCTest 与 CI 脚本，即默认 CI 的测试路径 |
+| `make release-bundle-check` | 构建 Release 并执行离线资源检查（editor-bundle-smoke），不启动 App；`test-ui-release` 的前半部分 |
 | `make test-document-open-ui` | 文档打开、菜单状态、菜单点击及 Cmd+O/S/Shift+S/Z/Shift+Z；Open Recent、冷/热启动打开、失效路径与重启恢复；实际打开与另存后验证磁盘内容；需已解锁桌面和 Automation Mode |
 | `make test-ui-release` | Release 离线资源检查与 App 启动烟测 |
 | `make test-ui` | 无辅助功能权限依赖的 Debug App 启动烟测；已不在 `test-all` 中，供手动运行；CI 通过 `INKORA_CAPTURE_SCREEN=1` 尽力截图 |

@@ -2,9 +2,15 @@ name: CI
 
 # CI 只能手动触发（workflow_dispatch）：合并前必须在已 rebase 到最新 main 的
 # 分支上手动触发并通过；需要时也可以在 main 上手动触发。
+# 默认不运行 UI 套件（runner 是开发者本机，UI 测试需要解锁桌面和 Automation
+# Mode）；发布前或用户明确要求时用 -f ui-tests=true 运行，规则见 docs/testing.md。
 on:
   workflow_dispatch:
     inputs:
+      ui-tests:
+        description: Run UI suites (XCUITest + release launch smoke); needs unlocked desktop and Automation Mode
+        type: boolean
+        default: false
       full-bench:
         description: Run make bench-full (adds launch benchmarks; needs unlocked desktop)
         type: boolean
@@ -25,11 +31,15 @@ jobs:
         run: make setup
       - name: Lint
         run: make lint
-      - name: Test CI helpers
-        run: make test-ci
-      - name: Test all layers
-        run: make test-all
-      - name: Build and launch release offline
+      - name: Test non-UI layers
+        run: make test-non-ui
+      - name: Release bundle check (offline)
+        run: make release-bundle-check
+      - name: UI acceptance (XCUITest)
+        if: ${{ inputs.ui-tests }}
+        run: make test-document-open-ui
+      - name: UI release launch smoke
+        if: ${{ inputs.ui-tests }}
         run: make test-ui-release
       - name: Performance baseline (light, warn-only)
         if: ${{ !inputs.full-bench }}
