@@ -27,6 +27,7 @@ async function boot() {
 
 function loadCase(p, text) {
   p.model.sourceEdit(text); // 真实 parse+commit 入口；随后仅清空历史以建立干净基线
+  p.run(() => {}); // 只刷新真实 EditorView；不读取或应用任何预期文件
   const m = p.model;
   m.past.length = 0; m.future.length = 0; m.saved = text; m.before = text; m.revision = 0; m.blocked = '';
 }
@@ -56,6 +57,7 @@ function srcPos(p, docPos) { return p.sourcePosition(p.model.source, p.model.sta
 const results = [];
 const docTypes = m => { const k = []; m.state.doc.forEach(n => k.push(n.type.name)); return k; };
 const fragments = m => m.ranges.filter(r => r.kind === 'protected_block').map(r => m.source.slice(r.start, r.end));
+const defsOf = m => m.source.match(/^[^\S\n]{0,3}\[[^\]\n]+\]:[^\n]*/gm)?.join('\n') ?? '';
 
 async function runCase(id, variant, file, steps, opts = {}) {
   const r = { case: id, variant, steps: [] };
@@ -77,11 +79,41 @@ async function runCase(id, variant, file, steps, opts = {}) {
       catch (e) { r.load = 'blocked: ' + e.message; dom.window.close(); return; }
     }
     initialFrags = fragments(p.model);
+    const initialDefs = opts.defs ? defsOf(p.model) : null;
+    if (opts.references) {
+      const anchors = [...p.view.dom.querySelectorAll('a[href]')];
+      const links = [];
+      p.model.state.doc.descendants((n, pos) => {
+        if (!n.isText) return;
+        const mark = n.marks.find(x => x.type.name === 'link');
+        if (mark) links.push({ pos, text: n.text, href: mark.attrs.href, title: mark.attrs.title });
+      });
+      const image = p.view.dom.querySelector('span.image-ref[data-image-ref]');
+      r.semanticProjection = {
+        links,
+        domLinks: anchors.map(a => ({ text: a.textContent, href: a.getAttribute('href'), title: a.getAttribute('title') })),
+        heading: p.view.dom.querySelector('h1')?.textContent ?? null,
+        bareUrlIsText: !anchors.some(a => a.textContent === 'https://example.com/auto'),
+        image: image ? { text: image.textContent, source: image.getAttribute('data-image-source'), href: image.getAttribute('data-image-ref'), tag: image.tagName } : null,
+        imageLoadsResource: !!p.view.dom.querySelector('img'),
+      };
+      const expectedDisplays = ['Inkora 官网', 'Inkora 文档', 'inkora-doc', 'inkora-doc', 'https://example.com/bracket'];
+      if (r.semanticProjection.heading !== '链接保真' || r.semanticProjection.image?.source !== '![图标][inkora-icon]' || r.semanticProjection.imageLoadsResource || !r.semanticProjection.bareUrlIsText || expectedDisplays.some(text => !anchors.some(a => a.textContent === text)) || anchors.some(a => /[\[\]#]/.test(a.textContent ?? ''))) {
+        r.load = 'blocked: reference semantic projection mismatch'; dom.window.close(); return;
+      }
+    }
     for (const st of steps) {
       const rec = { n: st.n, how: st.how, outcome: '', sha: sha(p.model.source), dirty: p.model.source !== p.model.saved };
       r.steps.push(rec);
       try {
         if (st.how === 'visual') visualReplace(p, st.find, st.replace);
+        else if (st.how === 'linkTarget') {
+          const at = findText(p, st.find);
+          p.model.select(at, at + st.find.length);
+          dom.window.document.getElementById('link-target').value = st.target;
+          p.run(p.actions.linkTarget);
+          rec.linkHref = p.view.dom.querySelector(`a[href="${st.target}"]`)?.getAttribute('href') ?? null;
+        }
         else if (st.how === 'visualPending') {
           visualReplace(p, st.find, st.replace);
           rec.pending = p.model.pending; rec.issues = p.model.issues.map(i => i.code);
@@ -171,6 +203,7 @@ async function runCase(id, variant, file, steps, opts = {}) {
           p.run(p.actions.source); p.run(p.actions.apply);
           rec.selectionPreserved = JSON.stringify(p.model.state.selection.toJSON()) === selSnap;
         }
+        else if (st.how === 'save') { p.run(p.actions.save); rec.savedSha = sha(p.model.saved); }
         else if (st.how === 'openObserve') {
           rec.issues = p.model.issues.map(i => ({ code: i.code, line: p.model.source.slice(0, i.start).split('\n').length, utf16: [i.start, i.end] }));
           rec.docTypes = docTypes(p.model);
@@ -216,9 +249,10 @@ async function runCase(id, variant, file, steps, opts = {}) {
         rec.sha = sha(p.model.source); rec.dirty = p.model.source !== p.model.saved;
         const nowFrags = fragments(p.model);
         rec.fragsKept = initialFrags !== null && nowFrags.length === initialFrags.length && nowFrags.every((f, i) => f === initialFrags[i]);
+        if (initialDefs !== null) rec.refsKept = defsOf(p.model) === initialDefs;
         if (st.expect) {
           rec.expectSha = await fileSha(`${CASES}/cases/${id}/${st.expect}`);
-          const base = !rec.blocked && rec.sha === rec.expectSha;
+          const base = !rec.blocked && rec.sha === rec.expectSha && (initialDefs === null || rec.refsKept);
           if (st.how === 'visualPending') rec.outcome = base && rec.pending && rec.saveDisabled && rec.docTypes.includes('heading') && rec.docTypes.includes('paragraph') ? 'PASS' : 'FAIL';
           else if (st.how === 'saveBlocked') rec.outcome = rec.blockedBySave.includes('保存阻断') && rec.sha === rec.expectSha && rec.savedSha === rec.expectSha ? 'PASS (blocked path; nothing written)' : 'FAIL';
           else if (st.how === 'sourceSave') rec.outcome = base && !rec.pendingAfterFix && rec.savedEqBuffer ? 'PASS' : 'FAIL';
@@ -230,7 +264,9 @@ async function runCase(id, variant, file, steps, opts = {}) {
           rec.outcome = rec.reopenedIssues === 0 && rec.reopenedDocTypes.includes('heading') && rec.reopenedDocTypes.includes('paragraph') && rec.reopenedDocTypes.includes('protected_block') ? 'PASS' : 'FAIL';
         } else if (st.how === 'classify') {
           rec.outcome = 'OBSERVED';
-        } else if (!rec.outcome) rec.outcome = rec.blocked ? 'BLOCKED' : 'OBSERVED';
+        } else if (!rec.outcome) {
+          rec.outcome = rec.blocked ? 'BLOCKED' : (initialDefs !== null && rec.refsKept === false ? 'FAIL (引用定义被改动)' : 'OBSERVED');
+        }
       } catch (e) { rec.outcome = 'ERROR'; rec.error = e.message; rec.sha = sha(p.model.source); rec.blocked = p.model.blocked || ''; }
     }
   } finally { try { dom.window.close(); } catch {} }
@@ -251,7 +287,10 @@ await runCase('02-protected-whitespace', 'main', 'input.md', [
 ], { open: 'openMixed' });
 await runCase('03-reference-links', 'main', 'input.md', [
   S(1, 'visual', 'after-step-1.md', { find: 'Inkora 文档', replace: 'Inkora 手册' }),
-]);
+  S(2, 'visual', 'after-step-2.md', { find: '图标', replace: '图示' }),
+  S(3, 'linkTarget', 'after-step-3.md', { find: 'Inkora 官网', target: 'https://example.com/inkora-v2' }),
+  S(4, 'save', 'after-step-3.md'),
+], { defs: true, references: true });
 await runCase('04-task-toggle-crlf', 'main', 'input.md', [
   S(1, 'visual', 'after-step-1.md', { find: '[ ] 中文样稿就绪', replace: '[x] 中文样稿就绪' }),
   S(2, 'visual', 'after-step-2.md', { find: '[X] 大写', replace: '[ ] 大写' }),

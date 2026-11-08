@@ -171,16 +171,16 @@ record('重复文本：跨块区分', dup.ok && dup.snapped.length === 0 && dupB
 
 const source5b = '[锚点](https://example.invalid) 与 *锚点* 尾\n';
 const m5b = new FidelityModel(source5b);
-// 块内重复叶：同一个「锚点」在链接与强调中各出现一次。选区落在第二
-// 处（强调叶内部）时，基线 sourcePosition 因全文 indexOf 命中两次而拒
-// 绝；本模块用顺序对齐给出唯一原文位置。
+// 块内重复叶：同一个「锚点」在链接与强调中各出现一次。009 已把
+// model.sourcePosition 升级为顺序叶对齐；006 模块与 model 映射都应落在
+// 第二处真实原文，而不能盲取第一处。
 const anchorHits = [];
 m5b.state.doc.descendants((n, pos) => { if (n.isText && n.text.includes('锚点')) anchorHits.push({ pos, index: n.text.indexOf('锚点') }); });
 const pSecond = anchorHits[1].pos + anchorHits[1].index + 1; // strictly inside the second (emphasized) leaf
 const dupIn = visualToSource(m5b.source, m5b.state.doc, m5b.ranges, pSecond, pSecond);
 const dupInBack = dupIn.ok ? sourceToVisual(m5b.source, m5b.state.doc, m5b.ranges, dupIn.anchor, dupIn.head) : null;
-let baselineSecond = '';
-try { sourcePosition(m5b.source, m5b.state, m5b.ranges, pSecond); } catch (e) { baselineSecond = e.message; }
+let modelSecond, modelSecondError = '';
+try { modelSecond = sourcePosition(m5b.source, m5b.state, m5b.ranges, pSecond, 'from'); } catch (e) { modelSecondError = e.message; }
 const secondRaw = source5b.indexOf('锚点', source5b.indexOf('锚点') + 1); // second raw occurrence
 // 相邻 marks 文本叶共享边界位置：模块确定性地取左叶末尾（紧邻定界符）。
 const boundaryPos = posAfter(m5b.state.doc, ' 与 ');
@@ -188,9 +188,9 @@ const boundary = visualToSource(m5b.source, m5b.state.doc, m5b.ranges, boundaryP
 let baselineBoundary = '';
 try { sourcePosition(m5b.source, m5b.state, m5b.ranges, boundaryPos); } catch (e) { baselineBoundary = e.message; }
 record('重复文本：块内重复叶 + marks 边界', dupIn.ok && dupIn.snapped.length === 0 && dupIn.anchor === secondRaw + 1
-  && dupInBack.ok && dupInBack.anchor === pSecond && !!baselineSecond
+  && dupInBack.ok && dupInBack.anchor === pSecond && modelSecond === secondRaw + 1
   && boundary.ok && boundary.anchor === source5b.indexOf('*锚点*'),
-  { pSecond, secondRaw: dupIn.ok ? dupIn.anchor : dupIn.reason, roundTrip: dupInBack.ok ? dupInBack.anchor : dupInBack.reason, baselineRejectedAs: baselineSecond || '(mapped)', moduleBoundary: boundary.ok ? boundary.anchor : boundary.reason, baselineBoundary: baselineBoundary || '(mapped)', delimiterAfterBoundary: boundary.ok ? source5b[boundary.anchor] : null });
+  { pSecond, secondRaw: dupIn.ok ? dupIn.anchor : dupIn.reason, roundTrip: dupInBack.ok ? dupInBack.anchor : dupInBack.reason, modelSecond: modelSecond ?? modelSecondError, moduleBoundary: boundary.ok ? boundary.anchor : boundary.reason, modelBoundary: baselineBoundary || '(mapped)', delimiterAfterBoundary: boundary.ok ? source5b[boundary.anchor] : null });
 
 // ============ 转义文本：拒绝并给出理由 ====================================
 const source6 = '3 \\* 4 与 \\* 5\n';

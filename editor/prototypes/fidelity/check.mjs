@@ -403,6 +403,163 @@ step('openMalformed');
   assert.equal(reopened.state.doc.child(2).attrs.raw, '$$\n\\int_0^1 x\\,dx\n$$');
   results.push({ action: 'malformed source fix + save + reopen', pendingCleared: true, savedBytes: Buffer.from(fixed, 'utf8').length, reopenedClean: true, mathFragmentRawExact: true });
 }
+// Reference links / images / bare URLs (INK-PROT-009): real PM link marks,
+// image-only placeholders and mixed block structures. Distinct sample strings
+// keep this independent from the frozen case03 fixture.
+{
+  const refDoc = ['\uFEFF# [参考与媒体][home]', '', '前 **粗体** [入口页][home] *强调* `代码`，折叠 [home][]、快捷 [home] 共存，裸 https://example.org/plain 不改写。', '', '图片前 **保留粗体** ![标识图][mark] 与 [旁链][home] 图片后。', '', '- 列表 [项目链接][home]', '', '> 引用 [引用链接][home]', '', '[home]: https://example.org/start "定义题名"', '[mark]: /static/mark.svg "图片题名"', ''].join('\n');
+  p.model.sourceEdit(refDoc);
+  p.run(() => {}); // render through the real UI path
+  assert.ok(!p.model.pending && !p.model.blocked);
+  assert.ok(!p.view.dom.querySelector('section.protected-block')); // 不是 raw 保护块
+  const anchors = [...p.view.dom.querySelectorAll('a[href]')];
+  assert.equal(anchors.length, 7); // 标题、完整/折叠/快捷、同段旁链、列表、引用
+  assert.deepEqual(anchors.map(a => a.textContent), ['参考与媒体', '入口页', 'home', 'home', '旁链', '项目链接', '引用链接']);
+  assert.ok(anchors.every(a => a.getAttribute('href') === 'https://example.org/start' && a.getAttribute('title') === '定义题名'));
+  assert.equal(p.view.dom.querySelector('h1').textContent, '参考与媒体'); // 不显示 # 或引用定界符
+  assert.equal(p.view.dom.querySelector('strong').textContent, '粗体');
+  assert.equal(p.view.dom.querySelector('em').textContent, '强调');
+  assert.equal(p.view.dom.querySelector('code').textContent, '代码');
+  assert.equal(p.view.dom.querySelector('ul a').textContent, '项目链接');
+  assert.equal(p.view.dom.querySelector('blockquote a').textContent, '引用链接');
+  const image = p.view.dom.querySelector('span.image-ref[data-image-ref]');
+  assert.equal(image.textContent, '标识图');
+  assert.equal(image.getAttribute('data-image-ref'), '/static/mark.svg');
+  assert.equal(image.getAttribute('data-image-source'), '![标识图][mark]');
+  assert.equal(image.getAttribute('data-image-title'), '图片题名');
+  assert.ok(image.getAttribute('title').includes('![标识图][mark]'));
+  assert.equal(image.parentElement.textContent, '图片前 保留粗体 标识图 与 旁链 图片后。'); // 图片占位不吞同段正文/marks/link
+  assert.equal([...p.view.dom.querySelectorAll('a')].filter(a => a.textContent.includes('https://example.org/plain')).length, 0); // bare URL 为普通文本
+  assert.equal(p.model.source, refDoc); // 打开不改任何字节
+  const defs = refDoc.split('\n').filter(l => /^\[[^\]]+\]: /.test(l)).join('\n');
+  const at = needle => { let hit = -1; p.model.state.doc.descendants((n, pos) => { if (hit < 0 && n.isText && n.text.includes(needle)) hit = pos + n.text.indexOf(needle); }); assert.ok(hit >= 0, needle); return hit; };
+  const edit = (find, replace) => p.view.dispatch(p.model.state.tr.insertText(replace, at(find), at(find) + find.length));
+  edit('入口页', '门户页'); // 引用式链接显示文字
+  edit('标识图', '标志图'); // 图片替代文字
+  edit('https://example.org/plain', 'https://example.org/plain2'); // 裸地址区域
+  assert.equal(p.model.blocked, '');
+  const expected = refDoc.replace('入口页', '门户页').replace('标识图', '标志图').replace('https://example.org/plain', 'https://example.org/plain2');
+  assert.equal(p.model.source, expected); // 仅三处目标字节变化
+  assert.equal(p.model.source.split('\n').filter(l => /^\[[^\]]+\]: /.test(l)).join('\n'), defs); // 引用定义逐字节不变
+  assert.ok(p.parse(p.model.source).doc.eq(p.model.state.doc)); // 重解析等价
+  p.run(p.actions.save);
+  assert.equal(p.model.saved, expected);
+  p.run(p.actions.undo); p.run(p.actions.undo); p.run(p.actions.undo); assert.equal(p.model.source, refDoc); // 每事务一个快照，三次回到打开态
+  results.push({ action: 'reference links / image placeholder / bare URL semantic projection', loadClean: true, realLinkMarks: true, mixedMarksKept: true, listAndQuoteEditable: true, imageScoped: true, editsByteExact: true, defsKept: true, undoByteExact: true });
+  // 同 URL 两条定义 + 同段落重复显示文字：按 PM 位置编辑第二处，非首现盲取。
+  const dupDoc = ['重复 [镜像][a] 与 [镜像][a] 两处。', '', '[a]: https://example.org/dup', '[b]: https://example.org/dup', ''].join('\n');
+  p.model.sourceEdit(dupDoc);
+  const hits = [];
+  p.model.state.doc.descendants((n, pos) => { if (n.isText) { let i = n.text.indexOf('镜像'); while (i >= 0) { hits.push(pos + i); i = n.text.indexOf('镜像', i + 1); } } });
+  assert.equal(hits.length, 2);
+  p.view.dispatch(p.model.state.tr.insertText('映像', hits[1], hits[1] + 2));
+  assert.equal(p.model.source, '重复 [镜像][a] 与 [映像][a] 两处。\n\n[a]: https://example.org/dup\n[b]: https://example.org/dup\n');
+  results.push({ action: 'duplicate display text / same-URL definitions', secondOccurrenceEdited: true, firstUntouched: true, sameUrlDefsKept: true });
+  // 定义缺失：未解析引用不阻断载入，正文仍可编辑。
+  p.model.sourceEdit('幽灵 [ghost][nope] 待续。\n');
+  assert.ok(!p.model.pending);
+  p.view.dispatch(p.model.state.tr.insertText('待定义', at('待续'), at('待续') + 2));
+  assert.equal(p.model.source, '幽灵 [ghost][nope] 待定义。\n');
+  results.push({ action: 'missing reference definition', loadsClean: true, editable: true });
+  // 定义前后空白（空行 + ≤3 空格缩进定义）：间隙干净、字节保留。
+  const wsDoc = '正文一 [x][l]。\n\n   [l]: https://e.org/x "题"\n\n\n正文二 [l]。\n';
+  p.model.sourceEdit(wsDoc);
+  assert.ok(!p.model.pending);
+  p.view.dispatch(p.model.state.tr.insertText('正文三', at('正文二'), at('正文二') + 3));
+  assert.equal(p.model.source, '正文一 [x][l]。\n\n   [l]: https://e.org/x "题"\n\n\n正文三 [l]。\n');
+  results.push({ action: 'whitespace around definitions', gapsClean: true, bytesKept: true });
+  // BOM + CRLF 引用文档：字面叶经 CRLF 偏移映射，Undo 字节级还原。
+  const crlfDoc = '\uFEFF# 链接 CRLF\r\n\r\n显示 [文字][d] 保持。\r\n\r\n[d]: https://e.org/crlf\r\n';
+  p.model.sourceEdit(crlfDoc);
+  assert.ok(!p.model.pending && p.model.source.startsWith('\uFEFF'));
+  p.view.dispatch(p.model.state.tr.insertText('文案', at('文字'), at('文字') + 2));
+  assert.equal(p.model.source, '\uFEFF# 链接 CRLF\r\n\r\n显示 [文案][d] 保持。\r\n\r\n[d]: https://e.org/crlf\r\n');
+  p.run(p.actions.undo);
+  assert.equal(p.model.source, crlfDoc);
+  results.push({ action: 'BOM + CRLF reference doc', bomKept: true, crlfKept: true, undoByteExact: true });
+  // 列表/引用内链接可载入且显示文字可按精确 PM 位置修改。
+  const nestedDoc = '- 项 [链一][l]\n\n> 引 [链二][l]\n\n[l]: https://e.org/l "题"\n';
+  p.model.sourceEdit(nestedDoc); p.run(() => {});
+  assert.equal(p.view.dom.querySelector('ul a').textContent, '链一');
+  assert.equal(p.view.dom.querySelector('blockquote a').textContent, '链二');
+  edit('链一', '列表链'); edit('链二', '引用链');
+  assert.equal(p.model.source, '- 项 [列表链][l]\n\n> 引 [引用链][l]\n\n[l]: https://e.org/l "题"\n');
+  results.push({ action: 'links inside list and blockquote', loadClean: true, displayEditable: true, definitionKept: true });
+  // The sequential inline ledger is deliberately not claimed as universal:
+  // syntax markers that equal display text and escaped display text remain
+  // unmappable. The re-parse guard keeps source/state trusted and blocks save.
+  const destinationCollisionDoc = '[a](later)later\n';
+  p.model.sourceEdit(destinationCollisionDoc); p.run(() => {});
+  edit('later', 'after');
+  assert.equal(p.model.source, destinationCollisionDoc);
+  assert.ok(p.model.blocked.includes('补丁重解析与目标 PM 文档不一致'));
+  assert.ok(dom.window.document.getElementById('save').disabled);
+  const escapedDoc = '[A \\* B][r]\n\n[r]: https://e.org/r\n';
+  p.model.sourceEdit(escapedDoc); p.run(() => {});
+  edit('*', '星');
+  assert.equal(p.model.source, escapedDoc);
+  assert.ok(p.model.blocked.includes('选区不能安全映射到原文'));
+  assert.ok(dom.window.document.getElementById('save').disabled);
+  results.push({ action: 'inline ledger counterexamples', destinationTextCollisionBlocked: true, escapedDisplayBlocked: true, trustedSourceKept: true, saveBlocked: true });
+
+  // INK-PROT-015 integration cross-scenario: link/image/adjacent marks travel
+  // through the actual source-mode selection wiring and shared history. This
+  // is intentionally one combined path rather than adding the independent 009
+  // and 010 counts together.
+  const crossDoc = ['# 组合文档', '', '前 **粗体** [链接][r] *强调* ![图片][img] `代码` 后。', '', '[r]: https://example.org/r "链接题名"', '[img]: /assets/local.png "图片题名"', ''].join('\n');
+  p.model.sourceEdit(crossDoc); p.run(() => {});
+  const m = p.model, src = dom.window.document.getElementById('source-draft');
+  const linkStart = at('链接'), imageEnd = at('图片') + 2;
+  m.select(imageEnd, linkStart); // backward PM selection across distinct marked leaves
+  const beforeSelection = m.state.selection.toJSON();
+  p.run(p.actions.source);
+  assert.equal(src.selectionDirection, 'backward');
+  assert.ok(p.lastSelectionMap.ok && p.lastSelectionMap.snapped.length === 0);
+  assert.ok(src.value.slice(src.selectionStart, src.selectionEnd).includes('[链接][r]'));
+  assert.ok(src.value.slice(src.selectionStart, src.selectionEnd).includes('![图片'));
+
+  src.value = src.value.replace('[链接][r]', '[入口][r]').replace('![图片][img]', '![图示][img]');
+  src.dispatchEvent(new dom.window.Event('input'));
+  const draftLink = src.value.indexOf('入口');
+  const draftImageEnd = src.value.indexOf('图示') + 2;
+  src.setSelectionRange(draftLink, draftImageEnd, 'backward');
+  p.run(p.actions.apply);
+  assert.equal(m.blocked, ''); assert.equal(p.sourceMode, false);
+  assert.ok(m.state.selection.anchor > m.state.selection.head);
+  assert.equal(p.view.dom.querySelector('a[href="https://example.org/r"]').textContent, '入口');
+  const crossImage = p.view.dom.querySelector('span.image-ref[data-image-ref="/assets/local.png"]');
+  assert.equal(crossImage.textContent, '图示');
+  assert.equal(crossImage.getAttribute('data-image-source'), '![图示][img]');
+  assert.equal(p.view.dom.querySelector('strong').textContent, '粗体');
+  assert.equal(p.view.dom.querySelector('em').textContent, '强调');
+  assert.equal(p.view.dom.querySelector('code').textContent, '代码');
+  assert.equal(p.view.dom.querySelectorAll('img').length, 0);
+  const changedCrossDoc = crossDoc.replace('[链接][r]', '[入口][r]').replace('![图片][img]', '![图示][img]');
+  assert.equal(m.source, changedCrossDoc);
+
+  p.run(p.actions.undo);
+  assert.equal(m.source, crossDoc);
+  assert.deepEqual(m.state.selection.toJSON(), beforeSelection);
+  p.run(p.actions.redo);
+  assert.equal(m.source, changedCrossDoc);
+  assert.ok(m.state.selection.anchor > m.state.selection.head);
+  const redoSelection = m.state.selection.toJSON();
+  const redoRevision = m.revision, redoPast = m.past.length, redoFuture = m.future.length;
+  p.run(p.actions.source); p.run(p.actions.apply); // byte-identical no-op
+  assert.equal(m.source, changedCrossDoc); assert.deepEqual(m.state.selection.toJSON(), redoSelection);
+  assert.equal(m.revision, redoRevision); assert.equal(m.past.length, redoPast); assert.equal(m.future.length, redoFuture);
+
+  p.run(p.actions.source);
+  src.value = src.value.replace('粗体', '未提交'); src.dispatchEvent(new dom.window.Event('input'));
+  const cancelDraft = src.value;
+  p.run(p.actions.cancel);
+  assert.notEqual(cancelDraft, changedCrossDoc); assert.equal(m.source, changedCrossDoc);
+  assert.deepEqual(m.state.selection.toJSON(), redoSelection);
+  assert.equal(src.value, changedCrossDoc);
+  assert.equal(p.view.dom.querySelectorAll('img').length, 0);
+  results.push({ action: 'link/image source selection integration', sourceEditsByteExact: true, backwardSelectionKept: true, adjacentMarksKept: true, imagePlaceholderScoped: true, noResourceElement: true, undoRedoByteAndSelectionExact: true, noopPreservesHistory: true, cancelKeepsTrustedState: true });
+  p.run(p.actions.reset);
+}
 assert.deepEqual(errors, []);
 const report = { environment: 'Node + jsdom (non-UI only)', baseline: '57aeaac18e41c7191b1be851b284aae8c1b1bbae', results, unexecuted: ['WKWebView', 'system Chinese IME', 'native save/reopen', 'HITL', 'independent OMP fixtures'] };
 await writeFile(new URL('evidence.json',here), JSON.stringify(report,null,2)+'\n');

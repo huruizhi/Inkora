@@ -327,6 +327,63 @@
       "savedBytes": 66,
       "reopenedClean": true,
       "mathFragmentRawExact": true
+    },
+    {
+      "action": "reference links / image placeholder / bare URL semantic projection",
+      "loadClean": true,
+      "realLinkMarks": true,
+      "mixedMarksKept": true,
+      "listAndQuoteEditable": true,
+      "imageScoped": true,
+      "editsByteExact": true,
+      "defsKept": true,
+      "undoByteExact": true
+    },
+    {
+      "action": "duplicate display text / same-URL definitions",
+      "secondOccurrenceEdited": true,
+      "firstUntouched": true,
+      "sameUrlDefsKept": true
+    },
+    {
+      "action": "missing reference definition",
+      "loadsClean": true,
+      "editable": true
+    },
+    {
+      "action": "whitespace around definitions",
+      "gapsClean": true,
+      "bytesKept": true
+    },
+    {
+      "action": "BOM + CRLF reference doc",
+      "bomKept": true,
+      "crlfKept": true,
+      "undoByteExact": true
+    },
+    {
+      "action": "links inside list and blockquote",
+      "loadClean": true,
+      "displayEditable": true,
+      "definitionKept": true
+    },
+    {
+      "action": "inline ledger counterexamples",
+      "destinationTextCollisionBlocked": true,
+      "escapedDisplayBlocked": true,
+      "trustedSourceKept": true,
+      "saveBlocked": true
+    },
+    {
+      "action": "link/image source selection integration",
+      "sourceEditsByteExact": true,
+      "backwardSelectionKept": true,
+      "adjacentMarksKept": true,
+      "imagePlaceholderScoped": true,
+      "noResourceElement": true,
+      "undoRedoByteAndSelectionExact": true,
+      "noopPreservesHistory": true,
+      "cancelKeepsTrustedState": true
     }
   ],
   "unexecuted": [
