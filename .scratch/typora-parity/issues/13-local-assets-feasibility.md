@@ -2,7 +2,7 @@
 
 Type: research
 Labels: wayfinder:research
-Status: claimed
+Status: resolved
 Assignee: Codex 10924b8b-564b-48fc-81c0-2e8df68ac355
 Blocked by: None
 Parent: ../map.md
@@ -20,4 +20,10 @@ Parent: ../map.md
 - Host / Agent：`srv_MEqRNkRW6fSx` / `10924b8b-564b-48fc-81c0-2e8df68ac355`。
 - Workspace：`wks_394cc660a127da5d`，工作分支 `task/INK-RES-001-local-assets-research`，固定产品基线 `57aeaac`。
 - 产物：研究分支中的 `docs/research/INK-RES-001-local-assets.md`，完成后以固定提交链接记录。
-- Paseo 创建回执 running；notifyOnFinish 已启用。未有研究结论，不运行 UI/产品测试，不改真实文档或产品代码。
+- 初始 Paseo 创建回执为 running，notifyOnFinish 已启用。本票只研究事实，不运行 UI/产品测试，不改真实文档或产品代码；交接结果见 Answer。
+
+## Answer
+
+事实研究已完成并交接。固定基线代码与 Apple 一手资料表明：打开 Markdown 文件本身不足以授权邻接图片；目录选择、security-scoped bookmark 和原生受控资源读取需要明确设计；现有 scheme handler 只服务 bundle 资源。报告覆盖七项生命周期场景、两种策略代价和仍需 macOS 14 Sandbox 原型证明的边界。
+
+证据：[固定版本研究](https://github.com/huruizhi/Inkora/blob/408d2642834530658b72939ef741f5a19101363a/docs/research/INK-RES-001-local-assets.md)。管理者核实工作区干净、本地与远端提交一致，研究 Agent 已归档；工作区和研究文件保留。仅文档检查，无 UI/构建/产品运行结果；最终资源政策仍由本地图片策略票决定。

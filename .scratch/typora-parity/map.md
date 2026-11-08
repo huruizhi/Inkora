@@ -21,6 +21,7 @@ Status: open
 - 用户已确认优先验证增量路线；下次推进优先处理相应原型票，再根据证据决定是否锁定架构。独立范围决策仍可在各自会话推进，原型代码与产品实现分别交付。
 - 用户已指定主 Agent 作为调度者/规划者，使用 Paseo 的 Codex 和 OMP 执行具体工作。当前 M0 原型已领取，分工与可恢复的 host/agent/workspace 指针见 [执行记录](execution/M0-dispatch.md)；产物与门槛结论待执行回报和核验。
 - 用户要求执行完成的 Agent 及时回收；完成产物接收与核查后当轮归档，无需因等待未来任务或用户审阅而保留闲置执行会话。工作区和证据的保存/回收独立处理，运行中的任务保持执行。
+- 用户要求按难度和成本选模型；普通执行优先 Luna/GLM，不默认 GPT-6.1-Sol。实际可用型号、思考档位与升级规则见[模型调度规则](execution/model-routing.md)。
 
 ## Decisions so far
 
@@ -29,6 +30,7 @@ Status: open
 - [确定首个可交付里程碑的写作闭环](issues/03-first-milestone.md)：用户确认单篇技术文档的首阶段范围及验收方向；高级语法片段混排和不自动整篇退出可视编辑是明确要求，技术路线待验证。
 - [核实受保护原文块实现对保真路线的影响](issues/10-fidelity-baseline-refresh.md)：新基线已提供可复用保护块和预览，lint/构建及 111 项编辑器测试通过；完整局部保真和跨模式历史仍需原型证明。
 - [确定局部保真与未知语法共存的实现路线](issues/04-fidelity-route.md)：用户确认先验证复用 ProseMirror 的增量候选路径及五项门槛；失败时调整或以同一判据比较原文主数据路线，最终架构尚未锁定。
+- [核实 Sandbox 下本地图片访问与迁移约束](issues/13-local-assets-feasibility.md)：固定代码与 Apple 一手依据已交接，资源访问/导入/迁移需显式授权与策略；产品政策和实际 Sandbox 验证仍待后续决定。
 
 ## Not yet specified
 
