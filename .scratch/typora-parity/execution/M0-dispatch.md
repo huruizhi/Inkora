@@ -300,3 +300,12 @@ INK-RES-002首轮`28d5ab0731414c20c5f1cec6c146322509f91cb7`已推送且干净，
 - 保留原14场景和严格Sandbox判定，新增独立restart目标及真实进程/退出状态/SHA证据。普通scratch进程中断不是断电耐久或Sandbox书签/UI/最低系统证据；父票14仍claimed。完成接收后及时归档并保留工作区。
 
 020首轮交付`8923def12ef01a4bd35d308cca715275892035f1`已核实只改3个ledger文件、远端一致且干净。管理者实跑strict TS、14组（19次input/after构建）、verify582通过；额外探针发现BOM空投影right affinity落source0，以及无尾换行缩进代码因parser补LF误拒绝。message `d15604e6-ed29-4886-9b16-8172509c4b8c`已要求同Agent限定修正/新增边界证据，未接收或合008，保留首轮通过与新失败的分层记录。018继续暂存修正，021继续资源恢复，三项互不改对方文件。
+
+### 018/020接收回收，启动真实词法接线
+
+- 018最终`511709f11de81ac866800b0a31a9513f4a0de536`推送/干净。管理者实跑37+4原型检查、15映射、目标crossval02/03/09/10、audited16+3+3、verify582；独立重放原两条暂存反例并继续输入提交均PASS。原Agent `753c2e3a-8e25-44b5-bb6d-393e74717f24` 已归档closed，`2026-11-08T15:09:04.744Z`。008已FF至该SHA并推送，完整保留native-host，最新样稿口径为5d02043/582项；旧crossval05/06/11按钮分支仍非native判据。
+- 020最终`aa6c04f1c546dcf69bf837c2c51fb4ad24f69be8`推送/干净。管理者实跑strict TS、16组（含19构建）+verify582通过，修正BOM/EOF反例。原Agent `bfe9a6d2-4a92-44e1-b4bf-5c660b4de968` 已归档closed，`2026-11-08T15:09:48.919Z`。工作区均保留；020作为纯模块接收，不冒称UI接线完成。
+- 新建INK-PROT-022：host / Agent / workspace = `srv_MEqRNkRW6fSx` / `84be1aff-7d48-4949-927a-e6f1090ee917` / `wks_c6a7039f6c2777f5`。分支`task/INK-PROT-022-ledger-native-integration`，路径`/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration`。准备HEAD `fc1cdff0facf3c5b409a6c83aeb1269142f95f97`以merge保留511709f和aa6c04f原始提交，仅合入4个ledger文件，无手改生产。
+- list_profiles为空且inspect_provider核实，选Codex GPT-5.6-Sol/high、full-access/default档、notifyOnFinish=true；跨事务/暂存/源码历史定位接线使用较高推理档，不升级6.1-Sol。创建回执running，无通过结论。
+- 范围fidelity及M0-INTEGRATION，不改fixtures/native-host/生产/依赖/桌面。实际替换model/selection-map贪心，证明href/title/body碰撞、escape/entity、BOM/CRLF/代码/hardbreak/空结构及staged混排组合；禁止旧文本搜索成功fallback、默认nearest、整篇源码回退。保留所有有效测试，旧默认吸附若需迁移必须显式请求并保留端点/方向断言及说明，不可削弱判据。
+- 021继续独立资源跨进程恢复；当前两名执行者，无闲置完成Agent。022验收后再接008及安排新bundle真实WK/IME，当前M0未过。
