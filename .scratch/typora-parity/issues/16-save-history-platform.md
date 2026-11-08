@@ -2,8 +2,8 @@
 
 Type: research
 Labels: wayfinder:research
-Status: open
-Assignee: None
+Status: claimed
+Assignee: INK-RES-002
 Blocked by: None
 Parent: ../map.md
 
@@ -19,3 +19,7 @@ macOS 14+ App Sandbox下，系统文档自动保存/版本API及自建本地检�
 - 产出独立研究分支与事实表、最小实验问题和方案取舍，供后续选型决策票；不直接启用autosavesInPlace、不修改用户原件或生产代码，不把研究推荐当实现已完成。
 
 产品职责与默认行为以[保存与历史边界](09-autosave-history.md)为输入。本研究解决实现方案事实，不重复向用户索取已授权的常规产品选择。
+
+## Execution
+
+已交给 Paseo 的 INK-RES-002，在固定生产基线 `36e636578798510d240b23520122c88578cf3fe5` 上独立研究。仅新增 `docs/research/INK-RES-002-save-history-platform.md`，不改产品、不启用自动保存、不执行真实用户文件或桌面操作。具体 host、Agent、workspace 及模型记录见[调度记录](../execution/M0-dispatch.md)。领取不代表研究完成或平台能力已验证。

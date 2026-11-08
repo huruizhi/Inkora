@@ -253,3 +253,13 @@ Luna Agent `b4bf1578-0239-48a4-88a4-487802462ed1` 已结束，但只新增未跟
 | INK-PROT-019 词法原文范围账本 | 只新增source-ledger模块/检查/证据，区分label/href/正文、转义/实体与重复内容，替代猜测性搜索；不接线/不改018现有文件 | df31e64f-b5e5-4228-934b-3a35e3eec64b / wks_271caea7e2d6b9ac | task/INK-PROT-019-inline-source-ledger |
 
 Host均为srv_MEqRNkRW6fSx。两者接口/文件边界已协调，018暂用旧映射保留反例，不等待019；模块通过也不当UI接线通过。后续组合后继续全门槛核验，当前不锁架构，不宣告M0或路线完成。
+
+### 独立推进保存与历史平台事实研究
+
+018/019经实时状态核实仍running且无待授权，保留执行；前一轮为verified wait。无前置依赖的路线研究16现由INK-RES-002领取，与内核文件不重叠，避免把后续平台事实积压到M0结束后。
+
+- Host / Agent / workspace：`srv_MEqRNkRW6fSx` / `e431defb-395c-4856-99a9-ecd243d4d252` / `wks_3bc8ea24dc2e43d2`。
+- 分支：`task/INK-RES-002-save-history-platform`；worktree：`/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-res-002-save-history-platform`；固定生产起点36e6365。
+- 本次list_profiles为空，已实时核对list_models/inspect_provider后用`codex/gpt-6-luna`、medium、full-access、service_tier=default、notifyOnFinish=true；这类资料整理用经济档，不升级6.1-Sol。当前仅创建回执running。
+- 限定只新增一份研究Markdown，以Apple一手文档及固定代码区分事实、现状、建议和待签名Sandbox实验。对比系统管理/应用检查点，核实保存失败、位置不支持、Save As/移动、旁置图片、保留容量与卸载迁移；不启用autosavesInPlace、不改产品或依赖、不做桌面/真实用户文件操作。
+- 接收时核查实际来源与代码引用、研究缺口及分支推送；未取得平台实验不能称系统版本或macOS14验收通过。完成后当轮回收Agent并保留证据工作区。
