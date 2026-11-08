@@ -21,7 +21,7 @@ LAUNCH_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/launch-perf.xcresult
 PERF_STRICT := $(if $(filter 1,$(INKORA_PERF_STRICT)),--fail,)
 
 .PHONY: setup lint test test-editor test-bridge test-native test-document-open-ui test-ui \
-	test-ui-release test-ci test-all \
+	test-ui-release test-non-ui release-bundle-check test-ci test-all \
 	build build-release run clean generate editor-build prepare-artifacts require-xcode \
 	perf-samples perf-compare bench bench-full
 
@@ -82,11 +82,14 @@ test-ui: build prepare-artifacts
 		tests/ci/ui-launch-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Debug/Inkora.app"
 
-test-ui-release: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
-test-ui-release: build-release prepare-artifacts
+release-bundle-check: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
+release-bundle-check: build-release prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) release-bundle \
 		tests/ci/editor-bundle-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Release/Inkora.app"
+
+test-ui-release: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
+test-ui-release: release-bundle-check
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) ui-release \
 		$(UI_LOCK) $(UI_PREFLIGHT) desktop \
 		tests/ci/ui-launch-smoke.sh \
@@ -97,7 +100,13 @@ test-ci: prepare-artifacts
 	tests/ci/ui-lock-smoke.sh
 	node scripts/perf/compare-baseline.test.mjs
 
-test-all: test-editor test-bridge test-native test-document-open-ui test-ui test-ci
+# Non-UI CI path: every suite that does not touch the desktop.
+test-non-ui: test-editor test-bridge test-native test-ci
+
+# test-ui is intentionally excluded: every XCUITest case in
+# test-document-open-ui already launches the Debug app. Run `make test-ui`
+# manually if needed.
+test-all: test-editor test-bridge test-native test-document-open-ui test-ci
 
 build: editor-build generate require-xcode prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) build-debug \

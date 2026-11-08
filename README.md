@@ -28,7 +28,7 @@ make run     # 构建并打开 Debug App
 
 只跑某一层的测试：`make test-editor`、`make test-bridge`、`make test-native`、`make test-ui`、`make test-document-open-ui`。完整命令、诊断产物目录和 CI 说明见 [docs/testing.md](docs/testing.md)。
 
-> UI 测试会接管桌面，本机的所有 UI 测试通过 `/tmp/inkora-ui-tests.lock` 排队。Agent 在本地只运行非 UI 目标，UI 目标由 CI（本机 self-hosted runner）执行。
+> UI 测试会接管桌面，本机的所有 UI 测试通过 `/tmp/inkora-ui-tests.lock` 排队。Agent 在本地只运行非 UI 目标；CI 仅手动触发且默认不运行 UI 套件（发布前或用户明确要求时以 `-f ui-tests=true` 运行），规则见 [docs/testing.md](docs/testing.md)。
 
 ## 协作
 
