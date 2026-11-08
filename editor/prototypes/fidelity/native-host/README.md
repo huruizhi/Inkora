@@ -30,8 +30,12 @@ make -C editor/prototypes/fidelity/native-host build
 # 非_UI 复查：签名、entitlements、资源、manifest
 make -C editor/prototypes/fidelity/native-host verify
 
-# 指定其它已验收 HTML 入口（例如以后集成 005/006 产物）：
-make -C editor/prototypes/fidelity/native-host build ENTRY_HTML=editor/prototypes/xxx/ACCEPTED.html
+# 指定其它已验收 HTML 入口（例如以后集成 005/006 产物）。
+# ENTRY_HTML 相对 native-host/ 目录解析（make -C 会先进入该目录）；
+# 跨目录推荐绝对路径：
+make -C editor/prototypes/fidelity/native-host build ENTRY_HTML=/abs/path/to/ACCEPTED.html
+# 相对路径示例（等价于默认值 ../PROTOTYPE.html，相对 native-host/）：
+make -C editor/prototypes/fidelity/native-host build ENTRY_HTML=../PROTOTYPE.html
 
 # 仅在持有项目 UI 锁且 preflight 通过后由人工验证者执行：
 make -C editor/prototypes/fidelity/native-host run
@@ -40,13 +44,18 @@ make -C editor/prototypes/fidelity/native-host run
 ## 防陈旧 bundle 机制
 
 构建基线 commit、源 HTML SHA256、bundle 副本 SHA256 同时写入 Info.plist
-（窗口标题与诊断栏可见）与 `artifacts/build-manifest.json`。源码更新后旧 bundle
-的 SHA 与标题前缀立即可辨。CSP 注入仅发生在副本，原 HTML 不被修改；
+（窗口标题与诊断栏可见）与 `artifacts/build-manifest.json`。build 为确定性顺序：
+每次重新生成二进制/副本/Info.plist 版本键/manifest 并最后统一签名，
+因此 ENTRY_HTML/CSP_INJECT/HEAD/Entitlements 变化不会残留旧值，且对
+`make -j` 安全。CSP 注入仅发生在副本，原 HTML 不被修改；
 `entry-report.json` 记录注入前后 `<script>` 字节串 SHA256 一致（JS 字节未变）。
 
 注入的 CSP：`default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';
 img-src data: blob:; font-src data:; connect-src 'none'`。
-如需禁用注入：`make build CSP_INJECT=0`（诊断栏显示 `CSP-asis`）。
+`csp_requested` 与 `csp_inserted` 区分：源文件已含 CSP 时不重复插入
+（`csp_source=already-present`）。`CSP_INJECT=0` 时不注入副本，此时离线
+保障仅剩宿主导航白名单（file:/about:），页面自身的 fetch/外链不受 CSP
+约束——只在入口已自带等价 CSP 时使用。
 
 ## 本轮实际构建记录（2026-11-08）
 

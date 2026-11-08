@@ -5,9 +5,13 @@
 - 可选注入离线 CSP meta（仅插入标签，不改动任何现有字节，
   包括内联 <script> 的 JS 字节）；
 - 输出 JSON：原文件 SHA、副本 SHA、注入前后 <script> 字节串的
-  SHA 证据、注入内容。
+  SHA 证据、请求注入与实际注入的区分。
 
 用法: prepare_entry.py <source.html> <dest.html> <inject_csp:0|1>
+
+说明：若源文件已含 CSP meta，则不重复插入（csp_inserted=false，
+csp_source="already-present"）；inject=0 时不注入，此时副本的离线
+保障仅依赖宿主导航白名单（file:/about:），不受 CSP 约束。
 """
 import hashlib
 import json
@@ -32,20 +36,25 @@ def script_bytes(html: bytes) -> bytes:
     return b"".join(out)
 
 def main() -> None:
-    src, dst, inject = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
+    src, dst, requested = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
     original = open(src, "rb").read()
-    if inject and b"http-equiv=\"Content-Security-Policy\"" not in original:
+    already = b"http-equiv=\"Content-Security-Policy\"" in original
+    inserted = False
+    patched = original
+    if requested and not already:
         marker = b'<meta charset="utf-8">'
         assert marker in original, "charset meta not found; insertion point missing"
         patched = original.replace(marker, marker + CSP_META.encode("ascii"), 1)
-    else:
-        patched = original
+        inserted = True
     open(dst, "wb").write(patched)
+    csp_source = "injected-by-host" if inserted else ("already-present" if already else "none")
     print(json.dumps({
         "source": src,
         "dest": dst,
-        "csp_injected": inject,
-        "csp_meta": CSP_META if inject else None,
+        "csp_requested": requested,
+        "csp_inserted": inserted,
+        "csp_source": csp_source,
+        "csp_meta": CSP_META if inserted else None,
         "source_sha256": sha(original),
         "bundled_sha256": sha(patched),
         "source_script_sha256": sha(script_bytes(original)),
