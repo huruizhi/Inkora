@@ -64,3 +64,13 @@ INKORA_UI_LOCK_TIMEOUT=30 scripts/ci/with-ui-lock.sh \
 原始272条运行记录、构建清单、SHA及详细实际AX现象保存在025准备提交`6f35866306a13bd5bcbbf6070f8bb739b0d30e8b`（分支`task/INK-PROT-025-ime-history`）的`editor/prototypes/fidelity/{IME-HITL-025.md,ime-hitl-025-runtime.txt,ime-hitl-025-summary.json}`，原始log SHA256=`f171c649dcf8a6dedc99b39bffd596434c088694d030ece991a6262e13af8176`。初始材料捕获时输入法待确认；本段及管理者给执行者的补充消息记录用户随后确认“搜狗”，不倒改原日志。
 
 待验证：025自动回归及独立复核、修复后的物理键盘撤销/取消/替换与组合期操作矩阵、用户整体审阅、最低系统/正式磁盘等。原型票11保持claimed，架构票12依赖不解除。
+
+## 025修复后待复验产物
+
+008现HEAD=5bde76bab9b2bb74839fc7be99935b97d8125c66，已推送；管理者独立旧HTML红/新HTML绿及原型、ledger、selection、native、fixture矩阵通过。仅证明自动层；上述真实搜狗运行仍属于旧5fb，不能改判为修复后通过。
+
+新宿主同路径，baseline5bde76b；source SHA256=23730ee34cc06c708c14f7112a4dfb39cd0d0d0898831e354003b2f8764586ff；bundle=df2b8056f176d260777ed4b97ef68d1978ceb46bc6524867b8464fb355d619e5；script=c1d32d4fdc35115036b13105d84c9ac3f063f2bedeba69d0fc98060d8d916d16；observer仍2aa57f69…b68696d。native-host verify/签名、manifest/Info/HEAD及source/script核对通过，新App尚未启动。
+
+已询问用户现在或稍后是否可配合约2分钟物理复验。至少连续两次上屏中文/测试，Undo/Redo只跨完整会话、不露拼音；再覆盖取消/no-op、选区替换、源码历史/保存点与组合期动作。最小2分钟步骤不缩减完整门槛，未覆盖项如实待验收。025按PM composition元数据分组，自动重放给定ID不证明真实WK元数据时序。
+
+025专用workspace及其他28个完成workspace已备份后归档以清理侧栏。025三份冻结真人材料和新IME-HISTORY-EVIDENCE已进入008；旧路径是历史引用，恢复方式见M0-dispatch末节。

@@ -370,3 +370,13 @@ Host均srv_MEqRNkRW6fSx，full-access/default档/notifyOnFinish=true，list_prof
 用户已解锁并配合，008固定5fbeb10以锁包装器/desktop preflight启动。两区真实composition及上屏、源码提交往返和内存保存点已执行；可视Undo两次重新暴露`ce'shi`，判失败，详情见[M0人工验收](M0-human-acceptance.md)。原始日志272条已冻结并提交推送025准备`6f35866306a13bd5bcbbf6070f8bb739b0d30e8b`，008/生产未改；本轮App按精确PID终止、锁已释放。用户确认输入法“搜狗”，补充消息已送执行者。
 
 INK-PROT-025：Agent `5bc9f083-65b4-438f-b6d6-1aab0be62311`，workspace `wks_a648906c270621f7`，host `srv_MEqRNkRW6fSx`；worktree `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-025-ime-history`，分支`task/INK-PROT-025-ime-history`。list_profiles为空，list_models核实GPT-5.6-Sol/high支持；full-access/default/notifyOnFinish=true，创建回执running。仅fidelity核心/测试/重建HTML/新证据，禁止GUI、native-host既有代码、生产、依赖、冻结样稿及3个原始运行材料。按diagnosing-bugs先实际红回归/最小化/排序假设，再修composition历史边界；禁止清历史、过滤拼音、禁Undo来假通过。自动通过后仍须管理者独立复核和真实修复后物理键盘复验，不宣告M0通过。完成通知即核验并及时归档，不轮询或重复启动。
+
+### 025接收与工作区侧栏回收纠正
+
+025固定5bde76bab9b2bb74839fc7be99935b97d8125c66，管理者用旧5fb HTML独立确认新增Undo回归为红，新版实跑37+4+16+4+6、ledger17、selection15、native16+3+3、fixture582全过。008已FF/推送并重建签名宿主，manifest/Info/HEAD和hash核对通过；新source=23730ee3…586ff，bundle=df2b8056…619e5，observer保持2aa57f69…b68696d。仅接受自动层修正，修复后真实搜狗/WK物理键盘尚未复验，M0未过。
+
+025 Agent 5bc9f083-65b4-438f-b6d6-1aab0be62311收到finished后立即归档，closed/archivedAt=2026-11-08T17:34:45.026Z。用户截图指出：此前只archive_agent，完成工作区仍占Paseo侧栏。管理者纠正遗漏，先对28个旧工作区确认无运行Agent/工作树干净/HEAD等于live origin heads，制作tar与逐文件SHA比对，并verify Git bundle；025接收后同样备份并archive_workspace。29个工作区API均回removedDirectory=true，原路径现为历史定位，不能再声称原地保留。
+
+备份目录 /Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed：manifest.json记录29个原路径/branch/HEAD/tar SHA/文件数；RESTORE.md为恢复说明。排除可重建的.git/node_modules/.tools；其余常规文件均逐字节校验，28旧分支bundle和025交付bundle均验证。全部local branches仍为原SHA，远端分支未删。最终list_workspaces中Inkora只余CC管理、Codex管理和008集成验收；其他项目3项未动。025交付和冻结真人失败材料已进入008。
+
+今后完成回收覆盖Agent和workspace两层：实际终态后回收Agent，交付接收及证据备份后归档完成workspace。当前008保留用于后续验收，其余完成条目不再无限期留侧栏；archive会移除worktree时先备份并明确恢复位置。已向用户询问修复后约2分钟真人复验的可用时间。
