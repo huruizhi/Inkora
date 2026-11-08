@@ -163,3 +163,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 030首轮6658185未验收：自动矩阵绿，但独立真实HTML页面源码/草稿/真实PM选区回归3项红。接续只修新原型目录，固定oracle和旧对照不变；详见[M0-source-authority-independent-review.md](M0-source-authority-independent-review.md)。当前尚不能进入新bundle真机验收，更不能声明M0或生产迁移通过。
 
 030补正7cedafc的原3项缺陷及页面11组独立通过；另有末次composition事务晚于compositionend时Undo暴露中间拼音的自动重放红，已限定接续。030/M0尚未通过，尚未新bundle真机验收。
+
+030最终493e2b7的4条原始红回归、页面11组及集成10域由管理者独立重跑通过，冻结范围自动层接收。031已固定新宿主bundle并验证签名/哈希，但desktop preflight锁屏退出78，尚未启动App，真实WK/物理搜狗未执行。执行Agent和030工作区已完整回收（累计34），本地031目录保留运行验证。M0/架构采纳仍未通过。
