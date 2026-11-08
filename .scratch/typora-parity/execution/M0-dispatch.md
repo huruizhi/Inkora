@@ -317,3 +317,11 @@ INK-RES-002首轮`28d5ab0731414c20c5f1cec6c146322509f91cb7`已推送且干净，
 实际代码与额外新进程探针揭示三项未覆盖缺陷：manifest最终组件换为指向受控scratch外JSON的symlink仍accepted；导入后仅篡改manifest的saved/dirty/checkpoint就返回recorded-saved，尽管event只有5条且目标/资源不存在；完整正常保存后外部改目标，planned/observed SHA不同仍返回recorded-saved。现有负例不足以证明恢复记录可信；只读不删除也不能代替元数据访问边界及状态一致性。
 
 message `702a8638-813c-4629-8862-b6b135c0f8ee`已交同Agent修元数据symlink/实际event确认与manifest一致性/保存后外部变化及不可读与不存在区分，要求保留正常intent崩溃前缀、旧8+10和成功对照。021暂不接收、未归档闲置或合并；Agent继续工作，父票14仍claimed，平台/产品/断电耐久验收不外推。
+
+### 021修订接收与回收
+
+021最终 `e7d9425b074be084883e2cf531299d22d8ed4121` 远端一致/干净，仍仅local-assets目录。管理者实跑make check：旧14、9项判定、真实Sandbox EPERM；restart-check：8个SIGKILL、17负例、1成功对照均通过。另用独立mkdtemp及全新audit进程重放首稿3条反例：metadata symlink拒绝、篡改saved得到record-inconsistent/dirty、完整保存后外部改目标得到external-target-change且保留historicallyConfirmed；目标新字节保留。
+
+只接收该普通scratch持久记录/只读恢复审计的限定证据；全部微窗口和生产恢复界面、Sandbox授权/书签/WKbroker/最低OS/断电耐久没有被证明。父票14保持claimed。管理者复跑生成的JSON仅恢复本轮前字节，工作区干净；Agent `5c3a6b47-46fd-49c1-912e-e1951e2fb0ec` 已归档回读closed，`2026-11-08T15:24:45.525Z`，工作区和提交保留，不合入008。
+
+当前仅022继续实际编辑与词法定位组合，M0/HITL仍未过；本轮重读04/11原门槛，继续要求完整五层证据，不因为原生矩阵或恢复审计通过而提前采纳架构。

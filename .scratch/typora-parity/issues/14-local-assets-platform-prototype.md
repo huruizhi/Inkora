@@ -48,3 +48,7 @@ Host / Agent / Workspace：`srv_MEqRNkRW6fSx` / `1da3379f-18dd-414b-b036-f8124a9
 管理者进一步核对013源码：OwnershipJournal只有进程内存entries，DraftSession每次新UUID，没有从持久记录重建草稿/保存阶段的入口。已派INK-PROT-021在固定a60b7b9上补持久会话/每操作记录与真实子进程中断恢复，范围仍仅`prototypes/local-assets/`。普通scratch跨进程证据不能替代上述完整Sandbox/UI矩阵；本票保持claimed。host/agent/workspace及验收约束见[执行记录](../execution/M0-dispatch.md)。
 
 021首稿f745f6c的8个真实SIGKILL恢复窗口与10负例、原14模型/严格Sandbox检查已由管理者重跑通过，但额外审计发现元数据文件symlink未拒绝、manifest与事件矛盾能误报saved、最终确认后外部目标变化仍报saved。已交同Agent修正并补真实新进程负例，暂不接收该恢复协议，不以测试矩阵PASS解决父票。
+
+021修订 `e7d9425b074be084883e2cf531299d22d8ed4121` 的限定恢复审计证据已接收：管理者重跑原14/严格Sandbox判定，以及8个SIGKILL窗口、17负例、1成功对照；独立重放上述3条反例均已修正。元数据读取前拒绝symlink，历史最终确认与当前目标/资源完整性分开，不把saved布尔位或未知I/O当成功。Agent已归档，代码/证据工作区保留，不合入不同祖先的编辑器原型。
+
+以上只证明记录所覆盖检查点的普通scratch跨进程审计，不是生产恢复界面、全部指令/intent之间细粒度中断、断电耐久或Sandbox书签/UI证据。父票仍claimed，完整授权/迁移/WKbroker与最低系统矩阵保持待验证；不以新增协议替代这些门槛。
