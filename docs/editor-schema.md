@@ -20,3 +20,10 @@ Issue #8 建立最小 ProseMirror 文档模型；Issue #7 增加 `strong`、`em`
 ## 与支持矩阵的关系
 
 当前 Schema 覆盖 `SYN-S001`–`SYN-S008`、`SYN-S010`、`SYN-S012`、`SYN-S013` 与 `SYN-S015` 所需的节点和 marks。Issue #9 已提供结构化 Markdown 双向转换；Schema/codec 尚未接入当前 textarea 文件路径，因此不会把尚未建模的 Markdown 转换后保存。
+
+## INK-055：扩展预览节点
+
+新增块级 `protected_block`：`atom: true`、`isolating: true`，属性 `raw` 保存 LF 形式的 Markdown 原文，
+`kind` 区分 metadata、table、wiki。节点没有可编辑子内容，渲染为不可编辑的 section；
+DOM 的 `data-inkora-raw` / `data-inkora-kind` 用于复制与解析往返。serializer 直接写回 raw。
+该节点由 runtime 的独立扩展解析路径生成，不放宽通用 Markdown 安全检测，也不改变普通正文的 schema。

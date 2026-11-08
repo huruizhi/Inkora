@@ -33,3 +33,15 @@
 1. 输入规范化结果与 expected 完全一致；
 2. Markdown→Doc→Markdown→Doc 的 ProseMirror 结构相等；
 3. 已规范化输出再次规范化不发生变化。
+
+## INK-055：保留原文的扩展预览
+
+runtime 在原安全闸门拒绝文档时，可尝试 `parseProtectedMarkdown`：使用 markdown-it 的块范围识别
+front matter、顶层 GFM 表格，以及包含 Wiki link 的顶层段落、标题、列表或引用。
+每个扩展块以 `protected_block` 原子节点保存完整原文，序列化直接写回 `raw`，不从预览 HTML 重建 Markdown。
+其余正文仍需通过原安全检测。代码围栏中的示例不会触发扩展预览；混合换行和 bare CR 策略不变。
+
+表格显示为 HTML table，Wiki link 显示别名或目标文字，metadata 显示原文。预览禁用输入 HTML，沿用离线 CSP。
+节点携带原文 DOM 属性，复制并重新解析节点时仍保留原文。普通正文可编辑，扩展块目前只支持整块选择、删除与撤销，
+不支持单元格、metadata 字段或 Wiki link 块内编辑；Wiki 目标也不提供跳转。未修改快照直接返回输入，CRLF 在输出边界恢复。
+普通正文的既有 codec 规范化规则仍适用，块间空行不承诺源范围保真。

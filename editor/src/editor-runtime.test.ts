@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
+import { DOMParser, DOMSerializer } from "prosemirror-model";
+import { inkoraSchema } from "./schema";
 import { TextSelection } from "prosemirror-state";
 import { afterEach, describe, expect, it } from "vitest";
 import { createEditorRuntime } from "./editor-runtime";
@@ -39,6 +41,36 @@ function stubBrowserEnvironment(html = "<!doctype html><main id='app'></main>"):
 }
 
 describe("editor runtime", () => {
+  it.each(["\n", "\r\n"])("renders protected extensions with %j and preserves body edits and history", (eol) => {
+    const original = '---\ntitle: "原样"\n---\n\n# 标题\n\n正文\n\n| A  | B |\n| :--- | ---: |\n| x | y |\n\n- 参见 [[目标|别名]]。\n'.replace(/\n/g, eol);
+    const { runtime, session } = structuredRuntimeWithSession(original);
+    expect(document.querySelector("#editor table")).not.toBeNull();
+    expect(document.querySelector("textarea")).toBeNull();
+    expect(document.querySelector("#editor")?.textContent).toContain("别名");
+    const copy = document.createElement("div");
+    copy.append(DOMSerializer.fromSchema(inkoraSchema).serializeFragment(session.state.doc.content));
+    expect(DOMParser.fromSchema(inkoraSchema).parse(copy).eq(session.state.doc)).toBe(true);
+    expect(runtime.getText()).toBe(original);
+    let position = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "正文") position = pos;
+    });
+    session.dispatch(session.state.tr.insertText("修改", position));
+    expect(runtime.getText()).toBe(original.replace("正文", "修改正文"));
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(original);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(original.replace("正文", "修改正文"));
+    runtime.markSaved(runtime.getText());
+    expect(runtime.status.dirty).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(original);
+    expect(runtime.status.dirty).toBe(true);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.status.dirty).toBe(false);
+    runtime.destroy();
+  });
+
   it("keeps unsupported Markdown in source mode with undo and redo", () => {
     const dom = new JSDOM("<!doctype html><main id='app'></main>");
     Object.defineProperty(globalThis, "document", {
@@ -241,7 +273,7 @@ describe("editor runtime", () => {
   });
 
   it.each([
-    "| A | B |\r\n| --- | --- |\r\n| 原文 | 数据 |\r\n",
+
     "<div>\r\n原文\r\n</div>\r\n",
   ])("retains unsupported raw CRLF content in source edits: %j", (original) => {
     const { dom, parent } = stubBrowserEnvironment();
@@ -254,9 +286,17 @@ describe("editor runtime", () => {
     runtime.destroy();
   });
 
-  it("keeps CRLF documents requiring unrelated normalization in source mode", () => {
+  it("preserves a protected CRLF table beside edited body text", () => {
+    const original = "正文\r\n\r\n| A | B |\r\n| --- | --- |\r\n| 原文 | 数据 |\r\n";
+    const { runtime, session } = structuredRuntimeWithSession(original);
+    session.dispatch(session.state.tr.insertText("改后", 1));
+    expect(runtime.getText()).toBe(original.replace("正文", "改后正文"));
+    runtime.destroy();
+  });
+
+  it.each(["", "---\r\ntitle: 保留\r\n---\r\n\r\n"])("keeps CRLF normalization protection with prefix %j", (prefix) => {
     const { parent } = stubBrowserEnvironment();
-    const original = "# Heading\r\n\r\n\r\nBody  \r\n";
+    const original = prefix + "# Heading\r\n\r\n\r\nBody  \r\n";
     const runtime = createEditorRuntime(parent, original, () => {});
     expect(parent.querySelector("textarea")).not.toBeNull();
     expect(runtime.getText()).toBe(original);

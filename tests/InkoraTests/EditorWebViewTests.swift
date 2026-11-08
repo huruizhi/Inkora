@@ -3,6 +3,83 @@ import XCTest
 
 final class EditorWebViewTests: XCTestCase {
   @MainActor
+  func testLongDocumentsHaveOneScrollOwner() async throws {
+    for prefix in ["<custom>source</custom>\n\n", "# Structured\n\n"] {
+      let text = prefix + String(repeating: "长正文内容\n\n", count: 200)
+      let document = InkoraDocument()
+      try document.read(from: Data(text.utf8), ofType: "net.daringfireball.markdown")
+      let controller = EditorViewController(
+        document: document, resourceBundle: Bundle(for: Self.self))
+      controller.loadViewIfNeeded()
+      let webView = try XCTUnwrap(controller.view as? WKWebView)
+      _ = try await waitForJavaScriptValue(
+        in: webView, script: "!!document.querySelector('#editor')"
+      ) {
+        $0 as? Bool == true
+      }
+      webView.setFrameSize(NSSize(width: 900, height: 700))
+      let metrics =
+        try await webView.evaluateJavaScript(
+          """
+          (() => {
+            const root = document.scrollingElement;
+            const editor = document.querySelector('#editor');
+            editor.scrollTop = 100;
+            return [root.scrollHeight, root.clientHeight,
+                    editor.scrollHeight, editor.clientHeight, editor.scrollTop];
+          })()
+          """) as! [Int]
+      XCTAssertLessThanOrEqual(metrics[0], metrics[1], "Page must not scroll")
+      XCTAssertGreaterThan(metrics[2], metrics[3], "Editor owns overflow")
+      XCTAssertGreaterThan(metrics[4], 0, "Content remains scrollable")
+      _ = try await requestText(from: controller)
+    }
+  }
+
+  @MainActor
+  func testProtectedMarkdownRendersAndPreservesSnapshotAfterBodyEdit() async throws {
+    let text =
+      "---\ntitle: 原样\n---\n\n# 标题\n\n正文\n\n| A  | B |\n| :--- | ---: |\n| x | y |\n\n参见 [[目标|别名]]。\n"
+    let document = InkoraDocument()
+    try document.read(from: Data(text.utf8), ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(
+      document: document, resourceBundle: Bundle(for: Self.self))
+    controller.loadViewIfNeeded()
+    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('#editor table')"
+    ) {
+      $0 as? Bool == true
+    }
+    let original = try await requestText(from: controller)
+    XCTAssertEqual(original, text)
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const p = document.querySelector('#editor > p');
+        const range = document.createRange();
+        range.setStart(p.firstChild, 0);
+        range.collapse(true);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return document.execCommand('insertText', false, '修改');
+      })()
+      """)
+    let edited = try await requestText(from: controller)
+    XCTAssertEqual(edited, text.replacingOccurrences(of: "正文", with: "修改正文"))
+    try await waitForEditorCommand(.undo, enabled: true, in: controller)
+    controller.performEditorCommand(.undo)
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "document.querySelector('#editor > p').textContent"
+    ) {
+      $0 as? String == "正文"
+    }
+    let undone = try await requestText(from: controller)
+    XCTAssertEqual(undone, text)
+  }
+
+  @MainActor
   func testEditorViewControllerLoadsAndReceivesInitialText() async throws {
     let bundle = Bundle(for: Self.self)
     let initialText = "# 中文 🚀\n"
