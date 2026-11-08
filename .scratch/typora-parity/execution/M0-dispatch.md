@@ -194,3 +194,9 @@ M0 两项执行尚未交付时，已独立派发 [Sandbox 本地图片约束研�
 | 012 修订样稿验收驱动 | b4bf1578-0239-48a4-88a4-487802462ed1 | Codex GPT-6-Luna/medium | wks_0743d97b1a902aef |
 
 Host统一srv_MEqRNkRW6fSx。GPT-5.1-Sol当前未列出，5.6为另一明确型号，已向用户说明；复杂语义/事务用Sol，限定驱动用Luna，没有改用6.1。接续提示包含原任务边界、审核反例、固定起点和未提交改动，已创建回执running，不据此宣称模型执行/测试成功；等待完成通知再核查。
+
+### 012 Luna未完成交付与按实际难度升级
+
+Luna Agent `b4bf1578-0239-48a4-88a4-487802462ed1` 已结束，但只新增未跟踪的46行audited-crossval.mjs，未验证、未提交推送，也没有DRIVER-AUDIT。管理者读取确认其中model.apply缺tr、05手供patch、06把文字替换当结构动作、11未实际试验、退出码与路径处理不完整；不作为任务完成或可信矩阵接收。草稿保留供接续检查，原会话已及时归档，回读closed，archivedAt=`2026-11-08T13:45:47.510Z`。
+
+这项工作实际上涉及模式/结构命令、累计步骤依赖与oracle语义归因，已用具体未达标结果确认高于普通脚本执行的难度。改交GPT-5.6-Sol/medium/default服务档，在同一workspace wks_0743d97b1a902aef / 分支task/INK-PROT-012-audited-driver接续；新Agent `353d654a-6628-41c5-8d48-63f131ceca1b`，host仍srv_MEqRNkRW6fSx，notifyOnFinish=true，创建回执running。要求完整driver/实际运行/报告/提交，而非再次只交初稿；不要求原型全绿，不将目标未支持当作driver无法完成的理由。
