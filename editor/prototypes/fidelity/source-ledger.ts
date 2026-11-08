@@ -10,6 +10,7 @@ import type { Range } from './model';
 
 export type SourceRole =
   | 'text' | 'link-label' | 'image-alt' | 'autolink-text' | 'code-text'
+  | 'hardbreak' | 'insertion-anchor'
   | 'delimiter' | 'href' | 'title' | 'reference-label'
   | 'definition-label' | 'definition-href' | 'definition-title'
   | 'block-prefix' | 'block-suffix' | 'line-ending' | 'gap'
@@ -65,7 +66,7 @@ export type LedgerMapResult =
 
 type RawUnit = { start: number; end: number };
 type InlineInput = { text: string; units: RawUnit[] };
-type Atom = LedgerSpan & { visible: true; text: string };
+type Atom = LedgerSpan & { visible: true; text: string; projection?: 'text' | 'atom' };
 type ReferenceDefinition = {
   key: string;
   href: string;
@@ -91,6 +92,7 @@ type TextLeaf = {
   text: string;
   marks: readonly { type: { name: string }; attrs: Record<string, unknown> }[];
 };
+type ProjectionUnit = TextLeaf | { start: number; end: number; atom: string };
 
 const markdown = new MarkdownIt('commonmark', {
   breaks: false,
@@ -129,6 +131,30 @@ function addAtom(state: ScanState, input: InlineInput, from: number, to: number,
   const atom: Atom = { sourceStart: first.start, sourceEnd: last.end, role, syntax, visible: true, text, owner, detail };
   state.spans.push(atom);
   state.atoms.push(atom);
+}
+
+function addRawAtom(state: ScanState, start: number, end: number, text: string, role: SourceRole, syntax: string, projection: 'text' | 'atom' = 'text', detail?: string): void {
+  if (end <= start) throw Error(`可视原文范围 ${start}..${end} 为空`);
+  const atom: Atom = { sourceStart: start, sourceEnd: end, role, syntax, visible: true, text, projection, detail };
+  state.spans.push(atom);
+  state.atoms.push(atom);
+}
+
+function addAnchor(state: ScanState, sourceOffset: number, visualOffset: number, syntax: string, detail: string): void {
+  const anchor: Atom = {
+    sourceStart: sourceOffset,
+    sourceEnd: sourceOffset,
+    role: 'insertion-anchor',
+    syntax,
+    visible: true,
+    text: '',
+    visualStart: visualOffset,
+    visualEnd: visualOffset,
+    projection: 'atom',
+    detail,
+  };
+  state.spans.push(anchor);
+  state.atoms.push(anchor);
 }
 
 function addDecodedAtom(state: ScanState, input: InlineInput, from: number, to: number, text: string, role: SourceRole, syntax: string, owner?: string): void {
@@ -199,6 +225,17 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
   const text = input.text;
   let i = from;
   while (i < to) {
+    // A backslash immediately followed by a line ending is one PM hard_break
+    // atom. Its PM nodeSize is 1; the backslash and complete LF/CRLF source
+    // spelling are owned together and are never projected as a text leaf.
+    if (text[i] === '\\' && i + 1 < to && text[i + 1] === '\n') {
+      const first = input.units[i];
+      const last = input.units[i + 1];
+      if (!first || !last) throw Error('反斜线 hardbreak 原文范围越界');
+      addRawAtom(state, first.start, last.end, '\n', 'hardbreak', 'hardbreak-backslash', 'atom', 'PM hard_break atom，nodeSize=1');
+      i += 2;
+      continue;
+    }
     // Escapes are owned by one displayed grapheme, never by a search for the
     // decoded character elsewhere in the block.
     if (text[i] === '\\' && i + 1 < to && ESCAPABLE.has(text[i + 1])) {
@@ -370,7 +407,21 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
     // creates grapheme atoms and forbids surrogate/combining interior offsets.
     let end = i + 1;
     while (end < to && !'\\&`![<*_~\n'.includes(text[end])) end++;
-    scanPlain(state, input, i, end, role, 'literal', owner);
+    let literalEnd = end;
+    if (end < to && text[end] === '\n') {
+      let spaces = end;
+      while (spaces > i && text[spaces - 1] === ' ') spaces--;
+      if (end - spaces >= 2) {
+        scanPlain(state, input, i, spaces, role, 'literal', owner);
+        const first = input.units[spaces];
+        const last = input.units[end];
+        if (!first || !last) throw Error('双空格 hardbreak 原文范围越界');
+        addRawAtom(state, first.start, last.end, '\n', 'hardbreak', 'hardbreak-spaces', 'atom', 'PM hard_break atom，nodeSize=1；尾部空格与行尾共同归属');
+        i = end + 1;
+        continue;
+      }
+    }
+    scanPlain(state, input, i, literalEnd, role, 'literal', owner);
     i = end;
   }
 }
@@ -439,6 +490,82 @@ function mapInlineToken(source: string, lines: ReturnType<typeof lineTable>, tok
   return { text, units };
 }
 
+function hiddenRaw(state: ScanState, start: number, end: number, role: SourceRole, syntax: string, detail?: string): void {
+  if (end > start) state.spans.push({ sourceStart: start, sourceEnd: end, role, syntax, visible: false, detail });
+}
+
+function codeLineContent(line: ReturnType<typeof lineTable>[number], style: 'fenced' | 'indented', fenceIndent: number): { start: number; text: string } {
+  if (style === 'fenced') {
+    let removed = 0;
+    while (removed < fenceIndent && line.text[removed] === ' ') removed++;
+    return { start: line.start + removed, text: line.text.slice(removed) };
+  }
+  if (line.text.startsWith('    ')) return { start: line.start + 4, text: line.text.slice(4) };
+  if (line.text.startsWith('\t')) return { start: line.start + 1, text: line.text.slice(1) };
+  if (line.text.trim() === '') return { start: line.contentEnd, text: '' };
+  throw Error(`缩进代码行 ${line.start} 缺少可审计的四空格或 tab 前缀`);
+}
+
+function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: Range, state: ScanState): void {
+  if (!token.map || (token.type !== 'fence' && token.type !== 'code_block')) throw Error('代码块 token 缺少可审计行范围');
+  const style = token.type === 'fence' ? 'fenced' : 'indented';
+  let contentLines = lines.slice(token.map[0], token.map[1]);
+  let fenceIndent = 0;
+  if (style === 'fenced') {
+    const opening = lines[token.map[0]];
+    if (!opening) throw Error('围栏起始行不存在');
+    const openingSliceStart = Math.max(range.start, opening.start);
+    const openingSlice = opening.text.slice(openingSliceStart - opening.start);
+    const match = openingSlice.match(/^( {0,3})(`{3,}|~{3,})(.*)$/);
+    if (!match || match[2] !== token.markup) throw Error('围栏 opening marker 与 markdown token 不一致');
+    fenceIndent = match[1].length;
+    const markerStart = openingSliceStart + fenceIndent;
+    hiddenRaw(state, openingSliceStart, markerStart, 'block-prefix', 'fence-indent');
+    hiddenRaw(state, markerStart, markerStart + token.markup.length, 'delimiter', 'fence-open');
+    hiddenRaw(state, markerStart + token.markup.length, opening.contentEnd, 'block-prefix', 'fence-info', '语言/info string 为非可视语法');
+    hiddenRaw(state, opening.contentEnd, opening.end, 'line-ending', 'fence-open-eol');
+
+    const possibleClosing = lines[token.map[1] - 1];
+    if (!possibleClosing) throw Error('围栏闭合行不存在');
+    const marker = token.markup[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const close = possibleClosing.text.match(new RegExp(`^( {0,3})(${marker}{${token.markup.length},})([\\t ]*)$`));
+    if (!close) throw Error('围栏没有可审计 closing marker；未闭合围栏应由 model 保护');
+    const closeMarkerStart = possibleClosing.start + close[1].length;
+    hiddenRaw(state, possibleClosing.start, closeMarkerStart, 'block-prefix', 'fence-close-indent');
+    hiddenRaw(state, closeMarkerStart, closeMarkerStart + close[2].length, 'delimiter', 'fence-close');
+    hiddenRaw(state, closeMarkerStart + close[2].length, possibleClosing.contentEnd, 'block-suffix', 'fence-close-space');
+    contentLines = lines.slice(token.map[0] + 1, token.map[1] - 1);
+  }
+
+  const logical: Array<{ char: string; start: number; end: number; lineEnding: boolean }> = [];
+  for (const line of contentLines) {
+    const content = codeLineContent(line, style, fenceIndent);
+    hiddenRaw(state, line.start, content.start, 'block-prefix', style === 'fenced' ? 'fence-content-indent' : 'indented-code-prefix');
+    for (let i = 0; i < content.text.length; i++) logical.push({ char: content.text[i], start: content.start + i, end: content.start + i + 1, lineEnding: false });
+    if (line.end > line.contentEnd) logical.push({ char: '\n', start: line.contentEnd, end: line.end, lineEnding: true });
+  }
+  const projected = token.content.endsWith('\n') ? token.content.slice(0, -1) : token.content;
+  const logicalText = logical.map(unit => unit.char).join('');
+  if (logicalText !== token.content) throw Error(`代码块原文投影与 token.content 不一致：raw=${JSON.stringify(logicalText)} token=${JSON.stringify(token.content)}`);
+  let logicalIndex = 0;
+  for (const part of segmenter.segment(projected)) {
+    const length = part.segment.length;
+    const units = logical.slice(logicalIndex, logicalIndex + length);
+    if (units.length !== length || units.map(unit => unit.char).join('') !== part.segment) throw Error('代码块 grapheme 无法回溯到原文单元');
+    addRawAtom(state, units[0].start, units[units.length - 1].end, part.segment, 'code-text', units[0].lineEnding ? 'code-line-ending' : 'code-literal', 'text',
+      part.segment.length > 1 ? 'grapheme 内部 UTF-16 位置不映射' : undefined);
+    logicalIndex += length;
+  }
+  for (const unit of logical.slice(logicalIndex)) hiddenRaw(state, unit.start, unit.end, 'line-ending', 'code-trailing-eol', 'PM code_block 按 token 规则移除一个末尾换行');
+
+  if (!projected.length) {
+    const sourceOffset = style === 'fenced'
+      ? (contentLines[0]?.start ?? lines[token.map[0]].end)
+      : range.start;
+    addAnchor(state, sourceOffset, range.pos + 1, 'empty-code-block', '空 code_block 的可视插入位置；围栏/缩进语法仍保持非可视');
+  }
+}
+
 function parseDefinitions(source: string, lines: ReturnType<typeof lineTable>): Map<string, ReferenceDefinition> {
   const definitions = new Map<string, ReferenceDefinition>();
   for (const line of lines) {
@@ -477,25 +604,37 @@ function parseDefinitions(source: string, lines: ReturnType<typeof lineTable>): 
   return definitions;
 }
 
-function leavesFor(doc: PMNode, range: Range): TextLeaf[] {
-  const leaves: TextLeaf[] = [];
+function projectionUnitsFor(doc: PMNode, range: Range): ProjectionUnit[] {
+  const leaves: ProjectionUnit[] = [];
   doc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
-    if (!node.isText || !node.text) return;
-    leaves.push({ start: pos, end: pos + node.text.length, text: node.text, marks: node.marks as TextLeaf['marks'] });
+    if (node.isText && node.text) leaves.push({ start: pos, end: pos + node.text.length, text: node.text, marks: node.marks as TextLeaf['marks'] });
+    else if (node.isAtom && !node.isText) leaves.push({ start: pos, end: pos + node.nodeSize, atom: node.type.name });
   });
   return leaves;
 }
 
-function assignVisualPositions(atoms: Atom[], leaves: TextLeaf[], expectations: LinkExpectation[]): string {
-  const expected = atoms.map(atom => atom.text).join('');
-  const actual = leaves.map(leaf => leaf.text).join('');
-  if (actual !== expected) return `词法投影与 PM 文本不一致：lex=${JSON.stringify(expected)} pm=${JSON.stringify(actual)}`;
+function assignVisualPositions(atoms: Atom[], leaves: ProjectionUnit[], expectations: LinkExpectation[]): string {
+  const projectedAtoms = atoms.filter(atom => atom.visualStart === undefined);
   let leafIndex = 0;
   let leafOffset = 0;
-  for (const atom of atoms) {
-    while (leafIndex < leaves.length && leafOffset === leaves[leafIndex].text.length) { leafIndex++; leafOffset = 0; }
+  for (const atom of projectedAtoms) {
+    while (leafIndex < leaves.length) {
+      const candidate = leaves[leafIndex];
+      if (!('text' in candidate) || leafOffset !== candidate.text.length) break;
+      leafIndex++;
+      leafOffset = 0;
+    }
     const leaf = leaves[leafIndex];
-    if (!leaf || leafOffset + atom.text.length > leaf.text.length) return `词法 atom ${JSON.stringify(atom.text)} 跨越 PM 文本叶，拒绝猜测`;
+    if (!leaf) return `词法 atom ${JSON.stringify(atom.text)} 没有对应 PM 单元`;
+    if (atom.projection === 'atom') {
+      if (!('atom' in leaf) || leaf.atom !== 'hard_break' || leaf.end - leaf.start !== 1) return `词法 ${atom.syntax} 未命中 nodeSize=1 的 PM hard_break atom`;
+      atom.visualStart = leaf.start;
+      atom.visualEnd = leaf.end;
+      leafIndex++;
+      leafOffset = 0;
+      continue;
+    }
+    if (!('text' in leaf) || leafOffset + atom.text.length > leaf.text.length) return `词法 atom ${JSON.stringify(atom.text)} 跨越 PM 文本叶，拒绝猜测`;
     if (leaf.text.slice(leafOffset, leafOffset + atom.text.length) !== atom.text) return `词法 atom ${JSON.stringify(atom.text)} 未命中 PM 叶`;
     atom.visualStart = leaf.start + leafOffset;
     atom.visualEnd = atom.visualStart + atom.text.length;
@@ -509,8 +648,13 @@ function assignVisualPositions(atoms: Atom[], leaves: TextLeaf[], expectations: 
     }
     leafOffset += atom.text.length;
   }
-  while (leafIndex < leaves.length && leafOffset === leaves[leafIndex].text.length) { leafIndex++; leafOffset = 0; }
-  return leafIndex === leaves.length ? '' : 'PM 文本叶仍有未归属内容';
+  while (leafIndex < leaves.length) {
+    const candidate = leaves[leafIndex];
+    if (!('text' in candidate) || leafOffset !== candidate.text.length) break;
+    leafIndex++;
+    leafOffset = 0;
+  }
+  return leafIndex === leaves.length ? '' : 'PM 文本/atom 仍有未归属内容';
 }
 
 function fillGaps(source: string, spans: LedgerSpan[], ranges: Range[]): LedgerSpan[] {
@@ -545,6 +689,23 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         continue;
       }
       const state: ScanState = { spans: [], atoms: [], expectations: [], references, ownerSerial: 0 };
+      if (range.kind === 'code_block') {
+        const codeToken = tokens.find(token => {
+          if ((token.type !== 'fence' && token.type !== 'code_block') || !token.map) return false;
+          const tokenStart = lines[token.map[0]]?.start;
+          const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
+          return tokenStart !== undefined && tokenEnd !== undefined && tokenEnd > range.start && tokenStart < range.end;
+        });
+        if (!codeToken) throw Error(`范围 ${range.start}..${range.end} 的 code_block 没有可审计块 token`);
+        mapCodeToken(lines, codeToken, range, state);
+        const projectionError = assignVisualPositions(state.atoms, projectionUnitsFor(pmDoc, range), state.expectations);
+        if (projectionError) throw Error(`范围 ${range.start}..${range.end}：${projectionError}`);
+        const visualText = state.atoms.map(atom => atom.text).join('');
+        const block = { range: range as Range, spans: state.spans, visualText, inlineCount: 0 };
+        blocks.push(block);
+        allSpans.push(...state.spans);
+        continue;
+      }
       const inlineTokens = tokens.filter(token => {
         if (token.type !== 'inline' || !token.map) return false;
         const tokenStart = lines[token.map[0]]?.start;
@@ -560,8 +721,21 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         const input = mapInlineToken(source, lines, token, heading, state.spans);
         scanInline(state, input);
       }
-      if (!inlineTokens.length && leavesFor(pmDoc, range).length) throw Error(`范围 ${range.start}..${range.end} 有 PM 文本但没有可审计 inline token`);
-      const projectionError = assignVisualPositions(state.atoms, leavesFor(pmDoc, range), state.expectations);
+      const projectionUnits = projectionUnitsFor(pmDoc, range);
+      if (!inlineTokens.length && projectionUnits.length) throw Error(`范围 ${range.start}..${range.end} 有 PM 文本/atom 但没有可审计 inline token`);
+      const emptyTextblocks: number[] = [];
+      pmDoc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
+        if (node.isTextblock && node.childCount === 0) emptyTextblocks.push(pos + 1);
+      });
+      if (!state.atoms.length && emptyTextblocks.length) {
+        if (emptyTextblocks.length !== 1) throw Error(`范围 ${range.start}..${range.end} 含多个空 textblock，当前无法唯一定位插入 source 边界`);
+        const line = lines.find(item => range.start >= item.start && range.start <= item.contentEnd);
+        if (!line) throw Error('空结构缺少原文行');
+        const cursor = prefixCursor(line.text, range.kind === 'heading');
+        const sourceOffset = Math.max(range.start, line.start + cursor);
+        addAnchor(state, sourceOffset, emptyTextblocks[0], 'empty-textblock', `空 ${range.kind} 的可视插入位置，锚定在块前缀之后`);
+      }
+      const projectionError = assignVisualPositions(state.atoms, projectionUnits, state.expectations);
       if (projectionError) throw Error(`范围 ${range.start}..${range.end}：${projectionError}`);
       const visualText = state.atoms.map(atom => atom.text).join('');
       const block = { range: range as Range, spans: state.spans, visualText, inlineCount: inlineTokens.length };
@@ -569,6 +743,27 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       allSpans.push(...state.spans);
     }
     for (const definition of references.values()) allSpans.push(...definition.spans);
+    if (!ranges.length) {
+      const emptyTextblocks: number[] = [];
+      pmDoc.descendants((node, pos) => {
+        if (node.isTextblock && node.childCount === 0) emptyTextblocks.push(pos + 1);
+      });
+      if (emptyTextblocks.length !== 1) throw Error('无块原文没有唯一的 PM 空 textblock 插入位置');
+      const anchors = source.length === 0 ? [0] : [0, source.length];
+      for (const sourceOffset of anchors) allSpans.push({
+        sourceStart: sourceOffset,
+        sourceEnd: sourceOffset,
+        role: 'insertion-anchor',
+        syntax: source.trim().length ? 'definition-only-document' : 'blank-document',
+        visible: true,
+        text: '',
+        visualStart: emptyTextblocks[0],
+        visualEnd: emptyTextblocks[0],
+        detail: anchors.length === 1
+          ? '空文档唯一插入边界'
+          : '原文有前后两个合法 gap；PM→source 必须给 collapsedAffinity，禁止静默重置到文档头',
+      });
+    }
     const spans = fillGaps(source, allSpans, ranges as Range[]);
     return { ok: true, ledger: { sourceLength: source.length, docSize: pmDoc.content.size, blocks, spans, diagnostics } };
   } catch (error) {

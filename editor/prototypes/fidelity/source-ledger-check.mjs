@@ -2,7 +2,7 @@
 // Expected raw offsets are created while assembling each fixture, independently
 // from the ledger and from legacy sourcePosition/selection-map.
 import assert from 'node:assert/strict';
-import { rm, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { build } from 'vite';
 
@@ -64,6 +64,15 @@ function leafPosition(doc, text, offset = 0, predicate = () => true) {
   });
   assert.notEqual(found, undefined, `PM leaf not found: ${JSON.stringify(text)}`);
   return found;
+}
+
+function atomPosition(doc, type, occurrence = 0) {
+  const positions = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === type) positions.push({ pos, size: node.nodeSize });
+  });
+  assert.ok(positions[occurrence], `PM atom not found: ${type}[${occurrence}]`);
+  return positions[occurrence];
 }
 
 function markNamed(name) {
@@ -251,6 +260,127 @@ function record(name, details) {
   assert.match(dump, /link-label\/literal -> PM/);
   assert.match(dump, /href\/inline-href/);
   record('可审计 ledger 调试输出', { lines: dump.split('\n').length, sample: dump.split('\n').slice(0, 5) });
+}
+
+
+// 9. Fenced code is block-token-owned, not inline-scanned. Fence marker,
+// info, indent and closing run stay non-visible; code punctuation is literal.
+{
+  const f = fixture(
+    '\uFEFF  ```` lang info\r\n',
+    '  ', ['fenceLineA', 'a`$*_'], '\r\n',
+    '  ', ['fenceLineB', '二'], '\r\n',
+    '  `````',
+  );
+  const { parsed, ledger } = ledgerFor(f.source);
+  assert.equal(parsed.doc.firstChild.type.name, 'code_block');
+  assert.equal(parsed.doc.firstChild.textContent, 'a`$*_\n二');
+  assert.ok(visibleCoverage(ledger, f.marks.fenceLineA, 'code-text'));
+  assert.ok(visibleCoverage(ledger, f.marks.fenceLineB, 'code-text'));
+  const newline = ledger.spans.find(span => span.visible && span.syntax === 'code-line-ending');
+  assert.deepEqual([newline.sourceStart, newline.sourceEnd, newline.text], [f.marks.fenceLineA.end, f.marks.fenceLineA.end + 2, '\n']);
+  assert.equal(sourceToVisual(ledger, newline.sourceStart + 1, newline.sourceStart + 1).ok, false);
+  for (const syntax of ['fence-open', 'fence-info', 'fence-content-indent', 'fence-close']) {
+    assert.ok(ledger.spans.some(span => !span.visible && span.syntax === syntax), `missing ${syntax}`);
+  }
+  record('围栏代码逐行原文归属', { range: parsed.ranges[0], content: parsed.doc.firstChild.textContent, newline: [newline.sourceStart, newline.sourceEnd] });
+}
+
+// 10. Indented code strips only its structural prefix. Internal CRLF is one
+// text newline atom; backticks, dollars and Markdown markers remain literal.
+{
+  const f = fixture('    ', ['indentedA', 'one`$*'], '\r\n    ', ['indentedB', 'two_'], '\r\n');
+  const { parsed, ledger } = ledgerFor(f.source);
+  assert.equal(parsed.doc.firstChild.attrs.style, 'indented');
+  assert.equal(parsed.doc.firstChild.textContent, 'one`$*\ntwo_');
+  assert.ok(visibleCoverage(ledger, f.marks.indentedA, 'code-text'));
+  assert.ok(visibleCoverage(ledger, f.marks.indentedB, 'code-text'));
+  assert.equal(ledger.spans.filter(span => span.syntax === 'indented-code-prefix').length, 2);
+  record('缩进代码逐行原文归属', { content: parsed.doc.firstChild.textContent });
+}
+
+// 11. Both CommonMark hardbreak spellings own a real nodeSize=1 PM atom.
+// They are not text leaves, and each side of the atom maps independently.
+{
+  const f = fixture(['left', 'left'], ['spacesBreak', '  \r\n'], ['middle', 'middle'], ['slashBreak', '\\\n'], ['right', 'right'], '\n');
+  const { parsed, ledger } = ledgerFor(f.source);
+  const first = atomPosition(parsed.doc, 'hard_break', 0);
+  const second = atomPosition(parsed.doc, 'hard_break', 1);
+  assert.deepEqual([first.size, second.size], [1, 1]);
+  const spaceSpan = ledger.spans.find(span => span.visible && span.syntax === 'hardbreak-spaces');
+  const slashSpan = ledger.spans.find(span => span.visible && span.syntax === 'hardbreak-backslash');
+  assert.deepEqual([spaceSpan.sourceStart, spaceSpan.sourceEnd], [f.marks.spacesBreak.start, f.marks.spacesBreak.end]);
+  assert.deepEqual([slashSpan.sourceStart, slashSpan.sourceEnd], [f.marks.slashBreak.start, f.marks.slashBreak.end]);
+  assert.deepEqual(visualToSource(ledger, first.pos, first.pos, { collapsedAffinity: 'right' }), { ok: true, anchor: f.marks.spacesBreak.start, head: f.marks.spacesBreak.start, snapped: [] });
+  assert.deepEqual(visualToSource(ledger, first.pos + 1, first.pos + 1, { collapsedAffinity: 'left' }), { ok: true, anchor: f.marks.spacesBreak.end, head: f.marks.spacesBreak.end, snapped: [] });
+  assert.equal(sourceToVisual(ledger, f.marks.spacesBreak.start + 1, f.marks.spacesBreak.start + 1).ok, false);
+  assert.equal(sourceToVisual(ledger, f.marks.slashBreak.start + 1, f.marks.slashBreak.start + 1).ok, false);
+  record('hard_break atom 与两侧选区', { spaces: [spaceSpan.sourceStart, spaceSpan.sourceEnd, first.pos], backslash: [slashSpan.sourceStart, slashSpan.sourceEnd, second.pos] });
+}
+
+// 12. Empty visible structures get explicit zero-width insertion anchors.
+// Blank/definition-only documents expose both legal raw gaps and require
+// caller affinity rather than silently resetting to source offset zero.
+{
+  const empty = ledgerFor('');
+  assert.deepEqual(visualToSource(empty.ledger, 1, 1), { ok: true, anchor: 0, head: 0, snapped: [] });
+
+  for (const source of ['  \n\t\n', '[only]: /target "title"\n']) {
+    const { ledger } = ledgerFor(source);
+    const ambiguous = visualToSource(ledger, 1, 1);
+    assert.equal(ambiguous.ok, false);
+    assert.deepEqual(ambiguous.candidates, [0, source.length]);
+    assert.equal(visualToSource(ledger, 1, 1, { collapsedAffinity: 'right' }).anchor, 0);
+    assert.equal(visualToSource(ledger, 1, 1, { collapsedAffinity: 'left' }).anchor, source.length);
+  }
+
+  for (const [source, raw, pm] of [['#\n', 1, 1], ['>\n', 1, 2], ['- \n', 2, 3], ['```\n```\n', 4, 1]]) {
+    const { ledger } = ledgerFor(source);
+    assert.equal(visualToSource(ledger, pm, pm).anchor, raw, JSON.stringify(source));
+    assert.equal(sourceToVisual(ledger, raw, raw).anchor, pm, JSON.stringify(source));
+  }
+
+  const separated = ledgerFor('before\n\n\n\nafter\n');
+  assert.equal(sourceToVisual(separated.ledger, 8, 8).ok, false);
+  record('空文档/空结构显式插入锚点', { blankCandidates: [0, 5], emptyHeading: [1, 1], emptyCode: [4, 1] });
+}
+
+// 13. Every frozen fixture input, plus every case05 after-state, is built via
+// real model.parse(). Expected files and manifest remain read-only.
+{
+  const casesRoot = new URL('../fidelity-cases/', here);
+  const manifest = JSON.parse(await readFile(new URL('cases.json', casesRoot), 'utf8'));
+  const built = [];
+  for (const testCase of manifest.cases) {
+    for (const variant of testCase.variants) {
+      const inputName = Object.keys(variant.files)[0];
+      const source = await readFile(new URL(`cases/${testCase.id}/${inputName}`, casesRoot), 'utf8');
+      ledgerFor(source);
+      built.push(`${testCase.id}/${inputName}`);
+    }
+  }
+  for (const name of ['after-step-1.md', 'after-step-2.md', 'after-step-3.md', 'after-step-4.md']) {
+    const source = await readFile(new URL(`cases/05-marks-attrs/${name}`, casesRoot), 'utf8');
+    ledgerFor(source);
+    built.push(`05-marks-attrs/${name}`);
+  }
+  record('冻结 fixture 输入与 case05 after 状态逐一构建', { count: built.length, built });
+}
+
+// 14. A repeatable, bounded prototype measurement. This is evidence of one
+// workload only, not a claim that the known worst case is linear.
+{
+  const paragraph = '[label](https://example.test "title") body **strong** and `code`\n\n';
+  const source = paragraph.repeat(160);
+  const parsed = parse(source);
+  const samples = [];
+  for (let i = 0; i < 3; i++) {
+    const started = performance.now();
+    const result = buildSourceLedger(source, parsed.doc, parsed.ranges);
+    assert.equal(result.ok, true, result.reason);
+    samples.push(Number((performance.now() - started).toFixed(2)));
+  }
+  record('有规模可重复测量（非复杂度证明）', { utf16: source.length, blocks: parsed.ranges.length, runsMs: samples });
 }
 
 console.log(`\nPASS: ${results.length} 组独立来源断言；真实 model.parse/PM 文档路径；临时 bundle 已清理。`);
