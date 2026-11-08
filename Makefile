@@ -97,6 +97,7 @@ test-ui-release: release-bundle-check
 
 test-ci: prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" tests/ci/entrypoint-smoke.sh
+	tests/ci/release-smoke.sh
 	tests/ci/ui-lock-smoke.sh
 	node scripts/perf/compare-baseline.test.mjs
 
@@ -219,3 +220,8 @@ bench-full: bench
 		--output-path "$(PERF_RESULTS_DIR)/launch-attachments" --filter 'inkora-launch*'
 	node scripts/perf/extract-launch-memory.mjs "$(LAUNCH_PERF_RESULT)" "$(PERF_RESULTS_DIR)/launch.json" "$(PERF_RESULTS_DIR)/launch-attachments"
 	$(MAKE) perf-compare
+
+# Direct distribution only; these targets never launch the App.
+.PHONY: release-archive release-sign release-notarize release-dmg release-verify release release-dry-run
+release-archive release-sign release-notarize release-dmg release-verify release release-dry-run:
+	@INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" scripts/release/release.sh $(patsubst release-%,%,$@)
