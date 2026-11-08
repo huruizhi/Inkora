@@ -1,0 +1,31 @@
+{
+  "manifest": {
+    "bundle_id": "com.huruizhi.Inkora.FidelityPrototype",
+    "baseline_commit": "ea63941a6ca320c5aa888eb18263c870fb361846",
+    "os": "27.2",
+    "toolchain": "Xcode 27.2 Build version 27B52 ",
+    "entry": {
+      "source": "../PROTOTYPE.html",
+      "dest": "artifacts/FidelityHost.app/Contents/Resources/entry.html",
+      "csp_requested": true,
+      "csp_inserted": true,
+      "csp_source": "injected-by-host",
+      "csp_meta": "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'\">",
+      "source_sha256": "7c1fa47b665f60b42fdb04b2f495ad8786baa2058107eac32298b33e2c8e9577",
+      "bundled_sha256": "cec18aebe609813eac526967df50c191bb359695784b06fd78c3410d11190a95",
+      "source_script_sha256": "08d0bf5dd6d3dc29c101777b99a844c5518d1f937b3f54d370de604ac29957b2",
+      "bundled_script_sha256": "08d0bf5dd6d3dc29c101777b99a844c5518d1f937b3f54d370de604ac29957b2",
+      "script_bytes_identical": true
+    },
+    "runtime_observer": {
+      "path": "Resources/runtime-observer.js",
+      "sha256": "2aa57f6906dd5afe0dd9a9e3bd4ad8d149f4534afd25e7d754632d66eb68696d"
+    }
+  },
+  "rawSHA256": "dd4b7af5815301b32dcf45f3d8025c3b96180e0aafd0e630d77f4833cd769fba",
+  "runtimeRecords": 22,
+  "layer": "real WK ordinary input and button actions via CUA; NOT physical Sogou IME",
+  "observed": "direct Undo/Redo restores safe save; no-op Undo retains errors; pending restoration remains save-blocked; memory savepoint correct",
+  "remainingFinding": "legitimate trailing space rejected; continuous alpha-space-beta loses separator",
+  "closure": "owned87910 SIGTERM; foreground44623 exit143"
+}

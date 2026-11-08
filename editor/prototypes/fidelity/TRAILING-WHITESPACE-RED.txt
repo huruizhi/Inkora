@@ -1,0 +1,65 @@
+{"afterWord":"# 原型标题\r\n\r\n中文正文  特殊\t空白 😀 é 保持。\r\n\r\n参考 [文档][ref] 与正文。\n\n[ref]: <https://example.invalid> \"标题\"\n\n- [ ] 任务一\r\n\r\n$$\nx^2 + y^2\n$$\n\n| 表头 | 值 |\n| --- | --- |\n| 原文 | 保留 |\n\n保护块之后的中文。alpha\n","afterSpace":{"source":"# 原型标题\r\n\r\n中文正文  特殊\t空白 😀 é 保持。\r\n\r\n参考 [文档][ref] 与正文。\n\n[ref]: <https://example.invalid> \"标题\"\n\n- [ ] 任务一\r\n\r\n$$\nx^2 + y^2\n$$\n\n| 表头 | 值 |\n| --- | --- |\n| 原文 | 保留 |\n\n保护块之后的中文。alpha\n","blocked":"Error: 补丁重解析与目标 PM 文档不一致；可信状态未提交","selection":{"type":"text","anchor":71,"head":71},"past":1},"actual":"# 原型标题\r\n\r\n中文正文  特殊\t空白 😀 é 保持。\r\n\r\n参考 [文档][ref] 与正文。\n\n[ref]: <https://example.invalid> \"标题\"\n\n- [ ] 任务一\r\n\r\n$$\nx^2 + y^2\n$$\n\n| 表头 | 值 |\n| --- | --- |\n| 原文 | 保留 |\n\n保护块之后的中文。alphabeta\n","expected":"# 原型标题\r\n\r\n中文正文  特殊\t空白 😀 é 保持。\r\n\r\n参考 [文档][ref] 与正文。\n\n[ref]: <https://example.invalid> \"标题\"\n\n- [ ] 任务一\r\n\r\n$$\nx^2 + y^2\n$$\n\n| 表头 | 值 |\n| --- | --- |\n| 原文 | 保留 |\n\n保护块之后的中文。alpha beta\n","errors":[]}
+node:internal/modules/run_main:111
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: continuous typing lost the separating space
++ actual - expected
+... Skipped lines
+
+  '# 原型标题\r\n' +
+    '\r\n' +
+    '中文正文  特殊\t空白 😀 é 保持。\r\n' +
+    '\r\n' +
+    '参考 [文档][ref] 与正文。\n' +
+...
+    '\n' +
++   '保护块之后的中文。alphabeta\n'
+-   '保护块之后的中文。alpha beta\n'
+
+    at file:///Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-027-trailing-whitespace-input/editor/prototypes/fidelity/trailing-whitespace-check.mjs:34:8 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '# 原型标题\r\n' +
+    '\r\n' +
+    '中文正文  特殊\t空白 😀 é 保持。\r\n' +
+    '\r\n' +
+    '参考 [文档][ref] 与正文。\n' +
+    '\n' +
+    '[ref]: <https://example.invalid> "标题"\n' +
+    '\n' +
+    '- [ ] 任务一\r\n' +
+    '\r\n' +
+    '$$\n' +
+    'x^2 + y^2\n' +
+    '$$\n' +
+    '\n' +
+    '| 表头 | 值 |\n' +
+    '| --- | --- |\n' +
+    '| 原文 | 保留 |\n' +
+    '\n' +
+    '保护块之后的中文。alphabeta\n',
+  expected: '# 原型标题\r\n' +
+    '\r\n' +
+    '中文正文  特殊\t空白 😀 é 保持。\r\n' +
+    '\r\n' +
+    '参考 [文档][ref] 与正文。\n' +
+    '\n' +
+    '[ref]: <https://example.invalid> "标题"\n' +
+    '\n' +
+    '- [ ] 任务一\r\n' +
+    '\r\n' +
+    '$$\n' +
+    'x^2 + y^2\n' +
+    '$$\n' +
+    '\n' +
+    '| 表头 | 值 |\n' +
+    '| --- | --- |\n' +
+    '| 原文 | 保留 |\n' +
+    '\n' +
+    '保护块之后的中文。alpha beta\n',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.13.0
