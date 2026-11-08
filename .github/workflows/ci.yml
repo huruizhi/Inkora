@@ -1,5 +1,7 @@
 name: CI
 
+# CI 只能手动触发（workflow_dispatch）：合并前必须在已 rebase 到最新 main 的
+# 分支上手动触发并通过；需要时也可以在 main 上手动触发。
 on:
   workflow_dispatch:
     inputs:
@@ -7,9 +9,6 @@ on:
         description: Run make bench-full (adds launch benchmarks; needs unlocked desktop)
         type: boolean
         default: false
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read

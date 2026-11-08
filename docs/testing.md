@@ -4,6 +4,11 @@
 
 Agent 本地只运行非 UI 目标，UI 目标由 CI 执行，以避免占用开发者桌面。
 
+CI workflow 只能通过 `workflow_dispatch` 手动触发，不再在 push 到 main 时自动运行：合并前
+必须在已 rebase 到最新 main 的分支上手动触发并通过；需要时也可以在 main 上手动触发。
+合并规则：分支必须基于最新 main 且 CI 通过，一次只合并一个 PR；合并后其余分支需重新
+rebase 到新 main 再触发 CI。
+
 `make setup` 将固定版本的 pnpm 安装到被忽略的 `.tools/`，避免 Homebrew 滚动版本或 Intel/Apple Silicon 架构差异改变构建结果。
 
 ## 命令
@@ -15,9 +20,9 @@ Agent 本地只运行非 UI 目标，UI 目标由 CI 执行，以避免占用开
 | `make test-native` | 全部 XCTest 单元与 WKWebView 集成测试 |
 | `make test-document-open-ui` | 文档打开、菜单状态、菜单点击及 Cmd+O/S/Shift+S/Z/Shift+Z；Open Recent、冷/热启动打开、失效路径与重启恢复；实际打开与另存后验证磁盘内容；需已解锁桌面和 Automation Mode |
 | `make test-ui-release` | Release 离线资源检查与 App 启动烟测 |
-| `make test-ui` | 无辅助功能权限依赖的 Debug App 启动烟测；CI 通过 `INKORA_CAPTURE_SCREEN=1` 尽力截图 |
+| `make test-ui` | 无辅助功能权限依赖的 Debug App 启动烟测；已不在 `test-all` 中，供手动运行；CI 通过 `INKORA_CAPTURE_SCREEN=1` 尽力截图 |
 | `make test-ci` | 验证命令包装器、快照归档及 UI 锁的获取/排队/超时/回收/退出清理 |
-| `make test-all` / `make test` | 按层运行全部测试 |
+| `make test-all` / `make test` | 按层运行全部测试，不含 `test-ui`：每个 XCUITest 用例都会启动 Debug App，Debug 启动烟测与其重复 |
 | `make build-release` | 构建 Release App，不配置正式签名凭据 |
 | `make bench` | 轻量性能基准（编辑器 + 原生文档层），不启动 App UI，agent 本地可运行 |
 | `make bench-full` | 完整基准，含 WKWebView 与 App 启动类指标，会启动 App UI，仅 CI runner 执行 |

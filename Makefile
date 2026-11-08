@@ -97,7 +97,10 @@ test-ci: prepare-artifacts
 	tests/ci/ui-lock-smoke.sh
 	node scripts/perf/compare-baseline.test.mjs
 
-test-all: test-editor test-bridge test-native test-document-open-ui test-ui test-ci
+# test-ui is intentionally excluded: every XCUITest case in
+# test-document-open-ui already launches the Debug app. Run `make test-ui`
+# manually if needed.
+test-all: test-editor test-bridge test-native test-document-open-ui test-ci
 
 build: editor-build generate require-xcode prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) build-debug \
