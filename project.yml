@@ -14,6 +14,7 @@ targets:
     platform: macOS
     sources:
       - path: app/Sources
+      - path: app/Resources/Assets.xcassets
       - path: build/editor
         type: folder
         buildPhase: resources
@@ -29,6 +30,7 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 0.1.0
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     preBuildScripts:
       - name: Build Editor
         script: |
