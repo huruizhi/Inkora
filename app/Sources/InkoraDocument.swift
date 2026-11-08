@@ -39,22 +39,28 @@ final class InkoraDocument: NSDocument {
     let completion: (Error?) -> Void
   }
 
-  private static let utf8BOM = Data([0xEF, 0xBB, 0xBF])
-  private static let utf32LEBOM = Data([0xFF, 0xFE, 0x00, 0x00])
-  private static let utf32BEBOM = Data([0x00, 0x00, 0xFE, 0xFF])
-  private static let utf16LEBOM = Data([0xFF, 0xFE])
-  private static let utf16BEBOM = Data([0xFE, 0xFF])
+  // Referenced from the nonisolated NSDocument read override; Data constants
+  // are immutable and Sendable, so they carry no actor isolation.
+  private nonisolated static let utf8BOM = Data([0xEF, 0xBB, 0xBF])
+  private nonisolated static let utf32LEBOM = Data([0xFF, 0xFE, 0x00, 0x00])
+  private nonisolated static let utf32BEBOM = Data([0x00, 0x00, 0xFE, 0xFF])
+  private nonisolated static let utf16LEBOM = Data([0xFF, 0xFE])
+  private nonisolated static let utf16BEBOM = Data([0xFE, 0xFF])
 
   private(set) var bridgeDocumentID = UUID().uuidString
   private var diskVersion: DocumentDiskVersion?
   private var missingOriginal = false
   private(set) var fileState: DocumentFileState = .current
+  // ENC-002: an undecodable file opens in a read-only error state instead of
+  // failing the open; the reason drives the window content and save errors.
+  var encodingError: InkoraDocumentError? { encodingErrorStorage.get() }
   private var reviewingFileState = false
   private let editorResourceBundle: Bundle
   private let dataWriter: any DocumentDataWriting
   private let revisionStorage = DocumentRevisionStorage()
   private let textStorage = DocumentTextStorage()
   private let bomStorage = DocumentBOMStorage()
+  private let encodingErrorStorage = DocumentEncodingErrorStorage()
   private weak var editorViewController: EditorViewController?
   private var snapshotRequester: SnapshotRequester?
   private var pendingSaves: [PendingSave] = []
@@ -171,24 +177,44 @@ final class InkoraDocument: NSDocument {
     self.editorViewController = editorViewController
     refreshFileState()
     snapshotRequester = editorViewController.requestSnapshot
+    if encodingError != nil, let url = fileURL {
+      // AppKit notes the URL into Open Recent before makeWindowControllers
+      // runs. A read-only encoding error is not a successfully opened
+      // document, so the entry is withdrawn right away (INK-053 policy).
+      RecentDocumentNoter.shared.withdrawDocumentOpened(url)
+    }
   }
 
   override func read(from data: Data, ofType typeName: String) throws {
     if data.starts(with: Self.utf32LEBOM) || data.starts(with: Self.utf32BEBOM) {
-      throw InkoraDocumentError.utf32Detected
+      enterEncodingError(.utf32Detected)
+      return
     }
     if data.starts(with: Self.utf16LEBOM) || data.starts(with: Self.utf16BEBOM) {
-      throw InkoraDocumentError.utf16Detected
+      enterEncodingError(.utf16Detected)
+      return
     }
     // ENC-001: a leading UTF-8 BOM is allowed; its presence is document state.
     // Strip it before decoding and re-emit it on every write path.
     let hasBOM = data.starts(with: Self.utf8BOM)
     let body = hasBOM ? data.dropFirst(Self.utf8BOM.count) : data[...]
     guard let decoded = String(data: body, encoding: .utf8) else {
-      throw InkoraDocumentError.invalidUTF8
+      enterEncodingError(.invalidUTF8)
+      return
     }
+    encodingErrorStorage.set(nil)
     textStorage.set(decoded)
     bomStorage.set(hasBOM)
+    revisionStorage.set(0)
+  }
+
+  /// ENC-002: never guess a conversion and never show mojibake. The original
+  /// bytes stay untouched on disk while the document opens read-only with
+  /// the detected reason.
+  private nonisolated func enterEncodingError(_ error: InkoraDocumentError) {
+    encodingErrorStorage.set(error)
+    textStorage.set("")
+    bomStorage.set(false)
     revisionStorage.set(0)
   }
 
@@ -204,13 +230,15 @@ final class InkoraDocument: NSDocument {
     diskVersion = version
     fileModificationDate = version.modified
     MainActor.assumeIsolated {
+      guard encodingErrorStorage.get() == nil else { return }
       openHistory.noteDocumentOpened(url)
       RecentDocumentNoter.shared.noteDocumentOpened(url)
     }
   }
 
   override func data(ofType typeName: String) throws -> Data {
-    encodedDocumentData()
+    if let encodingError { throw encodingError }
+    return encodedDocumentData()
   }
 
   override func write(
@@ -227,6 +255,8 @@ final class InkoraDocument: NSDocument {
     }
     // NSDocument invokes this inside its coordinated safe-save operation. Check
     // the original again, after the asynchronous snapshot and before writing.
+    // This override is nonisolated, so read the lock-guarded storage directly.
+    if let encodingError = encodingErrorStorage.get() { throw encodingError }
     if saveOperation == .saveOperation,
       let original = absoluteOriginalContentsURL, original == fileURL
     {
@@ -247,6 +277,12 @@ final class InkoraDocument: NSDocument {
     for saveOperation: NSDocument.SaveOperationType,
     completionHandler: @escaping (Error?) -> Void
   ) {
+    // ENC-002 read-only error state: saving anywhere would either overwrite
+    // the untouched original bytes with an empty buffer or write mojibake.
+    if let encodingError {
+      completionHandler(encodingError)
+      return
+    }
     pendingSaves.append(
       PendingSave(
         url: url,
@@ -277,6 +313,12 @@ final class InkoraDocument: NSDocument {
   }
 
   func prepareForClose(completion: @escaping (Error?) -> Void) {
+    // The encoding error state has no editor session to snapshot and is
+    // never dirty, so closing needs no save review at all.
+    guard encodingError == nil else {
+      completion(nil)
+      return
+    }
     guard let editorViewController else {
       completion(nil)
       return
@@ -383,6 +425,13 @@ final class InkoraDocument: NSDocument {
   }
 
   func refreshFileState() {
+    guard encodingError == nil else {
+      // The encoding error dominates disk state: no reload prompt, no dirty
+      // forcing, and no recovery scheduling for an undecodable document.
+      fileState = .unsupportedEncoding
+      updateFileStateSubtitle()
+      return
+    }
     guard let url = fileURL else { return }
     let wasEdited = isDocumentEdited
     let accessed = url.startAccessingSecurityScopedResource()
@@ -423,6 +472,7 @@ final class InkoraDocument: NSDocument {
   }
 
   private func validateOriginalForSaving() throws {
+    if let encodingError { throw encodingError }
     refreshFileState()
     guard fileState == .current || fileState == .moved else { throw fileState }
   }
@@ -683,5 +733,18 @@ private final class DocumentRevisionStorage: @unchecked Sendable {
     lock.withLock {
       revision = updatedRevision
     }
+  }
+}
+
+private final class DocumentEncodingErrorStorage: @unchecked Sendable {
+  private let lock = NSLock()
+  private var error: InkoraDocumentError?
+
+  func get() -> InkoraDocumentError? {
+    lock.withLock { error }
+  }
+
+  func set(_ updatedError: InkoraDocumentError?) {
+    lock.withLock { error = updatedError }
   }
 }

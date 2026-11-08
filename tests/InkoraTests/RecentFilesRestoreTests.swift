@@ -462,7 +462,7 @@ final class RecentFilesRestoreTests: XCTestCase {
   }
 
   @MainActor
-  func testFailedURLReadDoesNotReplaceLastOpenedDocument() throws {
+  func testEncodingErrorURLReadDoesNotReplaceLastOpenedDocument() throws {
     let good = try makeTemporaryFile("Good-\(UUID().uuidString).md")
     let broken = try makeTemporaryFile("Broken-\(UUID().uuidString).md")
     try Data([0xC3, 0x28]).write(to: broken)
@@ -474,12 +474,37 @@ final class RecentFilesRestoreTests: XCTestCase {
       openHistory: history
     )
 
-    XCTAssertThrowsError(try document.read(from: broken, ofType: markdownType))
+    try document.read(from: broken, ofType: markdownType)
 
+    XCTAssertEqual(document.encodingError, .invalidUTF8)
     XCTAssertEqual(
       history.resolveLastOpenedDocumentURL()?.lastPathComponent,
       good.lastPathComponent
     )
+  }
+
+  @MainActor
+  func testEncodingErrorOpenWithdrawsNotedRecentEntry() throws {
+    // A real file: AppKit notes the canonicalized path (/private/…) while
+    // the document may hold the unresolved spelling, so withdrawal must
+    // match both forms.
+    let undecodable = try makeTemporaryFile("Undecodable-\(UUID().uuidString).md")
+    var canonical = undecodable.path
+    undecodable.path.withCString { path in
+      let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: Int(PATH_MAX))
+      defer { buffer.deallocate() }
+      if realpath(path, buffer) != nil { canonical = String(cString: buffer) }
+    }
+    let list = FakeRecentDocumentList()
+    let kept = try makeTemporaryFile("Kept-\(UUID().uuidString).md")
+    list.noteNewRecentDocumentURL(URL(fileURLWithPath: canonical))
+    list.noteNewRecentDocumentURL(kept)
+    let notifier = RecentDocumentNoter()
+    notifier.configure(list: list)
+
+    notifier.withdrawDocumentOpened(undecodable)
+
+    XCTAssertEqual(list.recentDocumentURLs, [kept])
   }
 
   @MainActor

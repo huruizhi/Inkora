@@ -100,8 +100,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   private static func openDocumentFromURL(
     _ url: URL, completion: @escaping (Error?) -> Void
   ) {
-    NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
-      if error == nil {
+    NSDocumentController.shared.openDocument(
+      withContentsOf: url, display: true
+    ) { document, _, error in
+      // A read-only encoding-error open (ENC-002) is not a successful open;
+      // keep such files out of Open Recent.
+      if error == nil, (document as? InkoraDocument)?.encodingError == nil {
         NSDocumentController.shared.noteNewRecentDocumentURL(url)
       }
       completion(error)

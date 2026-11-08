@@ -54,22 +54,90 @@ final class DocumentOpenUITests: AcceptanceTestCase {
   }
 
   @MainActor
-  func testInvalidUTF8ShowsAnErrorWithoutOpeningADocumentWindow() throws {
+  func testInvalidUTF8OpensAReadOnlyErrorWindowWithoutAnEditor() throws {
     let temporaryDirectory = try makeTemporaryDirectory()
     let fileURL = temporaryDirectory.appendingPathComponent("Invalid UTF8.md")
-    try Data([0xC3, 0x28]).write(to: fileURL)
+    let bytes = Data([0xC3, 0x28])
+    try bytes.write(to: fileURL)
     let app = try openWithLaunchServices(fileURL)
     defer {
       app.terminate()
       try? FileManager.default.removeItem(at: temporaryDirectory)
     }
 
-    XCTAssertFalse(app.windows["Invalid UTF8.md"].waitForExistence(timeout: 2))
-    let errorDialog = app.dialogs.firstMatch
+    let window = app.windows["Invalid UTF8.md"]
+    XCTAssertTrue(window.waitForExistence(timeout: 10), "The read-only error window must open")
+    let reason = window.staticTexts["EncodingErrorReason"]
     XCTAssertTrue(
-      errorDialog.waitForExistence(timeout: 10),
-      "Invalid UTF-8 did not present an open error"
-    )
+      reason.waitForExistence(timeout: 5), "The window must explain why the file is read-only")
+    let reasonText = (reason.value as? String) ?? reason.label
+    XCTAssertTrue(reasonText.contains("UTF-8"), "Found: \(reasonText)")
+    XCTAssertFalse(
+      window.descendants(matching: .any)["MarkdownEditor"].exists,
+      "An undecodable file must never expose an editor surface")
+    XCTAssertEqual(try Data(contentsOf: fileURL), bytes, "Original bytes must stay untouched")
+
+    window.typeKey("w", modifierFlags: .command)
+    XCTAssertTrue(
+      window.waitForNonExistence(timeout: 5), "Closing a read-only error window needs no review")
+  }
+
+  @MainActor
+  func testUTF16ReadOnlyErrorWindowBlocksSaveAndClosesWithoutReview() async throws {
+    let temporaryDirectory = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+    let fileName = "UTF16 只读.md"
+    let fileURL = temporaryDirectory.appendingPathComponent(fileName)
+    // UTF-16LE encoding of "hi": unsupported in Inkora (ENC-002).
+    let bytes = Data([0xFF, 0xFE, 0x68, 0x00, 0x69, 0x00])
+    try bytes.write(to: fileURL)
+    let app = try openWithLaunchServices(fileURL)
+    defer { app.terminate() }
+
+    let window = app.windows[fileName]
+    XCTAssertTrue(window.waitForExistence(timeout: 10), "The read-only error window must open")
+    let reason = window.staticTexts["EncodingErrorReason"]
+    XCTAssertTrue(reason.waitForExistence(timeout: 5))
+    let reasonText = (reason.value as? String) ?? reason.label
+    XCTAssertTrue(
+      reasonText.contains("UTF-16"), "The window must state the detected encoding: \(reasonText)")
+
+    app.typeKey("s", modifierFlags: .command)
+    // NSDocument presents the save error as a sheet on the document window
+    // (or an app-level dialog); its only button dismisses it. "OK" is the
+    // AppKit-localized default, with a first-button fallback for other
+    // localizations — the intent is that the error appears and is dismissed.
+    let sheet = app.sheets.firstMatch
+    let dialog = app.dialogs.firstMatch
+    XCTAssertTrue(
+      sheet.waitForExistence(timeout: 5) || dialog.waitForExistence(timeout: 5),
+      "Cmd+S must fail with the encoding error, not write back")
+    let ok = app.buttons["OK"]
+    if ok.waitForExistence(timeout: 2) {
+      ok.click()
+    } else {
+      let fallback = sheet.exists ? sheet.buttons.firstMatch : dialog.buttons.firstMatch
+      XCTAssertTrue(fallback.waitForExistence(timeout: 5))
+      fallback.click()
+    }
+    XCTAssertEqual(
+      try Data(contentsOf: fileURL), bytes, "Cmd+S must never modify the original file")
+
+    app.typeKey("w", modifierFlags: .command)
+    XCTAssertTrue(
+      app.sheets.firstMatch.waitForNonExistence(timeout: 5),
+      "A read-only error document closes without a save review")
+    XCTAssertTrue(window.waitForNonExistence(timeout: 5), "The window must close immediately")
+
+    // INK-053 policy: an undecodable file does not enter Open Recent.
+    openMenu("File", in: app)
+    let openRecent = app.menuBars.menuBarItems["File"].menuItems["Open Recent"]
+    XCTAssertTrue(openRecent.waitForExistence(timeout: 5))
+    openRecent.hover()
+    XCTAssertFalse(
+      openRecent.menuItems[fileName].waitForExistence(timeout: 2),
+      "An unsupported-encoding file must not appear in Open Recent")
+    app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
   }
 
   @MainActor

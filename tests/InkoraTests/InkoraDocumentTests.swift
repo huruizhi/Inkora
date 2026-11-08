@@ -1,4 +1,5 @@
 import AppKit
+import WebKit
 import XCTest
 
 final class InkoraDocumentTests: XCTestCase {
@@ -31,35 +32,35 @@ final class InkoraDocumentTests: XCTestCase {
   }
 
   @MainActor
-  func testInvalidUTF8IsRejected() {
+  func testInvalidUTF8OpensInReadOnlyErrorState() throws {
     let document = InkoraDocument()
     let invalidUTF8 = Data([0xC3, 0x28])
 
-    XCTAssertThrowsError(
-      try document.read(from: invalidUTF8, ofType: "net.daringfireball.markdown")
-    )
+    try document.read(from: invalidUTF8, ofType: "net.daringfireball.markdown")
+
+    XCTAssertEqual(document.encodingError, .invalidUTF8)
+    XCTAssertEqual(document.text, "")
+    XCTAssertFalse(document.isDocumentEdited)
   }
 
   @MainActor
-  func testGBKEncodedFileIsRejectedAsInvalidUTF8() throws {
+  func testGBKEncodedFileOpensReadOnlyAsInvalidUTF8() throws {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent("gbk-\(UUID().uuidString).md")
     // "中文" encoded as GBK: no BOM, but not valid UTF-8 either.
-    try Data([0xD6, 0xD0, 0xCE, 0xC4]).write(to: url)
+    let bytes = Data([0xD6, 0xD0, 0xCE, 0xC4])
+    try bytes.write(to: url)
     defer { try? FileManager.default.removeItem(at: url) }
 
-    XCTAssertThrowsError(
-      try InkoraDocument(contentsOf: url, ofType: "net.daringfireball.markdown")
-    ) { error in
-      XCTAssertEqual(
-        error.localizedDescription,
-        InkoraDocumentError.invalidUTF8.localizedDescription
-      )
-    }
+    let document = try InkoraDocument(contentsOf: url, ofType: "net.daringfireball.markdown")
+
+    XCTAssertEqual(document.encodingError, .invalidUTF8)
+    XCTAssertEqual(try Data(contentsOf: url), bytes, "Original bytes must stay untouched")
+    XCTAssertFalse(document.isDocumentEdited)
   }
 
   @MainActor
-  func testUTF16AndUTF32ByteOrderMarksAreRejectedWithExplicitErrors() throws {
+  func testUTF16AndUTF32OpenReadOnlyWithExplicitReasons() throws {
     let encodings: [(data: Data, error: InkoraDocumentError)] = [
       // UTF-16LE with "hi", UTF-16BE with "hi", UTF-32LE/BE BOMs only.
       (Data([0xFF, 0xFE, 0x68, 0x00, 0x69, 0x00]), .utf16Detected),
@@ -70,20 +71,17 @@ final class InkoraDocumentTests: XCTestCase {
 
     for (payload, expected) in encodings {
       let document = InkoraDocument()
-      XCTAssertThrowsError(
-        try document.read(from: payload, ofType: "net.daringfireball.markdown")
-      ) { error in
-        XCTAssertEqual(
-          error.localizedDescription,
-          expected.localizedDescription,
-          "Wrong error for \(payload.map { String(format: "%02X", $0) })"
-        )
-        XCTAssertEqual(
-          (error as? LocalizedError)?.failureReason,
-          expected.failureReason,
-          "Wrong failure reason for \(payload.map { String(format: "%02X", $0) })"
-        )
-      }
+      try document.read(from: payload, ofType: "net.daringfireball.markdown")
+      XCTAssertEqual(
+        document.encodingError, expected,
+        "Wrong error for \(payload.map { String(format: "%02X", $0) })")
+      XCTAssertEqual(
+        document.encodingError?.failureReason, expected.failureReason,
+        "Wrong failure reason for \(payload.map { String(format: "%02X", $0) })")
+      XCTAssertEqual(
+        document.text, "",
+        "No mojibake may be decoded for \(payload.map { String(format: "%02X", $0) })")
+      XCTAssertFalse(document.isDocumentEdited)
     }
   }
 
@@ -195,20 +193,82 @@ final class InkoraDocumentTests: XCTestCase {
   }
 
   @MainActor
-  func testInvalidUTF8FileDoesNotCreateAnEditableDocument() throws {
-    let url = FileManager.default.temporaryDirectory
-      .appendingPathComponent("invalid-\(UUID().uuidString).md")
-    try Data([0xC3, 0x28]).write(to: url)
-    defer { try? FileManager.default.removeItem(at: url) }
+  func testUnsupportedEncodingDocumentCannotSaveAnywhere() async throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("encoding-error.md")
+    let bytes = Data([0xD6, 0xD0, 0xCE, 0xC4])
+    try bytes.write(to: url)
+    let other = directory.appendingPathComponent("copy.md")
+    let document = try InkoraDocument(contentsOf: url, ofType: markdownType)
 
-    XCTAssertThrowsError(
-      try InkoraDocument(contentsOf: url, ofType: "net.daringfireball.markdown")
-    ) { error in
-      XCTAssertEqual(
-        error.localizedDescription,
-        InkoraDocumentError.invalidUTF8.localizedDescription
-      )
+    let saveError = await save(document, to: url, operation: .saveOperation)
+    XCTAssertEqual(saveError as? InkoraDocumentError, .invalidUTF8)
+    let saveAsError = await save(document, to: other, operation: .saveAsOperation)
+    XCTAssertEqual(saveAsError as? InkoraDocumentError, .invalidUTF8)
+
+    XCTAssertFalse(
+      FileManager.default.fileExists(atPath: other.path),
+      "Save As must not write the empty buffer anywhere")
+    XCTAssertEqual(try Data(contentsOf: url), bytes, "Original bytes must stay untouched")
+    XCTAssertThrowsError(try document.data(ofType: markdownType)) { error in
+      XCTAssertEqual(error as? InkoraDocumentError, .invalidUTF8)
     }
+    XCTAssertThrowsError(
+      try document.write(
+        to: other, ofType: markdownType, for: .saveAsOperation, originalContentsURL: nil))
+    XCTAssertFalse(document.isDocumentEdited)
+
+    let closeError = expectation(description: "close preparation finished")
+    var reportedError: Error?
+    document.prepareForClose { error in
+      reportedError = error
+      closeError.fulfill()
+    }
+    await fulfillment(of: [closeError], timeout: 2)
+    XCTAssertNil(reportedError, "Closing needs no snapshot and never fails")
+  }
+
+  @MainActor
+  func testUnsupportedEncodingWindowShowsReadOnlyStateWithoutEditor() throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("只读编码.md")
+    try Data([0xFF, 0xFE, 0x68, 0x00, 0x69, 0x00]).write(to: url)
+    let document = try InkoraDocument(contentsOf: url, ofType: markdownType)
+
+    document.makeWindowControllers()
+    defer { document.close() }
+
+    let window = try XCTUnwrap(document.windowControllers.first?.window)
+    XCTAssertEqual(window.title, "只读编码.md")
+    XCTAssertEqual(window.subtitle, DocumentFileState.unsupportedEncoding.localizedDescription)
+    let contentView = try XCTUnwrap(window.contentViewController?.view)
+    XCTAssertEqual(contentView.accessibilityIdentifier(), "EncodingError")
+    XCTAssertFalse(
+      contentView is WKWebView, "The encoding error state must not expose an editor")
+  }
+
+  @MainActor
+  func testUnsupportedEncodingDocumentProducesNoRecoveryDraft() async throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let source = directory.appendingPathComponent("gbk.md")
+    try Data([0xD6, 0xD0, 0xCE, 0xC4]).write(to: source)
+    let store = RecoveryStore(directory: directory.appendingPathComponent("drafts"))
+    let document = try InkoraDocument(contentsOf: source, ofType: markdownType)
+    document.configureRecovery(store: store)
+
+    document.makeWindowControllers()
+    document.refreshFileState()
+    try await Task.sleep(for: .seconds(1.5))
+
+    XCTAssertFalse(document.isDocumentEdited)
+    XCTAssertTrue(
+      RecoveryStore(directory: store.directory).discover().drafts.isEmpty,
+      "A read-only encoding error must never produce a crash-recovery draft")
+    document.close()
+    XCTAssertTrue(RecoveryStore(directory: store.directory).discover().drafts.isEmpty)
   }
 
   func testApplicationDeclaresMarkdownDocumentAssociation() throws {
