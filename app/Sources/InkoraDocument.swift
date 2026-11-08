@@ -39,11 +39,13 @@ final class InkoraDocument: NSDocument {
     let completion: (Error?) -> Void
   }
 
-  private static let utf8BOM = Data([0xEF, 0xBB, 0xBF])
-  private static let utf32LEBOM = Data([0xFF, 0xFE, 0x00, 0x00])
-  private static let utf32BEBOM = Data([0x00, 0x00, 0xFE, 0xFF])
-  private static let utf16LEBOM = Data([0xFF, 0xFE])
-  private static let utf16BEBOM = Data([0xFE, 0xFF])
+  // Referenced from the nonisolated NSDocument read override; Data constants
+  // are immutable and Sendable, so they carry no actor isolation.
+  private nonisolated static let utf8BOM = Data([0xEF, 0xBB, 0xBF])
+  private nonisolated static let utf32LEBOM = Data([0xFF, 0xFE, 0x00, 0x00])
+  private nonisolated static let utf32BEBOM = Data([0x00, 0x00, 0xFE, 0xFF])
+  private nonisolated static let utf16LEBOM = Data([0xFF, 0xFE])
+  private nonisolated static let utf16BEBOM = Data([0xFE, 0xFF])
 
   private(set) var bridgeDocumentID = UUID().uuidString
   private var diskVersion: DocumentDiskVersion?
@@ -209,7 +211,7 @@ final class InkoraDocument: NSDocument {
   /// ENC-002: never guess a conversion and never show mojibake. The original
   /// bytes stay untouched on disk while the document opens read-only with
   /// the detected reason.
-  private func enterEncodingError(_ error: InkoraDocumentError) {
+  private nonisolated func enterEncodingError(_ error: InkoraDocumentError) {
     encodingErrorStorage.set(error)
     textStorage.set("")
     bomStorage.set(false)
@@ -253,7 +255,8 @@ final class InkoraDocument: NSDocument {
     }
     // NSDocument invokes this inside its coordinated safe-save operation. Check
     // the original again, after the asynchronous snapshot and before writing.
-    if let encodingError { throw encodingError }
+    // This override is nonisolated, so read the lock-guarded storage directly.
+    if let encodingError = encodingErrorStorage.get() { throw encodingError }
     if saveOperation == .saveOperation,
       let original = absoluteOriginalContentsURL, original == fileURL
     {
