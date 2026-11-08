@@ -82,11 +82,18 @@ test-ui: build prepare-artifacts
 		tests/ci/ui-launch-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Debug/Inkora.app"
 
+# Existing archive/export packages must be checked without rebuilding or changing
+# their signing identity. Release scripts already sanitize/capture command output.
+ifneq ($(strip $(RELEASE_APP_BUNDLE)),)
+release-bundle-check:
+	tests/ci/editor-bundle-smoke.sh "$(RELEASE_APP_BUNDLE)"
+else
 release-bundle-check: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
 release-bundle-check: build-release prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) release-bundle \
 		tests/ci/editor-bundle-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Release/Inkora.app"
+endif
 
 test-ui-release: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
 test-ui-release: release-bundle-check

@@ -85,7 +85,7 @@ check_app() {
   if [[ $kind != dry-run ]]; then
     [[ $details == *"Authority=$INKORA_SIGN_IDENTITY"* && $details == *"TeamIdentifier=$INKORA_TEAM_ID"* ]] || fail 65 'Developer ID authority/team mismatch.'
   fi
-  tests/ci/editor-bundle-smoke.sh "$1"
+  make --no-print-directory release-bundle-check RELEASE_APP_BUNDLE="$1"
 }
 make_zip() { rm -f "$zip"; ditto -c -k --sequesterRsrc --keepParent "$app" "$zip"; }
 make_dmg() {

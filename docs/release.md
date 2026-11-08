@@ -64,7 +64,7 @@ WKWebView 的 JS 在系统 WebContent 进程运行，因此不为 Inkora 主进�
 
 验证精确比较签名后的权限与仓库权限，仅容许 Xcode 添加且与 Team / bundle id 匹配的签名元数据；拒绝 get-task-allow、UITesting id 或额外 runtime exception。
 正式验证包括 `codesign --verify --deep --strict`、runtime 标志、Developer ID authority / Team、`spctl -a -vvv -t exec`、`xcrun stapler validate`、`hdiutil verify`。
-同样检查只读挂载 DMG 和解压 ZIP 后的 App，并复用 `tests/ci/editor-bundle-smoke.sh` 检查 HTML、脚本、CSP 和 WebKit 权限。
+同样检查只读挂载 DMG 和解压 ZIP 后的 App，并调用 `make release-bundle-check RELEASE_APP_BUNDLE="<现有 App 路径>"`，复用 `tests/ci/editor-bundle-smoke.sh` 检查 HTML、脚本、CSP 和 WebKit 权限。指定现有包时不重新构建，不改写正式 bundle id；输出由发布脚本统一脱敏。默认不传此参数时仍构建隔离 UITesting Release，供常规 CI / `test-ui-release` 使用。
 ZIP 本身不能 staple，因此先 staple App，再重建 ZIP；DMG 另行签名、公证、staple。
 依据：[Apple 公证要求](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)、[自定义公证流程](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)。
 
@@ -92,7 +92,7 @@ ZIP 本身不能 staple，因此先 staple App，再重建 ZIP；DMG 另行签�
 
 - [ ] `MARKETING_VERSION` 是 `major.minor.patch`，`CURRENT_PROJECT_VERSION` 为单调递增整数；修改 `project.yml` 并重新生成工程。Beta 标签例如 `v0.1.0-beta.1`，候选迭代递增 beta 序号和 build 号，绝不覆盖既有标签。
 - [ ] 在 CHANGELOG 中记录该版本变化、已知问题、最低 macOS、支持 CPU 架构和数据安全限制；本任务不虚构尚未发布版本的 CHANGELOG。
-- [ ] 指定本地验证、完整 CI 和数据安全/性能验收通过；记录 commit、CI 链接及人工烟测结果。
+- [ ] `make lint test-non-ui release-dry-run`、默认非 UI CI 和数据安全/性能验收通过；发布前另手动触发 CI 的 UI 套件（`-f ui-tests=true`）并通过，记录 commit、CI 链接及人工烟测结果。
 - [ ] 使用持凭据发布机完成 `make release`，检查脱敏 release.log，机器验证和两种包的干净用户离线烟测通过。
 - [ ] 仅选用 developer-id 目录最终包，验证 `shasum -a 256`，并与 `SHA256SUMS` 一致；修改或重新打包后必须重新签名、公证、验证和计算 checksum。
 - [ ] 建立 GitHub Releases 草稿并由人审阅发行说明、产物及 checksum。下面命令只供发布者使用，本任务不执行：
