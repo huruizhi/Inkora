@@ -368,11 +368,10 @@
       "definitionKept": true
     },
     {
-      "action": "inline ledger counterexamples",
-      "destinationTextCollisionBlocked": true,
-      "escapedDisplayBlocked": true,
-      "trustedSourceKept": true,
-      "saveBlocked": true
+      "action": "lexical ledger counterexamples closed",
+      "destinationTextCollisionEdited": true,
+      "escapedDisplayEdited": true,
+      "unrelatedBytesKept": true
     },
     {
       "action": "link/image source selection integration",

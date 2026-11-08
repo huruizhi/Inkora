@@ -4,6 +4,8 @@
 
 本交付延续 019 的纯词法模块，只修改 `source-ledger.ts`、独立证据脚本与本文件；没有修改 `model.ts`、`main.ts`、`selection-map.ts`、HTML、生产代码、依赖、native-host、manifest 或冻结样稿。模块尚未接入 UI、事务或保存链路，不代表 M0、生产完成或通用 Markdown source map 完成。
 
+> 后续状态：INK-PROT-022 已完成隔离原型接线；本文件的“尚未接入”只描述 020 交付时点。真实入口与新增风险见 `LEDGER-INTEGRATION-EVIDENCE.md`。
+
 ## 结论
 
 旧实现把 PM 文本叶放进所属块原文做顺序 `indexOf`，006 又以正反贪心一致作为唯一性依据。两者都无法回答一个原文片段为什么属于正文、label 还是 href。新模块改为三段式证据：
@@ -75,7 +77,7 @@ debugSourceLedger(ledger): string
 
 ## 独立来源断言
 
-`source-ledger-check.mjs` 在拼装 fixture 时同步记录 expected raw span；expected 不读取账本结果，也不调用旧 `sourcePosition`。脚本用 Vite 临时打包真实 `model.ts` 与新模块，随后立即删除临时入口/产物。通过的 16 组覆盖：
+`source-ledger-check.mjs` 在拼装 fixture 时同步记录 expected raw span；expected 不读取账本结果，也不调用旧 `sourcePosition`。脚本用 Vite 临时打包真实 `model.ts` 与新模块，随后立即删除临时入口/产物。通过的 17 组覆盖：
 
 1. `[a](later "later")later` 的 href/title/body 三重同字；正文内部映射准确，另外两处拒绝。
 2. `\*` 与 `&amp;amp;` 显示两端映射；entity raw 内部、emoji surrogate 中间、组合 grapheme 中间拒绝。
@@ -93,6 +95,7 @@ debugSourceLedger(ledger): string
 14. 10,560 UTF-16、160 块、三次重复构建的有规模测量。
 15. `BOM` 与 `BOM + 空白` 的默认/left/right、source→visual、offset 0 拒绝和 BOM 前缀不变。
 16. 四空格/tab 缩进代码的单行、多行末尾无 LF，以及 BOM 组合；断言真实 PM 文本端点、raw offset 和所有 span 不越过 source length。
+17. code/link 混排：fence、缩进代码、HTML literal、受保护数学块内的同名定义不污染正文；仅代码定义保持正文为字面量；合法重复定义 first-wins，ledger 只把真实定义范围标为 definition spans。
 
 典型调试输出：
 
@@ -132,7 +135,7 @@ editor/node_modules/.bin/tsc \
 # PASS（strict TypeScript，无输出）
 
 node editor/prototypes/fidelity/source-ledger-check.mjs
-# PASS：16 组独立来源断言；真实 model.parse/PM 路径；临时 bundle 已清理
+# PASS：17 组独立来源断言；真实 model.parse/PM 路径；临时 bundle 已清理
 # 冻结 fixture input + case05 after：19 次构建通过
 
 python3 editor/prototypes/fidelity-cases/verify.py

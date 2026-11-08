@@ -6,8 +6,19 @@ import { baseKeymap, joinBackward } from 'prosemirror-commands';
 import { keydownHandler } from 'prosemirror-keymap';
 import { splitListItem } from 'prosemirror-schema-list';
 import { TextAreaEditorKernel } from '../../src/editor-kernel';
-import { FidelityModel, sourcePosition, diff, bytes, parse, schema } from './model';
-import { visualToSource, sourceToVisual, rawToLf, lfToRaw } from './selection-map';
+import { FidelityModel, diff, bytes, parse, schema, type Range } from './model';
+import { rawToLf, lfToRaw } from './selection-map';
+import { buildSourceLedger, sourceToVisual as ledgerSourceToVisual, visualToSource as ledgerVisualToSource } from './source-ledger';
+
+// Compatibility seam used by the legacy cross-validation driver. Unlike the
+// former model.sourcePosition export, this wrapper is ledger-backed too.
+function sourcePosition(source: string, state: import('prosemirror-state').EditorState, ranges: Range[], position: number, side: 'from' | 'to' | 'any' = 'any'): number {
+  const built = buildSourceLedger(source, state.doc, ranges);
+  if (!built.ok) throw Error(`source ledger 构建失败：${built.reason}`);
+  const mapped = ledgerVisualToSource(built.ledger, position, position, { collapsedAffinity: side === 'to' ? 'left' : 'right' });
+  if (!mapped.ok) throw Error(mapped.reason);
+  return mapped.anchor;
+}
 
 // INK-PROT-010 selection wiring state. The textarea shows the LF-normalized
 // draft: selectionStart/End are LF offsets, and setSelectionRange carries the
@@ -69,7 +80,8 @@ function render() {
   source.readOnly = !sourceMode;
   const sel = model.state.selection;
   let mapped = '未验证';
-  try { mapped = `${sourcePosition(model.source, model.state, model.ranges, sel.from, 'from')}..${sourcePosition(model.source, model.state, model.ranges, sel.to, 'to')} (UTF-16)`; } catch { mapped = '无可靠映射'; }
+  const sourceSelection = model.visualToSource(sel.from, sel.to, { collapsedAffinity: 'right' });
+  if (sourceSelection.ok) mapped = `${sourceSelection.anchor}..${sourceSelection.head} (UTF-16, ledger)`;
   const pending = model.pending;
   const saveState = model.blocked ? `阻断（${model.blocked}）` : model.staged ? '阻断（空结构暂存尚未形成可重解析 Markdown；继续输入或 Undo）' : pending ? `阻断（${model.issues.length} 处边界含混待修复：主动源码修复或 Undo）` : sourceMode ? '阻断（源码草稿未提交）' : '允许建立内存快照';
   $('state').textContent = `revision: ${model.revision} | dirty: ${model.dirty} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to}（anchor/head ${sel.anchor}/${sel.head}${sel.anchor > sel.head ? '，后向' : ''}）| 原文: ${mapped}\n模式: ${sourceMode ? `主动源码草稿（textarea ${source.selectionStart}..${source.selectionEnd} ${source.selectionDirection ?? 'unknown'}，LF 偏移）` : model.staged ? `可视（${model.staged.kind} 暂存；尚未生成可独立解析的非空块）` : '可视'} | composition: ${view.composing}\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
@@ -109,10 +121,16 @@ function annotateImages() {
     const leaf = leaves[i];
     if (!leaf) return;
     try {
-      const altStart = sourcePosition(model.source, model.state, model.ranges, leaf.pos, 'from');
-      const suffix = /^\](?:\[[^\]\r\n]*\]|\((?:\\.|[^)\r\n])*\))?/.exec(model.source.slice(altStart + leaf.text.length));
-      if (altStart < 2 || model.source.slice(altStart - 2, altStart) !== '![' || !suffix || model.source.slice(altStart, altStart + leaf.text.length) !== leaf.text) throw Error('unmapped');
-      const raw = model.source.slice(altStart - 2, altStart + leaf.text.length + suffix[0].length);
+      const ledger = model.sourceLedger();
+      const owned = ledger.spans.filter(item => item.visible && item.role === 'image-alt'
+        && item.visualStart !== undefined && item.visualEnd !== undefined
+        && item.visualStart >= leaf.pos && item.visualEnd <= leaf.pos + leaf.text.length);
+      const owners = [...new Set(owned.map(item => item.owner).filter(Boolean))];
+      if (owners.length !== 1) throw Error('unmapped');
+      const syntax = ledger.spans.filter(item => item.owner === owners[0]);
+      const start = Math.min(...syntax.map(item => item.sourceStart));
+      const end = Math.max(...syntax.map(item => item.sourceEnd));
+      const raw = model.ledgerSource().slice(start, end);
       span.dataset.imageSource = raw;
       if (leaf.title) span.dataset.imageTitle = leaf.title;
       span.title = `图片原文占位（不加载资源）：${raw}`;
@@ -158,7 +176,9 @@ function pick(text: string) {
 }
 function patchSelection(insert: string) {
   const { from, to } = model.state.selection;
-  model.apply([{ from: sourcePosition(model.source, model.state, model.ranges, from, 'from'), to: sourcePosition(model.source, model.state, model.ranges, to, 'to'), insert }], model.state.tr.insertText(insert, from, to));
+  const mapped = model.visualToSource(from, to, { collapsedAffinity: 'right' });
+  if (!mapped.ok) throw Error(mapped.reason);
+  model.apply([{ from: mapped.anchor, to: mapped.head, insert }], model.state.tr.insertText(insert, from, to));
 }
 // Real visual entry for editing an inline link destination: selection inside
 // the link display text + new target in the input → one patch on the exact
@@ -176,19 +196,30 @@ function linkTarget() {
   });
   if (!hit) throw Error('选区不在链接显示文字内；请先选中行内链接的文字');
   const leaf = hit!;
-  const displayStart = sourcePosition(model.source, model.state, model.ranges, leaf.pos, 'from');
-  if (model.source.slice(displayStart, displayStart + leaf.text.length) !== leaf.text) throw Error('显示文字含规范化字符，无法定位行内目标；已拒绝');
-  const rest = model.source.slice(displayStart + leaf.text.length);
-  const match = /^\]\(([^ \t)]*)([^)]*)\)/.exec(rest);
-  if (!match) throw Error('该链接不是行内形式（引用式链接的目标在定义行修改）');
-  if (match[1] !== leaf.mark.attrs.href) throw Error('目标写法与解析结果不一致（含转义/编码）；已拒绝');
-  const destStart = displayStart + leaf.text.length + 2;
-  model.apply([{ from: destStart, to: destStart + match[1].length, insert: next }], model.state.tr.addMark(leaf.pos, leaf.pos + leaf.text.length, schema.marks.link.create({ href: next, title: leaf.mark.attrs.title })));
-  note = `真实 addMark + 行内目标局部补丁：${match[1]} → ${next}`;
+  const ledger = model.sourceLedger();
+  const labels = ledger.spans.filter(item => item.visible && item.role === 'link-label'
+    && item.visualStart !== undefined && item.visualEnd !== undefined
+    && item.visualStart >= leaf.pos && item.visualEnd <= leaf.pos + leaf.text.length);
+  const owners = [...new Set(labels.map(item => item.owner).filter(Boolean))];
+  if (owners.length !== 1) throw Error('链接显示文字没有唯一的词法 ownership；已拒绝');
+  const href = ledger.spans.find(item => item.owner === owners[0] && item.role === 'href' && item.syntax === 'inline-href');
+  if (!href) throw Error('该链接不是行内形式（引用式链接的目标在定义行修改）');
+  if (href.detail !== leaf.mark.attrs.href) throw Error('目标写法与解析结果不一致（含转义/编码）；已拒绝');
+  const previous = model.source.slice(href.sourceStart, href.sourceEnd);
+  model.apply([{ from: href.sourceStart, to: href.sourceEnd, insert: next }], model.state.tr.addMark(leaf.pos, leaf.pos + leaf.text.length, schema.marks.link.create({ href: next, title: leaf.mark.attrs.title })));
+  note = `真实 addMark + ledger 行内目标局部补丁：${previous} → ${next}`;
 }
 // Programmatic draft edits go through the real input path so the kernel
 // tracks line endings and user-change state exactly like typed input.
-const setDraft = (value: string) => { const source = $('source-draft') as HTMLTextAreaElement; source.value = value; source.dispatchEvent(new Event('input')); };
+const setDraft = (value: string) => {
+  const source = $('source-draft') as HTMLTextAreaElement;
+  const start = source.selectionStart ?? 0;
+  const end = source.selectionEnd ?? start;
+  const backward = source.selectionDirection === 'backward';
+  source.value = value;
+  source.dispatchEvent(new Event('input'));
+  setDraftSelection(source, Math.min(start, value.length), Math.min(end, value.length), backward);
+};
 // An uncommitted source draft must never be silently discarded by history
 // actions: leaving source mode lets render reset the textarea, so undo/redo
 // refuse and keep the draft until the user commits, retries from a safe
@@ -205,8 +236,9 @@ const actions: Record<string, () => void> = {
   text() { pick('中文正文'); patchSelection('中文改写'); note = '正文通过真实 PM 文本事务与局部补丁更新'; },
   strong() {
     pick('特殊'); const { from, to } = model.state.selection;
-    const a = sourcePosition(model.source, model.state, model.ranges, from), b = sourcePosition(model.source, model.state, model.ranges, to);
-    model.apply([{ from: b, to: b, insert: '**' }, { from: a, to: a, insert: '**' }], model.state.tr.addMark(from, to, schema.marks.strong.create()));
+    const mapped = model.visualToSource(from, to);
+    if (!mapped.ok) throw Error(mapped.reason);
+    model.apply([{ from: mapped.head, to: mapped.head, insert: '**' }, { from: mapped.anchor, to: mapped.anchor, insert: '**' }], model.state.tr.addMark(from, to, schema.marks.strong.create()));
     note = '真实 AddMark 事务；仅插入两对定界符';
   },
   heading() {
@@ -219,7 +251,9 @@ const actions: Record<string, () => void> = {
   task() { const p = pick('[ ]'); model.select(p + 1, p + 2); patchSelection('x'); note = '任务通过列表内文字 [ ] → [x] 单字符补丁；尚无 task schema/checkbox 控件'; },
   split() {
     const p = pick('保护块之后'); model.select(p + 3);
-    const at = sourcePosition(model.source, model.state, model.ranges, p + 3);
+    const mapped = model.visualToSource(p + 3, p + 3, { collapsedAffinity: 'right' });
+    if (!mapped.ok) throw Error(mapped.reason);
+    const at = mapped.anchor;
     const eol = model.source.slice(0, at).match(/\r\n|\n/)?.[0] ?? '\n';
     model.apply([{ from: at, to: at, insert: eol + eol }], model.state.tr.split(p + 3)); note = '真实 PM split；只插入空行';
   },
@@ -242,7 +276,7 @@ const actions: Record<string, () => void> = {
     // untouched and the reason is shown; the caret can then be placed on a
     // safe anchor manually before applying.
     const sel = model.state.selection;
-    const mapped = visualToSource(model.source, model.state.doc, model.ranges, sel.anchor, sel.head);
+    const mapped = model.visualToSource(sel.anchor, sel.head, { collapsedAffinity: 'right' });
     if (!mapped.ok) {
       lastSelectionMap = { stage: 'enter-source', ok: false, reason: mapped.reason };
       note = `主动源码草稿已打开（复用生产 TextAreaEditorKernel，保真 CRLF/LF/BOM）；当前可视选区未映射进 textarea（${mapped.reason}）。草稿与可视选区保持不变；可在源码中把光标移到安全锚点后提交，或取消`;
@@ -264,7 +298,17 @@ const actions: Record<string, () => void> = {
     const src = $('source-draft') as HTMLTextAreaElement;
     const start = src.selectionStart ?? 0, end = src.selectionEnd ?? 0, backward = src.selectionDirection === 'backward';
     const parsed = parse(text);
-    const mapped = sourceToVisual(text, parsed.doc, parsed.ranges, lfToRaw(text, backward ? end : start), lfToRaw(text, backward ? start : end));
+    const built = buildSourceLedger(text, parsed.doc, parsed.ranges);
+    const rawAnchor = lfToRaw(text, backward ? end : start);
+    const rawHead = lfToRaw(text, backward ? start : end);
+    const strictMapped = built.ok
+      ? ledgerSourceToVisual(built.ledger, rawAnchor, rawHead, { collapsedAffinity: 'right' })
+      : { ok: false as const, reason: `source ledger 构建失败：${built.reason}` };
+    const adjacentMapped = built.ok && !strictMapped.ok
+      ? ledgerSourceToVisual(built.ledger, rawAnchor, rawHead, { collapsedAffinity: 'right', snap: 'adjacent-gap' })
+      : strictMapped;
+    const mapped = adjacentMapped;
+    const strictReason = !strictMapped.ok && mapped.ok ? strictMapped.reason : undefined;
     if (!mapped.ok) {
       // A document with no mappable text leaf has no safe anchor to move to;
       // refusing would disable the repair entry itself, so the commit
@@ -314,7 +358,7 @@ const actions: Record<string, () => void> = {
     }
     const same = model.sourceEdit(text);
     if (!same) model.select(mapped.anchor, mapped.head);
-    lastSelectionMap = { stage: 'apply-source', ok: true, anchor: mapped.anchor, head: mapped.head, snapped: mapped.snapped };
+    lastSelectionMap = { stage: 'apply-source', ok: true, anchor: mapped.anchor, head: mapped.head, snapped: mapped.snapped, reason: strictReason };
     sourceMode = false; note = same
       ? '源码修改完成；语义相同，保留原可视选区，仍计入 dirty/history'
       : `源码修改完成；textarea 选区已映射回新文档（anchor/head ${mapped.anchor}/${mapped.head}${mapped.anchor > mapped.head ? '，后向' : ''}${mapped.snapped.length ? `；${mapped.snapped.join('；')}——吸附近似，非精确映射` : '，精确映射'})；仍计入 dirty/history`;

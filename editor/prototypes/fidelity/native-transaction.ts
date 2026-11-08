@@ -248,54 +248,6 @@ export function planNativeTransaction(
   throw Error(`该原生事务尚未支持（${step.stepType ?? 'unknown'}）；可信原文与 PM 状态保持不变`);
 }
 
-function normalizedToRaw(candidate: string, normalizedOffset: number): number {
-  let raw = 0;
-  let normalized = 0;
-  while (normalized < normalizedOffset) {
-    if (candidate.slice(raw, raw + 2) === '\r\n') raw++;
-    raw++;
-    normalized++;
-  }
-  return raw;
-}
-
-// A staged document may contain an empty paragraph that Markdown cannot yet
-// represent. Text leaves still align monotonically with the local candidate;
-// explicit anchors own positions (notably empty-block carets) with no leaf.
-export function stagedSourcePosition(
-  candidate: string,
-  state: EditorState,
-  anchors: readonly NativeAnchor[],
-  position: number,
-  side: 'from' | 'to',
-): number {
-  const exact = anchors.filter(anchor => anchor.pmPos === position);
-  if (exact.length) {
-    const offsets = new Set(exact.map(anchor => anchor.sourceOffset));
-    if (offsets.size !== 1) throw Error('暂存选区锚点对应多个原文位置');
-    return exact[0].sourceOffset;
-  }
-
-  const normalized = candidate.replace(/\r\n/g, '\n');
-  let cursor = 0;
-  let found: number | undefined;
-  state.doc.descendants((node, pos) => {
-    if (!node.isText) return;
-    const index = normalized.indexOf(node.text!, cursor);
-    if (index < 0) throw Error(`暂存文本叶无法按顺序映射：${JSON.stringify(node.text)}`);
-    const end = pos + node.nodeSize;
-    const inside = side === 'from' ? pos <= position && position < end : pos < position && position <= end;
-    if (inside) {
-      const offset = normalizedToRaw(candidate, index + position - pos);
-      if (found !== undefined && found !== offset) throw Error('暂存选区边界有多个原文映射');
-      found = offset;
-    }
-    cursor = index + node.text!.length;
-  });
-  if (found === undefined) throw Error('暂存选区不能安全映射到候选原文');
-  return found;
-}
-
 function mapSourceAnchor(anchor: number, patch: NativePatch): number {
   if (anchor < patch.from) return anchor;
   if (anchor > patch.to) return anchor + patch.insert.length - (patch.to - patch.from);
@@ -307,13 +259,14 @@ export function advanceStagedText(
   anchors: readonly NativeAnchor[],
   state: EditorState,
   tr: Transaction,
+  position: SourcePosition,
 ): { candidate: string; patch: NativePatch; anchors: NativeAnchor[] } {
   if (tr.steps.length !== 1) throw Error('暂存结构之后仅接受单步文字事务');
   const step = tr.steps[0].toJSON() as Record<string, any>;
   const insert = textSlice(step);
   if (insert === null) throw Error('暂存结构之后的非文字事务尚未支持');
-  const from = stagedSourcePosition(candidate, state, anchors, step.from, 'from');
-  const to = stagedSourcePosition(candidate, state, anchors, step.to, 'to');
+  const from = position(step.from, step.from === step.to ? 'any' : 'from');
+  const to = step.from === step.to ? from : position(step.to, 'to');
   if (from > to || (step.from === step.to && from !== to)) throw Error('暂存选区边界无法唯一映射到候选原文');
   const patch = { from, to, insert };
   const targetSelection = tr.selection;
@@ -321,7 +274,7 @@ export function advanceStagedText(
     pmPos: tr.mapping.map(anchor.pmPos, 1),
     sourceOffset: mapSourceAnchor(anchor.sourceOffset, patch),
   }));
-  if (targetSelection.empty) mapped.push({
+  if (targetSelection.empty && tr.selectionSet) mapped.push({
     pmPos: targetSelection.from,
     sourceOffset: patch.from + insert.length,
   });

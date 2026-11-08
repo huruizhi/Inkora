@@ -7,7 +7,15 @@ import { inkoraNodeSpecs, inkoraMarkSpecs, type InkoraNodeName, type InkoraMarkN
 import { inkoraMarkdownParser } from '../../src/markdown-codec';
 import { parseProtectedMarkdown } from '../../src/protected-markdown';
 import { analyzeMarkdownSafety } from '../../src/markdown-safety';
-import { advanceStagedText, planNativeTransaction, stagedSourcePosition, type NativeAnchor } from './native-transaction';
+import { advanceStagedText, applyNativePatches, planNativeTransaction, type NativeAnchor, type NativePlan } from './native-transaction';
+import {
+  buildSourceLedger,
+  visualToSource as ledgerVisualToSource,
+  type LedgerMapResult,
+  type MapOptions,
+  type SourceLedger,
+} from './source-ledger';
+import { installReferenceCapture, referenceLineRanges, referenceSourceSlices } from './reference-context';
 
 export type Range = { start: number; end: number; pos: number; size: number; kind: string; issue?: string };
 export type Patch = { from: number; to: number; insert: string };
@@ -29,6 +37,7 @@ type HistoryEntry = {
   before: string;
 };
 const tokenizer = new MarkdownIt('commonmark', { html: false }).enable(['table', 'strikethrough']);
+installReferenceCapture(tokenizer);
 export const bytes = (s: string) => new TextEncoder().encode(s);
 export function diff(a: string, b: string) {
   const x = bytes(a), y = bytes(b);
@@ -84,13 +93,21 @@ export const markdownParser = new MarkdownParser(schema, inlineTokenizer, {
 export function parse(source: string) {
   const starts = [0];
   for (let i = 0; i < source.length; i++) if (source[i] === '\n') starts.push(i + 1);
-  const refs = [...source.matchAll(/^ {0,3}\[[^\]^\n]+\]:[^\n]*(?:\n|$)/gm)].map(m => m[0]).join('\n');
+  const blockEnv: Record<string, unknown> = {};
+  const blockTokens = tokenizer.parse(source.replace(/^\uFEFF/, ' '), blockEnv);
+  // Only definitions accepted by the CommonMark block rule may resolve body
+  // references. The simple one-line subset is the prototype's existing
+  // supported definition form; multiline definitions remain an explicit
+  // unfinished risk rather than falling back to a whole-file regex.
+  const refs = referenceSourceSlices(source, referenceLineRanges(blockEnv))
+    .filter(raw => /^ {0,3}\[[^\]\n]+\]:[^\n]*(?:\r?\n)?$/.test(raw))
+    .join('\n');
   const ranges: Range[] = [], nodes: PMNode[] = [], issues: Issue[] = [];
   let cursor = 0, pos = 0;
   // Reference gaps also admit footnote-style labels: markdown-it consumes
   // `[^1]: def` lines as reference definitions, so they can only be gap bytes.
   const cleanGap = (s: string) => s.replace(/^ {0,3}\[[^\]\n]+\]:[^\n]*(?:\n|$)/gm, '').trim().length === 0;
-  for (const token of tokenizer.parse(source.replace(/^\uFEFF/, ' '), {})) {
+  for (const token of blockTokens) {
     if (token.level !== 0 || !token.map || token.type.endsWith('_close')) continue;
     let start = starts[token.map[0]], end = starts[token.map[1]] ?? source.length;
     if (start < cursor) continue;
@@ -198,19 +215,23 @@ export function sourcePosition(source: string, state: EditorState, ranges: Range
 // Markdown cannot represent a trailing empty paragraph or a softbreak moved to
 // the very start of a freshly split paragraph. These are the only doc.eq
 // differences allowed to remain staged; every other mismatch is rejected.
+function stageComparableBlock(node: PMNode): PMNode | null {
+  if (node.type.name !== 'paragraph') return node;
+  const children: PMNode[] = [];
+  node.forEach((child, _offset, index) => {
+    if (index === 0 && child.isText && child.text!.startsWith('\n')) {
+      const text = child.text!.replace(/^\n+/, '');
+      if (text) children.push(schema.text(text, child.marks));
+    } else children.push(child);
+  });
+  const paragraph = node.type.create(node.attrs, children, node.marks);
+  return paragraph.content.size ? paragraph : null;
+}
 function stageComparable(doc: PMNode): PMNode {
   const blocks: PMNode[] = [];
   doc.forEach(node => {
-    if (node.type.name !== 'paragraph') { blocks.push(node); return; }
-    const children: PMNode[] = [];
-    node.forEach((child, _offset, index) => {
-      if (index === 0 && child.isText && child.text!.startsWith('\n')) {
-        const text = child.text!.replace(/^\n+/, '');
-        if (text) children.push(schema.text(text, child.marks));
-      } else children.push(child);
-    });
-    const paragraph = node.type.create(node.attrs, children, node.marks);
-    if (paragraph.content.size) blocks.push(paragraph);
+    const comparable = stageComparableBlock(node);
+    if (comparable) blocks.push(comparable);
   });
   if (!blocks.length) blocks.push(schema.nodes.paragraph.create());
   return schema.topNodeType.createChecked(null, blocks);
@@ -226,6 +247,8 @@ export class FidelityModel {
   past: HistoryEntry[] = [];
   future: HistoryEntry[] = [];
   staged: StagedTransaction | null = null;
+  private ledgerCache: { source: string; doc: PMNode; ranges: Range[]; ledger: SourceLedger } | null = null;
+  private stagedLedgerCache: { candidate: string; doc: PMNode; anchors: NativeAnchor[]; ledger: SourceLedger } | null = null;
   constructor(source: string) {
     const parsed = parse(source); this.source = this.saved = this.before = source;
     this.ranges = parsed.ranges; this.issues = parsed.issues;
@@ -234,6 +257,138 @@ export class FidelityModel {
   }
   get pending() { return this.issues.length > 0; }
   get dirty() { return this.source !== this.saved || this.staged !== null; }
+  sourceLedger(): SourceLedger {
+    if (this.staged) return this.stagedLedger(this.staged, this.state);
+    const cached = this.ledgerCache;
+    if (cached && cached.source === this.source && cached.doc === this.state.doc && cached.ranges === this.ranges) return cached.ledger;
+    const built = buildSourceLedger(this.source, this.state.doc, this.ranges);
+    if (!built.ok) throw Error(`source ledger 构建失败：${built.reason}`);
+    this.ledgerCache = { source: this.source, doc: this.state.doc, ranges: this.ranges, ledger: built.ledger };
+    return built.ledger;
+  }
+  ledgerSource(): string { return this.staged?.candidate ?? this.source; }
+  visualToSource(anchor: number, head: number, options: MapOptions = {}): LedgerMapResult {
+    return ledgerVisualToSource(this.sourceLedger(), anchor, head, options);
+  }
+  private ledgerPosition(ledger: SourceLedger, position: number, side: 'from' | 'to' | 'any'): number {
+    const collapsedAffinity = side === 'to' ? 'left' : 'right';
+    const mapped = ledgerVisualToSource(ledger, position, position, { collapsedAffinity });
+    if (!mapped.ok) throw Error(mapped.reason);
+    return mapped.anchor;
+  }
+  private stagedLedger(stage: StagedTransaction, state: EditorState): SourceLedger {
+    const cached = this.stagedLedgerCache;
+    if (cached && cached.candidate === stage.candidate && cached.doc === state.doc && cached.anchors === stage.anchors) return cached.ledger;
+    const parsed = parse(stage.candidate);
+    if (parsed.issues.length) throw Error('暂存候选含边界问题，不能建立 source ledger');
+    const built = buildSourceLedger(stage.candidate, parsed.doc, parsed.ranges);
+    if (!built.ok) throw Error(`暂存候选 source ledger 构建失败：${built.reason}`);
+    const ranges: Range[] = [];
+    const visualShifts: number[] = [];
+    let targetIndex = 0;
+    let targetPos = 0;
+    for (let sourceIndex = 0; sourceIndex < parsed.ranges.length; sourceIndex++) {
+      const sourceBlock = parsed.doc.child(sourceIndex);
+      const sourceComparable = stageComparableBlock(sourceBlock);
+      if (!sourceComparable) throw Error(`暂存候选范围 ${sourceIndex} 意外对应空结构`);
+      let matched = false;
+      while (targetIndex < state.doc.childCount) {
+        const targetBlock = state.doc.child(targetIndex++);
+        const pos = targetPos;
+        targetPos += targetBlock.nodeSize;
+        const targetComparable = stageComparableBlock(targetBlock);
+        if (!targetComparable) continue; // explicit staged-only empty structure
+        if (!sourceComparable.eq(targetComparable)) throw Error(`暂存候选第 ${sourceIndex + 1} 块与 staged doc 投影不一致`);
+        ranges.push({ ...parsed.ranges[sourceIndex], pos, size: targetBlock.nodeSize });
+        const leadingNewlines = (node: PMNode) => node.type.name === 'paragraph' && node.firstChild?.isText
+          ? node.firstChild.text!.match(/^\n*/)?.[0].length ?? 0 : 0;
+        visualShifts.push(pos - parsed.ranges[sourceIndex].pos + leadingNewlines(targetBlock) - leadingNewlines(sourceBlock));
+        matched = true;
+        break;
+      }
+      if (!matched) throw Error(`暂存候选第 ${sourceIndex + 1} 块在 staged doc 中缺少投影`);
+    }
+    while (targetIndex < state.doc.childCount) {
+      const targetBlock = state.doc.child(targetIndex++);
+      targetPos += targetBlock.nodeSize;
+      if (stageComparableBlock(targetBlock)) throw Error('staged doc 尾部仍有候选未归属的非空结构');
+    }
+    const translatedSpans = built.ledger.spans.map(span => {
+      if (!span.visible || span.visualStart === undefined || span.visualEnd === undefined) return { ...span };
+      const sourceIndex = parsed.ranges.findIndex(range => span.visualStart! >= range.pos && span.visualEnd! <= range.pos + range.size);
+      if (sourceIndex < 0) throw Error(`暂存可视 span ${span.visualStart}..${span.visualEnd} 缺少块投影`);
+      const shift = visualShifts[sourceIndex];
+      return { ...span, visualStart: span.visualStart + shift, visualEnd: span.visualEnd + shift };
+    });
+    const translatedBlocks = built.ledger.blocks.map((block, sourceIndex) => ({
+      ...block,
+      range: ranges[sourceIndex],
+      spans: block.spans.map(span => {
+        const ledgerIndex = built.ledger.spans.indexOf(span);
+        return ledgerIndex >= 0 ? translatedSpans[ledgerIndex] : { ...span };
+      }),
+    }));
+    const anchors = stage.anchors.map(anchor => {
+      if (anchor.pmPos < 0 || anchor.pmPos > state.doc.content.size) throw Error(`暂存 PM 锚点 ${anchor.pmPos} 越界`);
+      if (anchor.sourceOffset < 0 || anchor.sourceOffset > stage.candidate.length) throw Error(`暂存 source 锚点 ${anchor.sourceOffset} 越界`);
+      if (stage.candidate.startsWith('\uFEFF') && anchor.sourceOffset === 0) throw Error('BOM 前偏移不能成为暂存插入边界');
+      return {
+        sourceStart: anchor.sourceOffset,
+        sourceEnd: anchor.sourceOffset,
+        role: 'insertion-anchor' as const,
+        syntax: 'staged-empty-structure',
+        visible: true as const,
+        text: '',
+        visualStart: anchor.pmPos,
+        visualEnd: anchor.pmPos,
+        detail: '暂存 PM 结构尚无独立 Markdown 表示；仅此显式锚点参与映射',
+      };
+    });
+    const ledger = { ...built.ledger, docSize: state.doc.content.size, blocks: translatedBlocks, spans: [...translatedSpans, ...anchors] };
+    this.stagedLedgerCache = { candidate: stage.candidate, doc: state.doc, anchors: stage.anchors, ledger };
+    return ledger;
+  }
+  private stagedPosition(stage: StagedTransaction, state: EditorState, position: number, side: 'from' | 'to' | 'any'): number {
+    const exact = stage.anchors.filter(anchor => anchor.pmPos === position);
+    if (exact.length) {
+      const offsets = [...new Set(exact.map(anchor => anchor.sourceOffset))];
+      if (offsets.length !== 1) throw Error('暂存选区锚点对应多个原文位置');
+      return offsets[0];
+    }
+    return this.ledgerPosition(this.stagedLedger(stage, state), position, side);
+  }
+  private preserveReferenceTarget(plan: NativePlan, ledger: SourceLedger, step: { from?: number; to?: number }): NativePlan {
+    if (plan.kind !== 'text' || step.from === undefined || step.to === undefined || step.from === step.to) return plan;
+    const labels = ledger.spans.filter(span => span.visible
+      && (span.role === 'link-label' || span.role === 'image-alt')
+      && span.owner && span.visualStart !== undefined && span.visualEnd !== undefined);
+    const owners = [...new Set(labels.map(span => span.owner!))].filter(owner => {
+      const atoms = labels.filter(span => span.owner === owner);
+      const visualStart = Math.min(...atoms.map(span => span.visualStart!));
+      const visualEnd = Math.max(...atoms.map(span => span.visualEnd!));
+      return step.from! >= visualStart && step.to! <= visualEnd;
+    });
+    if (owners.length !== 1) return plan;
+    const owned = ledger.spans.filter(span => span.owner === owners[0]);
+    if (owned.some(span => span.role === 'href' || span.role === 'reference-label')) return plan;
+    const labelAtoms = owned.filter(span => span.visible && (span.role === 'link-label' || span.role === 'image-alt'));
+    if (!labelAtoms.length) return plan;
+    const labelStart = Math.min(...labelAtoms.map(span => span.sourceStart));
+    const labelEnd = Math.max(...labelAtoms.map(span => span.sourceEnd));
+    const referenceKey = this.source.slice(labelStart, labelEnd);
+    const referenceOpen = owned.find(span => span.syntax === 'reference-open');
+    const referenceClose = owned.find(span => span.syntax === 'reference-close');
+    let referencePatch: Patch;
+    if (referenceOpen && referenceClose) {
+      referencePatch = { from: referenceOpen.sourceStart, to: referenceClose.sourceEnd, insert: `[${referenceKey}]` };
+    } else {
+      const labelClose = owned.find(span => span.syntax === 'link-label-close' || span.syntax === 'image-alt-close');
+      if (!labelClose) return plan;
+      referencePatch = { from: labelClose.sourceEnd, to: labelClose.sourceEnd, insert: `[${referenceKey}]` };
+    }
+    const patches = [...plan.patches, referencePatch];
+    return { ...plan, patches, candidate: applyNativePatches(this.source, patches) };
+  }
   private cloneStage(stage: StagedTransaction | null): StagedTransaction | null {
     return stage ? { ...stage, anchors: stage.anchors.map(anchor => ({ ...anchor })) } : null;
   }
@@ -297,14 +452,12 @@ export class FidelityModel {
     if (!tr.docChanged) {
       const next = this.state.apply(tr);
       if (this.staged && !next.selection.eq(this.state.selection)) {
-        const mapSelection = (position: number) => {
-          try { return stagedSourcePosition(this.staged!.candidate, next, this.staged!.anchors, position, 'from'); }
-          catch { return stagedSourcePosition(this.staged!.candidate, next, this.staged!.anchors, position, 'to'); }
-        };
+        const stage = this.staged;
+        const mapSelection = (position: number) => this.stagedPosition(stage, next, position, 'any');
         const anchor = mapSelection(next.selection.anchor);
         const head = mapSelection(next.selection.head);
-        this.staged.anchors = [
-          ...this.staged.anchors,
+        stage.anchors = [
+          ...stage.anchors,
           { pmPos: next.selection.anchor, sourceOffset: anchor },
           { pmPos: next.selection.head, sourceOffset: head },
         ].filter((item, index, all) => all.findIndex(other => other.pmPos === item.pmPos && other.sourceOffset === item.sourceOffset) === index);
@@ -315,7 +468,22 @@ export class FidelityModel {
     if (this.staged) {
       const stage = this.staged;
       const previous = this.snapshot();
-      const next = advanceStagedText(stage.candidate, stage.anchors, this.state, tr);
+      const ledger = this.stagedLedger(stage, this.state);
+      const next = advanceStagedText(
+        stage.candidate,
+        stage.anchors,
+        this.state,
+        tr,
+        (position, side = 'any') => {
+          const exact = stage.anchors.filter(anchor => anchor.pmPos === position);
+          if (exact.length) {
+            const offsets = [...new Set(exact.map(anchor => anchor.sourceOffset))];
+            if (offsets.length !== 1) throw Error('暂存选区锚点对应多个原文位置');
+            return offsets[0];
+          }
+          return this.ledgerPosition(ledger, position, side);
+        },
+      );
       const target = this.state.apply(tr);
       const parsed = parse(next.candidate);
       if (parsed.issues.length) {
@@ -340,6 +508,9 @@ export class FidelityModel {
     const step = tr.steps[0]?.toJSON() as { stepType?: string; from?: number; to?: number; slice?: { content?: Array<{ text?: string }> } } | undefined;
     const insert = step?.stepType === 'replace' && !step.slice?.content?.some(n => n.text === undefined)
       ? (step.slice?.content ?? []).map(n => n.text ?? '').join('') : '';
+    // Build and validate ownership before even enriching the transaction with
+    // inherited marks. The cache key is the exact source/doc/ranges triple.
+    const ledger = this.sourceLedger();
     // PM drops inclusive:false marks when their entire text leaf is replaced.
     // Preserve the exact source leaf's marks for a replacement contained in
     // one text node; otherwise the source re-parse would correctly reject the
@@ -353,13 +524,14 @@ export class FidelityModel {
       });
       for (const mark of marks ?? []) tr.addMark(from, from + insert.length, mark);
     }
-    const plan = planNativeTransaction(
+    let plan = planNativeTransaction(
       this.source,
       this.state,
       this.ranges,
       tr,
-      (position, side = 'any') => sourcePosition(this.source, this.state, this.ranges, position, side),
+      (position, side = 'any') => this.ledgerPosition(ledger, position, side),
     );
+    plan = this.preserveReferenceTarget(plan, ledger, step ?? {});
     const target = this.state.apply(tr);
     const parsed = parse(plan.candidate);
     if (parsed.issues.length) {

@@ -1,5 +1,7 @@
 # INTEGRATION-SELECTION-EVIDENCE：INK-PROT-010 选区映射接入 main/model 源码往返与历史
 
+> 历史说明：本文件记录 010/015 的 selection-map 接线。INK-PROT-022 已将真实入口替换为 source-ledger；当前双向选区、`adjacent-gap` 与 staged 投影见 `LEDGER-INTEGRATION-EVIDENCE.md`。
+
 日期：2026-11-08。分支 `task/INK-PROT-010-selection-integration`，基线 `7fe11b36c0981f2d57d9866320702a966c47866a`（005 保护边界 + 006 选区映射模块 5983120 + 审计样稿 484 + 宿主 952）。只改 `editor/prototypes/fidelity/`；`model.ts`、`selection-map.ts`、生产代码、`native-host/`、独立样稿均未改动（009 平行修引用链接会动 model/main，本轮避免冲突：接线全部落在 main.ts 的 source/apply/cancel/undo/redo 与 UI 文案）。
 
 ## 接线内容（main.ts，全部走原型既有真实路径）

@@ -7,6 +7,7 @@
 import MarkdownIt, { type Token } from 'markdown-it';
 import type { Node as PMNode } from 'prosemirror-model';
 import type { Range } from './model';
+import { installReferenceCapture, referenceLineRanges, type ReferenceLineRange } from './reference-context';
 
 export type SourceRole =
   | 'text' | 'link-label' | 'image-alt' | 'autolink-text' | 'code-text'
@@ -56,7 +57,7 @@ export type BuildLedgerResult =
   | { ok: false; reason: string; diagnostics: LedgerDiagnostic[] };
 
 export type MapOptions = {
-  snap?: 'none' | 'nearest';
+  snap?: 'none' | 'nearest' | 'adjacent-gap';
   collapsedAffinity?: 'left' | 'right';
 };
 
@@ -99,6 +100,7 @@ const markdown = new MarkdownIt('commonmark', {
   html: false,
   linkify: false,
 }).enable(['table', 'strikethrough']);
+installReferenceCapture(markdown);
 
 const ESCAPABLE = new Set('\\!"#$%&\'()*+,./:;<=>?@[]^_`{|}~-'.split(''));
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
@@ -573,9 +575,15 @@ function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: 
   }
 }
 
-function parseDefinitions(source: string, lines: ReturnType<typeof lineTable>): Map<string, ReferenceDefinition> {
+function parseDefinitions(source: string, lines: ReturnType<typeof lineTable>, accepted: readonly ReferenceLineRange[]): Map<string, ReferenceDefinition> {
   const definitions = new Map<string, ReferenceDefinition>();
-  for (const line of lines) {
+  const acceptedLines = new Set(accepted.flatMap(range => {
+    const result: number[] = [];
+    for (let line = range.startLine; line < range.endLine; line++) result.push(line);
+    return result;
+  }));
+  for (const [lineIndex, line] of lines.entries()) {
+    if (!acceptedLines.has(lineIndex)) continue;
     const match = line.text.match(/^( {0,3})\[([^\]\n]+)\]:[ \t]*(?:<([^>\n]*)>|([^\s]+))(?:[ \t]+(?:"([^"]*)"|'([^']*)'|\(([^)]*)\)))?[ \t]*$/);
     if (!match) continue;
     const label = match[2];
@@ -674,7 +682,8 @@ function fillGaps(source: string, spans: LedgerSpan[], ranges: Range[]): LedgerS
     const start = i;
     while (i < source.length && !covered[i]) i++;
     const owner = protectedRanges.find(range => start >= range.start && start < range.end);
-    extra.push({ sourceStart: start, sourceEnd: i, role: owner ? 'protected' : source.slice(start, i).trim() ? 'gap' : 'line-ending', syntax: owner ? 'protected-block' : 'unprojected-gap', visible: false,
+    const bomGap = start === 0 && source[0] === '\uFEFF';
+    extra.push({ sourceStart: start, sourceEnd: i, role: owner ? 'protected' : source.slice(start, i).trim() ? 'gap' : 'line-ending', syntax: owner ? 'protected-block' : bomGap ? 'bom-gap' : 'unprojected-gap', visible: false,
       detail: owner ? '受保护块内部不建立文本锚点' : '块间空白、BOM、定义残余或未投影语法' });
   }
   return [...spans, ...extra].sort((a, b) => a.sourceStart - b.sourceStart || a.sourceEnd - b.sourceEnd || Number(b.visible) - Number(a.visible));
@@ -684,18 +693,19 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
   const diagnostics: LedgerDiagnostic[] = [];
   try {
     const lines = lineTable(source);
-    const references = parseDefinitions(source, lines);
     const env: Record<string, unknown> = {};
     const tokens = markdown.parse(source.replace(/^\uFEFF/, ' '), env);
+    const references = parseDefinitions(source, lines, referenceLineRanges(env));
     const blocks: LedgerBlock[] = [];
     const allSpans: LedgerSpan[] = [];
+    let ownerSerial = 0;
     for (const range of ranges) {
       if (range.kind === 'protected_block') {
         blocks.push({ range, spans: [{ sourceStart: range.start, sourceEnd: range.end, role: 'protected', syntax: 'protected-block', visible: false, detail: '受保护块内部不建立文本锚点' }], visualText: '', inlineCount: 0 });
         allSpans.push(...blocks[blocks.length - 1].spans);
         continue;
       }
-      const state: ScanState = { spans: [], atoms: [], expectations: [], references, ownerSerial: 0 };
+      const state: ScanState = { spans: [], atoms: [], expectations: [], references, ownerSerial };
       if (range.kind === 'code_block') {
         const codeToken = tokens.find(token => {
           if ((token.type !== 'fence' && token.type !== 'code_block') || !token.map) return false;
@@ -711,6 +721,7 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         const block = { range: range as Range, spans: state.spans, visualText, inlineCount: 0 };
         blocks.push(block);
         allSpans.push(...state.spans);
+        ownerSerial = state.ownerSerial;
         continue;
       }
       const inlineTokens = tokens.filter(token => {
@@ -748,6 +759,7 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       const block = { range: range as Range, spans: state.spans, visualText, inlineCount: inlineTokens.length };
       blocks.push(block);
       allSpans.push(...state.spans);
+      ownerSerial = state.ownerSerial;
     }
     for (const definition of references.values()) allSpans.push(...definition.spans);
     if (!ranges.length) {
@@ -808,6 +820,9 @@ function mapVisualEndpoint(ledger: SourceLedger, position: number, affinity: 'le
   const exact = [...new Set([...left.map(span => span.sourceEnd), ...right.map(span => span.sourceStart)])];
   if (exact.length === 1) return exact[0];
   if (exact.length > 1) throw Object.assign(Error(`PM ${position} 两侧隔着非可视语法，折叠端点需要 left/right affinity`), { candidates: exact });
+  const protectedBlock = ledger.blocks.find(block => block.range.kind === 'protected_block'
+    && position >= block.range.pos && position <= block.range.pos + block.range.size);
+  if (protectedBlock) throw Error(`PM ${position} 位于受保护块（原文 ${protectedBlock.range.start}..${protectedBlock.range.end}）；块内是不可视 protected/protected-block，需主动源码修复`);
   if (options.snap === 'nearest') {
     const candidates = spans.flatMap(span => [
       { distance: Math.abs(position - span.visualStart), visual: span.visualStart, source: span.sourceStart },
@@ -831,7 +846,7 @@ export function visualToSource(ledger: SourceLedger, anchor: number, head: numbe
     else { anchorAffinity = 'left'; headAffinity = 'right'; }
     const mappedAnchor = mapVisualEndpoint(ledger, anchor, anchorAffinity, options, snapped);
     const mappedHead = mapVisualEndpoint(ledger, head, headAffinity, options, snapped);
-    return { ok: true, anchor: mappedAnchor, head: mappedHead, snapped };
+    return { ok: true, anchor: mappedAnchor, head: mappedHead, snapped: [...new Set(snapped)] };
   } catch (error) {
     const candidateValue = (error as { candidates?: number[] }).candidates;
     return { ok: false, reason: error instanceof Error ? error.message : String(error), candidates: candidateValue };
@@ -850,10 +865,24 @@ function mapSourceEndpoint(ledger: SourceLedger, offset: number, affinity: 'left
   const exact = [...new Set([...left.map(span => span.visualEnd), ...right.map(span => span.visualStart)])];
   if (exact.length === 1) return exact[0];
   const hidden = ledger.spans.find(span => !span.visible && offset > span.sourceStart && offset < span.sourceEnd);
-  if (hidden && options.snap !== 'nearest') throw Error(`原文 ${offset} 位于非可视 ${hidden.role}/${hidden.syntax}，不盲映射到正文`);
-  if (options.snap === 'nearest') {
+  const adjacent = ledger.spans.find(span => !span.visible && offset >= span.sourceStart && offset <= span.sourceEnd);
+  const adjacentGapAllowed = options.snap === 'adjacent-gap' && adjacent
+    && adjacent.syntax !== 'bom-gap'
+    && (adjacent.role === 'line-ending'
+      || adjacent.role === 'gap'
+      || adjacent.syntax.startsWith('definition-'));
+  if (hidden && options.snap !== 'nearest' && !adjacentGapAllowed) {
+    if (hidden.role === 'protected') throw Error(`原文 ${offset} 位于受保护块 ${hidden.sourceStart}..${hidden.sourceEnd} 的非可视 ${hidden.role}/${hidden.syntax}；需主动源码修复`);
+    throw Error(`原文 ${offset} 位于非可视 ${hidden.role}/${hidden.syntax}，不盲映射到正文`);
+  }
+  if (options.snap === 'nearest' || adjacentGapAllowed) {
     const nearest = nearestVisual(ledger, offset);
-    if (nearest) { snapped.push(nearest.note); return nearest.value; }
+    if (nearest) {
+      snapped.push(adjacentGapAllowed
+        ? `显式 adjacent-gap：${nearest.note}；owner=${adjacent!.role}/${adjacent!.syntax}`
+        : nearest.note);
+      return nearest.value;
+    }
   }
   throw Error(hidden ? `原文 ${offset} 位于非可视 ${hidden.role}/${hidden.syntax}` : `原文 ${offset} 没有可审计文本锚点`);
 }
@@ -868,7 +897,7 @@ export function sourceToVisual(ledger: SourceLedger, anchor: number, head: numbe
     else { anchorAffinity = 'left'; headAffinity = 'right'; }
     const mappedAnchor = mapSourceEndpoint(ledger, anchor, anchorAffinity, options, snapped);
     const mappedHead = mapSourceEndpoint(ledger, head, headAffinity, options, snapped);
-    return { ok: true, anchor: mappedAnchor, head: mappedHead, snapped };
+    return { ok: true, anchor: mappedAnchor, head: mappedHead, snapped: [...new Set(snapped)] };
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) };
   }

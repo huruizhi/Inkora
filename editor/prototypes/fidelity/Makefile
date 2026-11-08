@@ -9,5 +9,6 @@ lint:
 test: build lint
 	node check.mjs
 	node native-transaction-stage-check.mjs
+	node ledger-integration-check.mjs
 run: build
 	open PROTOTYPE.html

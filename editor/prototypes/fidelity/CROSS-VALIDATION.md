@@ -45,7 +45,7 @@
 
 - `crossval.mjs` 的 05/06/11 分支仍是 015 前的专用按钮/旧动作实现，只用于历史对照，不是当前 native oracle；本轮实际复跑中这些旧分支仍输出差异。02/03/09/10 目标回归继续 PASS。
 - 当前 05/06/11、空文档与新 016 动作由 `audited-crossval.mjs` 重放：16/16 累计步骤、三个 isolated 分支与三个 probe 全 PASS，explicit demo 为 0。详见 `DRIVER-AUDIT.md`、`NATIVE-TRANSACTION-EVIDENCE.md` 与 `audited-crossval-results.json`。
-- `[a](later)later` 目标/正文碰撞和转义显示文字仍安全拒绝并阻断保存；不宣称通用 inline map 完成。
+- INK-PROT-022 已用词法 owner 闭合 `[a](later)later` 目标/正文碰撞与转义显示文字；新增真实接线预期见 `LEDGER-INTEGRATION-EVIDENCE.md`。复杂 inline map 风险仍保留。
 - 真实 WKWebView、系统中文 IME、磁盘写入/重开、Sandbox 与图片资源访问未执行。
 
 结论：case03 真实链接语义与 09 源码选区闭环在同一最终 bundle 中通过，02/10 无回归；05/06/11 当前结论以 audited native driver 为准。这仍不是 M0 结论。

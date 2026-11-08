@@ -461,10 +461,10 @@ await isolatedVisualProbe('06-split-join', 4, 'after-step-3.md', 'after-step-4.m
   }
 }
 
-// The existing sequential inline map deliberately refuses destination/text
-// collisions. A native transaction must keep both trusted source and PM doc.
+// The lexical ledger owns the trailing body even when the destination has the
+// same spelling. The real native transaction must edit only that body span.
 {
-  const probe = { id: 'native-inline-collision-refusal', executionLayer: 'VIEW_DISPATCH', status: null };
+  const probe = { id: 'native-inline-collision-ledger-edit', executionLayer: 'VIEW_DISPATCH', status: null };
   report.probes.push(probe);
   let context;
   try {
@@ -472,17 +472,19 @@ await isolatedVisualProbe('06-split-join', 4, 'after-step-3.md', 'after-step-4.m
     loadCase(context.prototype, '[a](later)later\n');
     const from = findDocText(context.prototype, 'later');
     probe.before = stateSnapshot(context.prototype);
-    const beforeDoc = context.prototype.model.state.doc.toJSON();
     context.prototype.view.dispatch(context.prototype.model.state.tr.insertText('after', from, from + 5));
     probe.after = stateSnapshot(context.prototype);
-    probe.sourceKept = context.prototype.model.source === '[a](later)later\n';
-    probe.docKept = JSON.stringify(context.prototype.model.state.doc.toJSON()) === JSON.stringify(beforeDoc);
-    probe.status = probe.sourceKept && probe.docKept
-      && probe.after.blocked.includes('补丁重解析与目标 PM 文档不一致') ? 'PASS' : 'FAIL';
+    probe.expectedSource = '[a](later)after\n';
+    probe.sourceEdited = context.prototype.model.source === probe.expectedSource;
+    probe.destinationKept = context.prototype.model.source.startsWith('[a](later)');
+    probe.status = probe.sourceEdited && probe.destinationKept
+      && probe.after.patches.length === 1
+      && probe.after.patches[0].insert === 'after'
+      && !probe.after.blocked ? 'PASS' : 'FAIL';
   } catch (error) {
     probe.status = 'RUNNER_ERROR';
     probe.error = String(error.stack || error);
-    report.runnerErrors.push(`native-inline-collision-refusal: ${error.message}`);
+    report.runnerErrors.push(`native-inline-collision-ledger-edit: ${error.message}`);
   } finally {
     context?.dom.window.close();
   }

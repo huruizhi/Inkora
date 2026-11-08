@@ -2,6 +2,8 @@
 
 日期：2026-11-08。分支 `task/INK-PROT-009-reference-links`，接管起点 `d3c15c789b47be3e7cda3446e9ea8fb9571bcf40`。独立样稿固定为 INK-PROT-002 `c85e1890b2ef3938dd6853d97977d28ac54b309e`，只在每步操作后读取预期文件；未把预期内容喂给模型。
 
+> 历史说明：本文件记录 009/015 阶段边界。INK-PROT-022 已把词法 source-ledger 接入真实事务并关闭下述两个反例；当前行为与未完风险以 `LEDGER-INTEGRATION-EVIDENCE.md` 为准。
+
 ## 表示契约
 
 - 普通行内链接、完整/折叠/快捷引用式链接和尖括号自动链接进入真实 ProseMirror `link` mark；DOM 为 `a[href]`，只显示文字，不显示 `[]()`、引用标签或标题的 `#`。

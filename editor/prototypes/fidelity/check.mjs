@@ -50,6 +50,7 @@ assert.equal(p.model.source, trusted); assert.ok(!p.model.pending);
 assert.ok(p.model.state.doc.eq(trustedDoc));
 // 主动修复路径同样恢复最近一次可信快照。
 p.run(p.actions.malformed);
+const ambiguousSelection = p.model.state.selection.toJSON();
 p.run(p.actions.repair);
   assert.equal(p.model.source, trusted); assert.ok(!p.model.pending); assert.equal(p.model.blocked, '');
   // Undo after the repair restores the ambiguous buffer byte-exactly (typed
@@ -57,7 +58,7 @@ p.run(p.actions.repair);
   // selection; redo returns to the repaired trusted bytes.
   p.run(p.actions.undo);
   assert.equal(p.model.source, corrupt); assert.ok(p.model.pending && p.model.issues[0].code === 'math');
-  assert.equal(p.model.state.doc.textBetween(p.model.state.selection.head - 1, p.model.state.selection.head), '。');
+  assert.deepEqual(p.model.state.selection.toJSON(), ambiguousSelection); // ledger 保留原内容锚点，不再靠 EOF 自动吸附
   p.run(p.actions.redo);
   assert.equal(p.model.source, trusted); assert.ok(!p.model.pending);
   results.push({ action: 'undo / repair restore consistency', byteExact: true, pendingCleared: true, undoKeepsAmbiguousInput: true });
@@ -103,6 +104,8 @@ step('reset');
   const src = dom.window.document.getElementById('source-draft');
   p.run(p.actions.source);
   src.value = src.value.replace('# 原型标题\n', '# 原型\n标题\n'); src.dispatchEvent(new dom.window.Event('input'));
+  const safeCaret = '# 原型\n标题'.length;
+  src.setSelectionRange(safeCaret, safeCaret, 'forward'); // 显式内容锚点；不再依赖 EOF 自动吸附
   p.run(p.actions.apply);
   assert.ok(p.model.source.includes('# 原型\r\n标题'));
   p.run(p.actions.undo);
@@ -246,19 +249,19 @@ step('reset');
   const sel = m.state.selection;
   assert.equal(sel.toJSON().type, 'text'); // NOT a NodeSelection, NOT a reset
   assert.ok(sel.anchor === 1 && sel.head === 1); // unique insertion point of the empty paragraph
-  assert.equal(p.lastSelectionMap.fallback, 'empty-paragraph-text@1');
+  assert.ok(p.lastSelectionMap.ok && p.lastSelectionMap.anchor === 1 && p.lastSelectionMap.head === 1); // ledger 空文档显式锚点
   // Undo restores the original bytes AND the pre-edit anchor; redo returns to empty.
   p.run(p.actions.undo);
   assert.equal(m.source, whole); assert.equal(m.source, m.saved);
   assert.equal(m.state.selection.anchor, anchor); assert.equal(m.state.selection.head, anchor);
   p.run(p.actions.redo);
   assert.equal(m.source, ''); assert.ok(m.state.selection.anchor === 1 && m.state.selection.head === 1);
-  // Empty document in source mode: entry mapping is unavailable (reason shown)
-  // but the repair entry stays open; no-op commit keeps everything; a modified
+  // Empty document in source mode: the ledger exposes its unique insertion
+  // anchor; no-op commit keeps everything; a modified
   // draft cancels back to the same empty view and selection.
   const snap = { revision: m.revision, past: m.past.length, future: m.future.length, sel: m.state.selection.toJSON() };
   p.run(p.actions.source);
-  assert.ok(!p.lastSelectionMap.ok && p.lastSelectionMap.stage === 'enter-source');
+  assert.ok(p.lastSelectionMap.ok && p.lastSelectionMap.stage === 'enter-source' && p.lastSelectionMap.anchor === 0);
   p.run(p.actions.apply); // draft untouched → no-op
   assert.equal(p.sourceMode, false);
   assert.equal(m.revision, snap.revision); assert.equal(m.past.length, snap.past); assert.equal(m.future.length, snap.future);
@@ -393,6 +396,8 @@ step('openMalformed');
   p.run(p.actions.source);
   src.value = src.value.replace('\\int_0^1 x\\,dx', () => '\\int_0^1 x\\,dx\n$$');
   src.dispatchEvent(new dom.window.Event('input'));
+  const repairCaret = src.value.indexOf('边界含混样稿') + '边界含混样稿'.length;
+  src.setSelectionRange(repairCaret, repairCaret, 'forward'); // 保护块本身不可视，显式选择安全正文锚点
   p.run(p.actions.apply);
   assert.ok(!p.model.pending); assert.equal(p.model.blocked, '');
   p.run(p.actions.save);
@@ -486,22 +491,21 @@ step('openMalformed');
   edit('链一', '列表链'); edit('链二', '引用链');
   assert.equal(p.model.source, '- 项 [列表链][l]\n\n> 引 [引用链][l]\n\n[l]: https://e.org/l "题"\n');
   results.push({ action: 'links inside list and blockquote', loadClean: true, displayEditable: true, definitionKept: true });
-  // The sequential inline ledger is deliberately not claimed as universal:
-  // syntax markers that equal display text and escaped display text remain
-  // unmappable. The re-parse guard keeps source/state trusted and blocks save.
+  // Lexical ownership closes the former sequential-search counterexamples:
+  // destination text cannot steal body ownership, and an escape is one raw atom.
   const destinationCollisionDoc = '[a](later)later\n';
   p.model.sourceEdit(destinationCollisionDoc); p.run(() => {});
   edit('later', 'after');
-  assert.equal(p.model.source, destinationCollisionDoc);
-  assert.ok(p.model.blocked.includes('补丁重解析与目标 PM 文档不一致'));
-  assert.ok(dom.window.document.getElementById('save').disabled);
+  assert.equal(p.model.source, '[a](later)after\n');
+  assert.equal(p.model.blocked, '');
+  assert.ok(!dom.window.document.getElementById('save').disabled);
   const escapedDoc = '[A \\* B][r]\n\n[r]: https://e.org/r\n';
   p.model.sourceEdit(escapedDoc); p.run(() => {});
   edit('*', '星');
-  assert.equal(p.model.source, escapedDoc);
-  assert.ok(p.model.blocked.includes('选区不能安全映射到原文'));
-  assert.ok(dom.window.document.getElementById('save').disabled);
-  results.push({ action: 'inline ledger counterexamples', destinationTextCollisionBlocked: true, escapedDisplayBlocked: true, trustedSourceKept: true, saveBlocked: true });
+  assert.equal(p.model.source, '[A 星 B][r]\n\n[r]: https://e.org/r\n');
+  assert.equal(p.model.blocked, '');
+  assert.ok(!dom.window.document.getElementById('save').disabled);
+  results.push({ action: 'lexical ledger counterexamples closed', destinationTextCollisionEdited: true, escapedDisplayEdited: true, unrelatedBytesKept: true });
 
   // INK-PROT-015 integration cross-scenario: link/image/adjacent marks travel
   // through the actual source-mode selection wiring and shared history. This
@@ -516,8 +520,9 @@ step('openMalformed');
   p.run(p.actions.source);
   assert.equal(src.selectionDirection, 'backward');
   assert.ok(p.lastSelectionMap.ok && p.lastSelectionMap.snapped.length === 0);
-  assert.ok(src.value.slice(src.selectionStart, src.selectionEnd).includes('[链接][r]'));
-  assert.ok(src.value.slice(src.selectionStart, src.selectionEnd).includes('![图片'));
+  assert.equal(src.value.slice(src.selectionStart, src.selectionEnd), '链接][r] *强调* ![图片');
+  assert.equal(src.value[src.selectionStart - 1], '['); // 内容锚点不吞左侧语法定界符
+  assert.equal(src.value[src.selectionEnd], ']'); // 内容锚点不吞右侧语法定界符
 
   src.value = src.value.replace('[链接][r]', '[入口][r]').replace('![图片][img]', '![图示][img]');
   src.dispatchEvent(new dom.window.Event('input'));

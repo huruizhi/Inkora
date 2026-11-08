@@ -72,3 +72,18 @@ INK-PROT-018 基于管理者准备的 `30b73530af2e8dac37399a0dc9df64f8a9689eb3`
 管理者组合 019 时，应保留其新增 `source-ledger*` 文件与本任务 `native-transaction*` 文件，分别处理冲突；018 未自行接入 019。详细结果见 `fidelity/NATIVE-TRANSACTION-EVIDENCE.md`。
 
 4afe4ca 独立复核后发现 staged 未进入 dirty/history 且固定 source caret 会在移动选区后错配 candidate，因此首轮提交未接收。后续修正将 stage 纳入完整 past/future 快照，并以显式空块 anchor、顺序文本映射和 PM/source 双重 mapping 支持任意已验证 selection；stage 自身 dirty=true、保存阻断，Undo/Redo 可恢复完整状态。新增四条真实 EditorView 回归覆盖两条原反例、分支失效和未知事务原子拒绝；重新接收应以修正提交为准。
+
+## 022 source-ledger 真实接线结果（待管理者接收）
+
+INK-PROT-022 基于准备提交 `fc1cdff0facf3c5b409a6c83aeb1269142f95f97`，其中已组合 018 修正版 `511709f11de81ac866800b0a31a9513f4a0de536` 与 020 `aa6c04f1c546dcf69bf837c2c51fb4ad24f69be8`。本轮只修改 `fidelity/` 与本文档；未修改冻结 fixture、`native-host/`、生产代码或依赖。
+
+- 真实 `EditorView` transaction、源码进入/提交、link/image 占位与 staged/history 已统一消费词法 source-ledger。`selection-map.ts` 只保留 LF/raw textarea 转换；旧 `sourcePosition`/文本叶贪心不再参与真实 bundle 接线。
+- 普通 ledger 缓存绑定同一 source/doc/ranges；staged ledger 在可重解析 candidate 上构建，再按逐块结构等价投影到 staged doc，只允许明确空结构/段首 softbreak 差异和显式 anchors。中段 Enter 后续块不再依赖全局 `indexOf`。
+- href/title/正文同文、任务要求的 `&quot;` 拼写、escape/entity、同段重复 marks、完整/折叠/快捷引用均有真实事务回归。折叠/快捷引用编辑会局部展开为原定义键，不改 href/title/定义行。
+- 引用定义不再由全文件 regex 收集；model 与 ledger 共享 CommonMark 块规则实际接受的定义范围。fence、缩进代码、HTML/保护块内同名定义不污染正文，合法重复定义仍 first-wins；code/link 混排的可视编辑和源码往返保持代码与定义原字节。
+- 双向有向选区使用 ledger 内容锚点；语法内部返回明确 reason。ledger 默认不 nearest；UI 仅对块间空白、尾换行、引用定义 owner 显式 `adjacent-gap` 并记录 snapped。尾部定义 EOF 提交与 Undo/Redo 已覆盖，BOM 前 raw 0 仍拒绝。
+- 018 的 stage Undo/Redo、移动首段再完成空段、future 分支失效、未知事务原子拒绝全部保留；新增 link + escape + staged 组合通过。
+- 实际验证：fidelity `37 + 4 + 16` 全绿；source-ledger 17 组、legacy selection 15 项、audited `16 + 3 isolated + 3 probes`、02/03/09/10 交叉回归、fixture 582、生产 editor 11 files / 125 tests 与统一 lint 全部通过。
+- 最终 `PROTOTYPE.html` 由当前源码重建，SHA-256 为 `e2e259f44b9a3cf372ba1de891da99d68b7a655dd39ab79073942105c6ffd3f6`（396964 bytes）。未构建/修改 native-host 副本，因此不能把该 hash 当宿主加载证明。
+
+真实 WKWebView、系统 IME、物理键盘、磁盘保存/重开与 App Sandbox 未执行。复杂 lazy continuation、多行定义、复杂 delimiter、最坏 `O(n²)` 风险和数学过保守边界仍保留；不得据此宣告通用 map、M0 总门槛或架构采纳通过。详细分层证据见 `fidelity/LEDGER-INTEGRATION-EVIDENCE.md`。

@@ -173,7 +173,66 @@ function record(name, details) {
   record('引用上下文与 image_ref 占位', { referenceRejected: refMap.reason, altRaw: altMap.anchor });
 }
 
-// 4. Block prefixes and adjacent marks are lexical non-display spans. A
+// 4. Only reference definitions accepted by the real CommonMark block rule
+// can resolve body links or own ledger definition spans.
+{
+  const source = 'outside [x][ref]\n\n```markdown\n[ref]: /wrong\n```\n\n[ref]: /right\n';
+  const { parsed, ledger } = ledgerFor(source);
+  const link = [];
+  parsed.doc.descendants(node => {
+    if (!node.isText) return;
+    const mark = node.marks.find(item => item.type.name === 'link');
+    if (mark) link.push({ text: node.text, href: mark.attrs.href });
+  });
+  assert.deepEqual(link, [{ text: 'x', href: '/right' }]);
+  const definitionBytes = ledger.spans
+    .filter(span => span.role === 'definition-href')
+    .map(span => source.slice(span.sourceStart, span.sourceEnd));
+  assert.deepEqual(definitionBytes, ['/right']);
+  const codeBytes = ledger.spans.filter(span => span.visible && span.role === 'code-text')
+    .map(span => source.slice(span.sourceStart, span.sourceEnd)).join('');
+  assert.ok(codeBytes.includes('[ref]: /wrong'));
+
+  for (const literalBlock of [
+    '    [ref]: /wrong\n',
+    '<div>\n[ref]: /wrong\n</div>\n',
+    '$$\n[ref]: /wrong\n$$\n',
+  ]) {
+    const mixed = `outside [x][ref]\n\n${literalBlock}\n[ref]: /right\n`;
+    const checked = ledgerFor(mixed);
+    const mixedHrefs = [];
+    checked.parsed.doc.descendants(node => {
+      if (!node.isText) return;
+      const mark = node.marks.find(item => item.type.name === 'link');
+      if (mark) mixedHrefs.push(mark.attrs.href);
+    });
+    assert.deepEqual(mixedHrefs, ['/right']);
+    assert.deepEqual(checked.ledger.spans.filter(span => span.role === 'definition-href')
+      .map(span => mixed.slice(span.sourceStart, span.sourceEnd)), ['/right']);
+  }
+
+  const codeOnly = 'outside [x][ref]\n\n```markdown\n[ref]: /wrong\n```\n';
+  const only = ledgerFor(codeOnly);
+  assert.ok(only.parsed.doc.textContent.includes('[x][ref]'));
+  assert.equal(only.parsed.doc.textContent.includes('outside x'), false);
+  assert.equal(only.ledger.spans.some(span => span.role === 'definition-href'), false);
+
+  const duplicate = ledgerFor('outside [x][ref]\n\n[ref]: /first\n[ref]: /second\n');
+  const hrefs = [];
+  duplicate.parsed.doc.descendants(node => {
+    if (!node.isText) return;
+    const mark = node.marks.find(item => item.type.name === 'link');
+    if (mark) hrefs.push(mark.attrs.href);
+  });
+  assert.deepEqual(hrefs, ['/first']);
+  const duplicateHrefs = duplicate.ledger.spans
+    .filter(span => span.role === 'definition-href')
+    .map(span => 'outside [x][ref]\n\n[ref]: /first\n[ref]: /second\n'.slice(span.sourceStart, span.sourceEnd));
+  assert.deepEqual(duplicateHrefs, ['/first', '/second']);
+  record('代码块引用定义隔离 + 合法定义 first-wins', { href: link[0].href, definitionBytes, duplicateHrefs });
+}
+
+// 5. Block prefixes and adjacent marks are lexical non-display spans. A
 // directed selection across strong/link/em/strike/code preserves direction.
 {
   const f = fixture(
@@ -203,7 +262,7 @@ function record(name, details) {
   record('heading/list/blockquote + 跨 marks 有向选区', { forward: [forward.anchor, forward.head], backward: [backward.anchor, backward.head] });
 }
 
-// 5. CRLF softbreak and code normalization have explicit source ownership.
+// 6. CRLF softbreak and code normalization have explicit source ownership.
 {
   const f = fixture(['left', 'left'], '\r\n', ['right', 'right'], ' and `` ', ['codeRaw', 'a\r\nb'], ' ``\n');
   const { parsed, ledger } = ledgerFor(f.source);
