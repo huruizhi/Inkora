@@ -149,3 +149,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 008固定5fbeb10已在解锁桌面运行，用户搜狗输入法/物理键盘完成可视“中文测试”与源码“ 源码验证”。真实composition及组合期saveDisabled已记录，源码提交/跨模式UndoRedo/内存保存点局部通过。可视Undo两次显示中间拼音`中文ce'shi`，明确失败；见[M0人工记录](M0-human-acceptance.md)。原始证据025准备6f35866已冻结推送，025独立Agent修历史边界，不改原运行证据为通过。11保持claimed，12仍依赖11；M0未通过。本轮不再把“真实IME未执行”当唯一缺口，而以已执行且发现失败继续修正并复验。
 
 025固定5bde76b已接收自动层修正。管理者独立旧版红/新版绿，实跑37+4+16+4+6、ledger17、selection15、native16+3+3、fixture582全过。008已FF/推送并重建签名宿主，清单与HEAD/hash一致；新HTML source23730ee3…586ff。旧真人运行只覆盖5fb，修复后真实搜狗/WK尚未执行，11/12门槛不解除。025 Agent和其workspace已回收，交付及真人原始失败材料存008；29个已完成侧栏workspace均已备份/归档，恢复索引见M0-dispatch末节。
+
+025新版本5bde已执行真实物理搜狗复验，两个composition各一条历史；在先撤销后置6条普通编辑后，Undo2/Redo2只跨完整中文会话，不再出现中间拼音。该目标本轮有真实证据。但发现有效正文历史恢复点出现保存阻断（pending=false/重解析等价错误），已冻结203条记录并派026诊断。不得以025目标成功关闭M0或忽略保存资格异常。细节见M0-human-acceptance末节，11仍claimed、12仍依赖11。

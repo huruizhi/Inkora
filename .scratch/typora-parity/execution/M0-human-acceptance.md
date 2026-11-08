@@ -74,3 +74,11 @@ INKORA_UI_LOCK_TIMEOUT=30 scripts/ci/with-ui-lock.sh \
 已询问用户现在或稍后是否可配合约2分钟物理复验。至少连续两次上屏中文/测试，Undo/Redo只跨完整会话、不露拼音；再覆盖取消/no-op、选区替换、源码历史/保存点与组合期动作。最小2分钟步骤不缩减完整门槛，未覆盖项如实待验收。025按PM composition元数据分组，自动重放给定ID不证明真实WK元数据时序。
 
 025专用workspace及其他28个完成workspace已备份后归档以清理侧栏。025三份冻结真人材料和新IME-HISTORY-EVIDENCE已进入008；旧路径是历史引用，恢复方式见M0-dispatch末节。
+
+## 025修复后的实际搜狗复验（有新发现）
+
+已实际启动上述5bde版本并由用户物理搜狗完成两次上屏。composition seq98–127为中文、136–156为测试。运行含前置48条普通输入/删除及后置6条普通空格/删除，按实际轨迹保留。composition分别结束时past49、50，各是一条历史；管理者先Undo6普通编辑，然后Undo2会话，末段中文测试→中文→原句，无中间拼音；Redo2回完整中文测试。025目标本轮未再出现，但不代表全部IME矩阵通过。
+
+新发现：revision77/78/80/81等恢复点pending=false、无语法边界问题，却保存被补丁重解析等价错误阻断。随后Redo6普通编辑，revision87/past56/future0、caret70及用户最终中文加空格全部恢复，blocked=null；未改源码或点修复来掩盖异常。原始203条记录与6个blocked snapshot已冻结到026准备abd4c58，见其IME-RETEST-026.md/raw/summary文件；原始log SHA=4f2befce2dc99ec3a3dd14e946b05d32c092e1ddb22f3595144e92dfc7089b89。保存资格异常的内部根因需诊断，不凭AX表象直接清错误。
+
+本次App精确PID79074已SIGTERM，前台包装器session38883退出143，进程/锁均确认释放；不是正常Quit，也不涉及用户文件持久化。026已派独立非UI诊断，用户本轮无需继续操作。取消/no-op/选区替换/完整组合期动作、真实修复后保存资格、最低OS与整体审阅仍未全部通过；M0/11保持未通过。

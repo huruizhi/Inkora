@@ -380,3 +380,11 @@ INK-PROT-025：Agent `5bc9f083-65b4-438f-b6d6-1aab0be62311`，workspace `wks_a64
 备份目录 /Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed：manifest.json记录29个原路径/branch/HEAD/tar SHA/文件数；RESTORE.md为恢复说明。排除可重建的.git/node_modules/.tools；其余常规文件均逐字节校验，28旧分支bundle和025交付bundle均验证。全部local branches仍为原SHA，远端分支未删。最终list_workspaces中Inkora只余CC管理、Codex管理和008集成验收；其他项目3项未动。025交付和冻结真人失败材料已进入008。
 
 今后完成回收覆盖Agent和workspace两层：实际终态后回收Agent，交付接收及证据备份后归档完成workspace。当前008保留用于后续验收，其余完成条目不再无限期留侧栏；archive会移除worktree时先备份并明确恢复位置。已向用户询问修复后约2分钟真人复验的可用时间。
+
+### 025真实复验与026保存资格诊断派发
+
+用户选择现在继续复验。008固定5bde76b/source23730ee3…586ff/bundledf2b8056…619e5，新宿主持锁通过desktop preflight并启动，物理搜狗两次上屏已确认。真实composition seq98–127/136–156各增1历史；实际有前置48条普通输入/删除，后置6条空格/删除，未把轨迹改写为纯2步。管理者先Undo6普通编辑，再Undo2中文会话，正文依次中文/原句，不露拼音；Redo2恢复完整中文。025目标本轮未复现。
+
+新发现：revision77/78/80/81等历史点pending=false/无边界含混，但blocked=Error:补丁重解析与目标PM文档不一致，保存禁用；不能据局部历史单元成功宣布M0通过。Redo6普通编辑后revision87/past56/future0恢复全部结束内容及caret70，blocked=null。管理者停止精确PID79074，session38883退出143；进程不存在、UI锁释放。本轮203条真实记录及6个blocked snapshot冻结在026准备提交abd4c58f8f247c285f3a17cb44c36b73021ae1f5，raw SHA=4f2befce2dc99ec3a3dd14e946b05d32c092e1ddb22f3595144e92dfc7089b89。
+
+INK-PROT-026 Agent=9523cd37-d6e6-4e7c-8ef7-7c62a90aaf56，workspace=wks_ffad2b9e3daf4502，host=srv_MEqRNkRW6fSx；worktree=/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-026-history-save-readiness，branch=task/INK-PROT-026-history-save-readiness。本轮list_profiles空，inspect_provider核实5.6-Sol；用medium/default/full-access/notifyOnFinish=true做聚焦历史保存资格诊断，创建回执running。按diagnosing-bugs先真实EditorView红回归/独立source-doc-ledger一致性检查/排序假设，不能清所有blocked、削弱pending或丢用户缓冲。仅fidelity核心/测试/新证据，禁止GUI/native-host既有代码/production/fixtures/原始026冻结记录。完成后独立核验、回收Agent和workspace两层。
