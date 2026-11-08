@@ -278,9 +278,12 @@
       "mathFragmentRawExact": true
     },
     {
-      "action": "reference links / image / bare URL literal leaves",
+      "action": "reference links / image placeholder / bare URL semantic projection",
       "loadClean": true,
-      "literalRanges": 2,
+      "realLinkMarks": true,
+      "mixedMarksKept": true,
+      "listAndQuoteEditable": true,
+      "imageScoped": true,
       "editsByteExact": true,
       "defsKept": true,
       "undoByteExact": true
@@ -308,9 +311,17 @@
       "undoByteExact": true
     },
     {
-      "action": "link inside list refused explicitly",
-      "refused": true,
-      "trustedStateKept": true
+      "action": "links inside list and blockquote",
+      "loadClean": true,
+      "displayEditable": true,
+      "definitionKept": true
+    },
+    {
+      "action": "inline ledger counterexamples",
+      "destinationTextCollisionBlocked": true,
+      "escapedDisplayBlocked": true,
+      "trustedSourceKept": true,
+      "saveBlocked": true
     }
   ],
   "unexecuted": [

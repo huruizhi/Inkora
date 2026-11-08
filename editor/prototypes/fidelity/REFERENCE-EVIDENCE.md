@@ -1,78 +1,72 @@
 # REFERENCE-EVIDENCE：INK-PROT-009 引用式链接 / 图片 / 裸 URL
 
-轮次：2026-11-08，分支 `task/INK-PROT-009-reference-links`（起点 `7c497a7`）。独立样稿仍为 INK-PROT-002 冻结件（`c85e1890`，只读，预期仅在事后比对）。本文只陈述实际运行观察到的结果，并按证据层级区分主张强度；未运行的层级一律写明「未执行」。
+日期：2026-11-08。分支 `task/INK-PROT-009-reference-links`，接管起点 `d3c15c789b47be3e7cda3446e9ea8fb9571bcf40`。独立样稿固定为 INK-PROT-002 `c85e1890b2ef3938dd6853d97977d28ac54b309e`，只在每步操作后读取预期文件；未把预期内容喂给模型。
 
-## 1. 表示契约（模型层不变式）
+## 表示契约
 
-- `model.ts parse()`：顶级 token 范围内，若 markdown-it（带全文引用定义上下文）的行内 token 流解析出任一 `link_open` / `image`（覆盖行内链接、完整/折叠/快捷引用式、图片引用、尖括号自动链接），或该范围带 `gfm_autolink` / `image` 风险（裸地址、行内图片），该范围生成**保守字面叶**：整段源码字节（LF 规范化后）作为单一可编辑 PM 文本叶，`Range.literal` 标注，DOM 加 `literal-inline` 虚线与说明。不是 protected_block、不进 pending、保存资格不受影响。
-- 其余风险码维持既有拒绝/保护路径；`task_list`/`gfm_autolink`/`image` 之外的风险码仍整段抛错（例如模板表达式 `{}` 与裸 URL 同段时依旧拒绝载入）。
-- 字面叶的映射是恒等映射：文本叶 == 范围规范化原文，`sourcePosition` 的整叶唯一性定位天然成立；CRLF 由既有逐字符偏移换算处理。无「首次出现盲取」。
-- 每次编辑仍走既有局部补丁 + 候选原文重解析 + `doc.eq(targetPMDoc)` 守卫；守卫失败即拒绝提交并保留可信状态。
-- 引用定义行（含 ≤3 空格缩进）仍是原文间隙，不进入任何 PM 节点，字节不可能被改写。
-- 列表 / 引用块内含链接：显式抛错拒绝（`链接/图片暂只支持段落与标题的保守字面表示：bullet_list` 等），不静默降级、不吞字节。
+- 普通行内链接、完整/折叠/快捷引用式链接和尖括号自动链接进入真实 ProseMirror `link` mark；DOM 为 `a[href]`，只显示文字，不显示 `[]()`、引用标签或标题的 `#`。
+- 解析局部块时附加全文引用定义作为只读解析上下文。定义行、原引用拼写、href/title、空白、BOM 与 CRLF 仍由原文账本持有，不经 serializer 改写。
+- 裸 URL 使用 CommonMark `linkify:false`，作为普通文本载入；`gfm_autolink` 风险不再单独拒绝整篇文档。
+- 生产 schema 没有 image node。本原型只增加 `image_ref` mark：图片 alt 作为黄色「图片原文占位」显示，DOM 是 `span[data-image-ref]`，绝不创建 `img` 或加载资源；其同段正文、strong/em/code/link 仍保留真实结构。图片定界符、路径/title 与引用定义仍只由精确源码补丁维护。
+- paragraph、heading、list、blockquote 均可包含真实 link mark；列表/引用内显示文字可编辑，不再拒绝载入。
+- 文本叶按所属顶层范围中的 PM 顺序映射，重复显示文字按真实 PM 位置区分。候选补丁必须重新解析并与目标 `PM doc` 做 `doc.eq`；失败则保留可信 source/state 并阻断保存。
+- `inclusive:false` link/image mark 在完整替换其文本叶时会被 PM 默认丢弃；`transaction()` 只对「替换完全位于同一文本叶」的单步文本事务继承原 marks。跨叶、多步、结构和一般 mark 事务仍拒绝。
+- 005 的安全边界没有移除：数学/围栏等含混输入仍进入 pending 并阻断保存；除 `task_list`、`gfm_autolink`、`image` 外的未知 safety risk 仍拒绝。
 
-## 2. 修复前后（同一命令）
+## 冻结 case03：全链证据
 
-`node crossval.mjs <样稿目录>`（jsdom 载入真实 PROTOTYPE.html bundle，走真实 `sourceEdit` + `view.dispatch` + `actions.save` 入口）：
+输入 `input.md`：475B，SHA-256 `7dd2d074e44cca9c1f3dcedc38af29d13debd0697ba4bd0f7e59b8299703f223`。驱动为 `sourceEdit` → 真实 EditorView 刷新 → 三个真实模型操作 → 内存保存点；预期文件只在操作完成后读取。
 
-| | 载入 | 步1/2/3/4 |
-| --- | --- | --- |
-| 修复前 | `blocked: 不支持的语法边界：gfm_autolink`（整篇拒绝） | 全部未执行 |
-| 修复后 | ok（`literalRanges=2`，pending=false） | 4/4 PASS |
-
-## 3. case03 实际步骤证据（jsdom 层）
-
-样稿：`cases/03-reference-links/input.md`（475B，sha `7dd2d074…`，LF，无 BOM）。驱动方式：`p.model.sourceEdit(input)`（真实 parse+commit 入口，随后仅清历史建立基线）→ 三步均为 `p.view.dispatch(p.model.state.tr.insertText(...))` 真实 PM 文本事务 → `p.actions.save`。预期文件只在步末读取比对。
-
-| 步 | 动作（manifest ops） | 结果 | sha256（缓冲区） | 引用定义 |
-| --- | --- | --- | --- | --- |
-| 1 | visual，「Inkora 文档」→「Inkora 手册」 | PASS，字节 == `after-step-1.md`（475B） | `d9033db6a06e…` | refsKept=true |
-| 2 | visual，「![图标]」→「![图示]」 | PASS，字节 == `after-step-2.md`（475B） | `7450c1259be4…` | refsKept=true |
-| 3 | visual，「(https://example.com/inkora 」→「(https://example.com/inkora-v2 」 | PASS，字节 == `after-step-3.md`（478B） | `4b5bfa9e8924…` | refsKept=true |
-| 4 | 保存（内存基线，`to_disk` 仅内存模拟） | PASS，保存点 sha == after-step-3 | `4b5bfa9e8924…` | refsKept=true |
-
-每步同时验证：`blocked=''`、`fragsKept`（无保护片段被改动）、定义两行（`[inkora-doc]: https://example.com/docs "引用定义标题保留"` 与 `[inkora-icon]: /assets/icon.png`）与折叠 `[inkora-doc][]`、快捷 `[inkora-doc]`、尖括号 `<https://example.com/bracket>`、裸地址 `https://example.com/auto` 全部未改字节。Undo 三次逐字节回到输入。检查口径来自 manifest 的事后比对，未作为输入喂给模型。
-
-## 4. check.mjs 新增反例（jsdom 层，样稿字符串与冻结样稿不同源）
-
-27 项中的 6 项新增（`make -C editor/prototypes/fidelity test` 实际通过）：
-
-1. **字面表示正例**：含引用/折叠/快捷/图片/裸 URL 的自造样稿载入即净（pending=false、无 protected_block、`.literal-inline`×2）；显示文字、图片替代文字、裸 URL 三处编辑后仅目标字节变化、引用定义逐字节不变、重解析 `doc.eq` 成立、保存点更新、Undo×3 字节还原。
-2. **同 URL 双定义 + 同段重复显示文字**：按 PM 位置编辑第二处「镜像」，首处不动，两条同 URL 定义原样（映射按位置，不盲取首现）。
-3. **定义缺失**：`[ghost][nope]` 无定义 → 载入不阻断（未解析引用按普通文本），正文可编辑。
-4. **定义前后空白**：空行 + 3 空格缩进定义 → 间隙干净、字节保留。
-5. **BOM + CRLF**：BOM 保留、`\r\n` 逐字节保留（字面叶经 CRLF 偏移换算）、Undo 字节级还原。
-6. **列表内链接**：显式抛错拒绝并保留原可信状态（记录为已知限制，不静默处理）。
-
-## 5. 证据分层与主张边界
-
-| 层级 | 本轮实际执行 | 可主张 | 不可主张 |
+| 步骤 | 模型动作 | 结果 SHA-256 | `refsKept` |
 | --- | --- | --- | --- |
-| 模型（纯逻辑） | parse/sourcePosition/apply 守卫在上述输入上运行 | 恒等映射、重解析等价守卫、定义间隙字节不可达 | 任意 Markdown 变体的语法意图 |
-| jsdom（真实 bundle） | check.mjs 27 项、crossval.mjs 12 变体 | 真实 PM 事务/生产 parser/schema 之上的字节与状态证据 | 渲染像素、WKWebView 行为 |
-| 真实 WKWebView | 未执行 | — | 任何桌面端行为 |
-| 系统中文 IME | 未执行（composition 拦截仅原有 jsdom 观察） | — | IME/光标/composition 组合历史 |
-| 磁盘 | 未执行（保存=内存基线；case03 `to_disk` 仅内存模拟） | 缓冲/保存点字节 | 真实写盘、重开、Sandbox 授权 |
-| 图片资源 | 未执行（仅源码表示与路径字节） | `![alt][label]` 与定义路径逐字节保留 | 图像解码、占位渲染、资源加载 |
+| 1 `Inkora 文档`→`Inkora 手册` | link-mark 文本事务 | `d9033db6a06e4f782239229a9cfb2d37f5de2d571e9bc64fd0ce6728c1624a0c` | true |
+| 2 `图标`→`图示` | image-only placeholder 文本事务 | `7450c1259be4f65c8d0c58efc4f1f08d9a10aca2e19078fa72d03369ee54738f` | true |
+| 3 行内 href 加 `-v2` | `actions.linkTarget`：目标字节局部补丁 + 真实 `addMark` | `4b5bfa9e8924e367fb0b6b96853915fb4e0569566fae251b8aa6b07d93d8e99d` | true |
+| 4 保存 | 仅建立内存保存点 | 同上 | true |
 
-链接显示为**源码字面**（保守投影，非渲染式链接）；Typora 式渲染、链接编辑面板、链接 marks 修改均不在本原型能力内（与 README 限制 2 一致）。样稿 05/06/11 既有失败未变；06/11 的驱动序列仍是审计改稿前旧动作，只作现状记录。
+载入后的模型和 DOM 另行断言：5 个 `link` mark / `a[href]` 分别显示行内、完整引用、折叠引用、快捷引用与尖括号自动链接；href/title 正确；标题只显示「链接保真」；裸 URL 不是 anchor；图片是 `SPAN` 且没有资源加载。两条定义（含引用 title 与 `/assets/icon.png`）及所有未操作字节每步保持不变。
 
-## 6. 交接（INK-PROT-010 及后续）
+## 独立反例与回归
 
-- **潜在冲突点 model.ts**：本轮改动集中在 `parse()` else 分支（`streamHasLinkOrImage` + 字面叶构造）与 `Range.literal` 字段；若 010 的选区库重写 `sourcePosition`/`transaction`，两者不重叠但 `Range` 类型新增字段需保留。
-- **潜在冲突点 main.ts**：新增 `annotateLiterals()`（render 尾部调用）与 shell.html 的 `.literal-inline` 样式；010 若改 render/selection 展示请保留该调用。
-- `selection-map.ts` 未触碰（属 006/010 范围）。
-- 完整源范围 ledger 未宣称完成：重复/转义/规范化文本、空段、跨块仍按 README 限制 1 拒绝；字面叶恒等映射只覆盖本轮引入的链接/图片/裸 URL 段落。
+`check.mjs` 当前 28 项通过，其中本轮覆盖：
 
-## 7. 实际运行命令（2026-11-08）
+- link heading 不显示 `#`/引用定界符；邻近 link 的 strong/em/code 不丢失；图片占位不吞同段正文、strong 或旁链。
+- list / blockquote 内 link 载入为真实 anchor，显示文字可按 PM 位置修改。
+- 同段两个「镜像」按第二个 PM 位置修改，第一处和同 URL 的两条定义不动。
+- 缺失引用定义按普通文本载入；≤3 空格缩进定义、BOM、CRLF、图片路径/title 保持原字节。
+- 通用 inline ledger 尚有真实反例：`[a](later)later` 的后一个 `later` 会先撞到 href；`[A \\* B][r]` 的显示文本经过转义规范化后无法直接定位。两者都被映射/重解析守卫拒绝，可信 source/state 不变且保存禁用；没有退回整段源码化。
+
+## 证据分层
+
+| 层级 | 已执行 | 本轮能主张 | 仍未验证 |
+| --- | --- | --- | --- |
+| 模型 | parse、顺序映射、局部 patch、`doc.eq`、pending/save gate | 上述样稿与反例的结构/字节行为 | 通用 Markdown inline source map |
+| jsdom | 真实 bundle、28 项 check、完整 crossval | PM mark、DOM 结构、内存状态和字节 SHA | 像素、WKWebView 事件差异 |
+| 生产 editor 回归 | 锁定工具链 `tsc` + Vitest | 10 文件 / 122 项通过 | 原生宿主 |
+| WKWebView / 系统 IME | 未执行 | — | 光标、composition、系统输入法历史 |
+| 磁盘 / Sandbox | 未执行 | 内存保存点字节 | 写盘、重开、授权、冲突 |
+| 图片资源 | 明确未加载 | 占位范围与路径/title 字节 | 解码、布局、资源访问 |
+
+## 与已合入 010（`713e922`）的冲突面
+
+- `model.ts`：009 修改 schema/parser、`sourcePosition`/叶顺序账本、mark 继承；010 同文件增加 selection snapshot/content-anchor 映射。必须手工合并两套状态/映射契约。
+- `main.ts`：009 增加 prototype schema、`linkTarget` 与带 side 的 source mapping；010 重写 source-mode selection、apply/cancel/undo/redo。预计直接冲突。
+- `crossval.mjs`：009 增加 case03 semantic projection 与 `linkTarget` 驱动；010 更新 selection 操作。需保留双方驱动，不能让 010 的 09 结论替代 009 的 case03 oracle。
+- `check.mjs`：010 在同一区域加入大量 selection/empty-document 检查，并在其分支差异中删除旧 009 引用块；集成时必须保留本轮 28 项中的引用语义/反例检查，并同时保留 010 的 selection 检查。
+- `selection-map.ts`、`native-host/` 本轮未修改；本分支没有合并 010。
+
+## 实际命令
 
 ```sh
-ln -s /Users/rayhu/Documents/projects/Inkora/editor/node_modules editor/node_modules   # 复用锁定依赖，交付前移除
-make -C editor/prototypes/fidelity test      # PASS：build + 严格 tsc + check.mjs 27 项
-node editor/prototypes/fidelity/crossval.mjs /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-002-fidelity-cases/editor/prototypes/fidelity-cases
-# 03 三步+保存全 PASS（refsKept=true）；01/02/04/07/08/09/10 保持通过；05/06/11 保持既有失败（旧driver，未按审计纠正）
-make lint PNPM=/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm        # PASS
-make test-editor PNPM=/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm # PASS：9 文件 111 项
+make -C editor/prototypes/fidelity test
+# PASS：build + prototype tsc + 28 checks
+
+node editor/prototypes/fidelity/crossval.mjs
+# case03 4/4 PASS；02、10 回归 PASS；05/06/11 保持旧驱动/旧预期差异；09 不宣称选区通过
+
+/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm --dir editor lint
+/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm --dir editor test
+# PASS：10 test files / 122 tests
 ```
 
-样稿 `verify.py` 本轮未重跑（样稿只读未改，005 轮已记录 508 项通过）。不宣称 M0 通过。
+结论仅限本原型的模型/jsdom 与字节证据，不宣告 M0。

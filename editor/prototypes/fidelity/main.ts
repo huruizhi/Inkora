@@ -1,10 +1,10 @@
 // PROTOTYPE UI; no production entry point imports this file.
+import type { Mark } from 'prosemirror-model';
 import { EditorView } from 'prosemirror-view';
 import { baseKeymap } from 'prosemirror-commands';
 import { keydownHandler } from 'prosemirror-keymap';
 import { TextAreaEditorKernel } from '../../src/editor-kernel';
-import { FidelityModel, sourcePosition, diff, bytes, parse } from './model';
-import { inkoraSchema as schema } from '../../src/schema';
+import { FidelityModel, sourcePosition, diff, bytes, parse, schema } from './model';
 
 export const sample = '# 原型标题\r\n\r\n中文正文  特殊\t空白 😀 e\u0301 保持。\r\n\r\n参考 [文档][ref] 与正文。\n\n[ref]: <https://example.invalid> "标题"\n\n- [ ] 任务一\r\n\r\n$$\nx^2 + y^2\n$$\n\n| 表头 | 值 |\n| --- | --- |\n| 原文 | 保留 |\n\n保护块之后的中文。\n';
 // Independent-audit shaped samples (inputs only; expected outputs are never fed in):
@@ -23,7 +23,7 @@ function render() {
   source.readOnly = !sourceMode;
   const sel = model.state.selection;
   let mapped = '未验证';
-  try { mapped = `${sourcePosition(model.source, model.state, model.ranges, sel.from)}..${sourcePosition(model.source, model.state, model.ranges, sel.to)} (UTF-16)`; } catch { mapped = '无可靠映射'; }
+  try { mapped = `${sourcePosition(model.source, model.state, model.ranges, sel.from, 'from')}..${sourcePosition(model.source, model.state, model.ranges, sel.to, 'to')} (UTF-16)`; } catch { mapped = '无可靠映射'; }
   const pending = model.pending;
   const saveState = model.blocked ? `阻断（${model.blocked}）` : pending ? `阻断（${model.issues.length} 处边界含混待修复：主动源码修复或 Undo）` : sourceMode ? '阻断（源码草稿未提交）' : '允许建立内存快照';
   $('state').textContent = `revision: ${model.revision} | dirty: ${model.source !== model.saved} | Undo: ${model.past.length} | Redo: ${model.future.length}\nPM selection: ${sel.from}..${sel.to} | 原文: ${mapped}\n模式: ${sourceMode ? '主动源码草稿' : '可视'} | composition: ${view.composing}\npending: ${pending ? `${model.issues.length} 处边界含混（${model.issues.map(i => i.code).join(',')}）；缓冲保留用户输入，可信投影已标注问题片段` : '无边界问题，结构化保存资格有效'}\n保存: ${saveState}\n${model.blocked || note}`;
@@ -33,7 +33,7 @@ function render() {
   $('diff').textContent = JSON.stringify(diff(model.before, model.source), null, 2);
   $('before').textContent = esc(model.before); $('after').textContent = esc(model.source);
   $('save').toggleAttribute('disabled', !!model.blocked || pending || sourceMode || view.composing);
-  annotateIssues(); annotateLiterals();
+  annotateIssues();
 }
 // Mark problem fragments in the real DOM: conservative raw projection, never faked rendering.
 function annotateIssues() {
@@ -47,17 +47,6 @@ function annotateIssues() {
     el.classList.toggle('protected-issue', flagged);
     el.title = flagged ? `边界含混：${r.issue}（UTF-16 ${r.start}..${r.end}）` : '保留原文的预览；暂不支持块内编辑';
   }
-}
-// Conservative literal leaves (links/images/bare URLs) stay real editable
-// paragraphs; mark them so the projection is visible, never faked as links.
-function annotateLiterals() {
-  const tops = view.dom.children;
-  model.ranges.forEach((r, i) => {
-    const el = tops[i] as HTMLElement | undefined;
-    if (!el || !r.literal) return;
-    el.classList.add('literal-inline');
-    el.title = `${r.literal}（UTF-16 ${r.start}..${r.end}）：链接/图片/裸 URL 定界符与定义字节原样，编辑仍走局部补丁与重解析守卫`;
-  });
 }
 function coverage() {
   let cursor = 0; const all: Array<{ start: number; end: number; owner: string }> = [];
@@ -91,7 +80,33 @@ function pick(text: string) {
 }
 function patchSelection(insert: string) {
   const { from, to } = model.state.selection;
-  model.apply([{ from: sourcePosition(model.source, model.state, model.ranges, from), to: sourcePosition(model.source, model.state, model.ranges, to), insert }], model.state.tr.insertText(insert, from, to));
+  model.apply([{ from: sourcePosition(model.source, model.state, model.ranges, from, 'from'), to: sourcePosition(model.source, model.state, model.ranges, to, 'to'), insert }], model.state.tr.insertText(insert, from, to));
+}
+// Real visual entry for editing an inline link destination: selection inside
+// the link display text + new target in the input → one patch on the exact
+// destination bytes inside `](…)` plus a real addMark transaction. Reference
+// definitions are not rewritten here (edit the definition line instead).
+function linkTarget() {
+  const next = ($('link-target') as HTMLInputElement).value;
+  if (!next) throw Error('请先在输入框填入新的链接目标');
+  const { from } = model.state.selection;
+  let hit: { pos: number; text: string; mark: Mark } | undefined;
+  model.state.doc.descendants((node, pos) => {
+    if (hit || !node.isText) return;
+    const mark = node.marks.find(m => m.type.name === 'link');
+    if (mark && from >= pos && from <= pos + node.nodeSize) hit = { pos, text: node.text!, mark };
+  });
+  if (!hit) throw Error('选区不在链接显示文字内；请先选中行内链接的文字');
+  const leaf = hit!;
+  const displayStart = sourcePosition(model.source, model.state, model.ranges, leaf.pos, 'from');
+  if (model.source.slice(displayStart, displayStart + leaf.text.length) !== leaf.text) throw Error('显示文字含规范化字符，无法定位行内目标；已拒绝');
+  const rest = model.source.slice(displayStart + leaf.text.length);
+  const match = /^\]\(([^ \t)]*)([^)]*)\)/.exec(rest);
+  if (!match) throw Error('该链接不是行内形式（引用式链接的目标在定义行修改）');
+  if (match[1] !== leaf.mark.attrs.href) throw Error('目标写法与解析结果不一致（含转义/编码）；已拒绝');
+  const destStart = displayStart + leaf.text.length + 2;
+  model.apply([{ from: destStart, to: destStart + match[1].length, insert: next }], model.state.tr.addMark(leaf.pos, leaf.pos + leaf.text.length, schema.marks.link.create({ href: next, title: leaf.mark.attrs.title })));
+  note = `真实 addMark + 行内目标局部补丁：${match[1]} → ${next}`;
 }
 // Programmatic draft edits go through the real input path so the kernel
 // tracks line endings and user-change state exactly like typed input.
@@ -114,6 +129,7 @@ const actions: Record<string, () => void> = {
     if (node.attrs.style !== 'atx' || !model.source.slice(r.start).startsWith('# ')) throw Error('仅验证一级 ATX 标题改二级');
     model.apply([{ from: r.start, to: r.start, insert: '#' }], model.state.tr.setNodeMarkup(r.pos, undefined, { ...node.attrs, level: 2 })); note = '真实标题 attrs 事务；只插入一个 #';
   },
+  linkTarget() { linkTarget(); },
   task() { const p = pick('[ ]'); model.select(p + 1, p + 2); patchSelection('x'); note = '任务通过列表内文字 [ ] → [x] 单字符补丁；尚无 task schema/checkbox 控件'; },
   split() {
     const p = pick('保护块之后'); model.select(p + 3);

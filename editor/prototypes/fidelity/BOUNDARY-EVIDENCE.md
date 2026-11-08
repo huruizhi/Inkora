@@ -40,7 +40,7 @@
 
 - `parse` 不再为边界含混抛错，返回 `{ doc, ranges, issues }`；无闭合 `$$`、非围栏形态行内 `$…$`、未闭合 Mermaid/代码围栏均产出 `Issue{code,start,end,message}`，该 token 变为原文保留的 `protected_block` 并在 UI 以红框标注（`protected-issue`）。
 - 其余正文（标题、段落）正常可视呈现；打开不置 dirty；结构化保存被拒（`保存阻断：边界含混待修复`）。
-- 仍会抛错的是「不支持的语法边界」（gfm_autolink 等，case03 现状不变）与「无法归属的原文」，与上一轮一致。
+- 在本文件记录的 005 轮，仍会抛错的是「不支持的语法边界」（当时包括 gfm_autolink）与「无法归属的原文」。后续 009 已让裸 URL 作为普通文本载入，现状见 `REFERENCE-EVIDENCE.md`。
 
 ### 3. 编辑中制造含混：保留输入 + pending（`commitPending`）
 
@@ -101,7 +101,7 @@ check.mjs 新增 6 项（总 21）覆盖同一契约：`malformed → pending`�
 
 - 行内 `$…$`（非围栏形态）出现在普通段落：整 token 原文保留 + pending + 保存阻断（保守，不伪造渲染）。含两个 `$` 的普通文本会被同等对待。
 - `$$\n$$` 空围栏、blockquote 内 `> $$` 等非精确围栏形态：判为含混（issue），不猜测边界。
-- 03（gfm_autolink）、05（marks/定界符重写）、06/11（单换行 split）、09 步1/3（选区映射）保持上一轮失败/现状差异，本轮未处理。
+- 005 轮当时的 03（gfm_autolink）、05（marks/定界符重写）、06/11（单换行 split）、09 步1/3（选区映射）均未处理；03 已由后续 009 以真实 link 语义覆盖，见 `REFERENCE-EVIDENCE.md`，其余历史结果仍只作当轮记录。
 - 保护片段内编辑仍不支持（无文本叶映射），需主动源码；pending 期间问题片段同样只读。
 
 ## 六、未执行项

@@ -1,21 +1,18 @@
 // PROTOTYPE: incremental source patches over the real Inkora PM document.
-import MarkdownIt from 'markdown-it';
-import { Node as PMNode } from 'prosemirror-model';
+import MarkdownIt, { type StateCore } from 'markdown-it';
+import { Node as PMNode, Schema, type MarkSpec } from 'prosemirror-model';
 import { EditorState, TextSelection, Transaction } from 'prosemirror-state';
-import { inkoraSchema as schema } from '../../src/schema';
-import { parseMarkdown } from '../../src/markdown-codec';
+import { MarkdownParser } from 'prosemirror-markdown';
+import { inkoraNodeSpecs, inkoraMarkSpecs, type InkoraNodeName, type InkoraMarkName } from '../../src/schema';
+import { inkoraMarkdownParser } from '../../src/markdown-codec';
 import { parseProtectedMarkdown } from '../../src/protected-markdown';
 import { analyzeMarkdownSafety } from '../../src/markdown-safety';
 
-export type Range = { start: number; end: number; pos: number; size: number; kind: string; issue?: string; literal?: string };
+export type Range = { start: number; end: number; pos: number; size: number; kind: string; issue?: string };
 export type Patch = { from: number; to: number; insert: string };
 // A boundary issue keeps the raw fragment visible (protected projection),
 // marks the problem scope and blocks structured saves. It never fails the load.
 export type Issue = { code: string; start: number; end: number; message: string };
-// Ranges whose inline stream resolves any link/image construction get a
-// conservative literal leaf: the exact source bytes as one editable text
-// node (identity mapping for every patch), never a raw block, never a
-// silently rewritten delimiter form. Full inline ledgers are out of scope.
 const tokenizer = new MarkdownIt('commonmark', { html: false }).enable(['table', 'strikethrough']);
 export const bytes = (s: string) => new TextEncoder().encode(s);
 export function diff(a: string, b: string) {
@@ -25,17 +22,50 @@ export function diff(a: string, b: string) {
   while (xe > from && ye > from && x[xe - 1] === y[ye - 1]) { xe--; ye--; }
   return { from, beforeEnd: xe, afterEnd: ye, removed: [...x.slice(from, xe)], added: [...y.slice(from, ye)], prefixEqual: x.slice(0, from).every((v, i) => v === y[i]), suffixEqual: x.slice(xe).every((v, i) => v === y[ye + i]) };
 }
-// True when the range's inline stream resolves any link or image
-// construction (inline link, full/collapsed/shortcut reference with the
-// document's definitions, reference image, or <autolink>). Bare URLs are
-// linkify-off plain text and are detected via the gfm_autolink risk instead.
-function streamHasLinkOrImage(normalized: string, refs: string): boolean {
-  for (const token of tokenizer.parse(normalized + '\n\n' + refs, {})) {
-    if (token.type === 'link_open' || token.type === 'image') return true;
-    for (const child of token.children ?? []) if (child.type === 'link_open' || child.type === 'image') return true;
+// The production schema has no image node. The prototype extends the very
+// same node/mark specs with one extra mark: a reference/inline image keeps
+// its alt text as real editable text carrying `image_ref` (href/title in
+// attrs). No resource loading happens; the `![…][label]` bytes are only ever
+// touched by source patches, exactly like every other delimiter form.
+const imageRefSpec: MarkSpec = {
+  attrs: { href: { default: '' }, title: { default: null } },
+  inclusive: false,
+  parseDOM: [{ tag: 'span[data-image-ref]' }],
+  toDOM: mark => ['span', { 'data-image-ref': mark.attrs.href, class: 'image-ref', title: mark.attrs.title ?? undefined }, 0],
+};
+export const schema = new Schema<InkoraNodeName, InkoraMarkName | 'image_ref'>({ nodes: inkoraNodeSpecs, marks: { ...inkoraMarkSpecs, image_ref: imageRefSpec } });
+// Core rulers replicated verbatim from src/markdown-codec.ts so the prototype
+// tokenizer behaves exactly like the production one (fence closure metadata +
+// softbreaks kept as literal "\n" text instead of spaces).
+function annotateFenceClosure(state: StateCore): void {
+  const env = state.env;
+  const source = env && typeof env === 'object' && 'source' in env && typeof env.source === 'string' ? env.source : '';
+  const lines = source.split(/\r?\n/);
+  for (const token of state.tokens) {
+    if (token.type !== 'fence' || !token.map || token.markup.length < 3) continue;
+    const closingLine = lines[token.map[1] - 1] ?? '';
+    const marker = token.markup[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const closed = new RegExp(`^ {0,3}${marker}{${token.markup.length},}[\\t ]*$`).test(closingLine);
+    token.meta = { ...token.meta, inkoraClosed: closed };
   }
-  return false;
 }
+function preserveSoftBreaks(state: StateCore): void {
+  for (const token of state.tokens) {
+    for (const child of token.children ?? []) {
+      if (child.type === 'softbreak') { child.type = 'text'; child.tag = ''; child.content = '\n'; }
+    }
+  }
+}
+const inlineTokenizer = new MarkdownIt('commonmark', { breaks: false, html: false, linkify: false }).enable('strikethrough');
+inlineTokenizer.core.ruler.after('block', 'inkora_fence_closure', annotateFenceClosure);
+inlineTokenizer.core.ruler.after('inline', 'inkora_soft_breaks', preserveSoftBreaks);
+// Production token specs reused verbatim (inkoraMarkdownParser.tokens is the
+// public copy point); the only addition is `image` → image_ref mark so image
+// tokens are no longer an unsupported-token hard failure.
+export const markdownParser = new MarkdownParser(schema, inlineTokenizer, {
+  ...inkoraMarkdownParser.tokens,
+  image: { mark: 'image_ref', noCloseToken: true, getAttrs: token => ({ href: token.attrGet('src') ?? '', title: token.attrGet('title') || null }) },
+});
 export function parse(source: string) {
   const starts = [0];
   for (let i = 0; i < source.length; i++) if (source[i] === '\n') starts.push(i + 1);
@@ -60,7 +90,7 @@ export function parse(source: string) {
     const risks = analyzeMarkdownSafety(normalized).risks;
     const maskedRisks = analyzeMarkdownSafety(masked).risks;
     const protect = () => schema.nodes.protected_block.create({ raw, kind: 'metadata' });
-    let node: PMNode, issue: Issue | undefined, rangeLiteral = '';
+    let node: PMNode, issue: Issue | undefined;
     if (/^\$\$\n[\s\S]*\n\$\$$/.test(masked)) {
       node = protect(); // 稳定可识别的块级数学围栏：整段原字节保留
     } else if (token.type === 'fence' && token.info.trim() === 'mermaid' && /^(`{3,}|~{3,})mermaid\n[\s\S]*\n(?:`{3,}|~{3,})$/.test(masked)) {
@@ -80,55 +110,67 @@ export function parse(source: string) {
       if (protectedDoc && protectedDoc.childCount === 1 && protectedDoc.firstChild?.type.name === 'protected_block') {
         node = schema.nodes.protected_block.create({ raw, kind: protectedDoc.firstChild.attrs.kind });
       } else {
-        // Link/image inline ledger is not built this round. When the range
-        // resolves any link/image construction (inline link, full/collapsed/
-        // shortcut reference, reference image, <autolink>) or carries a bare
-        // URL / inline image risk, keep the exact source bytes as one editable
-        // literal leaf: identity mapping for patches, delimiters and paths
-        // byte-preserved, every edit still behind the re-parse guard.
-        const linky = streamHasLinkOrImage(normalized, refs) || risks.some(r => r.code === 'gfm_autolink' || r.code === 'image');
+        // Bare URLs stay plain text (tokenizer linkify is off) and reference
+        // links/images resolve against the appended definitions into real
+        // link/image_ref marks — display text, href/title and delimiter forms
+        // all stay separated. Every other risk code keeps the existing refusal.
         if (risks.some(r => !['task_list', 'gfm_autolink', 'image'].includes(r.code))) throw Error('不支持的语法边界：' + risks.map(r => r.code).join(','));
-        if (linky) {
-          const blockType = token.type.replace(/_open$/, '');
-          if (blockType !== 'paragraph' && blockType !== 'heading') throw Error('链接/图片暂只支持段落与标题的保守字面表示：' + blockType);
-          const type = blockType === 'heading' ? schema.nodes.heading : schema.nodes.paragraph;
-          const attrs = blockType === 'heading' ? { level: Number(token.tag.slice(1)), style: token.markup === '=' || token.markup === '-' ? 'setext' : 'atx' } : null;
-          node = type.createChecked(attrs, schema.text(normalized));
-          rangeLiteral = '链接/图片/裸 URL：源码字面可编辑叶（保守投影，重解析守卫不变）';
-        } else {
-          const parsed = parseMarkdown(normalized + '\n\n' + refs);
-          if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
-          node = parsed.firstChild!;
-          if (node.type.name === 'code_block' && !node.attrs.closed) {
-            issue = { code: 'code_fence', start, end, message: '代码围栏未闭合：已保留原文片段并阻断结构化保存' };
-            node = protect();
-          }
+        const text = normalized + '\n\n' + refs;
+        const parsed = markdownParser.parse(text, { source: text });
+        if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
+        node = parsed.firstChild!;
+        if (node.type.name === 'code_block' && !node.attrs.closed) {
+          issue = { code: 'code_fence', start, end, message: '代码围栏未闭合：已保留原文片段并阻断结构化保存' };
+          node = protect();
         }
       }
     }
     const range: Range = { start, end, pos, size: node.nodeSize, kind: node.type.name };
     if (issue) { range.issue = issue.message; issues.push(issue); }
-    if (rangeLiteral) range.literal = rangeLiteral;
     ranges.push(range);
     nodes.push(node); pos += node.nodeSize; cursor = end;
   }
-  if (!cleanGap(source.slice(cursor))) throw Error('尾部存在无法归属的原文');
+  if (!cleanGap(source.slice(cursor))) throw Error('尾部存在无法归属的原文范围');
   if (!nodes.length) nodes.push(schema.nodes.paragraph.create());
   return { doc: schema.topNodeType.createChecked(null, nodes), ranges, issues };
 }
-// Each text leaf must occur exactly once inside its top-level source range.
-// Ambiguous/escaped/normalized leaves are deliberately unsupported.
-export function sourcePosition(source: string, state: EditorState, ranges: Range[], position: number): number {
-  let found: number | undefined;
+// Leaves align to their range source in document order (markdown-it emits
+// inline tokens in source order): each leaf must match at/after the previous
+// leaf's end, so repeated display texts map to their own occurrence instead of
+// the first one. Leaves whose text is normalized away (escapes, entities)
+// stay unmapped and edits touching them are refused. Wrong alignments cannot
+// survive: every patch still passes the re-parse + doc.eq guard.
+function leafAlignment(state: EditorState, range: Range, normalized: string): Map<number, number> {
+  const order = new Map<number, number>();
+  let cursor = 0;
   state.doc.descendants((node, pos) => {
-    if (!node.isText || position < pos || position > pos + node.nodeSize) return;
+    if (!node.isText || pos < range.pos || pos >= range.pos + range.size) return;
+    const index = normalized.indexOf(node.text!, cursor);
+    if (index < 0) return;
+    order.set(pos, index);
+    cursor = index + node.text!.length;
+  });
+  return order;
+}
+// Map a PM position to a source offset. `side` disambiguates leaf boundaries:
+// a replace step maps its `from` with the leaf that starts there and its `to`
+// with the leaf that ends there; "any" keeps the legacy inclusive behavior.
+export function sourcePosition(source: string, state: EditorState, ranges: Range[], position: number, side: 'from' | 'to' | 'any' = 'any'): number {
+  let found: number | undefined;
+  const cache = new Map<Range, Map<number, number>>();
+  state.doc.descendants((node, pos) => {
+    if (!node.isText) return;
+    const end = pos + node.nodeSize;
+    const inside = side === 'from' ? pos <= position && position < end : side === 'to' ? pos < position && position <= end : pos <= position && position <= end;
+    if (!inside) return;
     const range = ranges.find(r => pos >= r.pos && pos < r.pos + r.size);
     if (!range) return;
-    const raw = source.slice(range.start, range.end), normalized = raw.replace(/\r\n/g, '\n');
-    const text = node.text!;
-    const index = normalized.indexOf(text);
-    if (index < 0 || normalized.indexOf(text, index + 1) >= 0) return;
-    const target = index + position - pos;
+    const raw = source.slice(range.start, range.end);
+    let alignment = cache.get(range);
+    if (!alignment) { alignment = leafAlignment(state, range, raw.replace(/\r\n/g, '\n')); cache.set(range, alignment); }
+    const index = alignment.get(pos);
+    if (index === undefined) return;
+    const target = index + (position - pos);
     let original = 0, n = 0;
     while (n < target) { if (raw.slice(original, original + 2) === '\r\n') original++; original++; n++; }
     const value = range.start + original;
@@ -182,9 +224,23 @@ export class FidelityModel {
     if (tr.steps.length !== 1) throw Error('仅验证单步文本事务；多步事务已阻断');
     const step = tr.steps[0].toJSON();
     if (step.stepType !== 'replace' || step.structure || step.slice?.openStart || step.slice?.openEnd || step.slice?.content?.some((n: { type: string }) => n.type !== 'text')) throw Error('结构/marks 事务需使用专用演示操作；此次操作已阻断');
-    const from = sourcePosition(this.source, this.state, this.ranges, step.from);
-    const to = sourcePosition(this.source, this.state, this.ranges, step.to);
-    this.apply([{ from, to, insert: (step.slice?.content ?? []).map((n: { text: string }) => n.text).join('') }], tr);
+    const from = sourcePosition(this.source, this.state, this.ranges, step.from, 'from');
+    const to = sourcePosition(this.source, this.state, this.ranges, step.to, 'to');
+    if (from > to || (step.from === step.to && from !== to)) throw Error('选区边界无法唯一映射到原文（定界符之间或跨叶）；此次操作已阻断');
+    const insert = (step.slice?.content ?? []).map((n: { text: string }) => n.text).join('');
+    // PM drops inclusive:false marks when their entire text leaf is replaced.
+    // Preserve the exact source leaf's marks for a replacement contained in
+    // one text node; otherwise the source re-parse would correctly reject the
+    // now-unlinked target doc. Insertions at a mark boundary remain untouched.
+    if (step.from < step.to && insert) {
+      let marks: readonly import('prosemirror-model').Mark[] | undefined;
+      this.state.doc.descendants((node, pos) => {
+        if (marks || !node.isText || step.from < pos || step.to > pos + node.nodeSize) return;
+        marks = node.marks;
+      });
+      for (const mark of marks ?? []) tr.addMark(step.from, step.from + insert.length, mark);
+    }
+    this.apply([{ from, to, insert }], tr);
   }
   sourceEdit(source: string) {
     // Byte-identical no-op: keep bytes/dirty/revision/history untouched.

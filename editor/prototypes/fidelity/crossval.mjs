@@ -26,6 +26,7 @@ async function boot() {
 
 function loadCase(p, text) {
   p.model.sourceEdit(text); // 真实 parse+commit 入口；随后仅清空历史以建立干净基线
+  p.run(() => {}); // 只刷新真实 EditorView；不读取或应用任何预期文件
   const m = p.model;
   m.past.length = 0; m.future.length = 0; m.saved = text; m.before = text; m.revision = 0; m.blocked = '';
 }
@@ -78,12 +79,40 @@ async function runCase(id, variant, file, steps, opts = {}) {
     }
     initialFrags = fragments(p.model);
     const initialDefs = opts.defs ? defsOf(p.model) : null;
-    if (opts.defs) r.literalRanges = p.model.ranges.filter(x => x.literal).length;
+    if (opts.references) {
+      const anchors = [...p.view.dom.querySelectorAll('a[href]')];
+      const links = [];
+      p.model.state.doc.descendants((n, pos) => {
+        if (!n.isText) return;
+        const mark = n.marks.find(x => x.type.name === 'link');
+        if (mark) links.push({ pos, text: n.text, href: mark.attrs.href, title: mark.attrs.title });
+      });
+      const image = p.view.dom.querySelector('span.image-ref[data-image-ref]');
+      r.semanticProjection = {
+        links,
+        domLinks: anchors.map(a => ({ text: a.textContent, href: a.getAttribute('href'), title: a.getAttribute('title') })),
+        heading: p.view.dom.querySelector('h1')?.textContent ?? null,
+        bareUrlIsText: !anchors.some(a => a.textContent === 'https://example.com/auto'),
+        image: image ? { text: image.textContent, href: image.getAttribute('data-image-ref'), tag: image.tagName } : null,
+        imageLoadsResource: !!p.view.dom.querySelector('img'),
+      };
+      const expectedDisplays = ['Inkora 官网', 'Inkora 文档', 'inkora-doc', 'inkora-doc', 'https://example.com/bracket'];
+      if (r.semanticProjection.heading !== '链接保真' || r.semanticProjection.image?.text !== '图标' || r.semanticProjection.imageLoadsResource || !r.semanticProjection.bareUrlIsText || expectedDisplays.some(text => !anchors.some(a => a.textContent === text)) || anchors.some(a => /[\[\]#]/.test(a.textContent ?? ''))) {
+        r.load = 'blocked: reference semantic projection mismatch'; dom.window.close(); return;
+      }
+    }
     for (const st of steps) {
       const rec = { n: st.n, how: st.how, outcome: '', sha: sha(p.model.source), dirty: p.model.source !== p.model.saved };
       r.steps.push(rec);
       try {
         if (st.how === 'visual') visualReplace(p, st.find, st.replace);
+        else if (st.how === 'linkTarget') {
+          const at = findText(p, st.find);
+          p.model.select(at, at + st.find.length);
+          dom.window.document.getElementById('link-target').value = st.target;
+          p.run(p.actions.linkTarget);
+          rec.linkHref = p.view.dom.querySelector(`a[href="${st.target}"]`)?.getAttribute('href') ?? null;
+        }
         else if (st.how === 'visualPending') {
           visualReplace(p, st.find, st.replace);
           rec.pending = p.model.pending; rec.issues = p.model.issues.map(i => i.code);
@@ -182,10 +211,10 @@ await runCase('02-protected-whitespace', 'main', 'input.md', [
 ], { open: 'openMixed' });
 await runCase('03-reference-links', 'main', 'input.md', [
   S(1, 'visual', 'after-step-1.md', { find: 'Inkora 文档', replace: 'Inkora 手册' }),
-  S(2, 'visual', 'after-step-2.md', { find: '![图标]', replace: '![图示]' }),
-  S(3, 'visual', 'after-step-3.md', { find: '(https://example.com/inkora ', replace: '(https://example.com/inkora-v2 ' }),
+  S(2, 'visual', 'after-step-2.md', { find: '图标', replace: '图示' }),
+  S(3, 'linkTarget', 'after-step-3.md', { find: 'Inkora 官网', target: 'https://example.com/inkora-v2' }),
   S(4, 'save', 'after-step-3.md'),
-], { defs: true });
+], { defs: true, references: true });
 await runCase('04-task-toggle-crlf', 'main', 'input.md', [
   S(1, 'visual', 'after-step-1.md', { find: '[ ] 中文样稿就绪', replace: '[x] 中文样稿就绪' }),
   S(2, 'visual', 'after-step-2.md', { find: '[X] 大写', replace: '[ ] 大写' }),
