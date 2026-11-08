@@ -179,9 +179,23 @@
       "selectionPreserved": true
     },
     {
-      "action": "malformed",
-      "blocked": "Error: 公式边界不明确：保留可信视图并阻断保存",
-      "trustedBytesPreserved": true
+      "action": "malformed → pending",
+      "issues": [
+        {
+          "code": "math",
+          "start": 113,
+          "end": 127,
+          "message": "数学围栏未闭合或边界不明确（缺少配对 $$ 行）：已保留原文片段并阻断结构化保存"
+        }
+      ],
+      "bufferKept": true,
+      "dirty": true,
+      "saveBlocked": true
+    },
+    {
+      "action": "undo / repair restore consistency",
+      "byteExact": true,
+      "pendingCleared": true
     },
     {
       "action": "native PM replace emoji",
@@ -228,6 +242,40 @@
       "action": "draft cancel",
       "trustedUnchanged": true,
       "textareaReset": true
+    },
+    {
+      "action": "mixed sample open (BOM/comment/callout/footnote)",
+      "pendingIssues": 0,
+      "bytes": 359,
+      "saveAllowed": true
+    },
+    {
+      "action": "mixed body edits keep fragment bytes",
+      "fragmentsByteExact": true,
+      "bomPreserved": true
+    },
+    {
+      "action": "visual ambiguity → pending/undo",
+      "bufferKept": true,
+      "saveBlocked": true,
+      "bodyEditableWhilePending": true,
+      "undoConsistent": true
+    },
+    {
+      "action": "malformed open",
+      "issues": [
+        "math"
+      ],
+      "dirty": false,
+      "saveBlocked": true,
+      "mode": "visual"
+    },
+    {
+      "action": "malformed source fix + save + reopen",
+      "pendingCleared": true,
+      "savedBytes": 66,
+      "reopenedClean": true,
+      "mathFragmentRawExact": true
     }
   ],
   "unexecuted": [

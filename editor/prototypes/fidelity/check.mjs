@@ -34,10 +34,25 @@ step('redo'); assert.equal(p.model.source, formatted);
 results.push({ action: 'source format / cross-mode undo-redo', passed: true, selectionPreserved: true });
 step('save'); assert.equal(p.model.saved, formatted);
 const trusted = p.model.source, trustedDoc = p.model.state.doc;
-p.run(p.actions.malformed); assert.ok(p.model.blocked); assert.equal(p.model.source,trusted); assert.ok(p.model.state.doc.eq(trustedDoc));
+const corrupt = trusted.replace('\n$$\n\n|', '\n$\n\n|');
+p.run(p.actions.malformed);
+assert.equal(p.model.blocked, '');
+assert.ok(p.model.pending && p.model.issues.length === 1 && p.model.issues[0].code === 'math');
+assert.equal(p.model.source, corrupt); // 用户含混输入保留在缓冲，不被丢弃
+assert.ok(p.parse(p.model.source).doc.eq(p.model.state.doc)); // 当前视图即缓冲的保守投影
+assert.ok(!p.model.state.doc.eq(trustedDoc));
 assert.ok(dom.window.document.getElementById('save').disabled);
-results.push({ action: 'malformed', blocked: p.model.blocked, trustedBytesPreserved: true });
-step('repair'); assert.equal(p.model.source, trusted);
+assert.ok(p.view.dom.querySelector('section.protected-block.protected-issue'));
+results.push({ action: 'malformed → pending', issues: p.model.issues, bufferKept: true, dirty: p.model.source !== p.model.saved, saveBlocked: true });
+// Undo 恢复一致性：字节与 PM 文档回到可信状态，pending 清除。
+p.run(p.actions.undo);
+assert.equal(p.model.source, trusted); assert.ok(!p.model.pending);
+assert.ok(p.model.state.doc.eq(trustedDoc));
+// 主动修复路径同样恢复最近一次可信快照。
+p.run(p.actions.malformed);
+p.run(p.actions.repair);
+assert.equal(p.model.source, trusted); assert.ok(!p.model.pending); assert.equal(p.model.blocked, '');
+results.push({ action: 'undo / repair restore consistency', byteExact: true, pendingCleared: true });
 step('reset'); assert.equal(p.model.source,initial);
 // Native PM text transaction path, including a UTF-16 surrogate pair.
 let at;
@@ -93,6 +108,83 @@ step('reset');
   assert.equal(m.source, snap.source); assert.equal(m.revision, snap.revision); assert.equal(m.past.length, snap.past);
   assert.equal(src.value, m.source.replace(/\r\n/g, '\n'));
   results.push({ action: 'draft cancel', trustedUnchanged: true, textareaReset: true });
+}
+// Mixed protected-fragment sample (BOM + math fence + HTML comment with literal $x$
+// + footnote reference + callout): opens clean, byte-identical, fragments intact.
+step('openMixed');
+{
+  const kinds = []; p.model.state.doc.forEach(n => kinds.push(n.type.name));
+  assert.deepEqual(kinds, ['heading', 'paragraph', 'protected_block', 'protected_block', 'protected_block', 'paragraph']);
+  assert.equal(p.model.issues.length, 0);
+  const fragments = () => p.model.ranges.filter(r => r.kind === 'protected_block').map(r => p.model.source.slice(r.start, r.end));
+  const opened = fragments();
+  assert.equal(opened[0], '$$\nE = mc^2\n$$');
+  assert.equal(opened[1], '<!-- 注释内部含 [[bad 与 $x$，均为字面量 -->\n脚注引用在这里[^1]，行尾两个空格  ');
+  assert.equal(opened[2], '> [!note] 标题存在\n> 引用正文样式保持。');
+  assert.equal(Buffer.from(p.model.source, 'utf8').length, 359); // 与独立样稿 case02 输入同字节
+  p.run(p.actions.save); assert.equal(p.model.saved, p.model.source);
+  results.push({ action: 'mixed sample open (BOM/comment/callout/footnote)', pendingIssues: 0, bytes: 359, saveAllowed: true });
+  let at; p.model.state.doc.descendants((n, pos) => { if (n.isText && n.text.includes('逐字节保留')) at = pos + n.text.indexOf('逐字节保留'); });
+  p.view.dispatch(p.model.state.tr.insertText('逐字节不变', at, at + 5));
+  assert.equal(p.model.blocked, ''); assert.ok(!p.model.pending);
+  assert.deepEqual(fragments(), opened);
+  let at2; p.model.state.doc.descendants((n, pos) => { if (n.isText && n.text.includes('收尾段落包含')) at2 = pos + n.text.indexOf('收尾段落包含'); });
+  p.view.dispatch(p.model.state.tr.insertText('结束段落包含', at2, at2 + 6));
+  assert.equal(p.model.blocked, ''); assert.ok(!p.model.pending);
+  assert.deepEqual(fragments(), opened);
+  assert.ok(p.model.source.startsWith('\uFEFF'));
+  results.push({ action: 'mixed body edits keep fragment bytes', fragmentsByteExact: true, bomPreserved: true });
+}
+// Editing an ambiguity into the buffer: pending keeps the typed input, blocks saves,
+// keeps the conservative projection editable, and undo restores consistency.
+step('openMixed');
+{
+  const whole = '收尾段落包含一个制表符→\t←结束。';
+  let at3; p.model.state.doc.descendants((n, pos) => { if (n.isText && n.text.includes(whole)) at3 = pos + n.text.indexOf(whole); });
+  p.view.dispatch(p.model.state.tr.insertText('$$\n' + whole, at3, at3 + whole.length));
+  assert.equal(p.model.blocked, '');
+  assert.ok(p.model.pending && p.model.issues.length === 1 && p.model.issues[0].code === 'math');
+  assert.ok(p.model.source.includes('$$\n收尾段落包含'));
+  assert.ok(dom.window.document.getElementById('save').disabled);
+  assert.ok(p.model.source !== p.model.saved);
+  let at4; p.model.state.doc.descendants((n, pos) => { if (n.isText && n.text.includes('逐字节保留')) at4 = pos + n.text.indexOf('逐字节保留'); });
+  p.view.dispatch(p.model.state.tr.insertText('逐字节不变', at4, at4 + 5));
+  assert.equal(p.model.blocked, ''); assert.ok(p.model.pending);
+  assert.ok(p.model.source.includes('逐字节不变'));
+  p.run(p.actions.undo); p.run(p.actions.undo);
+  assert.equal(p.model.source, p.samples.mixed); assert.ok(!p.model.pending);
+  assert.equal(p.model.source, p.model.saved);
+  results.push({ action: 'visual ambiguity → pending/undo', bufferKept: true, saveBlocked: true, bodyEditableWhilePending: true, undoConsistent: true });
+}
+// Malformed open path: trusted view kept, problem marked, no dirty, save rejected.
+step('openMalformed');
+{
+  assert.ok(p.model.pending && p.model.issues.length === 1);
+  assert.equal(p.model.source, p.samples.malformed);
+  assert.equal(p.model.source, p.model.saved); // 打开本身不置 dirty
+  assert.ok(dom.window.document.getElementById('save').disabled);
+  assert.ok(p.view.dom.querySelector('h1') && p.view.dom.querySelector('p'));
+  assert.ok(p.view.dom.querySelector('section.protected-block.protected-issue'));
+  assert.ok(!p.sourceMode); // 未整篇切换源码模式
+  p.run(p.actions.save);
+  assert.ok(p.model.blocked.includes('保存阻断'));
+  assert.equal(p.model.saved, p.samples.malformed);
+  results.push({ action: 'malformed open', issues: p.model.issues.map(i => i.code), dirty: false, saveBlocked: true, mode: 'visual' });
+  // 主动源码修复 → 围栏闭合 → 保存 → 以内存基线重开。
+  const src = dom.window.document.getElementById('source-draft');
+  p.run(p.actions.source);
+  src.value = src.value.replace('\\int_0^1 x\\,dx', () => '\\int_0^1 x\\,dx\n$$');
+  src.dispatchEvent(new dom.window.Event('input'));
+  p.run(p.actions.apply);
+  assert.ok(!p.model.pending); assert.equal(p.model.blocked, '');
+  p.run(p.actions.save);
+  const fixed = p.model.source;
+  const reopened = new p.FidelityModel(fixed);
+  assert.equal(reopened.issues.length, 0);
+  const kinds = []; reopened.state.doc.forEach(n => kinds.push(n.type.name));
+  assert.deepEqual(kinds, ['heading', 'paragraph', 'protected_block']);
+  assert.equal(reopened.state.doc.child(2).attrs.raw, '$$\n\\int_0^1 x\\,dx\n$$');
+  results.push({ action: 'malformed source fix + save + reopen', pendingCleared: true, savedBytes: Buffer.from(fixed, 'utf8').length, reopenedClean: true, mathFragmentRawExact: true });
 }
 assert.deepEqual(errors, []);
 const report = { environment: 'Node + jsdom (non-UI only)', baseline: '57aeaac18e41c7191b1be851b284aae8c1b1bbae', results, unexecuted: ['WKWebView', 'system Chinese IME', 'native save/reopen', 'HITL', 'independent OMP fixtures'] };
