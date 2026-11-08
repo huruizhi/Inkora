@@ -1,0 +1,1397 @@
+{
+  "schema_version": 1,
+  "task": "INK-PROT-002",
+  "baseline_commit": "57aeaac18e41c7191b1be851b284aae8c1b1bbae",
+  "spec_ref": "docs/markdown-support.md@57aeaac（冻结 1.0，规则 ID 由此引用）",
+  "acceptance_basis": "验收依据（2026-11-08 用户最新口径优先）：高级语法不得导致自动整篇退出可视编辑；畸形/含混边界应保留可信视图与原文、阻止不安全结构化保存，由用户主动选择源码修复；「有提示地自动打开整篇源码模式」记为现状差异，不判为通过。docs/markdown-support.md 中 SYN-U/EOL-001 等整篇回退规则仅作现状参照。字节判据与模式/交互判据分别记录，不得以任一模式退路默认当作新体验已满足。",
+  "independence": "全部输入、动作与预期仅由冻结规范、03/04/11 号票据与上述验收口径独立推导，未读取也未迎合 INK-PROT-001 原型的任何输出。",
+  "verdicts": {
+    "byte-exact": "预期文件字节可独立推导；校验器会用 manifest 中的 ops 从前一状态重新推导并比对 sha256。",
+    "state-ref": "历史步骤；预期字节必须等于本变体更早出现过的某个状态（输入或此前预期文件）。",
+    "operational": "无法在不知道原型界面的情况下给出字节或坐标；给出操作步骤与内容锚点判据，不捏造精确坐标或通过结果。"
+  },
+  "to_disk": "expect.to_disk=true 表示保存后磁盘应为此字节；false 表示仅缓冲区态（保存被阻止或历史态）。",
+  "cases": [
+    {
+      "id": "01-zh-emoji-replace",
+      "title": "中文与 emoji 局部替换",
+      "covers": [
+        "中文/emoji局部替换"
+      ],
+      "rules": [
+        "FID-002",
+        "ENC-003",
+        "ENC-004",
+        "SYN-S001"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 273,
+              "sha256": "e06e70411fc745434aa8a40a59d918573583d3c7b94245a16f3749faa75b6262",
+              "bom": false,
+              "eol": "lf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：将正文第一段中的「原文字节」改为「原始字节」（选中重输或退格修改）。",
+              "edit_scope": "第一段内 4 个汉字「原文字节」→「原始字节」。",
+              "delimiter_scope": "无（纯文本段落，不涉及定界符）。",
+              "ops": [
+                {
+                  "find": "原文字节",
+                  "replace": "原始字节"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-1.md 完全一致（sha256 校验）。",
+                "标题、emoji 行、末段与全部换行逐字节不变（由 ops 推导证明）。"
+              ],
+              "expect": {
+                "file": "after-step-1.md",
+                "to_disk": true,
+                "bytes": 273,
+                "sha256": "b374d0b707e2342ce73ac023e2d18b6deffedd08a4ff76898f6b9348268365d6"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：将 ZWJ 家庭 emoji 👨‍👩‍👧‍👦 整体替换为 🧑‍🤝‍🧑。",
+              "edit_scope": "仅该 emoji 的 25 字节（7 个 Unicode 标量、11 个 UTF-16 单元）替换为 18 字节（5 个标量、8 个 UTF-16 单元）。",
+              "delimiter_scope": "无。",
+              "ops": [
+                {
+                  "find": "👨‍👩‍👧‍👦",
+                  "replace": "🧑‍🤝‍🧑"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-2.md 完全一致。",
+                "替换前后三种长度均不同（25→18 字节、7→5 个 Unicode 标量、11→8 个 UTF-16 单元）；若原型按 UTF-16 长度截断或偏移错位，会在邻接「 」空格或「家」字上产生字节差异，据此判定失败。",
+                "其余范围（含另一个 emoji 与组合字符行）逐字节不变。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 266,
+                "sha256": "df020ca9ec43596b697960d1f0f72d35209cac1b098c710e23660c03b85d4f2d"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：将旗帜 emoji 🇨🇳 替换为 🇯🇵。",
+              "edit_scope": "仅该旗帜 emoji 的 8 字节（2 个区域指示符标量）。",
+              "delimiter_scope": "无。",
+              "ops": [
+                {
+                  "find": "🇨🇳",
+                  "replace": "🇯🇵"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-3.md 完全一致。",
+                "两个旗帜 emoji 字节数相同但码点不同；替换不得引入 Unicode 归一化或实体改写（ENC-003/SYN-S011）。"
+              ],
+              "expect": {
+                "file": "after-step-3.md",
+                "to_disk": true,
+                "bytes": 266,
+                "sha256": "c5f8de13e779dfb7ee03df1a34cf96d22f2a3a8db7434de18dc1e8cbb0dc5f3d"
+              }
+            },
+            {
+              "n": 4,
+              "verdict": "operational",
+              "mode": "visual",
+              "action": "检查：组合字符行中预组合 café（U+00E9）与分解 cafe+U+0301 在打开、编辑、保存全程不得互相归一化。",
+              "edit_scope": "无编辑；仅观测。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "打开后两处重音字符的 UTF-8 字节与输入一致（café=63 61 66 C3 A9；分解形式=63 61 66 65 CC 81）。",
+                "第 1～3 步任一保存后，两处重音字符字节仍与输入一致（ENC-003）。"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "02-protected-whitespace",
+      "title": "保护片段前后空白与非规范空白（含 BOM）",
+      "covers": [
+        "保护片段前后空白",
+        "BOM 保留"
+      ],
+      "rules": [
+        "FID-001",
+        "FID-002",
+        "FID-004",
+        "ENC-001",
+        "WSP-001",
+        "WSP-002",
+        "SYN-D002",
+        "SYN-D003",
+        "SYN-D004",
+        "SYN-D005",
+        "SYN-D007"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 359,
+              "sha256": "2ff17efe6b4aa9b7b9f6da67102eb09622646f602e79cb349ab2e80aa424f802",
+              "bom": true,
+              "eol": "lf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "打开后不做任何修改，直接保存。",
+              "edit_scope": "无编辑。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "保存输出与输入逐字节一致，包括 UTF-8 BOM（FID-001/ENC-001）。",
+                "文档含 4 类 D 级保护片段（块级数学、HTML 注释、脚注、callout）：默认保持可视编辑混排，不得因高级语法存在自动整篇切换源码模式（新验收口径；若现状回退，记现状差异，不判通过）。"
+              ],
+              "expect": {
+                "file": "input.md",
+                "to_disk": true,
+                "bytes": 359,
+                "sha256": "2ff17efe6b4aa9b7b9f6da67102eb09622646f602e79cb349ab2e80aa424f802"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：第一段「逐字节保留」改为「逐字节不变」。",
+              "edit_scope": "第一段内 5 个汉字（不含标点）。",
+              "delimiter_scope": "无（段落正文，不触碰任何片段定界符）。",
+              "ops": [
+                {
+                  "find": "逐字节保留",
+                  "replace": "逐字节不变"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-2.md 完全一致，BOM 保留。",
+                "数学围栏 $$、注释、脚注引用/定义、callout、行尾双空格、制表符、两个连续空行全部逐字节不变（FID-002/FID-004/WSP-001）。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 359,
+                "sha256": "1b90bc3376d3216e0c62556a3b34bdacd580b5473f99b18394b9264d807609a8"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：末段「收尾段落包含」改为「结束段落包含」。",
+              "edit_scope": "末段内前 6 个汉字。",
+              "delimiter_scope": "无。",
+              "ops": [
+                {
+                  "find": "收尾段落包含",
+                  "replace": "结束段落包含"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-3.md 完全一致，BOM 保留。",
+                "末段中的制表符（→\t← 之间）与行尾换行不变。"
+              ],
+              "expect": {
+                "file": "after-step-3.md",
+                "to_disk": true,
+                "bytes": 359,
+                "sha256": "5a9822112134733b0fcf9ea0322c94e6af12797ee8e910e66e9183708ecb726f"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "03-reference-links",
+      "title": "引用式链接不改写",
+      "covers": [
+        "引用式链接不改写"
+      ],
+      "rules": [
+        "FID-002",
+        "SYN-S010",
+        "SYN-S011",
+        "SYN-S016"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 475,
+              "sha256": "7dd2d074e44cca9c1f3dcedc38af29d13debd0697ba4bd0f7e59b8299703f223",
+              "bom": false,
+              "eol": "lf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：引用式链接文字「Inkora 文档」改为「Inkora 手册」。",
+              "edit_scope": "仅引用式链接方括号内文字（4 个汉字范围内 2 字变化）。",
+              "delimiter_scope": "仅该链接的 [ ][inkora-doc] 定界符本身保持不变，不得改写为行内链接或重命名标签。",
+              "ops": [
+                {
+                  "find": "Inkora 文档",
+                  "replace": "Inkora 手册"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-1.md 完全一致。",
+                "折叠式/快捷式链接、标签名 inkora-doc、两条引用定义（含 title 与路径）逐字节不变（SYN-S010/FID-002）。"
+              ],
+              "expect": {
+                "file": "after-step-1.md",
+                "to_disk": true,
+                "bytes": 475,
+                "sha256": "d9033db6a06e4f782239229a9cfb2d37f5de2d571e9bc64fd0ce6728c1624a0c"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：图片替代文字「图标」改为「图示」。",
+              "edit_scope": "仅图片 alt 文字 2 个汉字中的第 2 字。",
+              "delimiter_scope": "保持 ![] 与引用标签写法不变。",
+              "ops": [
+                {
+                  "find": "![图标]",
+                  "replace": "![图示]"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-2.md 完全一致。",
+                "图片引用标签 [inkora-icon] 与定义 /assets/icon.png 逐字节不变。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 475,
+                "sha256": "7450c1259be4f65c8d0c58efc4f1f08d9a10aca2e19078fa72d03369ee54738f"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：行内链接目标 https://example.com/inkora 改为 https://example.com/inkora-v2。",
+              "edit_scope": "仅该行内链接 destination 内追加 -v2。",
+              "delimiter_scope": "圆括号、title \"标题保留\"、尖括号自动链接与裸地址逐字节不变。",
+              "ops": [
+                {
+                  "find": "(https://example.com/inkora ",
+                  "replace": "(https://example.com/inkora-v2 "
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-3.md 完全一致。",
+                "其余链接（含 https://example.com/auto 裸地址与 <https://example.com/bracket>）不改写、不归一化为引用式（SYN-S010/SYN-S016）。"
+              ],
+              "expect": {
+                "file": "after-step-3.md",
+                "to_disk": true,
+                "bytes": 478,
+                "sha256": "4b5bfa9e8924e367fb0b6b96853915fb4e0569566fae251b8aa6b07d93d8e99d"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "04-task-toggle-crlf",
+      "title": "任务状态单字符切换（CRLF、无尾部换行）",
+      "covers": [
+        "任务状态单字符切换"
+      ],
+      "rules": [
+        "FID-002",
+        "SYN-S009",
+        "EOL-001",
+        "EOL-004"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 123,
+              "sha256": "e6cd58c24aef077990fefea7abb1d69db5c5b628dc4c0b24d7cac44ea6aef5ee",
+              "bom": false,
+              "eol": "crlf",
+              "trailing_newline": false
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：点击第二项任务复选框（未勾选 → 勾选）。",
+              "edit_scope": "仅第二项括号内 1 个字符：空格 → x。",
+              "delimiter_scope": "仅 [ ] 括号定界符内部；括号本身、列表标记、文字不变。",
+              "ops": [
+                {
+                  "find": "[ ] 中文样稿就绪",
+                  "replace": "[x] 中文样稿就绪"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-1.md 完全一致（SYN-S009：切换只改括号内字符）。",
+                "全部换行仍为 CRLF，文件仍无尾部换行（EOL-001/EOL-004：不得自动补换行）。",
+                "第一项 [x] 与第三项 [X] 原样保留；若切换写入的不是小写 x，记为与预期的差异并记录实际字节。"
+              ],
+              "expect": {
+                "file": "after-step-1.md",
+                "to_disk": true,
+                "bytes": 123,
+                "sha256": "d583477e27408d06bffd55744b35951607fb3f4933812d4dd50d23ba6fa4a5b0"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：点击第三项任务复选框（大写 X 勾选 → 取消勾选）。",
+              "edit_scope": "仅第三项括号内 1 个字符：X → 空格。",
+              "delimiter_scope": "同上；行内「大写 X 保留原样」中的普通字符 X 不得被改动。",
+              "ops": [
+                {
+                  "find": "[X] 大写",
+                  "replace": "[ ] 大写"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-2.md 完全一致。",
+                "正文文字里的 X 与全部 CRLF 换行不变；仍无尾部换行。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 123,
+                "sha256": "a32f065ee5c07141418917bc3c2308146feb9a8c0aa532ae2314ff1976576cfc"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "05-marks-attrs",
+      "title": "marks 与 attrs 修改",
+      "covers": [
+        "marks/attrs修改"
+      ],
+      "rules": [
+        "FID-002",
+        "FID-003",
+        "SYN-S002",
+        "SYN-S003",
+        "SYN-S004",
+        "SYN-S005"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 200,
+              "sha256": "5d732779fee0ae8577d6864af86b3ef701c05eb264386652eaa46488a833ed10",
+              "bom": false,
+              "eol": "lf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：去掉第一段「加粗」二字的加粗标记（保留文字）。",
+              "edit_scope": "仅删除包裹「加粗」的 4 个 * 字符。",
+              "delimiter_scope": "仅该 marks 定界符；*强调*、~~删除线~~ 与 **嵌套加粗** 的定界符不得变化。",
+              "ops": [
+                {
+                  "find": "**加粗**",
+                  "replace": "加粗"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-1.md 完全一致。",
+                "其余 marks 写法不归一化（* 不改 _，SYN-S003/FID-003）。"
+              ],
+              "expect": {
+                "file": "after-step-1.md",
+                "to_disk": true,
+                "bytes": 196,
+                "sha256": "856b0128d05365edbbcdd010ca89f196d6b2826e34718e86b604dcbc1eff1b43"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：标题「## 标题与标记」级别由 2 改为 3。",
+              "edit_scope": "仅在行首标记增加一个 #。",
+              "delimiter_scope": "仅 ATX 标记 ## → ###；标题文字与行尾不变。",
+              "ops": [
+                {
+                  "find": "## 标题与标记",
+                  "replace": "### 标题与标记"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-2.md 完全一致。",
+                "不添加尾部 #、不改写为 Setext（第 5 节归一化规则）。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 197,
+                "sha256": "39c0340e484ade3f7c279e98bac511aa0be700957beaca4f906e5ef8443fbae1"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：在行内代码「行内代码」中间插入一个反引号，内容变为 行`内代码。",
+              "edit_scope": "仅行内代码内容中插入 1 个 ` 字符。",
+              "delimiter_scope": "原单反引号定界符与新内容冲突：按 SYN-S004 改用最短不冲突的双反引号定界符，且仅在必要处变化。",
+              "ops": [
+                {
+                  "find": "`行内代码`",
+                  "replace": "``行`内代码``"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-3.md 完全一致（定界符由 1 对 ` 增长为 1 对 ``）。",
+                "不加空格填充、不改用三反引号；其余行内代码与代码块不受影响。"
+              ],
+              "expect": {
+                "file": "after-step-3.md",
+                "to_disk": true,
+                "bytes": 200,
+                "sha256": "15c41d8c1c3157a9d4e7d5bc3cf4a97b1a5704ddcab24b579a3d40fcce942938"
+              }
+            },
+            {
+              "n": 4,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：代码块语言信息 python 改为 swift。",
+              "edit_scope": "仅 info string 中 6 个字母 → 5 个字母。",
+              "delimiter_scope": "围栏 ``` 标记类型与长度不变，代码内容 print(\"fence\") 逐字节不变。",
+              "ops": [
+                {
+                  "find": "```python",
+                  "replace": "```swift"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-4.md 完全一致。",
+                "围栏不增长、不换波浪线；closing fence 逐字节保留（SYN-S005/第 5 节）。"
+              ],
+              "expect": {
+                "file": "after-step-4.md",
+                "to_disk": true,
+                "bytes": 199,
+                "sha256": "112da021cfa6a663ea261d7cc6fe5515068e5f2f18d3b4d677f406375f424345"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "06-split-join",
+      "title": "段落与列表 split/join（CRLF）",
+      "covers": [
+        "split/join"
+      ],
+      "rules": [
+        "FID-002",
+        "EOL-002",
+        "SYN-S008"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 133,
+              "sha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29",
+              "bom": false,
+              "eol": "crlf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标置于第一段「拆分点」之后按 Enter 拆分为两个段落。",
+              "edit_scope": "在「拆分点」与「在句中」之间形成段落边界：插入 1 个空行（2 个换行边界）。",
+              "delimiter_scope": "CommonMark 中新段落必须由空行分隔：预期在「拆分点」后插入 CRLF+CRLF（空行），两个新边界均继承当前行 CRLF（EOL-002）；不添加列表/引用等任何新定界符。",
+              "ops": [
+                {
+                  "find": "拆分点在句中",
+                  "replace": "拆分点\r\n\r\n在句中"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-1.md 完全一致（预期为两个独立段落：markdown-it commonmark 解析为 2 个 paragraph 块，而非 1 个含 softbreak 的段落）。",
+                "其余 5 个原有 CRLF 边界逐字节不变。",
+                "若实现只插入单个 CRLF（结果仍是同一段落内的 softbreak），记为失败/差异，不得以「同段落软换行」冒充段落拆分；单 CRLF 软换行继承由 softbreak 变体单独覆盖。"
+              ],
+              "expect": {
+                "file": "after-step-1.md",
+                "to_disk": true,
+                "bytes": 137,
+                "sha256": "b1f831639f870662e4de2b75490f9337e463f3c843577924dc52cc4cf16a537f"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标置于新段落行首（或上一段落行尾）按 Backspace（或 Delete）合并回一段。",
+              "edit_scope": "仅删除第 1 步插入的空行（2 个 CRLF 边界）。",
+              "delimiter_scope": "无新增定界符。",
+              "ops": [
+                {
+                  "find": "拆分点\r\n\r\n在句中",
+                  "replace": "拆分点在句中"
+                }
+              ],
+              "acceptance": [
+                "拆分→合并往返后文件字节与输入完全一致（sha256 相同）。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 133,
+                "sha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标置于列表项「衔接点」之后按 Enter。",
+              "edit_scope": "在「衔接点」与「在末尾」之间拆分。",
+              "delimiter_scope": "按第 5 节归一化规则，新列表项使用「- 」标记；新行边界继承 CRLF。",
+              "ops": [
+                {
+                  "find": "衔接点在末尾",
+                  "replace": "衔接点\r\n- 在末尾"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 after-step-3.md 完全一致。",
+                "若原型将第二行实现为无标记的懒延续（仅 CRLF、无「- 」），记为差异并记录实际字节；不得出现其他改写。",
+                "第二项「- 项目二」逐字节不变。"
+              ],
+              "expect": {
+                "file": "after-step-3.md",
+                "to_disk": true,
+                "bytes": 137,
+                "sha256": "199394d698ab759e25760cc68497cff3dda919a030b8fa157243866d0d056ced"
+              }
+            },
+            {
+              "n": 4,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：将第 3 步产生的两行合并回一个列表项。",
+              "edit_scope": "仅删除第 3 步插入的「- 」与 CRLF。",
+              "delimiter_scope": "无。",
+              "ops": [
+                {
+                  "find": "衔接点\r\n- 在末尾",
+                  "replace": "衔接点在末尾"
+                }
+              ],
+              "acceptance": [
+                "列表 split→join 往返后文件字节与输入完全一致（sha256 相同）。"
+              ],
+              "expect": {
+                "file": "after-step-4.md",
+                "to_disk": true,
+                "bytes": 133,
+                "sha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29"
+              }
+            }
+          ]
+        },
+        {
+          "id": "softbreak",
+          "files": {
+            "input.md": {
+              "bytes": 133,
+              "sha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29",
+              "bom": false,
+              "eol": "crlf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "source",
+              "action": "源码模式：光标置于第一段「拆分点」之后按 Enter 插入单个换行（软换行；CommonMark 下结果仍是同一段落内的 softbreak，不是新段落）。",
+              "edit_scope": "在「拆分点」与「在句中」之间插入 1 个 CRLF 边界。",
+              "delimiter_scope": "新换行继承当前行 CRLF（EOL-002）；不添加任何定界符、不额外补空行。",
+              "ops": [
+                {
+                  "find": "拆分点在句中",
+                  "replace": "拆分点\r\n在句中"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 softbreak-after-step-1.md 完全一致；其余 5 个原有 CRLF 边界逐字节不变。",
+                "本步只覆盖单换行的 EOL 继承字节，不作为段落拆分的判定（段落拆分见 main 变体）。"
+              ],
+              "expect": {
+                "file": "softbreak-after-step-1.md",
+                "to_disk": true,
+                "bytes": 135,
+                "sha256": "50a99d1bbade647f983e120456e9cee2dd60f53330120bd8d0726a97a4c2034c"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "state-ref",
+              "mode": "source",
+              "action": "源码模式：删除第 1 步插入的 CRLF，合并回一行。",
+              "edit_scope": "仅删除第 1 步插入的 CRLF 边界。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "插入→删除往返后文件字节与输入完全一致（sha256 相同）。"
+              ],
+              "expect": {
+                "file": "input.md",
+                "sha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "07-undo-redo",
+      "title": "Undo/Redo 粒度与字节态",
+      "covers": [
+        "Undo/Redo"
+      ],
+      "rules": [
+        "FID-002",
+        "EOL-004"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 92,
+              "sha256": "7699db56bda2883131daf22c710e9a5ca352f21ac0c4cb6659d45d667412958c",
+              "bom": false,
+              "eol": "lf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "编辑 A：正文「第一段原文」改为「首段原文」。",
+              "edit_scope": "仅 3 个汉字。",
+              "delimiter_scope": "无。",
+              "ops": [
+                {
+                  "find": "第一段原文",
+                  "replace": "首段原文"
+                }
+              ],
+              "acceptance": [
+                "保存前缓冲区字节与 after-step-1.md 一致；保存后磁盘一致。"
+              ],
+              "expect": {
+                "file": "after-step-1.md",
+                "to_disk": true,
+                "bytes": 89,
+                "sha256": "9f57aa0fd3a55a75357b30540c016d412a73f40c117a22747f1327e5d6b05c9d"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "编辑 B：点击复选框勾选「待办一项」。",
+              "edit_scope": "仅括号内 1 个字符（空格 → x）。",
+              "delimiter_scope": "仅 [ ] 括号内。",
+              "ops": [
+                {
+                  "find": "[ ] 待办一项",
+                  "replace": "[x] 待办一项"
+                }
+              ],
+              "acceptance": [
+                "缓冲区与磁盘字节与 after-step-2.md 一致。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 89,
+                "sha256": "bd85213debed5b3524f1b21cef76bcb4dd29ac060c46872142c93f6ef5f028be"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "state-ref",
+              "mode": "visual",
+              "action": "撤销一次（应只撤销编辑 B）。",
+              "edit_scope": "历史操作。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "撤销后缓冲区字节与 after-step-1.md 完全一致，dirty 仍为真（与磁盘 after-step-1? 磁盘状态取决于何时保存；记录实际）。",
+                "若一次撤销同时回退了 A 和 B（粒度合并），记为失败并记录实际缓冲区字节。"
+              ],
+              "expect": {
+                "file": "after-step-1.md",
+                "to_disk": false,
+                "bytes": 89,
+                "sha256": "9f57aa0fd3a55a75357b30540c016d412a73f40c117a22747f1327e5d6b05c9d"
+              }
+            },
+            {
+              "n": 4,
+              "verdict": "state-ref",
+              "mode": "visual",
+              "action": "再撤销一次（撤销编辑 A）。",
+              "edit_scope": "历史操作。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "撤销后缓冲区字节与输入完全一致，文档回到未修改（clean）状态。",
+                "此时保存或不保存均不得产生与输入不同的字节。"
+              ],
+              "expect": {
+                "file": "input.md",
+                "to_disk": false,
+                "bytes": 92,
+                "sha256": "7699db56bda2883131daf22c710e9a5ca352f21ac0c4cb6659d45d667412958c"
+              }
+            },
+            {
+              "n": 5,
+              "verdict": "state-ref",
+              "mode": "visual",
+              "action": "重做一次。",
+              "edit_scope": "历史操作。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "重做后缓冲区字节与 after-step-1.md 一致，dirty 为真。"
+              ],
+              "expect": {
+                "file": "after-step-1.md",
+                "to_disk": false,
+                "bytes": 89,
+                "sha256": "9f57aa0fd3a55a75357b30540c016d412a73f40c117a22747f1327e5d6b05c9d"
+              }
+            },
+            {
+              "n": 6,
+              "verdict": "state-ref",
+              "mode": "visual",
+              "action": "再重做一次。",
+              "edit_scope": "历史操作。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "重做后缓冲区字节与 after-step-2.md 一致，dirty 为真；保存写盘后与 after-step-2.md 一致。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": false,
+                "bytes": 89,
+                "sha256": "bd85213debed5b3524f1b21cef76bcb4dd29ac060c46872142c93f6ef5f028be"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "08-source-format-dirty",
+      "title": "源码仅改格式同语义但应 dirty",
+      "covers": [
+        "源码仅改格式同语义但应dirty"
+      ],
+      "rules": [
+        "FID-001",
+        "GATE-001",
+        "GATE-004"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 134,
+              "sha256": "45160e762ea8c89deee594abdec01c8790ddd036a3474c4e7f0a21a2aaedc33f",
+              "bom": false,
+              "eol": "lf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "either",
+              "action": "视觉→源码→视觉来回切换，不输入任何字符，然后保存。",
+              "edit_scope": "无编辑。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "模式切换本身不得置 dirty；保存输出与输入逐字节一致（或因无修改不写盘），模式切换不得作为格式化时机。",
+                "源码视图呈现的文本与原文一致，不含 BOM/换行改写。"
+              ],
+              "expect": {
+                "file": "input.md",
+                "to_disk": true,
+                "bytes": 134,
+                "sha256": "45160e762ea8c89deee594abdec01c8790ddd036a3474c4e7f0a21a2aaedc33f"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "source",
+              "action": "源码模式：把 *星号强调* 的一对星号定界符改为下划线 _星号强调_；切回视觉模式；保存。",
+              "edit_scope": "仅该强调定界符 2 个字符 * → _（语义不变、字节变化）。",
+              "delimiter_scope": "仅定界符替换；**星号加粗** 与行内代码 `*` 不得被改写。",
+              "ops": [
+                {
+                  "find": "*星号强调*",
+                  "replace": "_星号强调_"
+                }
+              ],
+              "acceptance": [
+                "切回视觉模式后：渲染语义与改前一致（仍为强调），dirty 必须为真（字节已不同于磁盘；04 票门槛 3）。",
+                "保存后文件字节与 after-step-2.md 完全一致（GATE-004：按缓冲区字节写盘，不自动格式化回星号）。",
+                "重开文件后强调语义正确，源码保持下划线写法。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 134,
+                "sha256": "6e09b6b5f042a405be3fb0b4cec1cd87c5c2eb31d532501c9c4794ddee5d0838"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "state-ref",
+              "mode": "visual",
+              "action": "视觉模式：跨模式撤销一次（撤销源码模式中的定界符替换）。",
+              "edit_scope": "历史操作。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "撤销后缓冲区字节与输入完全一致，dirty 为假。",
+                "撤销不得破坏光标/选区所在句的可编辑性；记录撤销后光标位置（内容锚点：应位于「星号强调」附近）。"
+              ],
+              "expect": {
+                "file": "input.md",
+                "to_disk": false,
+                "bytes": 134,
+                "sha256": "45160e762ea8c89deee594abdec01c8790ddd036a3474c4e7f0a21a2aaedc33f"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "09-source-roundtrip-selection",
+      "title": "源码往返选区映射与跨模式历史",
+      "covers": [
+        "源码往返历史/selection的步骤"
+      ],
+      "rules": [
+        "FID-002",
+        "ENC-005"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 148,
+              "sha256": "12eac0afbbd16e0be9d4a28b2699623509059a4f6987ccdebfa350fd7453c235",
+              "bom": false,
+              "eol": "lf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "operational",
+              "mode": "visual",
+              "action": "视觉模式：光标置于第一段 🎯 之后（🎯 与 。之间）；切换到源码模式。",
+              "edit_scope": "无编辑；观测选区映射。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "源码模式光标必须映射到同一内容锚点：前一个字符是 🎯（U+1F3AF，占 2 个 UTF-16 单元）、后一个字符是 。。记录原型显示的标量偏移与 UTF-16 偏移实际值。",
+                "映射不得按 UTF-16 长度把光标落到 emoji 内部或其后第 2 个字符。"
+              ]
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "source",
+              "action": "源码模式：在映射后的光标处直接输入「锚点」二字。",
+              "edit_scope": "在 🎯 之后插入 2 个汉字（6 字节）。",
+              "delimiter_scope": "无。",
+              "ops": [
+                {
+                  "find": "🎯。",
+                  "replace": "🎯锚点。"
+                }
+              ],
+              "acceptance": [
+                "缓冲区字节与 after-step-2.md 一致。",
+                "引用块、任务列表与标题未受影响。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 154,
+                "sha256": "97f92fdf4a9f16c4b3403daa484ef7e7b8498d0a9fe851c8b6f3f2fa0c3261b0"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "operational",
+              "mode": "visual",
+              "action": "切回视觉模式。",
+              "edit_scope": "无编辑；观测选区映射与 dirty。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "光标回到插入文本之后（「锚点」与 。之间的内容锚点），不得跳到段首/段尾。",
+                "dirty 为真；可视内容正确显示「🎯锚点」。"
+              ]
+            },
+            {
+              "n": 4,
+              "verdict": "state-ref",
+              "mode": "visual",
+              "action": "视觉模式：撤销一次（跨模式撤销源码编辑）。",
+              "edit_scope": "历史操作。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "撤销后缓冲区字节与输入完全一致，dirty 为假。",
+                "光标回到 🎯 之后（内容锚点），选区不为空不丢失；记录实际行为。"
+              ],
+              "expect": {
+                "file": "input.md",
+                "to_disk": false,
+                "bytes": 148,
+                "sha256": "12eac0afbbd16e0be9d4a28b2699623509059a4f6987ccdebfa350fd7453c235"
+              }
+            },
+            {
+              "n": 5,
+              "verdict": "state-ref",
+              "mode": "visual",
+              "action": "重做一次。",
+              "edit_scope": "历史操作。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "重做后缓冲区字节与 after-step-2.md 一致，dirty 为真。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": false,
+                "bytes": 154,
+                "sha256": "97f92fdf4a9f16c4b3403daa484ef7e7b8498d0a9fe851c8b6f3f2fa0c3261b0"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "10-malformed-boundary",
+      "title": "畸形边界打开阻断与主动修复",
+      "covers": [
+        "畸形边界保存阻断"
+      ],
+      "rules": [
+        "FID-005",
+        "GATE-002",
+        "GATE-003",
+        "GATE-005",
+        "SYN-D003"
+      ],
+      "variants": [
+        {
+          "id": "open-malformed",
+          "files": {
+            "malformed-input.md": {
+              "bytes": 63,
+              "sha256": "794a3df92b768edb952767becba8a3e13ec142787c63ca5c5153924716a10aea",
+              "bom": false,
+              "eol": "lf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "operational",
+              "mode": "visual",
+              "action": "打开 input-malformed.md（存在无闭合围栏的独占 $$ 行）。",
+              "edit_scope": "无编辑；观测打开行为。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "新验收口径：打开后不得自动整篇切换为源码模式；应保留可信视图与完整原文，明确标识问题位置（无闭合 $$）。",
+                "视图可信：正常正文段落仍可视呈现；问题范围被标注而非伪造渲染。",
+                "打开本身不得置 dirty。",
+                "若原型现状是自动进入整篇源码模式（SYN-U002 旧行为），记为「现状差异」，不判通过，也不判字节失败。"
+              ]
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "either",
+              "action": "不做修改直接保存。",
+              "edit_scope": "无编辑。",
+              "delimiter_scope": "无。",
+              "ops": [],
+              "acceptance": [
+                "未修改保存：要么不写盘，要么写盘后与输入逐字节一致（GATE-001/GATE-004）。",
+                "结构化保存路径在不安全时被阻止；记录实际采取的路径。"
+              ],
+              "expect": {
+                "file": "malformed-input.md",
+                "to_disk": true,
+                "bytes": 63,
+                "sha256": "794a3df92b768edb952767becba8a3e13ec142787c63ca5c5153924716a10aea"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "byte-exact",
+              "mode": "source",
+              "action": "用户主动进入源码修复：在 \\int_0^1 x\\,dx 行后补一行 $$，闭合围栏；保存；重开。",
+              "edit_scope": "仅追加 1 行 $$（3 字节 + 换行）。",
+              "delimiter_scope": "仅补闭合围栏行；原有 6 行逐字节不变。",
+              "ops": [
+                {
+                  "find": "\\int_0^1 x\\,dx",
+                  "replace": "\\int_0^1 x\\,dx\n$$"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 malformed-after-step-3.md 完全一致。",
+                "重开后进入可视编辑：数学片段作为保护原文片段完整保留，正文可编辑、不自动整篇源码。"
+              ],
+              "expect": {
+                "file": "malformed-after-step-3.md",
+                "to_disk": true,
+                "bytes": 66,
+                "sha256": "1bce610c5ca5d37b66e4a93e1c47198f1c9a10b7c03ad0b8ebb75d48808f1aaa"
+              }
+            }
+          ]
+        },
+        {
+          "id": "create-ambiguity",
+          "files": {
+            "valid-input.md": {
+              "bytes": 95,
+              "sha256": "404a6cfebf195a2de8407c604249b5c9681bc8639e6a47934720aaa2d06ac9f9",
+              "bom": false,
+              "eol": "lf",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：把「正常正文一段」改为「正常正文已修改」。",
+              "edit_scope": "仅第一段 4 个汉字 → 6 个汉字。",
+              "delimiter_scope": "无（不触碰 $$ 片段）。",
+              "ops": [
+                {
+                  "find": "正常正文一段",
+                  "replace": "正常正文已修改"
+                }
+              ],
+              "acceptance": [
+                "保存后文件字节与 valid-after-step-1.md 完全一致；数学片段逐字节保留。",
+                "编辑片段前后正文不触发整篇源码切换（04 票门槛 2）。"
+              ],
+              "expect": {
+                "file": "valid-after-step-1.md",
+                "to_disk": true,
+                "bytes": 98,
+                "sha256": "e9650f381508531c0020275ea35c437ce3ad521faa573587276208ef698c986e"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标移到尾段「修复前的尾段正文。」行首，输入 $$ 后按 Enter。",
+              "edit_scope": "在尾段前插入 1 行 $$（产生无闭合的独占 $$ 行，边界含混）。",
+              "delimiter_scope": "新增的 $$ 行本身。",
+              "ops": [
+                {
+                  "find": "\n修复前的尾段正文。",
+                  "replace": "\n$$\n修复前的尾段正文。"
+                }
+              ],
+              "acceptance": [
+                "新验收口径：出现含混边界后，原型必须保留可信视图与缓冲区内容（字节如 valid-buffer-after-step-2.md），不得静默整篇切源码、不得先有损序列化再修复。",
+                "不安全的结构化保存被阻止：磁盘文件保持 valid-after-step-1.md 字节；dirty 保留在内存。",
+                "明确标识问题（无闭合 $$ 的位置），并提供主动源码修复入口。"
+              ],
+              "expect": {
+                "file": "valid-buffer-after-step-2.md",
+                "to_disk": false,
+                "bytes": 101,
+                "sha256": "84191d96d7f60116aec2b1603f0a0f973cece55fd43f4d684ade30b926a69bcb"
+              }
+            },
+            {
+              "n": 3,
+              "verdict": "byte-exact",
+              "mode": "source",
+              "action": "通过主动源码修复入口删除多余的 $$ 行；返回可视模式；保存。",
+              "edit_scope": "仅删除第 2 步插入的 3 字节 $$ 行。",
+              "delimiter_scope": "无。",
+              "ops": [
+                {
+                  "find": "\n$$\n修复前的尾段正文。",
+                  "replace": "\n修复前的尾段正文。"
+                }
+              ],
+              "acceptance": [
+                "修复并保存后文件字节与 valid-after-step-3.md 完全一致（等于 valid-after-step-1.md 的字节）。",
+                "保存不再被阻止；数学片段与正文逐字节保留。"
+              ],
+              "expect": {
+                "file": "valid-after-step-3.md",
+                "to_disk": true,
+                "bytes": 98,
+                "sha256": "e9650f381508531c0020275ea35c437ce3ad521faa573587276208ef698c986e"
+              }
+            },
+            {
+              "n": 4,
+              "verdict": "operational",
+              "mode": "source",
+              "action": "备选修复路径（记录性）：重新制造第 2 步的含混状态后，改为在文末追加一行 $$ 闭合围栏。",
+              "edit_scope": "追加 1 行 $$。",
+              "delimiter_scope": "新增闭合围栏行。",
+              "ops": [],
+              "acceptance": [
+                "记录原型对「尾段被吞入数学片段」的实际归类与保存行为；本步不设字节判定，用于观察修复入口与视图可信性。"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "11-mixed-eol-insert",
+      "title": "LF/CRLF 混合文档局部插入",
+      "covers": [
+        "混合 EOL 字节保真"
+      ],
+      "rules": [
+        "FID-002",
+        "EOL-001",
+        "EOL-002",
+        "EOL-004"
+      ],
+      "variants": [
+        {
+          "id": "main",
+          "files": {
+            "input.md": {
+              "bytes": 173,
+              "sha256": "0b4e136a39ad9a432f8de66078f0800798080c855195b803d45cdeb53521b05c",
+              "bom": false,
+              "eol": "mixed",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "source",
+              "action": "源码模式：光标置于「第二行使用 CRLF 结尾。」行尾，按 Enter 并输入「插入行继承 CRLF。」（单个换行；CommonMark 下结果仍是同段落 softbreak，不是新段落）。",
+              "edit_scope": "在第 2 行后插入 1 行新文本（含 1 个新换行边界）。",
+              "delimiter_scope": "新换行边界必须继承当前行的 CRLF（EOL-002）；不额外补空行。",
+              "ops": [
+                {
+                  "find": "第二行使用 CRLF 结尾。",
+                  "replace": "第二行使用 CRLF 结尾。\r\n插入行继承 CRLF。"
+                }
+              ],
+              "acceptance": [
+                "字节判据：保存后文件字节与 after-step-1.md 完全一致；原有全部 LF/CRLF 边界逐字节不变。",
+                "模式判据：本步为源码单换行的字节覆盖；混合 EOL 文档上的可视结构化编辑由 visual-split 变体判定，不得以本步源码结果冒充可视编辑已满足。"
+              ],
+              "expect": {
+                "file": "after-step-1.md",
+                "to_disk": true,
+                "bytes": 198,
+                "sha256": "2c146269822dd8c7b293f541b6e594c5d1dfcb678b5972aad36064f8cf564b5b"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "source",
+              "action": "源码模式：光标置于「尾段 LF 结尾。」行尾，按 Enter 并输入「新尾行 LF。」（单个换行，同段落 softbreak）。",
+              "edit_scope": "在末行后插入 1 行新文本。",
+              "delimiter_scope": "新换行边界继承 LF；原尾部换行保持（EOL-004）。",
+              "ops": [
+                {
+                  "find": "尾段 LF 结尾。",
+                  "replace": "尾段 LF 结尾。\n新尾行 LF。"
+                }
+              ],
+              "acceptance": [
+                "字节判据：保存后文件字节与 after-step-2.md 完全一致；第 1 步的 CRLF 新行与全部原始边界不变。",
+                "模式判据：同第 1 步；实际编辑模式与结果分别记录。"
+              ],
+              "expect": {
+                "file": "after-step-2.md",
+                "to_disk": true,
+                "bytes": 214,
+                "sha256": "5bfdb425deceb7dffaba36252ddc76dae8c536b820c907a7348d436575b82c62"
+              }
+            }
+          ]
+        },
+        {
+          "id": "visual-split",
+          "files": {
+            "input.md": {
+              "bytes": 173,
+              "sha256": "0b4e136a39ad9a432f8de66078f0800798080c855195b803d45cdeb53521b05c",
+              "bom": false,
+              "eol": "mixed",
+              "trailing_newline": true
+            }
+          },
+          "steps": [
+            {
+              "n": 1,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标置于「第二行使用 CRLF 结尾。」行尾按 Enter 创建新段落，并输入「插入为独立段落。」。",
+              "edit_scope": "将原 3 行同段落在第 2 行后拆为两个段落，新段落插入其间：markdown-it commonmark 解析应为 3 个 paragraph 块（第 1 行+第 2 行 / 插入段 / 第 3 行）。",
+              "delimiter_scope": "CommonMark 新段落须空行分隔：第 2 行后与插入段后各插入 1 个空行，4 个新换行边界均继承当前行 CRLF（EOL-002）；原第 2→3 行 CRLF 边界被段落重组吸收，其余原始边界不变。",
+              "ops": [
+                {
+                  "find": "第二行使用 CRLF 结尾。\r\n第三行回到 LF。",
+                  "replace": "第二行使用 CRLF 结尾。\r\n\r\n插入为独立段落。\r\n\r\n第三行回到 LF。"
+                }
+              ],
+              "acceptance": [
+                "字节判据：保存后文件字节与 visual-after-step-1.md 完全一致；除声明吸收的边界外全部原始 LF/CRLF 边界逐字节不变。",
+                "模式判据：若原型按 EOL-001 现状对混合 EOL 文档整篇进入源码模式、无法执行视觉 Enter，本步记「现状差异、未执行」；不得以源码模式单换行结果（main 变体字节）冒充视觉段落拆分通过。"
+              ],
+              "expect": {
+                "file": "visual-after-step-1.md",
+                "to_disk": true,
+                "bytes": 203,
+                "sha256": "8578d9dfc3a6d4b8a9aadd2ce26e335410755d9909f42820ff6c33b7332374c8"
+              }
+            },
+            {
+              "n": 2,
+              "verdict": "byte-exact",
+              "mode": "visual",
+              "action": "视觉模式：光标置于「尾段 LF 结尾。」行尾按 Enter 创建新段落，并输入「新尾段 LF。」。",
+              "edit_scope": "尾段之后新增 1 个独立段落：解析应为原段落 + 新段落共 2 个 paragraph 块。",
+              "delimiter_scope": "新段落须空行分隔：2 个新换行边界继承当前行 LF（EOL-002）；原尾部换行保持（EOL-004）。",
+              "ops": [
+                {
+                  "find": "尾段 LF 结尾。\n",
+                  "replace": "尾段 LF 结尾。\n\n新尾段 LF。\n"
+                }
+              ],
+              "acceptance": [
+                "字节判据：保存后文件字节与 visual-after-step-2.md 完全一致；第 1 步结果与全部原始边界不变。",
+                "模式判据：同第 1 步；无法执行视觉 Enter 时记现状差异，不得降级判定。"
+              ],
+              "expect": {
+                "file": "visual-after-step-2.md",
+                "to_disk": true,
+                "bytes": 220,
+                "sha256": "61aca3d39289c0e2d83b21a4465ca7249076de9d413ec7372c014a59f172be8d"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
