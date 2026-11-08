@@ -2,8 +2,8 @@
 
 Type: grilling
 Labels: wayfinder:grilling
-Status: open
-Assignee: None
+Status: claimed
+Assignee: root
 Blocked by: 02, 03
 Parent: ../map.md
 
