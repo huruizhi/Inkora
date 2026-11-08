@@ -60,3 +60,4 @@ Agent 与贡献者的协作规范见 [AGENTS.md](AGENTS.md)：每个任务在独
 
 **质量**
 - [构建、测试与 CI 入口](docs/testing.md)
+- [Developer ID 直接分发与 Beta 发布](docs/release.md)

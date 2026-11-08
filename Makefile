@@ -82,11 +82,18 @@ test-ui: build prepare-artifacts
 		tests/ci/ui-launch-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Debug/Inkora.app"
 
+# Existing archive/export packages must be checked without rebuilding or changing
+# their signing identity. Release scripts already sanitize/capture command output.
+ifneq ($(strip $(RELEASE_APP_BUNDLE)),)
+release-bundle-check:
+	tests/ci/editor-bundle-smoke.sh "$(RELEASE_APP_BUNDLE)"
+else
 release-bundle-check: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
 release-bundle-check: build-release prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" $(CAPTURE) release-bundle \
 		tests/ci/editor-bundle-smoke.sh \
 		"$(DERIVED_DATA)/Build/Products/Release/Inkora.app"
+endif
 
 test-ui-release: APP_BUNDLE_IDENTIFIER := com.huruizhi.Inkora.UITesting
 test-ui-release: release-bundle-check
@@ -97,6 +104,7 @@ test-ui-release: release-bundle-check
 
 test-ci: prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" tests/ci/entrypoint-smoke.sh
+	tests/ci/release-smoke.sh
 	tests/ci/ui-lock-smoke.sh
 	node scripts/perf/compare-baseline.test.mjs
 
@@ -219,3 +227,8 @@ bench-full: bench
 		--output-path "$(PERF_RESULTS_DIR)/launch-attachments" --filter 'inkora-launch*'
 	node scripts/perf/extract-launch-memory.mjs "$(LAUNCH_PERF_RESULT)" "$(PERF_RESULTS_DIR)/launch.json" "$(PERF_RESULTS_DIR)/launch-attachments"
 	$(MAKE) perf-compare
+
+# Direct distribution only; these targets never launch the App.
+.PHONY: release-archive release-sign release-notarize release-dmg release-verify release release-dry-run
+release-archive release-sign release-notarize release-dmg release-verify release release-dry-run:
+	@INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" scripts/release/release.sh $(patsubst release-%,%,$@)

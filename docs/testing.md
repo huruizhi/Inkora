@@ -35,11 +35,11 @@ PR，只跑默认 CI 即可合并；这类 PR 必须在描述中写明“UI 未�
 | `make test-bridge` | TypeScript + Swift Bridge v1 contract tests |
 | `make test-native` | 全部 XCTest 单元与 WKWebView 集成测试 |
 | `make test-non-ui` | 编辑器、Bridge、native XCTest 与 CI 脚本，即默认 CI 的测试路径 |
-| `make release-bundle-check` | 构建 Release 并执行离线资源检查（editor-bundle-smoke），不启动 App；`test-ui-release` 的前半部分 |
+| `make release-bundle-check` | 构建 Release 并执行离线资源检查（editor-bundle-smoke），不启动 App；`test-ui-release` 的前半部分；指定 `RELEASE_APP_BUNDLE` 则只检查该现有包，不重新构建 |
 | `make test-document-open-ui` | 文档打开、菜单状态、菜单点击及 Cmd+O/S/Shift+S/Z/Shift+Z；Open Recent、冷/热启动打开、失效路径与重启恢复；实际打开与另存后验证磁盘内容；需已解锁桌面和 Automation Mode |
 | `make test-ui-release` | Release 离线资源检查与 App 启动烟测 |
 | `make test-ui` | 无辅助功能权限依赖的 Debug App 启动烟测；已不在 `test-all` 中，供手动运行；CI 通过 `INKORA_CAPTURE_SCREEN=1` 尽力截图 |
-| `make test-ci` | 验证命令包装器、快照归档及 UI 锁的获取/排队/超时/回收/退出清理 |
+| `make test-ci` | 验证命令包装器、快照归档、UI 锁及发布参数/缺凭据/脱敏/权限检查 |
 | `make test-all` / `make test` | 按层运行全部测试，不含 `test-ui`：每个 XCUITest 用例都会启动 Debug App，Debug 启动烟测与其重复 |
 | `make build-release` | 构建 Release App，不配置正式签名凭据 |
 | `make bench` | 轻量性能基准（编辑器 + 原生文档层），不启动 App UI，agent 本地可运行 |
