@@ -14,7 +14,8 @@
 | 只读、外部修改 | DocumentOpenUITests.testReadOnlySaveOffersSaveAsAndPreservesOriginal / testExternalModificationConflictKeepsLocalEditsAndSavesCopy | 补冲突截图和标识符断言 |
 | 移动、删除 | InkoraDocumentTests.testPresenterFollowsRenameAndMoveWithoutLosingEdits / testDeletionPreservesBufferAndDirtyUntilSaveAs | Finder 操作和只读卷人工复核 |
 | 崩溃恢复 | DocumentOpenUITests.testCrashDraftIsOfferedOnRestartAndRecoveryNeverWritesSource；RecoveryStoreTests | 补恢复提示截图和标识符断言 |
-| 编码、换行、Unicode | InkoraDocumentTests.testUTF16AndUTF32ByteOrderMarksAreRejectedWithExplicitErrors / testEditedSnapshotSaveKeepsTheOriginalBOM；EditorWebViewTests.testUnmodifiedMarkdownSavesThroughBridgeByteForByte / testEditedSnapshotKeepsCRLFLineEndingsAndUnicode | 不重复；已知格式边界见 text-format.md |
+| 编码、换行、Unicode | InkoraDocumentTests.testUTF16AndUTF32OpenReadOnlyWithExplicitReasons / testUnsupportedEncodingDocumentCannotSaveAnywhere / testEditedSnapshotSaveKeepsTheOriginalBOM；EditorWebViewTests.testUnmodifiedMarkdownSavesThroughBridgeByteForByte / testEditedSnapshotKeepsCRLFLineEndingsAndUnicode | 不重复；已知格式边界见 text-format.md |
+| 不支持的编码只读错误状态 | DocumentOpenUITests.testInvalidUTF8OpensAReadOnlyErrorWindowWithoutAnEditor / testUTF16ReadOnlyErrorWindowBlocksSaveAndClosesWithoutReview；InkoraDocumentTests.testUnsupportedEncodingWindowShowsReadOnlyStateWithoutEditor / testUnsupportedEncodingDocumentProducesNoRecoveryDraft；RecentFilesRestoreTests.testEncodingErrorURLReadDoesNotReplaceLastOpenedDocument / testEncodingErrorOpenWithdrawsNotedRecentEntry | 不重复（INK-053） |
 | Bridge 非法消息与版本/revision 边界 | BridgeProtocolTests；EditorWebViewTests.testInvalidEditorMessageStopsSubsequentSnapshots | 补命令/事件参数矩阵及安全整数端点 |
 | 原生 AX 元数据 | 既有 testFileStateSubtitlePreservesAccessibleFilename | 补窗口/编辑器/恢复按钮 XCTest |
 | 键盘、视觉、AX 审计 | 既有快捷键测试混用点击 | AcceptanceUITests 串联与审计；固定浅色 900×700 内容区、系统字体和 fixture |

@@ -92,6 +92,14 @@ final class RecentDocumentNoter {
   func noteDocumentOpened(_ url: URL) {
     list?.noteNewRecentDocumentURL(url)
   }
+
+  /// Withdraws a URL that AppKit auto-noted for an open which landed in the
+  /// read-only encoding-error state (ENC-002): that is not a successfully
+  /// opened document and must not appear in Open Recent.
+  func withdrawDocumentOpened(_ url: URL) {
+    guard let list else { return }
+    RecentDocumentList.remove(url, from: list)
+  }
 }
 
 /// Resolves the launch-state backing storage. UI tests inject an isolated

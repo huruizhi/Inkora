@@ -31,11 +31,26 @@ enum RecentDocumentList {
   /// NSDocumentController has no single-entry removal API, so removal is a
   /// clear followed by re-noting the other URLs in reverse order.
   static func remove(_ url: URL, from list: RecentDocumentListManaging) {
+    // NSDocumentController stores recent entries as canonicalized bookmarks
+    // (e.g. /private/var instead of the /var form the caller may hold), and
+    // URL.resolvingSymlinksInPath does not resolve those system symlinks.
+    // realpath matches AppKit's canonical form for existing files and falls
+    // back to exact comparison otherwise.
+    let target = canonicalForm(url)
     let urls = list.recentDocumentURLs
-    guard urls.contains(url) else { return }
+    guard urls.contains(where: { canonicalForm($0) == target }) else { return }
     list.clearRecentDocuments()
-    for remaining in urls.filter({ $0 != url }).reversed() {
+    for remaining in urls.filter({ canonicalForm($0) != target }).reversed() {
       list.noteNewRecentDocumentURL(remaining)
+    }
+  }
+
+  private static func canonicalForm(_ url: URL) -> URL {
+    url.path.withCString { path in
+      let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: Int(PATH_MAX))
+      defer { buffer.deallocate() }
+      guard realpath(path, buffer) != nil else { return url }
+      return URL(fileURLWithPath: String(cString: buffer))
     }
   }
 

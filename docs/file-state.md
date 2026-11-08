@@ -9,6 +9,7 @@ INK-020 在 NSDocument 的 FIFO revisioned snapshot 保存流水线内校验磁�
 | 外部修改 | NSFilePresenter 回调及保存前比较完整字节与修改时间，时间戳不变也能识别改写 | 无本地编辑也明确询问重新加载、另存当前内容、取消；有本地编辑时明确说明冲突与丢弃后果 |
 | 移动/重命名 | presentedItemDidMove | 跟随 fileURL，系统更新标题，副标题说明已移动；保留编辑、history 和 dirty。移动期间已排队的旧路径保存失败，可在新路径重试 |
 | 删除/废纸篓 | deletion 回调、路径不存在或移入 .Trash/.Trashes | 保留编辑器，强制保留 dirty，副标题提示删除；禁止重建原路径，只能另存或取消 |
+| 编码不受支持 | 读取时检测 UTF-16/UTF-32 BOM 或非法 UTF-8（`ENC-002`，INK-053） | 只读错误窗口：副标题与正文说明原因和转换建议；Save / Save As 一律以编码错误失败，dirty 恒为 false，关闭无保存确认，不产生恢复草稿，不进入 Open Recent |
 
 取消不接受新的磁盘基线，再次 Save 仍会询问。保留编辑直接进入 Save As，不提供冲突后的一键覆盖；选择新路径仍由系统处理覆盖确认。另存回冲突原路径也会被状态检查拒绝。
 

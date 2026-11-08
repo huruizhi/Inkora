@@ -6,7 +6,7 @@
 ## 读入与写盘（`app/Sources/InkoraDocument.swift`）
 
 - 只接受 UTF-8（`ENC-001`）。读取时显式剥离前导 UTF-8 BOM 并记录其存在；`data(ofType:)` 与 `write(to:)` 统一通过 `encodedDocumentData()` 在每次写盘时恢复 BOM。BOM 的有无在未修改保存、编辑后保存（Bridge snapshot 流程）和 Save As 中均保持不变（`FID-001`、`F-ENC-002`）。仅含 BOM 的文件解析为空文本并原样写回。
-- UTF-16 / UTF-32 BOM（FF FE、FE FF、FF FE 00 00、00 00 FE FF）与所有非法 UTF-8（含 GBK 等传统编码）不会猜测转换：读取抛出 `InkoraDocumentError`（`utf16Detected` / `utf32Detected` / `invalidUTF8`），NSDocument 打开失败并给出恢复建议，绝不以乱码保存或静默覆盖（`ENC-002` 的落地形式，与规范的「只读错误状态」差异见「已知边界」）。
+- UTF-16 / UTF-32 BOM（FF FE、FE FF、FF FE 00 00、00 00 FE FF）与所有非法 UTF-8（含 GBK 等传统编码）不会猜测转换：文档以**只读错误状态**打开（INK-053 落地 `ENC-002`）。正文不解码、不显示乱码；窗口正文为 `EditorEncodingErrorView`（原因 + 转换建议），副标题为 `DocumentFileState.unsupportedEncoding`，复用 INK-020 的文件状态管道。Save / Save As / `data(ofType:)` / `write(to:)` 一律以对应 `InkoraDocumentError`（`utf16Detected` / `utf32Detected` / `invalidUTF8`）失败，原字节永不写回；dirty 恒为 false，关闭无保存确认，不产生崩溃恢复草稿；该文件不进入 Open Recent（AppKit 在 `makeWindowControllers` 之前自动记录最近文件，随后立即撤销），也不更新“重启恢复”的最后打开记录。
 - 文件中间的 U+FEFF 是正文数据，按普通文本原样保留；只有文件开头的 BOM 参与上述剥离/恢复。
 - 文件名按调用方给定的字节透传（APFS 保留创建时的形式），窗口标题取 `displayName`，不做任何归一化；测试覆盖 emoji、ZWJ 序列、组合字符、CJK、空格文件名的打开、Save As 与重新读取。
 
@@ -29,7 +29,7 @@
 | --- | --- | --- |
 | `F-ENC-001`（无 BOM Unicode roundtrip） | `tests/fixtures/unicode.md`（InkoraDocumentTests + EditorWebViewTests Bridge 保存）；`editor/test/fixtures/markdown/unicode.*.md`（codec 字节级往返） | 已覆盖 |
 | `F-ENC-002`（UTF-8 BOM roundtrip / edit） | `tests/fixtures/utf8-bom.md`；`testUTF8BOMIsStrippedFromTextAndPreservedInEveryWrite`、`testBOMOnlyFileRoundTripsToTheBOMBytes`、`testEditedSnapshotSaveKeepsTheOriginalBOM`、Bridge 保存测试 | 已覆盖 |
-| `F-ENC-003`（非法 UTF-8） | `testInvalidUTF8*`、`testGBKEncodedFileIsRejectedAsInvalidUTF8`、`testUTF16AndUTF32ByteOrderMarksAreRejectedWithExplicitErrors` | 部分：错误明确、不写盘已覆盖；「只读错误状态打开」未实现（打开失败） |
+| `F-ENC-003`（非法 UTF-8） | `testInvalidUTF8OpensInReadOnlyErrorState`、`testGBKEncodedFileOpensReadOnlyAsInvalidUTF8`、`testUTF16AndUTF32OpenReadOnlyWithExplicitReasons`、`testUnsupportedEncodingDocumentCannotSaveAnywhere`、`testUnsupportedEncodingWindowShowsReadOnlyStateWithoutEditor`、`testUnsupportedEncodingDocumentProducesNoRecoveryDraft`；`DocumentOpenUITests.testUTF16ReadOnlyErrorWindowBlocksSaveAndClosesWithoutReview` | 已覆盖 |
 | `F-ENC-004`（跨 Swift/JS 偏移换算） | 无对应 API | 未实现（无偏移交换面） |
 | `F-EOL-001`（LF + 尾部换行） | `tests/fixtures/utf8-bom.md`（LF 内容含尾部换行）与既有 no-final-newline 对照；结构化编辑保留尾部换行由 editor-runtime 测试覆盖 | 已覆盖 |
 | `F-EOL-002`（全 CRLF 无尾部换行） | `tests/fixtures/crlf.md` roundtrip；`testEditedSnapshotKeepsCRLFLineEndingsAndUnicode`（编辑后仍不添加尾部换行）；`editor/test/fixtures/markdown/crlf.*.md`（codec 归一化行为）；`tests/fixtures/crlf-structured{,-final}.{input,expected}.md`（Vitest 结构化编辑和 WKWebView snapshot / BOM 写盘，含尾部空行对照） | 已覆盖 |
@@ -40,7 +40,7 @@
 
 ## 已知边界（与规范的差异）
 
-1. `ENC-002` 的「文档以只读错误状态打开」未实现：非 UTF-8 输入当前使 NSDocument 打开失败并显示错误与恢复建议（INK-015 的行为）。原始字节保留在磁盘上，不会以乱码保存。
+1. ~~`ENC-002` 的「文档以只读错误状态打开」未实现~~：INK-053 已实现只读错误状态；上一差异消除。剩余边界：只读错误窗口不提供“文件已在外部转换为 UTF-8”的自动重载，用户需关闭后重新打开。
 2. `EOL-003` / `SYN-D008` 的「bare CR 整篇只读 + 显式转换后才可编辑」未实现：bare CR 文档进入源码模式，可编辑且逐边界恢复 CR。编辑不会破坏原边界，但比规范承诺的更宽松。
 3. `ENC-005` 偏移换算没有实现面（Bridge 只传完整文本）。
 4. `FID-002` 的完整原始范围映射（结构化局部编辑的字节切片证明）不属于本任务；codec 的结构保留能力与边界见 `docs/markdown-codec.md`。

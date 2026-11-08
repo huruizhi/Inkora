@@ -37,6 +37,13 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   }
 
   override func loadView() {
+    // ENC-002: an undecodable document never reaches the web editor; the
+    // window shows the reason instead. There is no editable surface and no
+    // decoded text, so no mojibake can appear or be saved.
+    if let encodingError = document?.encodingError {
+      presentEncodingError(encodingError)
+      return
+    }
     guard let resourceSchemeHandler = EditorResourceSchemeHandler(bundle: resourceBundle) else {
       presentResourceError(message: "The editor resources are missing.")
       return
@@ -113,6 +120,11 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   func reloadDocument() {
     guard let document else { return }
     editorState = nil
+    if let encodingError = document.encodingError {
+      presentEncodingError(encodingError)
+      NSApplication.shared.mainMenu?.update()
+      return
+    }
     bridge?.loadDocument(
       documentID: document.bridgeDocumentID, revision: document.bridgeRevision, text: document.text)
     NSApplication.shared.mainMenu?.update()
@@ -287,6 +299,54 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       action: #selector(recoverEditor)
     )
     view = recoveryView
+  }
+
+  private func presentEncodingError(_ error: InkoraDocumentError) {
+    view = EditorEncodingErrorView(error: error)
+  }
+}
+
+/// Read-only explanation surface for documents opened in the ENC-002
+/// encoding-error state: reason, suggestion, and no editing affordances.
+@MainActor
+final class EditorEncodingErrorView: NSView {
+  init(error: InkoraDocumentError) {
+    let titleLabel = NSTextField(labelWithString: error.errorDescription ?? "")
+    let reasonLabel = NSTextField(labelWithString: error.failureReason ?? "")
+    let suggestionLabel = NSTextField(labelWithString: error.recoverySuggestion ?? "")
+    super.init(frame: .zero)
+    setAccessibilityIdentifier("EncodingError")
+
+    for (label, identifier) in [
+      (titleLabel, "EncodingErrorTitle"), (reasonLabel, "EncodingErrorReason"),
+      (suggestionLabel, "EncodingErrorSuggestion"),
+    ] {
+      label.alignment = .center
+      label.maximumNumberOfLines = 0
+      label.lineBreakMode = .byWordWrapping
+      label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+      label.setAccessibilityIdentifier(identifier)
+      label.setAccessibilityValue(label.stringValue)
+    }
+
+    let stack = NSStackView(views: [titleLabel, reasonLabel, suggestionLabel])
+    stack.orientation = .vertical
+    stack.alignment = .centerX
+    stack.spacing = 12
+    stack.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(stack)
+    NSLayoutConstraint.activate([
+      stack.centerXAnchor.constraint(equalTo: centerXAnchor),
+      stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+      stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 24),
+      stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -24),
+      stack.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -48),
+    ])
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) is not supported")
   }
 }
 
