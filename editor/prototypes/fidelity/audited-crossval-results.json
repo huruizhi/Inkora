@@ -3,32 +3,32 @@
   "task": "INK-PROT-018",
   "baseline": "30b73530af2e8dac37399a0dc9df64f8a9689eb3",
   "invocation": {
-    "casesDir": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases",
-    "prototypePath": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity/PROTOTYPE.html",
-    "outputPath": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity/audited-crossval-results.json"
+    "casesDir": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases",
+    "prototypePath": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity/PROTOTYPE.html",
+    "outputPath": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity/audited-crossval-results.json"
   },
   "artifacts": {
     "manifest": {
-      "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases.json",
+      "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases.json",
       "sha256": "04b0d53e36e3a68fa5dfa98c7a259bb0fb21163cbf5621171fd86e6bf946235c"
     },
     "prototype": {
-      "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity/PROTOTYPE.html",
-      "sha256": "e2e259f44b9a3cf372ba1de891da99d68b7a655dd39ab79073942105c6ffd3f6"
+      "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity/PROTOTYPE.html",
+      "sha256": "c86390037282e71e4187aaea46fe92354f12c669373f3d4c1be69d2287c81090"
     },
     "inputs": {
       "05-marks-attrs": {
-        "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/05-marks-attrs/input.md",
+        "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/05-marks-attrs/input.md",
         "bytes": 200,
         "sha256": "5d732779fee0ae8577d6864af86b3ef701c05eb264386652eaa46488a833ed10"
       },
       "06-split-join": {
-        "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/06-split-join/input.md",
+        "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/06-split-join/input.md",
         "bytes": 133,
         "sha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29"
       },
       "11-mixed-eol-insert": {
-        "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/input.md",
+        "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/input.md",
         "bytes": 173,
         "sha256": "0b4e136a39ad9a432f8de66078f0800798080c855195b803d45cdeb53521b05c"
       }
@@ -102,7 +102,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/05-marks-attrs/after-step-1.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/05-marks-attrs/after-step-1.md",
             "declaredSha256": "856b0128d05365edbbcdd010ca89f196d6b2826e34718e86b604dcbc1eff1b43",
             "declaredBytes": 196,
             "actualSha256": "856b0128d05365edbbcdd010ca89f196d6b2826e34718e86b604dcbc1eff1b43",
@@ -195,7 +195,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/05-marks-attrs/after-step-2.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/05-marks-attrs/after-step-2.md",
             "declaredSha256": "39c0340e484ade3f7c279e98bac511aa0be700957beaca4f906e5ef8443fbae1",
             "declaredBytes": 197,
             "actualSha256": "39c0340e484ade3f7c279e98bac511aa0be700957beaca4f906e5ef8443fbae1",
@@ -293,7 +293,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/05-marks-attrs/after-step-3.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/05-marks-attrs/after-step-3.md",
             "declaredSha256": "15c41d8c1c3157a9d4e7d5bc3cf4a97b1a5704ddcab24b579a3d40fcce942938",
             "declaredBytes": 200,
             "actualSha256": "15c41d8c1c3157a9d4e7d5bc3cf4a97b1a5704ddcab24b579a3d40fcce942938",
@@ -391,7 +391,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/05-marks-attrs/after-step-4.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/05-marks-attrs/after-step-4.md",
             "declaredSha256": "112da021cfa6a663ea261d7cc6fe5515068e5f2f18d3b4d677f406375f424345",
             "declaredBytes": 199,
             "actualSha256": "112da021cfa6a663ea261d7cc6fe5515068e5f2f18d3b4d677f406375f424345",
@@ -550,7 +550,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/06-split-join/after-step-1.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/06-split-join/after-step-1.md",
             "declaredSha256": "b1f831639f870662e4de2b75490f9337e463f3c843577924dc52cc4cf16a537f",
             "declaredBytes": 137,
             "actualSha256": "b1f831639f870662e4de2b75490f9337e463f3c843577924dc52cc4cf16a537f",
@@ -691,7 +691,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/06-split-join/after-step-2.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/06-split-join/after-step-2.md",
             "declaredSha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29",
             "declaredBytes": 133,
             "actualSha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29",
@@ -832,7 +832,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/06-split-join/after-step-3.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/06-split-join/after-step-3.md",
             "declaredSha256": "199394d698ab759e25760cc68497cff3dda919a030b8fa157243866d0d056ced",
             "declaredBytes": 137,
             "actualSha256": "199394d698ab759e25760cc68497cff3dda919a030b8fa157243866d0d056ced",
@@ -973,7 +973,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/06-split-join/after-step-4.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/06-split-join/after-step-4.md",
             "declaredSha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29",
             "declaredBytes": 133,
             "actualSha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29",
@@ -1087,7 +1087,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/06-split-join/softbreak-after-step-1.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/06-split-join/softbreak-after-step-1.md",
             "declaredSha256": "50a99d1bbade647f983e120456e9cee2dd60f53330120bd8d0726a97a4c2034c",
             "declaredBytes": 135,
             "actualSha256": "50a99d1bbade647f983e120456e9cee2dd60f53330120bd8d0726a97a4c2034c",
@@ -1177,7 +1177,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/06-split-join/input.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/06-split-join/input.md",
             "declaredSha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29",
             "declaredBytes": null,
             "actualSha256": "6b96d81818b7a25a0d6670b283e9b1e04bec33327ebc829666adc066156a9f29",
@@ -1291,7 +1291,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/after-step-1.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/after-step-1.md",
             "declaredSha256": "2c146269822dd8c7b293f541b6e594c5d1dfcb678b5972aad36064f8cf564b5b",
             "declaredBytes": 198,
             "actualSha256": "2c146269822dd8c7b293f541b6e594c5d1dfcb678b5972aad36064f8cf564b5b",
@@ -1381,7 +1381,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/after-step-2.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/after-step-2.md",
             "declaredSha256": "5bfdb425deceb7dffaba36252ddc76dae8c536b820c907a7348d436575b82c62",
             "declaredBytes": 214,
             "actualSha256": "5bfdb425deceb7dffaba36252ddc76dae8c536b820c907a7348d436575b82c62",
@@ -1664,7 +1664,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/visual-after-step-1.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/visual-after-step-1.md",
             "declaredSha256": "8578d9dfc3a6d4b8a9aadd2ce26e335410755d9909f42820ff6c33b7332374c8",
             "declaredBytes": 203,
             "actualSha256": "8578d9dfc3a6d4b8a9aadd2ce26e335410755d9909f42820ff6c33b7332374c8",
@@ -1811,7 +1811,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/visual-after-step-2.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/visual-after-step-2.md",
             "declaredSha256": "61aca3d39289c0e2d83b21a4465ca7249076de9d413ec7372c014a59f172be8d",
             "declaredBytes": 220,
             "actualSha256": "61aca3d39289c0e2d83b21a4465ca7249076de9d413ec7372c014a59f172be8d",
@@ -1976,7 +1976,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/single-enter-after-step-1.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/single-enter-after-step-1.md",
             "declaredSha256": "9b28e5830da2d0e01a8484aba818e85f4bba103d5e2256e245f98f4eff3d40f7",
             "declaredBytes": 201,
             "actualSha256": "9b28e5830da2d0e01a8484aba818e85f4bba103d5e2256e245f98f4eff3d40f7",
@@ -2123,7 +2123,7 @@
             ]
           },
           "expected": {
-            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-022-ledger-native-integration/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/single-enter-after-step-2.md",
+            "path": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-prot-024-source-composition-guard/editor/prototypes/fidelity-cases/cases/11-mixed-eol-insert/single-enter-after-step-2.md",
             "declaredSha256": "ded79639a6cb1dda69d6c117e3a34f2364471a9345add4193425cfbb319e927e",
             "declaredBytes": 218,
             "actualSha256": "ded79639a6cb1dda69d6c117e3a34f2364471a9345add4193425cfbb319e927e",

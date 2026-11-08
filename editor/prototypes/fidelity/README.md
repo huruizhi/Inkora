@@ -10,6 +10,7 @@
 - `native-transaction.ts` / `native-transaction-stage-check.mjs` / `native-transaction-stage-results.json` / `NATIVE-TRANSACTION-EVIDENCE.md`：受限原生事务到局部原文补丁的桥接、空结构暂存回归、原生 audited 矩阵与边界证据。
 - `source-ledger.ts` / `reference-context.ts` / `source-ledger-check.mjs` / `SOURCE-LEDGER-EVIDENCE.md`：词法 ownership、CommonMark 有效引用定义范围、双向 source/PM 映射与 17 组纯模块证据。
 - `ledger-integration-check.mjs` / `LEDGER-INTEGRATION-EVIDENCE.md`：真实 EditorView、源码 textarea、staged/history 与 ledger 接线的 16 条组合回归和分层结论。
+- `source-composition-guard-check.mjs` / `SOURCE-COMPOSITION-GUARD-EVIDENCE.md`：真实 HTML + jsdom 的 4 组 `synthetic-signal-guard` 回归；只验证 visual/source composition 操作守卫，不冒充真实 IME。
 - `main.ts`：真实 EditorView、源码草稿、双向选区接线、演示操作、行内链接目标操作与图片原文占位。
 - `selection-map.ts` / `selection-check.mjs` / `SELECTION-EVIDENCE.md`：legacy 双向选区模块、15 项原有效检查与证据；真实入口仅复用其 LF/raw textarea 偏移转换，不再使用文本叶贪心。
 - `shell.html` / `build.mjs` / `PROTOTYPE.html`：模板、离线构建器和由最终源码重建的单文件产物。
@@ -56,7 +57,7 @@ INK-PROT-018 新增受限 native bridge：空文档文字、paragraph/list split
 
 2026-11-08 在本工作区实际执行：
 
-- `make -C editor/prototypes/fidelity test`：PASS，离线重建 + 严格类型检查 + 37 项组合检查 + 4 项 staged native + 16 项 ledger 真实接线回归。
+- `make -C editor/prototypes/fidelity test`：PASS，离线重建 + 严格类型检查 + 37 项组合检查 + 4 项 staged native + 16 项 ledger 真实接线回归 + 4 项 source composition `synthetic-signal-guard`。
 - `selection-check.mjs <冻结样稿目录>`：PASS，15/15；重复叶断言按 009 顺序叶映射更新，model 与模块都落在第二个真实叶。
 - `crossval.mjs <冻结样稿目录> <最终 PROTOTYPE.html>`：02、03、09、10-open、10-create 全链通过；03 为真实 link/image DOM/model 语义与逐步 SHA；09 含方向、后向选区和 Cancel；10 的磁盘语义仍仅内存保存点模拟。
 - 组合新增场景：含 link、image placeholder、邻近 strong/em/code 的文档进入源码，修改链接显示文字与图片 alt 后回到可视；后向选区、Undo/Redo、no-op、Cancel 均通过，且无 `img` 资源元素。
@@ -76,5 +77,6 @@ INK-PROT-018 的 audited native 矩阵为 16/16 累计步骤 PASS、三个独立
 5. **历史是原型快照。** 不是生产 prosemirror-history 分组；草稿内文本级撤销与 composition 分组未实现。
 6. **原生结构是受限集合。** 已覆盖 paragraph/list split/join 与新 016 的 mixed-EOL visual 动作；blockquote、复杂嵌套列表、空列表退出、跨保护块等未纳入，不得外推为通用结构编辑器。
 7. **仅模型/jsdom。** 普通文字和 marks/attrs 部分由 PM transaction dispatch，结构命令由 jsdom keydown 触发；未启动桌面，真实 WKWebView、系统中文 IME、磁盘保存/重开、App Sandbox、图片资源访问均未验证。
+8. **composition 信号不是输入法验收。** INK-PROT-024 只用合成 DOM 事件确认组合期间操作被拒绝且不会刷新 EditorView、重置 textarea 或移动选区；未生成候选窗、未验证系统输入法提交顺序与焦点行为。
 
 结论仅限于：当前受限 native transaction 集合、词法 ownership、真实 link/image 语义、staged/history 与源码选区闭环能在同一 prototype schema 中共存，并形成可复现证据。不得据此宣告通用 map、M0 完成或采纳生产架构。

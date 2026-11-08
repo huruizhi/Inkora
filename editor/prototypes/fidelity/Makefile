@@ -10,5 +10,6 @@ test: build lint
 	node check.mjs
 	node native-transaction-stage-check.mjs
 	node ledger-integration-check.mjs
+	node source-composition-guard-check.mjs
 run: build
 	open PROTOTYPE.html

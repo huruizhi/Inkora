@@ -87,3 +87,15 @@ INK-PROT-022 基于准备提交 `fc1cdff0facf3c5b409a6c83aeb1269142f95f97`，其
 - 最终 `PROTOTYPE.html` 由当前源码重建，SHA-256 为 `e2e259f44b9a3cf372ba1de891da99d68b7a655dd39ab79073942105c6ffd3f6`（396964 bytes）。未构建/修改 native-host 副本，因此不能把该 hash 当宿主加载证明。
 
 真实 WKWebView、系统 IME、物理键盘、磁盘保存/重开与 App Sandbox 未执行。复杂 lazy continuation、多行定义、复杂 delimiter、最坏 `O(n²)` 风险和数学过保守边界仍保留；不得据此宣告通用 map、M0 总门槛或架构采纳通过。详细分层证据见 `fidelity/LEDGER-INTEGRATION-EVIDENCE.md`。
+
+## 024 源码 composition 守卫结果（待管理者接收）
+
+INK-PROT-024 基于固定准备提交 `6360a2904cb07f9d94f1a9169fc709962f4f1a99`，只修改 fidelity 原型入口、检查、文档与重建证据；未修改 `native-host/`、模型/ledger、冻结 fixture、生产代码或依赖。
+
+- 操作入口统一判断 ProseMirror visual 与生产 textarea kernel 的 composition 状态。任一正在组合时，apply/cancel/reset/Undo/Redo/模式切换及其它按钮动作均拒绝，不改草稿、模式、可信 model、选区、dirty、revision 或 history。
+- compositionstart 与拒绝路径仅刷新诊断/按钮，不调用 `EditorView.updateState` 或 `sourceKernel.setText`，不强制 flush 或移动光标；compositionend 后仍由既有 PM/kernel 流程正常提交。
+- 原型只读暴露 `sourceComposing` 与 combined `composing`，供后续 observer 可选读取；未暴露 kernel。
+- 真实 HTML + jsdom 新增 4 组 `synthetic-signal-guard`，明确不是真实 IME。实际复跑 fidelity `37 + 4 + 16 + 4`、source-ledger 17、selection 15、audited `16 + 3 + 3`、fixture 582 全绿；legacy crossval 的既有 05/06/11 非 audited 失败保持，未改 oracle。
+- 最终 `PROTOTYPE.html` SHA-256 为 `c86390037282e71e4187aaea46fe92354f12c669373f3d4c1be69d2287c81090`（397611 bytes）。未修改/重建 native-host，因此旧 022/014 runtime 不能外推。
+
+真实 WKWebView、系统中文 IME、候选窗、焦点/事件顺序、composition 撤销分组与磁盘保存均未执行。详细守卫边界和命令见 `fidelity/SOURCE-COMPOSITION-GUARD-EVIDENCE.md`；本结果不能升级为 M0 总门槛或生产架构采纳通过。
