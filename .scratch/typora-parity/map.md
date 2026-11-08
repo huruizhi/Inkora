@@ -18,6 +18,7 @@ Status: open
 - 子票据的 Type、Labels、Status、Assignee、Blocked by 是调度依据。Status 使用 open / claimed / resolved；依赖项 resolved 后才可领取；无依赖写 None。决策结论只写在对应票据的 Answer 中，地图只保留摘要链接。
 - 继续本地图时先读 wayfinder；用户决策使用 grilling 和 domain-modeling；外部事实使用 research；交互验证使用 prototype。此阶段产出决策，进入实施前另行使用 to-spec / to-tickets。
 - 本地研究和检查使用独立 worktree。UI 自动化执行遵循 docs/testing.md；测试存在、测试通过和人工体验验收分别记录。
+- 用户已确认优先验证增量路线；下次推进优先处理相应原型票，再根据证据决定是否锁定架构。独立范围决策仍可在各自会话推进，原型代码与产品实现分别交付。
 
 ## Decisions so far
 
@@ -25,6 +26,7 @@ Status: open
 - [核实编辑内核保真与复杂语法扩展的技术约束](issues/02-fidelity-feasibility.md)：已核实局部保真、未知片段和跨模式历史的缺口；候选路线及最小原型问题已列出，尚未选型。
 - [确定首个可交付里程碑的写作闭环](issues/03-first-milestone.md)：用户确认单篇技术文档的首阶段范围及验收方向；高级语法片段混排和不自动整篇退出可视编辑是明确要求，技术路线待验证。
 - [核实受保护原文块实现对保真路线的影响](issues/10-fidelity-baseline-refresh.md)：新基线已提供可复用保护块和预览，lint/构建及 111 项编辑器测试通过；完整局部保真和跨模式历史仍需原型证明。
+- [确定局部保真与未知语法共存的实现路线](issues/04-fidelity-route.md)：用户确认先验证复用 ProseMirror 的增量候选路径及五项门槛；失败时调整或以同一判据比较原文主数据路线，最终架构尚未锁定。
 
 ## Not yet specified
 
