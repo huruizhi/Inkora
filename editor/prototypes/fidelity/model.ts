@@ -36,6 +36,13 @@ type HistoryEntry = {
   patches: Patch[];
   before: string;
 };
+
+type CompositionHistory = {
+  id: unknown;
+  before: HistoryEntry;
+  past: HistoryEntry[];
+  future: HistoryEntry[];
+};
 const tokenizer = new MarkdownIt('commonmark', { html: false }).enable(['table', 'strikethrough']);
 installReferenceCapture(tokenizer);
 export const bytes = (s: string) => new TextEncoder().encode(s);
@@ -247,6 +254,7 @@ export class FidelityModel {
   past: HistoryEntry[] = [];
   future: HistoryEntry[] = [];
   staged: StagedTransaction | null = null;
+  private compositionHistory: CompositionHistory | null = null;
   private ledgerCache: { source: string; doc: PMNode; ranges: Range[]; ledger: SourceLedger } | null = null;
   private stagedLedgerCache: { candidate: string; doc: PMNode; anchors: NativeAnchor[]; ledger: SourceLedger } | null = null;
   constructor(source: string) {
@@ -403,6 +411,45 @@ export class FidelityModel {
       before: this.before,
     };
   }
+  private sameStagedHistory(entry: HistoryEntry): boolean {
+    if (!entry.staged || !this.staged) return entry.staged === this.staged;
+    return entry.staged.kind === this.staged.kind
+      && entry.staged.candidate === this.staged.candidate;
+  }
+  private beginCompositionHistory(id: unknown) {
+    if (this.compositionHistory?.id === id) return;
+    this.finishCompositionHistory();
+    this.compositionHistory = {
+      id,
+      before: this.snapshot(),
+      past: this.past.slice(),
+      future: this.future.slice(),
+    };
+  }
+  private compactCompositionHistory() {
+    const group = this.compositionHistory;
+    if (!group) return;
+    const unchanged = this.source === group.before.source
+      && this.state.doc.eq(group.before.state.doc)
+      && this.sameStagedHistory(group.before);
+    if (unchanged) {
+      // A cancelled/no-op composition is selection movement, not an edit. It
+      // must neither add Undo nor discard the pre-existing Redo branch.
+      this.past = group.past.slice();
+      this.future = group.future.slice();
+      return;
+    }
+    // Every PM DOM transaction carrying this composition ID belongs to one
+    // user edit. Keep the exact pre-session state once, even when WebKit
+    // flushes the final transaction after compositionend.
+    this.past = [...group.past, group.before];
+    this.future = [];
+  }
+  private finishCompositionHistory() {
+    if (!this.compositionHistory) return;
+    this.compactCompositionHistory();
+    this.compositionHistory = null;
+  }
   private restore(entry: HistoryEntry) {
     this.source = entry.source;
     this.state = entry.state;
@@ -441,6 +488,7 @@ export class FidelityModel {
     this.ranges = parsed.ranges; this.issues = parsed.issues; this.patches = patches; this.blocked = ''; this.revision++; this.staged = null;
   }
   apply(patches: Patch[], tr: Transaction) {
+    this.finishCompositionHistory();
     if (this.staged) throw Error('存在尚未落账的原生结构事务；请先继续输入或 Undo');
     let candidate = this.source;
     for (const p of [...patches].sort((a, b) => b.from - a.from)) candidate = candidate.slice(0, p.from) + p.insert + candidate.slice(p.to);
@@ -449,6 +497,17 @@ export class FidelityModel {
     this.commitClean(candidate, this.state.apply(tr), patches);
   }
   transaction(tr: Transaction) {
+    const compositionId = tr.getMeta('composition');
+    const composing = compositionId !== undefined;
+    if (composing) this.beginCompositionHistory(compositionId);
+    else this.finishCompositionHistory();
+    try {
+      this.applyTransaction(tr);
+    } finally {
+      if (composing) this.compactCompositionHistory();
+    }
+  }
+  private applyTransaction(tr: Transaction) {
     if (!tr.docChanged) {
       const next = this.state.apply(tr);
       if (this.staged && !next.selection.eq(this.state.selection)) {
@@ -561,6 +620,7 @@ export class FidelityModel {
     throw Error('补丁重解析与目标 PM 文档不一致；可信状态未提交');
   }
   sourceEdit(source: string) {
+    this.finishCompositionHistory();
     if (this.staged) throw Error('存在尚未落账的原生结构事务；请先继续输入或 Undo');
     // Byte-identical no-op: keep bytes/dirty/revision/history untouched.
     if (source === this.source) return true;
@@ -572,6 +632,7 @@ export class FidelityModel {
     return same;
   }
   travel(redo = false) {
+    this.finishCompositionHistory();
     const from = redo ? this.future : this.past, to = redo ? this.past : this.future;
     const entry = from.pop(); if (!entry) return;
     to.push(this.snapshot());
