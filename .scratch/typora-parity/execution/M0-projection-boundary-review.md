@@ -44,4 +44,4 @@ host为srv_MEqRNkRW6fSx，两workspace均固定7607079、独立branch/worktree�
 交叉草案见reviews/028-cross-check.md：隔离验证不等于重写内核；settle可为内部迁移接口，但需唯一公开当前字节权威、每个已接受编辑即时一致、save不改变投影/光标/历史。重开字节保留不证明续写边界正确；source-primary也不能被未经验证地描述成任意PM编辑永不拒绝。允许必要语法映射规则，不按kind计数机械判断；需要共享原文/保存/源码/历史契约与真实安全负例。等待双方是否接受此有限方案或提供实质反例，尚未采纳架构。
 
 
-Current decision pointer: [M0-source-authority-consensus.md](M0-source-authority-consensus.md). Earlier pending sections are historical review records.
+当前结论见[原文权威共识](M0-source-authority-consensus.md)。前面的待审议段落是历史过程记录，不代表当前仍未收敛。

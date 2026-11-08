@@ -52,6 +52,6 @@ Status: open
 - Typora 界面的像素级复刻、Mac App Store 分发不在目标内。
 
 
-## Current M0 execution pointer
+## 当前 M0 执行入口
 
-028 committee consensus and frozen029 contract now guide one isolated030 source-authoritative/PM projection prototype. See [consensus](execution/M0-source-authority-consensus.md). Accepted integration remains ea63941;027 is partial evidence, not adopted.11 stays claimed and12 remains dependent; no production architecture or M0 pass is declared.
+依据028委员会共识和029冻结契约，只推进一个隔离的030原文权威/PM投影原型，见[共识记录](execution/M0-source-authority-consensus.md)。已接收集成仍为ea63941；027仅保留部分证据，未采纳。11保持claimed，12依赖不解除；未宣告生产架构选型或M0通过。
