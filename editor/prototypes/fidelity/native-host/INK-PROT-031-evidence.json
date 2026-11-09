@@ -46,7 +46,9 @@
     "wkRuntime": "not executed",
     "physicalSogou": "not executed",
     "nsDocumentSandboxFileFlow": "not executed",
-    "macOS14Hardware": "not executed"
+    "macOS14Hardware": "not executed",
+    "userAvailability": "deferred by explicit user choice; preserve progress",
+    "resumeRequirement": "user confirms availability; desktop preflight and fixed artifact hashes rechecked"
   },
   "cleanup": {
     "executionAgents": "archived",
