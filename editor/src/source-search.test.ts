@@ -115,6 +115,17 @@ describe("searchSource", () => {
     expect(result.matches.at(-1)).toEqual({ from: 9_999, to: 10_000, text: "a" });
     expect(result.truncated).toBe(true);
   });
+
+  it("captures snapshot values without mutating a mutable caller object", () => {
+    const snapshot = { raw: "a", revision: 1 };
+    const result = searchSource(snapshot, "a");
+
+    snapshot.raw = "a a";
+    snapshot.revision = 2;
+
+    expect(result.source).toEqual({ raw: "a", revision: 1 });
+    expect(snapshot).toEqual({ raw: "a a", revision: 2 });
+  });
 });
 
 describe("findSourceMatch", () => {
@@ -236,6 +247,84 @@ describe("replacement plans", () => {
       failure: { reason: "source-mismatch", intent: { kind: "replace-one", matchIndex: 0, replacement: "b" } },
     });
     if (!staleRaw.ok) expect(staleRaw.failure.current.raw).toBe("A a");
+  });
+
+  it("rejects caller snapshots mutated in place after searching", () => {
+    const changedRevision = { raw: "a", revision: 1 };
+    const revisionSearch = searchSource(changedRevision, "a");
+    changedRevision.raw = "a a";
+    changedRevision.revision = 2;
+
+    expect(planSourceReplaceAll(revisionSearch, changedRevision, "b")).toEqual({
+      ok: false,
+      failure: {
+        reason: "revision-mismatch",
+        message: "Current revision does not match the revision bound to the search",
+        intent: { kind: "replace-all", replacement: "b" },
+        current: { raw: "a a", revision: 2 },
+      },
+    });
+
+    const changedRaw = { raw: "a", revision: 1 };
+    const rawSearch = searchSource(changedRaw, "a");
+    changedRaw.raw = "a a";
+
+    expect(planSourceReplaceAll(rawSearch, changedRaw, "b")).toEqual({
+      ok: false,
+      failure: {
+        reason: "source-mismatch",
+        message: "Current source does not match the source bound to the search",
+        intent: { kind: "replace-all", replacement: "b" },
+        current: { raw: "a a", revision: 1 },
+      },
+    });
+  });
+
+  it("captures plan and failure values without mutating caller inputs", () => {
+    const successfulCurrent = { raw: "same", revision: 1 };
+    const successfulSelection = { anchor: 4, head: 1 };
+    const successful = planSourceReplaceAll(
+      searchSource(successfulCurrent, "missing"),
+      successfulCurrent,
+      "x",
+      successfulSelection,
+    );
+
+    successfulCurrent.raw = "changed";
+    successfulCurrent.revision = 2;
+    successfulSelection.anchor = 0;
+    successfulSelection.head = 0;
+
+    expect(successful).toMatchObject({
+      ok: true,
+      plan: {
+        source: { raw: "same", revision: 1 },
+        resultRaw: "same",
+        selection: { anchor: 4, head: 1 },
+      },
+    });
+
+    const failingCurrent = { raw: "same", revision: 2 };
+    const failingSelection = { anchor: 4, head: 1 };
+    const failed = planSourceReplaceAll(
+      searchSource({ raw: "same", revision: 1 }, "same"),
+      failingCurrent,
+      "x",
+      failingSelection,
+    );
+
+    failingCurrent.raw = "changed";
+    failingCurrent.revision = 3;
+    failingSelection.anchor = 0;
+    failingSelection.head = 0;
+
+    expect(failed).toMatchObject({
+      ok: false,
+      failure: {
+        current: { raw: "same", revision: 2 },
+        intent: { selection: { anchor: 4, head: 1 } },
+      },
+    });
   });
 
   it("forbids replace-all from a truncated search", () => {

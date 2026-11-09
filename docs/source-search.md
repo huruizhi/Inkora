@@ -4,7 +4,7 @@
 
 ## 快照与范围
 
-输入快照为 `{ raw: string, revision: number }`。所有范围均是 `raw` 上的 UTF-16 半开区间 `[from, to)`，不规范化 Unicode，不转换 LF、CRLF 或混合行尾。搜索结果保留其绑定的 `raw` 与 `revision`；任何替换计划都再次同时校验二者，避免同 revision 异原文或 revision 已变化时写入旧内容。
+输入快照为 `{ raw: string, revision: number }`。模块在公共 API 边界按值捕获快照，而不是保留调用方对象的引用；调用方之后原位修改 `raw` 或 `revision`，不会改变既有搜索绑定。所有范围均是 `raw` 上的 UTF-16 半开区间 `[from, to)`，不规范化 Unicode，不转换 LF、CRLF 或混合行尾。搜索结果保留其绑定的 `raw` 与 `revision`；任何替换计划都再次同时校验二者，避免同 revision 异原文或 revision 已变化时写入旧内容。
 
 模块拒绝会切断 surrogate pair、字素簇或 CRLF 的匹配。文件开头的 BOM 可以保留在搜索快照中，但不会作为可替换正文返回。`rejected` 会记录被筛掉的原始范围、文本和原因。
 
@@ -37,7 +37,7 @@ const result = searchSource(snapshot, query, {
 
 替换文本完全按字面插入，`$&`、`$1` 等不会被展开。无匹配和 no-op 返回零 patch，不凭空制造编辑。全部替换拒绝使用 `truncated` 搜索结果。
 
-失败返回 `{ ok: false, failure }`，其中保留原始替换意图、当前快照、稳定原因码和说明，不返回部分计划。以下情况会失败：
+成功计划的 `source` / `selection` 与失败结果的 `current` / `intent.selection` 同样按值捕获；模块不冻结或修改调用方对象，调用方后续修改也不会回写既有结果。失败返回 `{ ok: false, failure }`，其中保留原始替换意图、当前快照、稳定原因码和说明，不返回部分计划。以下情况会失败：
 
 - revision 或原文与搜索绑定快照不一致；
 - 指定匹配不存在，或全部替换基于截断结果；

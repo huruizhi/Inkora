@@ -122,6 +122,28 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function captureSnapshot(snapshot: SourceSnapshot): SourceSnapshot {
+  return { raw: snapshot.raw, revision: snapshot.revision };
+}
+
+function captureSelection(selection: DirectedSelection): DirectedSelection {
+  return { anchor: selection.anchor, head: selection.head };
+}
+
+function captureIntent(intent: ReplacementIntent): ReplacementIntent {
+  const selection = intent.selection
+    ? { selection: captureSelection(intent.selection) }
+    : {};
+  return intent.kind === "replace-one"
+    ? {
+        kind: intent.kind,
+        matchIndex: intent.matchIndex,
+        replacement: intent.replacement,
+        ...selection,
+      }
+    : { kind: intent.kind, replacement: intent.replacement, ...selection };
+}
+
 function graphemeBoundaries(raw: string): Set<number> {
   const boundaries = new Set<number>([0, raw.length]);
   for (const segment of graphemeSegmenter.segment(raw)) {
@@ -179,6 +201,7 @@ export function searchSource(
   query: string,
   options: SearchOptions = {},
 ): SourceSearchResult {
+  const source = captureSnapshot(snapshot);
   const caseSensitive = options.caseSensitive ?? true;
   const maxResults = options.maxResults ?? DEFAULT_MAX_RESULTS;
   validateMaxResults(maxResults, options.maxResults !== undefined);
@@ -188,15 +211,15 @@ export function searchSource(
   let truncated = false;
 
   if (query.length > 0) {
-    const boundaries = graphemeBoundaries(snapshot.raw);
+    const boundaries = graphemeBoundaries(source.raw);
     const expression = new RegExp(
       escapeRegExp(query),
       caseSensitive ? "gu" : "giu",
     );
-    for (const rawMatch of snapshot.raw.matchAll(expression)) {
+    for (const rawMatch of source.raw.matchAll(expression)) {
       const from = rawMatch.index;
       const to = from + rawMatch[0].length;
-      const reason = boundaryReason(snapshot.raw, from, to, boundaries, true);
+      const reason = boundaryReason(source.raw, from, to, boundaries, true);
       if (reason) {
         rejected.push({ range: { from, to }, text: rawMatch[0], reason });
         continue;
@@ -210,7 +233,7 @@ export function searchSource(
   }
 
   return {
-    source: snapshot,
+    source,
     query,
     caseSensitive,
     maxResults,
@@ -315,7 +338,15 @@ function failure(
   intent: ReplacementIntent,
   current: SourceSnapshot,
 ): ReplacementPlanResult {
-  return { ok: false, failure: { reason, message, intent, current } };
+  return {
+    ok: false,
+    failure: {
+      reason,
+      message,
+      intent: captureIntent(intent),
+      current: captureSnapshot(current),
+    },
+  };
 }
 
 function validatePlanInput(
@@ -400,13 +431,13 @@ function success(
   return {
     ok: true,
     plan: {
-      source,
+      source: captureSnapshot(source),
       resultRaw,
       patches,
       applyOrder: "descending",
       replacedCount: patches.length,
       changed: patches.length > 0,
-      selection,
+      selection: captureSelection(selection),
     },
   };
 }
