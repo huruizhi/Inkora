@@ -13,3 +13,9 @@
 ## 调度指针
 
 Agent 79e898f7-a957-4aef-80d0-8886f46a2eee，workspace wks_088d366288e2e630，host srv_MEqRNkRW6fSx，分支task/INK-M1-007-search-integration-design，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-007-search-integration-design。profiles再次为空，provider核实OMP zhipu-coding-plan/glm-5.3，low/full；已取得running回执，notifyOnFinish=true，不轮询催促。
+
+## 接收与回收
+
+原稿d71b5aa仅新增两份文档。管理者独立读生产代码发现raw与textarea偏移直接等同、replaceText自建历史两项错误，已在原范围直接修正并提交10a6e338e293b6c720d3120e3f31c0fb6f231358。最终契约补齐EOL坐标映射、documentID/revision/raw校验、no-op/future/选区历史和原子替换新接缝，首批入口收敛为Web按钮，原生菜单/快捷键另验；阶段A-C只是中间交付，结构化定位/替换仍为M1必需，不偷用006标题映射作通用raw映射。
+
+文档diff --check通过；未运行产品测试或GUI，无产品实现结论。Agent已立即归档；209个常规文件tar逐字节SHA核对、Git bundle verify、live origin同SHA后归档workspace，回执确认目录移除。累计38个workspace回收。最终两文档保留于既有归档root-m1-checks/INK-M1-007-design，分支已推送。006独立验收进行中，不在其提交前并行修改main/runtime。
