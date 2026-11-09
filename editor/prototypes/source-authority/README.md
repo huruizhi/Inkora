@@ -62,6 +62,7 @@ make -C editor/prototypes/source-authority build
   并保留诊断/未解决意图。
 - 原型只为冻结 oracle 覆盖的常见结构建立投影关系；没有推广为完整 Markdown 投影代数。
 - parser projection 与 PM transaction 不可比时，仅允许带明确原文字节/anchor 证明的尾空格显形、
-  编辑空行、hardbreak 与空行 ATX 激活；其他差异原子拒绝并保留候选意图。
+  编辑空行、hardbreak、空行 ATX 激活，以及已接受 raw EOF anchor 后由 ledger gap 审计的行尾续写；
+  其他差异原子拒绝并保留候选意图。
 
 结果与证据分层见 [RESULTS.md](RESULTS.md)，本轮红绿过程见 [RED-GREEN.md](RED-GREEN.md)。

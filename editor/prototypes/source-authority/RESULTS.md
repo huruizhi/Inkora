@@ -110,3 +110,17 @@ scratch 重开后 raw caret 映射到真实 view，续写与 Backspace 均保持
 - 保护片段、过期事务和非法边界会保留内容与未解决意图；诊断/修复入口已验证，产品级交互未设计。
 - 未修改生产代码，也未把结果接入 INK-008；后续管理者仍需固定单一 bundle 集中跑真实 WK、物理搜狗
   和整体用户审阅。
+
+## INK-PROT-036 限定结果
+
+基线 `90d6135` 上已修复“接受 raw EOF caret 后真实 PM 输入被拒绝”的一致性反例。`a+LF` 在 raw 2
+输入 `X` 得到逐字节 `a+LF+X`；caret 没有移到 LF 前，LF 没有被吞掉，投影以原 raw anchor、
+`accepted-eof-line-ending` gap span 和去 gap 后 parser/PM 精确相等共同证明。
+
+新增 `eof-regression.mjs` 覆盖 7 个域：LF/CRLF/BOM/无尾换行控制、重复文本与 non-inclusive link mark
+相邻、连续输入、Undo/Redo 字节和选区、Save/source no-op 保已有 future、真实 DOM source commit 的 EOF
+草稿 caret 转入真实 visual dispatch，以及同边界 synthetic composition 不残留拼音。原 11/11 回归、
+10 组集成域和冻结 oracle hash 均保持通过；管理者冻结 `EOF-REVIEW.cjs` 由退出码 1 转为 0。
+
+本轮未为 inclusive strong 的 EOF mark 继承冲突增加特殊重解析规则；它仍是后续设计风险。没有执行真实
+WKWebView、物理 IME、NSDocument/App Sandbox 或最低系统验证，也没有迁移生产或改写既有物理 H1/H2/H3/U1 记录。

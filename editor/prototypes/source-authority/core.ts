@@ -105,6 +105,63 @@ function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger
   };
 }
 
+function anchoredEofContext(raw: string, state: EditorState, projection: ProjectionAudit): ProjectionContext | null {
+  if (!projection.provenance.some(item => item.startsWith('semantic-contract: accepted raw EOF anchor preserves '))) return null;
+  for (const anchor of projection.anchors) {
+    const eolStart = raw[anchor.raw - 1] === '\n'
+      ? (raw[anchor.raw - 2] === '\r' ? anchor.raw - 2 : anchor.raw - 1)
+      : -1;
+    if (eolStart < 0 || anchor.raw >= raw.length) continue;
+    const shadow = raw.slice(0, eolStart) + raw.slice(anchor.raw);
+    const parsed = parse(shadow);
+    if (parsed.issues.length || !parsed.doc.eq(state.doc)) continue;
+    const built = buildSourceLedger(shadow, parsed.doc, parsed.ranges);
+    if (!built.ok) continue;
+    const removedLength = anchor.raw - eolStart;
+    const toRawStart = (offset: number) => offset < eolStart ? offset : offset + removedLength;
+    const toRawEnd = (offset: number) => offset <= eolStart ? offset : offset + removedLength;
+    const translatedSpans = built.ledger.spans.map(span => ({
+      ...span,
+      sourceStart: toRawStart(span.sourceStart),
+      sourceEnd: toRawEnd(span.sourceEnd),
+    }));
+    const ranges = parsed.ranges.map(range => ({
+      ...range,
+      start: toRawStart(range.start),
+      end: toRawEnd(range.end),
+    }));
+    const gap: LedgerSpan = {
+      sourceStart: eolStart,
+      sourceEnd: anchor.raw,
+      role: 'gap',
+      syntax: 'accepted-eof-line-ending',
+      visible: false,
+      detail: '已接受 raw EOF anchor 保留原行尾；续写共享同一可视边界',
+    };
+    return {
+      parsedDoc: parsed.doc,
+      ranges,
+      ledger: {
+        ...built.ledger,
+        sourceLength: raw.length,
+        spans: [...translatedSpans, gap],
+        blocks: built.ledger.blocks.map((block, index) => ({
+          ...block,
+          range: ranges[index] ?? block.range,
+          spans: block.spans.map(span => translatedSpans[built.ledger.spans.indexOf(span)] ?? span),
+        })),
+        diagnostics: [...built.ledger.diagnostics, {
+          code: 'accepted_eof_line_ending_projection',
+          message: '以已接受 raw EOF anchor 审计续写后仍由原文持有的行尾',
+          sourceStart: eolStart,
+          sourceEnd: anchor.raw,
+        }],
+      },
+    };
+  }
+  return null;
+}
+
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 function cloneSelection(value: RawSelection): RawSelection {
@@ -185,7 +242,33 @@ function nodeCount(doc: PMNode, type: string): number {
 function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, projection: ProjectionAudit, plan: NativePlan, parsedDoc: PMNode, targetDoc: PMNode): string | null {
   if (!['text', 'empty-text'].includes(plan.kind) || plan.patches.length !== 1) return null;
   const patch = plan.patches[0];
+
+  const existingEofProof = projection.provenance.find(item => item.startsWith('semantic-contract: accepted raw EOF anchor preserves '));
+  if (existingEofProof) {
+    for (const anchor of projection.anchors) {
+      const gapStart = beforeRaw[anchor.raw - 1] === '\n'
+        ? (beforeRaw[anchor.raw - 2] === '\r' ? anchor.raw - 2 : anchor.raw - 1)
+        : -1;
+      if (gapStart < 0 || patch.from < anchor.raw || patch.to < anchor.raw) continue;
+      const candidate = plan.candidate.slice(0, gapStart) + plan.candidate.slice(anchor.raw);
+      if (parse(candidate).doc.eq(targetDoc)) return existingEofProof;
+    }
+  }
+
   if (patch.from !== patch.to) return null;
+
+  const eofEolStart = beforeRaw.endsWith('\r\n') ? beforeRaw.length - 2
+    : beforeRaw.endsWith('\n') ? beforeRaw.length - 1 : -1;
+  const continuesAcceptedRawEof = patch.from === beforeRaw.length
+    && patch.insert.length > 0
+    && !/[\r\n]/.test(patch.insert)
+    && eofEolStart >= 0
+    && projection.anchors.some(anchor => anchor.raw === patch.from)
+    && parse(beforeRaw.slice(0, eofEolStart) + patch.insert).doc.eq(targetDoc);
+  if (continuesAcceptedRawEof) {
+    const eol = beforeRaw.slice(eofEolStart);
+    return `semantic-contract: accepted raw EOF anchor preserves ${JSON.stringify(eol)} as a source-owned gap`;
+  }
 
   const rawLineStart = patch.from === 0 ? 0 : beforeRaw.lastIndexOf('\n', patch.from - 1) + 1;
   const rawLineEndMatch = /\r\n|\n/.exec(beforeRaw.slice(patch.from));
@@ -318,6 +401,8 @@ export class SourceAuthorityController {
     const parsed = parse(this.currentRaw);
     const base = baseLedger(this.currentRaw, parsed);
     if (parsed.doc.eq(state.doc)) return { ledger: base, ranges: parsed.ranges, parsedDoc: parsed.doc };
+    const eof = anchoredEofContext(this.currentRaw, state, projection);
+    if (eof) return eof;
     if (!comparableDoc(parsed.doc).eq(comparableDoc(state.doc))) {
       throw Error('当前 PM 投影与原文派生语义不满足有界投影关系');
     }
@@ -607,6 +692,11 @@ export class SourceAuthorityController {
       if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
         const proof = semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
+        if (proof.startsWith('semantic-contract: accepted raw EOF anchor preserves ')) {
+          this.accept(plan.candidate, target, plan.patches, before, proof, sourceCaret, tr.mapping);
+          if (compositionId !== undefined) this.compactComposition();
+          return true;
+        }
         const semanticCaret = sourceCaret ?? plan.patches.at(-1)!.from + plan.patches.at(-1)!.insert.length;
         this.currentRaw = plan.candidate;
         this.state = EditorState.create({ doc: parsed.doc });

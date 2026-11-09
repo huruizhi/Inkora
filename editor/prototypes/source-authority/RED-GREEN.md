@@ -125,3 +125,77 @@ turn 最终事务、连续两会话、选区替换、普通输入边界、cancel
 新的离线 bundle SHA-256：`4b8a2a3d51071ce6a5e6456f48c86f65f88d0786253f4959c768bddfc2ceca99`。
 仍未执行真实 WKWebView 或物理搜狗 IME；本轮证据层级仅为 synthetic/replay 的真实 bundle
 `EditorView.dispatch` + DOM composition 生命周期。
+
+## INK-PROT-036 EOF raw anchor 限定修正
+
+基线：`90d613543dfb46b005bb75177a64861fd73fdf55`。
+
+冻结材料只读使用，未修改：
+
+- `EOF-REVIEW.cjs` SHA-256：`38987a58f3ddc48afbc739fcff3db1bde120447a0b57b50bbc4da148db24ac23`；
+- 冻结 oracle SHA-256：`c53b2f9c54357a624c7ccd7a1e4a7d1ccf272f665d871de96f686bc46e031d08`。
+
+### RED
+
+在未修改实现上实际执行：
+
+```text
+node editor/prototypes/fidelity/native-host/INK-PROT-034-EVIDENCE/EOF-REVIEW.cjs
+```
+
+退出码 1。`reopen("a\n", {anchor:2, head:2, affinity:"right"})` 接受 raw EOF caret，真实
+`EditorView.dispatch(insertText("X"))` 也得到候选 `a\nX`，但提交被拒绝：
+
+```text
+actual currentRaw: "a\n"
+unresolvedIntent.raw: "a\nX"
+diagnostic: parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝
+AssertionError: an accepted EOF raw caret must insert at that exact raw boundary
+'a\n' !== 'a\nX'
+```
+
+随后先新增 `eof-regression.mjs` 的同链最小测试；在修复前同样退出码 1，精确失败于
+`real view input continues at the accepted raw EOF`，actual `a\n`、expected `a\nX`。
+
+### 可证伪假设与验证
+
+| 排名 | 假设 | 验证结果 |
+| --- | --- | --- |
+| 1 | 共享投影缺少“已接受 raw EOF 行尾”关系 | 成立；仅当原 EOF anchor、LF/CRLF 原文字节和去除该 gap 后的 parser/PM 精确关系同时成立才接受 |
+| 2 | transaction 的 raw patch 插入点错误 | 否证；冻结输出的 candidate 已是 `a\nX` |
+| 3 | `reopen` 把 caret 偷移到 LF 前 | 否证；RED 前 raw caret 为 2，真实 PM caret 为 2 |
+| 4 | 只能无条件重解析放行 | 否证；旧 `*a*` 未证明重解释仍原子拒绝并保留 candidate |
+
+实现把 LF/CRLF 作为 `accepted-eof-line-ending` gap 写入共享 source ledger，保留 gap 两侧不同
+raw 边界和原 anchor。后续插入或 composition replacement 仍须删除同一 gap 后与真实 PM target
+精确相等。inclusive strong 在该位置会让 PM 继承 mark，而 raw caret 位于闭合定界符之后；本轮没有
+为它追加重解析特例，marks 相邻控制使用既有 non-inclusive inline link。
+
+### GREEN
+
+实际执行：
+
+```text
+make -C editor/prototypes/source-authority test
+node editor/prototypes/fidelity/native-host/INK-PROT-034-EVIDENCE/EOF-REVIEW.cjs
+```
+
+两条命令均退出码 0。完整矩阵输出为：
+
+```text
+source-authority EOF regression: 7 domains PASS (synthetic composition; not physical IME)
+source-authority regression: 11 PASS
+PASS: PRIMARY 8/8 + scratch UTF-8 write/read
+PASS: repeatPrimaryVectors 13/13
+PASS: paragraphCases 3/3 via EditorView Enter
+source-authority: 10 groups PASS
+oracle sha256: c53b2f9c54357a624c7ccd7a1e4a7d1ccf272f665d871de96f686bc46e031d08
+```
+
+冻结脚本 GREEN 后 `currentRaw` 为 `a\nX`、raw caret 为 3、Undo 为 1、version 为 1，原 raw=2
+anchor 仍在 projection 中，provenance 为 `accepted raw EOF anchor preserves "\n" as a source-owned gap`，
+且 Save eligible。最终离线 bundle SHA-256：
+`1c07a4de3fa84bf8d96664cc53e63d8f57ba81a7c2163e7ca9e4d9e674a8ee92`。
+
+没有执行 GUI、真实 WKWebView 或物理搜狗；composition 结论仅是 synthetic DOM 生命周期与真实 bundle
+`EditorView.dispatch` 重放，不覆盖既有 M0 物理记录，也不宣告 M0、架构或首阶段通过。
