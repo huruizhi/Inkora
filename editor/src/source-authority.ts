@@ -1563,6 +1563,10 @@ export class SourceAuthoritySession {
     return true;
   }
 
+  private recordSourceCommit(): void {
+    this.sourceCommit = { raw: this.currentRaw, doc: this.state.doc, epoch: this.epoch };
+  }
+
   applySource(): boolean {
     if (this.composing) return this.guard('source_apply');
     if (!this.draft) return false;
@@ -1576,7 +1580,7 @@ export class SourceAuthoritySession {
       return false;
     }
     if (draft.raw === this.currentRaw) {
-      this.sourceCommit = { raw: this.currentRaw, doc: this.state.doc, epoch: this.epoch };
+      this.recordSourceCommit();
       this.draft = null;
       return true;
     }
@@ -1606,7 +1610,7 @@ export class SourceAuthoritySession {
       }
       this.past.push(before); this.future = []; this.version++;
       this.logicalRevision++;
-      this.sourceCommit = { raw: this.currentRaw, doc: this.state.doc, epoch: this.epoch };
+      this.recordSourceCommit();
       this.unresolvedIntent = null; this.diagnostic = '';
       return true;
     } catch (error) {
