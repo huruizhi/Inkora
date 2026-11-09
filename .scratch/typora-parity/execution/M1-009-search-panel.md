@@ -25,3 +25,11 @@
 ## 调度
 
 profiles为空，再核实OMP实际GLM-5.3后采用medium/full。Agent e83acc61-4f4a-452d-8286-b6d9cff4b01b，workspace wks_2dae5486f8fbab83，host srv_MEqRNkRW6fSx，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-009-search-panel，分支task/INK-M1-009-search-panel。已取得running回执，notifyOnFinish=true，不轮询催促。当前仅这一执行任务；006的两个完成Agent及workspace已备份回收。
+
+## 首稿独立复核退回
+
+首稿67a20ab仅改原7文件，origin/clean核对；执行Agent已立即归档。管理者独立干净16文件245项通过，但另建真实main/searchSource/DOM/CSS冻结反例7/7红：清空查询保留旧结果；排队timer读取query组合中间值；query composition中关闭/case守卫缺失；hidden属性被作者display:flex覆盖；长命中摘要反而保留9913单位中段；长组合字素context切割。无产品接收结论，不把245自动通过覆盖独立红例。
+
+冻结root-m1-checks/search-panel-review.test.ts SHA e8bb5127d5ece2f968af6a4158da1e0311b8dd7adc37cf0370f2771c1c91cb35；SEARCH-PANEL-REVIEW-RED.txt SHA 8cef4a2aeb3198bd6439e62bc736b782cb33c134c0742b9e898f1307160a8e7c，执行者不得改写/追加。限定补正复用原workspace，不新增窗口；profiles仍空，provider核实GPT-5.6-Sol/medium/full-access/default，原7文件修正与回归，不扩大产品范围。未启动UI。
+
+接续Agent b058a3c6-3668-403a-97e8-0aac12c9652e已取得running回执，notifyOnFinish=true；当前只这一执行Agent。完成后立即归档，仍按独立反例/干净套件/实际UI分层验收。
