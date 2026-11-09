@@ -1,6 +1,6 @@
 # M0 真实 WKWebView / 中文输入人工验收
 
-Status: executed with failure; IME history fix and physical retest pending
+当前状态：用户暂缓031真实WK/物理搜狗验收；030冻结范围自动检查已通过，M0未通过。下文保留旧版本实测历史，不能替代新bundle验收。
 
 本记录用于[原型票11](../issues/11-incremental-fidelity-prototype.md)的第五项门槛，不是正式产品验收。2026-11-09 用户解锁并配合物理键盘，已在以下固定版本完成本轮真实WK/搜狗输入法局部检查。可视组合撤销暴露中间拼音，判失败；M0仍未通过，已派025修复并保留修复后真人复验。
 

@@ -41,3 +41,5 @@
 本地验证分支 `task/INK-PROT-031-source-authority-wk`，目录 `/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-031`，不登记新Paseo侧栏行。只读宿主observer兼容新textarea并记录唯一原文状态，新旧observer检查通过。宿主构建基线 `1c586967039c2b03b2584a901a3afa077ee17fa7`，代码未修改030核心；源HTML SHA `4b8a2a3d51071ce6a5e6456f48c86f65f88d0786253f4959c768bddfc2ceca99`，bundle SHA `7aaa2e7f7ff79104c01bf378dd79c959a084ba7a14ce480f82a978e26c23c807`，签名及Info/manifest/文件哈希核对通过。
 
 desktop preflight实际退出78，屏幕锁定；未启动App或取得UI锁。已请求用户解锁与物理搜狗配合，等待明确回复。031证据与复现步骤在native-host/SOURCE-AUTHORITY-RUNTIME.md、INK-PROT-031-evidence.json；普通WK和物理IME均尚未执行，旧008仍ea63941，11/12门槛不解除。
+
+用户随后明确选择“稍后再做，先保留当前进度”。031真机/物理搜狗验收暂缓，保留本地构建、证据和分支，不启动窗口或派新Agent。恢复前须重新检查desktop preflight、固定产物哈希和用户即时可配合状态；自动层已通过，M0仍未通过。
