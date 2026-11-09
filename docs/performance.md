@@ -143,3 +143,17 @@ profile 显示 owner 全表扫描消除后，剩余成本分散在每个新候�
 apply、拒绝恢复、Undo/Redo、reopen、anchor/provenance 变化和图片 owner 改写均有公共行为
 回归。规模跑完不证明最坏复杂度已线性化；真实 paint、物理 IME、NSDocument 写盘和最低
 系统仍不在本层证据内。
+
+## 同值解析与按需边界复测（INK-M1-085，2026-11-10）
+
+084组合基线的1MB模型选区+单字输入为1272.00/1273.50ms（LF/CRLF）。085先单独复用完整
+raw值的纯解析结果，再单独将少量原文位置检查改为完整字符串的Intl.Segments.containing查询。
+PM/ledger的raw、doc identity、projection identity校验不变；批量替换仍保留完整边界索引。
+
+最终模型medium/large/large-crlf为92.75/916.27/886.19ms；真实离屏WK的普通输入→精确快照回执
+分别为133.14/970.91/964.83ms。CRLF的WK p95仍为1048.63ms，不能声称所有输入均在1秒内。
+重复解析单项、叠加边界优化、被噪声影响的序列、输入/源码/bundle SHA均分别保存在
+[085证据目录](evidence/INK-M1-085/)，未把不同阶段混为同一结果。
+
+这只证明固定样本和工作流在本机的成本改善；正式预算、真实paint、系统IME、最低系统和
+NSDocument安全写盘仍须按票15分层验收，不以中位数或缓存命中数替代。

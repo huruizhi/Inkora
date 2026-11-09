@@ -313,7 +313,7 @@ function rawCodeUnitBoundaryError(raw: string, offset: number): string | null {
   return null;
 }
 
-function rawBoundaryError(raw: string, offset: number, knownBoundaries?: ReadonlySet<number>): string | null {
+function rawBoundaryError(raw: string, offset: number, knownBoundaries?: Pick<ReadonlySet<number>, 'has'>): string | null {
   const structuralError = rawCodeUnitBoundaryError(raw, offset);
   if (structuralError) return structuralError;
   const boundaries = knownBoundaries ?? new Set<number>([0, raw.length]);
@@ -502,13 +502,17 @@ export class SourceAuthoritySession {
   private readonly options: EditorStateOptions;
   private preferredEol: '\r\n' | '\n';
   private managedImageOwners = new Map<string, string>();
+  // Parsing is a pure function of the exact raw value. Keep one immutable
+  // result across validation/acceptance/ledger construction for that value;
+  // projection proofs still bind raw + PM doc identity + projection identity.
+  private parsedSourceCache: { raw: string; parsed: ReturnType<typeof parse> } | null = null;
   private projectionContextCache: {
     raw: string;
     doc: PMNode;
     projection: ProjectionAudit;
     context: ProjectionContext;
   } | null = null;
-  private rawBoundaryCache: { raw: string; boundaries: ReadonlySet<number> } | null = null;
+  private rawBoundaryCache: { raw: string; boundaries: Pick<ReadonlySet<number>, 'has'> } | null = null;
 
   constructor(
     raw: string,
@@ -517,7 +521,7 @@ export class SourceAuthoritySession {
   ) {
     this.options = options;
     this.preferredEol = raw.match(/\r\n|\n/)?.[0] === '\r\n' ? '\r\n' : '\n';
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     this.currentRaw = raw;
     this.savedRaw = raw;
     this.state = createInkoraProjectionState(parsed.doc, this.options);
@@ -544,6 +548,13 @@ export class SourceAuthoritySession {
   }
   get sourceAccessible(): boolean { return !this.composing; }
 
+  private parseSource(raw: string): ReturnType<typeof parse> {
+    if (this.parsedSourceCache?.raw === raw) return this.parsedSourceCache.parsed;
+    const parsed = parse(raw);
+    this.parsedSourceCache = { raw, parsed };
+    return parsed;
+  }
+
   private snapshot(): Snapshot {
     return {
       raw: this.currentRaw,
@@ -558,11 +569,14 @@ export class SourceAuthoritySession {
   private boundaryError(raw: string, offset: number): string | null {
     let cached = this.rawBoundaryCache;
     if (!cached || cached.raw !== raw) {
-      const boundaries = new Set<number>([0, raw.length]);
-      for (const part of segmenter.segment(raw)) {
-        boundaries.add(part.index);
-        boundaries.add(part.index + part.segment.length);
-      }
+      // Query ICU's boundary in the complete raw string. This is the same
+      // grapheme segmentation as enumeration, without allocating one Set entry
+      // per character for a handful of selection/anchor checks. No substring
+      // window or ASCII approximation can truncate a combining/ZWJ sequence.
+      const segments = segmenter.segment(raw);
+      const boundaries = {
+        has: (offset: number): boolean => offset === raw.length || segments.containing(offset)?.index === offset,
+      };
       cached = { raw, boundaries };
       this.rawBoundaryCache = cached;
     }
@@ -591,7 +605,7 @@ export class SourceAuthoritySession {
       }
       return context;
     };
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     const base = baseLedger(raw, parsed);
     if (parsed.doc.eq(state.doc)) {
       return remember({ ledger: base, ranges: parsed.ranges, parsedDoc: parsed.doc });
@@ -773,7 +787,7 @@ export class SourceAuthoritySession {
       affinity: selection.affinity,
     };
     try {
-      const parsed = parse(candidate);
+      const parsed = this.parseSource(candidate);
       if (parsed.issues.length) throw Error(parsed.issues[0].message);
       this.currentRaw = candidate;
       this.state = createInkoraProjectionState(parsed.doc, this.options);
@@ -917,7 +931,7 @@ export class SourceAuthoritySession {
   }
 
   private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping']): void {
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
     let exactTargetLedger = needsAnchorReproof && !parsed.issues.length && parsed.doc.eq(target.doc)
@@ -1075,7 +1089,7 @@ export class SourceAuthoritySession {
       if (sourceCaret === undefined && plan.patches.length === 1 && textReplacement) {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
-      const parsed = parse(plan.candidate);
+      const parsed = this.parseSource(plan.candidate);
       if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
         const proof = semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
@@ -1234,7 +1248,7 @@ export class SourceAuthoritySession {
         ));
       }
       const target = this.state.apply(transaction);
-      const parsed = parse(candidate);
+      const parsed = this.parseSource(candidate);
       if (parsed.issues.length || !parsed.doc.eq(target.doc)) {
         throw Error('替换候选与可视意图不一致，整批未应用');
       }
@@ -1307,7 +1321,7 @@ export class SourceAuthoritySession {
     if (part) from = part.index;
     const before = this.snapshot();
     const raw = this.currentRaw.slice(0, from) + this.currentRaw.slice(caret);
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     this.currentRaw = raw;
     this.state = createInkoraProjectionState(parsed.doc, this.options);
     this.issues = parsed.issues;
@@ -1333,7 +1347,7 @@ export class SourceAuthoritySession {
       const from = Math.min(this.rawSelection.anchor, this.rawSelection.head);
       const to = Math.max(this.rawSelection.anchor, this.rawSelection.head);
       const raw = this.currentRaw.slice(0, from) + image + this.currentRaw.slice(to);
-      const parsed = parse(raw);
+      const parsed = this.parseSource(raw);
       if (parsed.issues.length) throw Error(parsed.issues[0].message);
       this.currentRaw = raw;
       this.state = createInkoraProjectionState(parsed.doc, this.options);
@@ -1405,7 +1419,7 @@ export class SourceAuthoritySession {
         return true;
       }
       const raw = applyNativePatches(this.currentRaw, patches);
-      const parsed = parse(raw);
+      const parsed = this.parseSource(raw);
       if (parsed.issues.length) throw Error(parsed.issues[0].message);
       const mappedAnchor = mapRawOffset(this.rawSelection.anchor, patches, -1);
       const mappedHead = mapRawOffset(this.rawSelection.head, patches, 1);
@@ -1473,7 +1487,7 @@ export class SourceAuthoritySession {
     if (anchorError || headError) { this.diagnostic = anchorError ?? headError ?? '非法源码选区'; return false; }
     const before = this.snapshot();
     try {
-      const parsed = parse(draft.raw);
+      const parsed = this.parseSource(draft.raw);
       const firstEol = draft.raw.match(/\r\n|\n/)?.[0];
       if (firstEol) this.preferredEol = firstEol === '\r\n' ? '\r\n' : '\n';
       this.currentRaw = draft.raw;
@@ -1545,7 +1559,7 @@ export class SourceAuthoritySession {
   reopen(raw: string, selection?: RawSelection): boolean {
     if (this.composing) return this.guard('reset');
     this.finishComposition();
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     this.currentRaw = raw; this.savedRaw = raw;
     this.managedImageOwners.clear();
     this.preferredEol = raw.match(/\r\n|\n/)?.[0] === '\r\n' ? '\r\n' : '\n';
