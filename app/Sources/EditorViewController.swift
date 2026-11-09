@@ -21,6 +21,8 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   private var diagnosticRevision: String?
   private var automaticRecoveryAttempts = 0
   private let maximumAutomaticRecoveryAttempts = 1
+  private var pendingImageRecoveryDeferred = false
+  private var pendingImageRecoveryInFlight = false
 
   init(
     document: InkoraDocument,
@@ -352,7 +354,21 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
           insert.trailingAnchor.constraint(equalTo: webView.trailingAnchor, constant: -10),
         ])
       }
-      view = webView
+      guard let pending = document?.pendingRecoveredImages, !pending.isEmpty else {
+        view = webView
+        return
+      }
+      let recovery = PendingImageRecoveryBannerView(
+        count: pending.count,
+        collapsed: pendingImageRecoveryDeferred,
+        target: self,
+        confirmAction: #selector(confirmPendingImageRecovery(_:)),
+        laterAction: #selector(deferPendingImageRecovery(_:)))
+      let stack = NSStackView(views: [recovery, webView])
+      stack.orientation = .vertical
+      stack.alignment = .width
+      stack.spacing = 0
+      view = stack
       return
     }
     let message = NSTextField(
@@ -371,6 +387,76 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     stack.alignment = .width
     stack.spacing = 8
     view = stack
+  }
+
+  @objc
+  private func confirmPendingImageRecovery(_ sender: Any?) {
+    guard !pendingImageRecoveryInFlight,
+      let document,
+      let asset = document.pendingRecoveredImages.first
+    else { return }
+    pendingImageRecoveryInFlight = true
+    pendingImageRecoveryDeferred = false
+    let handoff = PendingImageRecoveryHandoff(
+      document: document, expectedDocumentEpoch: documentEpoch)
+    handoff.confirm(
+      assetID: asset.id,
+      captureIntent: { [weak self, weak document] completion in
+        guard let self, let document else {
+          completion(.failure(EditorBridgeError.editorUnavailable))
+          return
+        }
+        self.captureImportIntent(document: document, completion: completion)
+      },
+      apply: { [weak self] asset, intent, completion in
+        guard let self else {
+          completion(EditorBridgeError.editorUnavailable)
+          return
+        }
+        do {
+          guard intent.documentEpoch == self.documentEpoch,
+            let anchor = intent.selectionAnchor,
+            let head = intent.selectionHead
+          else { throw EditorBridgeError.staleRevision }
+          let capability = try self.register(asset)
+          guard let bridge = self.bridge else { throw EditorBridgeError.editorUnavailable }
+          bridge.applyImageImport(
+            documentEpoch: self.documentEpoch,
+            assetID: asset.id,
+            uri: asset.markdownURI,
+            alt: "",
+            title: nil,
+            displayURL: capability.url,
+            selectionAnchor: anchor,
+            selectionHead: head,
+            completion: completion)
+        } catch {
+          completion(error)
+        }
+      },
+      snapshot: { [weak self] completion in
+        guard let bridge = self?.bridge else {
+          completion(.failure(EditorBridgeError.editorUnavailable))
+          return
+        }
+        bridge.requestVersionedSnapshot(completion: completion)
+      },
+      completion: { [weak self] error in
+        guard let self else { return }
+        self.pendingImageRecoveryInFlight = false
+        if let error {
+          self.presentImageError(error)
+        } else if let webView = self.webView {
+          self.refreshImageDescriptors()
+          self.presentEditor(webView)
+        }
+      })
+  }
+
+  @objc
+  private func deferPendingImageRecovery(_ sender: Any?) {
+    pendingImageRecoveryDeferred = true
+    if let webView { presentEditor(webView) }
   }
 
   private func presentResourceError(message: String) {
@@ -443,9 +529,10 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
           guard state.documentID == document.bridgeDocumentID,
             let anchor = state.selectionAnchor, let head = state.selectionHead
           else { throw EditorBridgeError.staleRevision }
+          let session = try document.localImages()
           return LocalImageAsset.ImportIntent(
-            documentID: state.documentID,
-            sessionID: try document.localImages().sessionID,
+            documentID: session.documentID,
+            sessionID: session.sessionID,
             documentEpoch: documentEpoch,
             revision: state.revision,
             selectionAnchor: anchor,
@@ -632,11 +719,15 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       guard error == nil, let self else { return }
       let owners = Set(LocalImageMigrationCoordinator.imageURIs(in: document.text))
       for asset in session.assets where asset.insertion == .pending {
-        if owners.contains(asset.markdownURI) {
+        if asset.recoveryDisposition != nil
+          || asset.importIntent?.recoveryState == .requiresConfirmation
+        {
+          continue
+        } else if owners.contains(asset.markdownURI) {
           try? session.markInsertionAccepted(assetID: asset.id)
         } else if !session.wasRestored,
           let intent = asset.importIntent,
-          intent.documentID == document.bridgeDocumentID,
+          intent.documentID == session.documentID,
           intent.sessionID == session.sessionID,
           intent.documentEpoch == documentEpoch,
           intent.revision == editorState?.revision,
@@ -917,6 +1008,61 @@ final class EditorEncodingErrorView: NSView {
       stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 24),
       stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -24),
       stack.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -48),
+    ])
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) is not supported")
+  }
+}
+
+@MainActor
+final class PendingImageRecoveryBannerView: NSView {
+  init(
+    count: Int,
+    collapsed: Bool,
+    target: AnyObject,
+    confirmAction: Selector,
+    laterAction: Selector
+  ) {
+    super.init(frame: .zero)
+    setAccessibilityIdentifier("PendingImageRecoveryBanner")
+    let confirm = NSButton(
+      title: collapsed ? "继续恢复图片（\(count)）" : "按当前光标插入下一张",
+      target: target,
+      action: confirmAction)
+    confirm.keyEquivalent = "i"
+    confirm.keyEquivalentModifierMask = [.command, .option]
+    confirm.setAccessibilityIdentifier("ConfirmPendingImageRecovery")
+    confirm.setAccessibilityHelp("重新读取当前光标后插入；不会使用崩溃前的旧选区。")
+
+    let arranged: [NSView]
+    if collapsed {
+      arranged = [confirm]
+    } else {
+      let message = NSTextField(
+        wrappingLabelWithString:
+          "已验证 \(count) 个待恢复图片。确认后将重新读取当前光标，再插入下一张；旧选区不会自动重放。")
+      message.setAccessibilityIdentifier("PendingImageRecoveryExplanation")
+      let later = NSButton(title: "稍后", target: target, action: laterAction)
+      later.keyEquivalent = "l"
+      later.keyEquivalentModifierMask = [.command, .option]
+      later.setAccessibilityIdentifier("DeferPendingImageRecovery")
+      later.setAccessibilityHelp("收起提示；仍可在文档顶部继续恢复。")
+      arranged = [message, confirm, later]
+    }
+    let stack = NSStackView(views: arranged)
+    stack.orientation = .horizontal
+    stack.alignment = .centerY
+    stack.spacing = 10
+    stack.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(stack)
+    NSLayoutConstraint.activate([
+      stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+      stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -12),
+      stack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+      stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
     ])
   }
 
