@@ -18,6 +18,7 @@ PERF_RESULTS_DIR := $(CURDIR)/build/perf-results
 NATIVE_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/native-perf.xcresult
 WEBVIEW_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/webview-perf.xcresult
 LAUNCH_PERF_RESULT := $(ARTIFACTS_DIR)/test-results/launch-perf.xcresult
+PRODUCTION_WK_SIZES ?= small,medium,large,large-crlf
 PERF_STRICT := $(if $(filter 1,$(INKORA_PERF_STRICT)),--fail,)
 
 .PHONY: setup lint test test-editor test-bridge test-native test-document-open-ui test-ui \
@@ -232,3 +233,29 @@ bench-full: bench
 .PHONY: release-archive release-sign release-notarize release-dmg release-verify release release-dry-run
 release-archive release-sign release-notarize release-dmg release-verify release release-dry-run:
 	@INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" scripts/release/release.sh $(patsubst release-%,%,$@)
+
+# Current source-authoritative model; deliberately opt-in and separate from
+# historical AST/serializer baselines. Does not launch UI or replace make bench.
+.PHONY: bench-production-model
+bench-production-model: perf-samples
+	mkdir -p "$(CURDIR)/build/production-perf"
+	node scripts/perf/env-info.mjs --output "$(CURDIR)/build/production-perf/environment.json"
+	env INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
+		python3 scripts/perf/run-production-model.py --pnpm "$(PNPM)"
+
+# Headless WebKit only: deliberately excludes App/XCUITest launch benchmarks.
+.PHONY: bench-production-webview
+bench-production-webview: perf-samples editor-build generate require-xcode prepare-artifacts
+	rm -rf "$(ARTIFACTS_DIR)/test-results/production-perf.xcresult"
+	mkdir -p "$(CURDIR)/build/production-perf"
+	node scripts/perf/env-info.mjs --output "$(CURDIR)/build/production-perf/environment.json"
+	env INKORA_PERF=1 TEST_RUNNER_INKORA_PERF=1 \
+		TEST_RUNNER_INKORA_PRODUCTION_PERF_SIZES="$(PRODUCTION_WK_SIZES)" \
+		INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
+		TEST_RUNNER_INKORA_PERF_SAMPLES_DIR="$(PERF_SAMPLES_DIR)" \
+		INKORA_PERF_OUTPUT="$(CURDIR)/build/production-perf/webview.json" \
+		TEST_RUNNER_INKORA_PERF_OUTPUT="$(CURDIR)/build/production-perf/webview.json" \
+		xcodebuild -quiet -project $(PROJECT) -scheme $(SCHEME) \
+		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
+		-resultBundlePath "$(ARTIFACTS_DIR)/test-results/production-perf.xcresult" \
+		-only-testing:InkoraTests/PerformanceWebViewTests/testProductionVisualWorkflowBenchmarks test
