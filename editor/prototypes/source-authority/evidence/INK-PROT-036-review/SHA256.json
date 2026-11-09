@@ -1,8 +1,11 @@
 {
   "final-test.txt": "b14efa716f9e4c21faf7d99173b4bd1ce3b87abc3b32308b10612ea8101cd086",
   "semantic-review.cjs": "bb532aca5c7e08f202ee6d8db4422455c36adac339032c2a1c4319102acab639",
+  "native-scope-review.cjs": "0adbccfb520c5f9a8bd9a2ae8d8bed402f51e298a9c302013c5852793f632ca1",
   "WK-summary.json": "bfee164e9da62f87efb9e29526de644d33b43db06c1dfbecd32d7afe21790d5b",
   "semantic-red.txt": "28ca339adc7085708dffe8aa6339db7a50545a9e445c9cea1c94846da914f941",
   "native-build.txt": "b6d6d149397263437620ad0f79fbf511450415f0365917713e6092e7296eefd3",
-  "WK-runtime.jsonl": "16f8ac12f0d6138768cbf67e8974e07ec201821a8de632738b274e86be939ee3"
+  "fixtures-final.txt": "690804979cea96fb8539836dea4bf272e0170e6f77eea579287627f49b26b246",
+  "WK-runtime.jsonl": "16f8ac12f0d6138768cbf67e8974e07ec201821a8de632738b274e86be939ee3",
+  "native-scope-review.txt": "8e2b1aa651456a350e9456260a34468304d16b1c0b03c308051a1e9e968c3886"
 }

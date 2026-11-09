@@ -1,0 +1,10 @@
+PASS 05-marks-attrs 1
+PASS 05-marks-attrs 2
+PASS 05-marks-attrs 3
+PASS 05-marks-attrs 4
+PASS 05-marks-attrs 3
+PASS 05-marks-attrs 4
+PASS new authority native marks/attrs frozen cumulative bytes
+PASS 04-task-toggle-crlf 1
+PASS 04-task-toggle-crlf 2
+PASS new authority task state exact single-byte changes
