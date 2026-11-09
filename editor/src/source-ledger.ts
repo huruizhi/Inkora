@@ -888,6 +888,10 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         const block = { range: range as Range, spans: state.spans, visualText, inlineCount: state.atoms.length };
         blocks.push(block);
         allSpans.push(...state.spans);
+        allExpectations.push(...state.expectations.map(expectation => ({
+          expectation,
+          blockSource: { from: range.start, to: range.end },
+        })));
         ownerSerial = state.ownerSerial;
         continue;
       }
