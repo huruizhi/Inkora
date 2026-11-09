@@ -1,0 +1,29 @@
+{
+  "baseline": "48258a93b3fc4a75df21a22ac0d175e01943b744",
+  "binarySHA256": "7b23475c1cce3e2318e96e5d2140b3a8e5720f7e2f817c1b640c261e91c8869a",
+  "bundleID": "com.huruizhi.Inkora.UITesting",
+  "runtime": {
+    "desktopPreflightExitCode": 0,
+    "appExited": true,
+    "uiLockReleased": true,
+    "physicalIME": false,
+    "tests": {
+      "visualDuplicateHeading24": "PASS",
+      "collapseReleasesSpace": "PASS",
+      "searchCap100": "PASS",
+      "caseSensitiveZeroThenInsensitive100": "PASS",
+      "queryUndoIsolatedFromDocument": "PASS",
+      "refocusUndoRedoPreservesFuture": "PASS",
+      "sourceOutlineTargetVisible": "FAIL",
+      "sourceSearchStartVisible": "FAIL",
+      "readOnlyModeShown": "PASS",
+      "narrowLayout": "NOT_EXECUTED",
+      "VoiceOver": "NOT_EXECUTED"
+    }
+  },
+  "fixtureBytesUnchanged": {
+    "Read Only CR.md": true,
+    "Source Long.md": true,
+    "Structured Long.md": true
+  }
+}
