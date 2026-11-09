@@ -56,3 +56,11 @@ Host均为 `srv_MEqRNkRW6fSx`，任务工作区均从固定36e6365创建，未�
 在原两个workspace限定补正，无新workspace：001由Agent `15f15ff7-0dcc-4528-b37c-6138ca5453d0`（GLM-5.3/medium/full），002由 `0462a096-5d52-41bd-96bb-760482cde0b6`（GPT-5.6-Sol/low/default/full-access）。profiles再次为空、provider实际核实，notifyOnFinish=true，均取得running回执。保持原4文件范围、无UI、无新依赖、不合main；模块尚未验收。
 
 与此同时用户已解锁并恢复031真人验收，UI锁仅由管理者持有；以上执行者禁止GUI。后台修正不替代M0真机门槛，不干扰正在等待用户的选区替换/取消操作。
+
+## 最终纯模块接收与回收
+
+001最终5505c2df13bd881e000f8863f73d91c7cc0bc4dc；002最终c3365af3b16f4eb02a089a6b73f515037dce7c7e。管理者独立重跑原5+2红全部转绿，分别editor lint与完整Vitest 157/144通过。001执行者报162包含临时根反例5，管理者全量前移除临时文件，157为干净分支口径。
+
+本地验证分支 `task/INK-M1-003-module-verification`，目录 `/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-VERIFY`，通过merge保留两方历史；组合editor lint、12文件179项Vitest通过。根修查找文档显式maxResults示例为1000以符合既定契约，未改模块逻辑。具体证据层级与风险见该分支docs/tasks/INK-M1-003.md。不合main、不连接UI、不代表M1交付或M0通过。
+
+最后两名执行Agent已立即归档。两个workspace各196文件逐字节备份验证、Git bundle verify、live origin SHA核对后归档，owned目录删除，项目列表已确认没有执行workspace。累计36个已结束workspace已回收；恢复索引位于既有workspace-archives目录。本地组合checkout和分支保留，后续UI集成另立任务。
