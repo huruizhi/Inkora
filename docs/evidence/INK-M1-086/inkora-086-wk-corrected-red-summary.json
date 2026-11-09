@@ -1,0 +1,52 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "00008152-000C251C28C14036",
+        "deviceName" : "My Mac",
+        "modelName" : "Mac Mini",
+        "osBuildNumber" : "26B123",
+        "osVersion" : "27.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 1,
+      "passedTests" : 0,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Inkora · Built with macOS 27.2",
+  "expectedFailures" : 0,
+  "failedTests" : 1,
+  "finishTime" : 1794241596.327,
+  "passedTests" : 0,
+  "result" : "Failed",
+  "runtimeWarnings" : [
+
+  ],
+  "skippedTests" : 0,
+  "startTime" : 1794241586.574,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "failed - Combining input must remain snapshot eligible: remote(InkoraTests.BridgeErrorCode.editorNotReady, InkoraTests.BridgeRecoveryAction.retry, \"投影 anchor 映射失败：grapheme 内部不是合法边界\")",
+      "targetName" : "InkoraTests",
+      "testIdentifier" : 1,
+      "testIdentifierString" : "EditorWebViewTests/testCombiningInputPreservesRawCaretAndNativeHistory()",
+      "testIdentifierURL" : "test://com.apple.xcode/Inkora/InkoraTests/EditorWebViewTests/testCombiningInputPreservesRawCaretAndNativeHistory",
+      "testName" : "testCombiningInputPreservesRawCaretAndNativeHistory()"
+    }
+  ],
+  "title" : "Test - Inkora",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 1
+}
