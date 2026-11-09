@@ -2,7 +2,7 @@ import { EditorView } from "prosemirror-view";
 import { InkoraEditorSession } from "./editor-session";
 import { TextAreaEditorKernel } from "./editor-kernel";
 import { classifyLineEndings } from "./line-endings";
-import { TextSelection } from "prosemirror-state";
+import { TextSelection, type EditorState } from "prosemirror-state";
 import { analyzeDocument } from "./document-analysis";
 import {
   sameHeading,
@@ -22,6 +22,12 @@ import { SourceAuthoritySession } from "./source-authority";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
 import { createCodeBlockNodeViews } from "./code-block-view";
+import {
+  normalizedLinkAttrs,
+  setLink,
+  unsetLink,
+  type LinkAttrs,
+} from "./inline-formatting";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
@@ -34,6 +40,23 @@ export interface EditorRuntimeStatus {
 
 export type EditorMode = "visual" | "source" | "read_only";
 export type RuntimeChangeKind = "document" | "status";
+
+export interface LinkEditBinding {
+  readonly raw: string;
+  readonly revision: number;
+  readonly epoch: number;
+  readonly selection: {
+    readonly anchor: number;
+    readonly head: number;
+    readonly affinity: "left" | "right";
+  };
+  readonly visualSelection: { readonly anchor: number; readonly head: number };
+  readonly attrs: LinkAttrs | null;
+}
+
+export interface EditorRuntimeOptions {
+  readonly onLinkRequest?: (binding: LinkEditBinding) => void;
+}
 
 export interface EditorRuntime {
   readonly status: EditorRuntimeStatus;
@@ -56,6 +79,10 @@ export interface EditorRuntime {
   markSaved(text: string): void;
   undo(): boolean;
   redo(): boolean;
+  applyLinkEdit(
+    binding: LinkEditBinding,
+    attrs: LinkAttrs | null,
+  ): SourceNavigationResult<{ readonly changed: boolean }>;
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult;
   focus(): void;
   destroy(): void;
@@ -86,11 +113,14 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     private readonly parent: HTMLElement,
     text: string,
     private readonly onChange: RuntimeChangeListener,
+    private readonly options: EditorRuntimeOptions,
   ) {
     const ownerWindow = parent.ownerDocument.defaultView;
     if (!ownerWindow) throw new Error("Editor runtime requires an attached window");
     this.ownerWindow = ownerWindow;
-    this.session = new SourceAuthoritySession(text);
+    this.session = new SourceAuthoritySession(text, {
+      requestLink: (state) => this.requestLink(state),
+    });
     this.renderVisual();
   }
 
@@ -299,6 +329,56 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     return true;
   }
 
+  applyLinkEdit(
+    binding: LinkEditBinding,
+    attrs: LinkAttrs | null,
+  ): SourceNavigationResult<{ readonly changed: boolean }> {
+    const view = this.view;
+    const selection = this.session.rawSelection;
+    const visualSelection = this.session.state.selection;
+    if (!view || this.composing || this.session.currentRaw !== binding.raw ||
+        this.session.version !== binding.revision || this.session.epoch !== binding.epoch ||
+        selection.anchor !== binding.selection.anchor || selection.head !== binding.selection.head ||
+        selection.affinity !== binding.selection.affinity ||
+        visualSelection.anchor !== binding.visualSelection.anchor ||
+        visualSelection.head !== binding.visualSelection.head) {
+      return { ok: false, message: "链接编辑请求已过期，请重新执行 Mod-K" };
+    }
+
+    let normalized: LinkAttrs | null = null;
+    try {
+      normalized = attrs ? normalizedLinkAttrs(attrs) as LinkAttrs : null;
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "链接属性无效" };
+    }
+    const current = this.linkAttrs(this.session.state);
+    if ((!normalized && !current) || (normalized && current &&
+        normalized.href === current.href && (normalized.title ?? null) === (current.title ?? null))) {
+      return { ok: true, value: { changed: false } };
+    }
+
+    const before = this.session.currentRaw;
+    const handled = (normalized ? setLink(normalized) : unsetLink)(
+      view.state,
+      transaction => view.dispatch(transaction),
+    );
+    if (!handled || this.session.unresolvedIntent) {
+      return { ok: false, message: this.session.diagnostic || "无法安全应用链接编辑" };
+    }
+    if (binding.visualSelection.anchor !== binding.visualSelection.head) {
+      const delimiterDelta = normalized ? (current ? 0 : 1) : -1;
+      if (!this.session.setRawSelection(
+        binding.selection.anchor + delimiterDelta,
+        binding.selection.head + delimiterDelta,
+        binding.selection.affinity,
+      )) {
+        return { ok: false, message: this.session.diagnostic || "链接编辑后的选区无法恢复" };
+      }
+      view.updateState(this.session.state);
+    }
+    return { ok: true, value: { changed: before !== this.session.currentRaw } };
+  }
+
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
     if (this.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
     if (this.session.currentRaw !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
@@ -361,6 +441,44 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     }
   }
 
+  private requestLink(state: EditorState): boolean {
+    if (!this.options.onLinkRequest || this.composing || this.mode !== "visual" ||
+        state !== this.session.state) return false;
+    this.options.onLinkRequest(Object.freeze({
+      raw: this.session.currentRaw,
+      revision: this.session.version,
+      epoch: this.session.epoch,
+      selection: Object.freeze({ ...this.session.rawSelection }),
+      visualSelection: Object.freeze({
+        anchor: state.selection.anchor,
+        head: state.selection.head,
+      }),
+      attrs: this.linkAttrs(state),
+    }));
+    return true;
+  }
+
+  private linkAttrs(state: EditorState): LinkAttrs | null {
+    const { from, to, empty } = state.selection;
+    if (empty) {
+      const mark = (state.storedMarks ?? state.selection.$from.marks())
+        .find(candidate => candidate.type === state.schema.marks.link);
+      return mark ? { href: String(mark.attrs.href), title: mark.attrs.title ?? null } : null;
+    }
+    let attrs: LinkAttrs | null | undefined;
+    let sawText = false;
+    state.doc.nodesBetween(from, to, node => {
+      if (!node.isText) return;
+      sawText = true;
+      const mark = node.marks.find(candidate => candidate.type === state.schema.marks.link);
+      const next = mark ? { href: String(mark.attrs.href), title: mark.attrs.title ?? null } : null;
+      if (attrs === undefined) attrs = next;
+      else if (!attrs || !next || attrs.href !== next.href ||
+          (attrs.title ?? null) !== (next.title ?? null)) attrs = null;
+    });
+    return sawText ? attrs ?? null : null;
+  }
+
   private renderVisual(): void {
     this.destroySurface();
     this.parent.replaceChildren();
@@ -393,6 +511,17 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       state: this.session.state,
       decorations: codeDecorations,
       nodeViews: { code_block: codeBlockNodeView },
+      handleKeyDown: (_view, event) => {
+        const modifier = event.metaKey || event.ctrlKey;
+        if (!modifier || event.altKey) return false;
+        const key = event.key.toLowerCase();
+        const redoRequested = (key === "z" && event.shiftKey) || (key === "y" && !event.shiftKey);
+        const undoRequested = key === "z" && !event.shiftKey;
+        if (!undoRequested && !redoRequested) return false;
+        const changed = redoRequested ? this.redo() : this.undo();
+        if (changed) this.onChange(this.status, "document");
+        return changed;
+      },
       dispatchTransaction: (transaction) => {
         const compositionID = transaction.getMeta("composition");
         if (transaction.docChanged && this.compositionPhase === "settling" &&
@@ -623,6 +752,12 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   markSaved(_text: string): void {}
   undo(): boolean { return false; }
   redo(): boolean { return false; }
+  applyLinkEdit(
+    _binding: LinkEditBinding,
+    _attrs: LinkAttrs | null,
+  ): SourceNavigationResult<never> {
+    return { ok: false, message: "只读文档不能编辑链接" };
+  }
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
     if (this.text !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
     const analyzed = analyzeDocument({ raw, revision: 0 }).headings;
@@ -646,9 +781,10 @@ export function createEditorRuntime(
   parent: HTMLElement,
   text: string,
   onChange: RuntimeChangeListener,
+  options: EditorRuntimeOptions = {},
 ): EditorRuntime {
   parent.replaceChildren();
   const endings = classifyLineEndings(text);
   if (endings === "bare_cr") return new ReadOnlyEditorRuntime(parent, text);
-  return new SourceAuthorityEditorRuntime(parent, text, onChange);
+  return new SourceAuthorityEditorRuntime(parent, text, onChange, options);
 }

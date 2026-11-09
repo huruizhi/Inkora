@@ -12,16 +12,17 @@ export interface LinkAttrs {
   title?: string | null;
 }
 
-export type LinkRequest = (state: EditorState) => LinkAttrs | null;
+export type LinkRequest = (state: EditorState) => LinkAttrs | boolean | null;
 
 export const toggleStrong: Command = toggleMark(inkoraSchema.marks.strong);
 export const toggleEm: Command = toggleMark(inkoraSchema.marks.em);
 export const toggleStrike: Command = toggleMark(inkoraSchema.marks.strike);
 export const toggleCode: Command = toggleMark(inkoraSchema.marks.code);
 
-function normalizedLinkAttrs(attrs: LinkAttrs): Attrs {
-  if (typeof attrs.href !== "string" || attrs.href.length === 0) {
-    throw new RangeError("Link href must be a non-empty string");
+export function normalizedLinkAttrs(attrs: LinkAttrs): Attrs {
+  if (typeof attrs.href !== "string" || attrs.href.length === 0 ||
+      /[\u0000-\u001f<>\s]/.test(attrs.href)) {
+    throw new RangeError("Link href must be a non-empty safe Markdown destination");
   }
   if (attrs.title !== undefined && attrs.title !== null && typeof attrs.title !== "string") {
     throw new RangeError("Link title must be a string or null");
@@ -72,8 +73,9 @@ export function inlineKeyBindings(requestLink?: LinkRequest): Record<string, Com
     "Mod-Shift-x": toggleStrike,
     "Mod-e": toggleCode,
     "Mod-k": (state, dispatch) => {
-      const attrs = requestLink?.(state);
-      return attrs ? setLink(attrs)(state, dispatch) : false;
+      const result = requestLink?.(state);
+      if (result === true) return true;
+      return result && typeof result === "object" ? setLink(result)(state, dispatch) : false;
     },
     "Mod-Shift-k": unsetLink,
     Backspace: undoInputRule,

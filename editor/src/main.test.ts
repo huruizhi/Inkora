@@ -10,7 +10,13 @@ interface SentMessage {
   protocolVersion: number;
   type: string;
   requestID?: string;
-  state?: { documentID: string; revision: number; dirty: boolean };
+  state?: {
+    documentID: string;
+    revision: number;
+    dirty: boolean;
+    canUndo?: boolean;
+    canRedo?: boolean;
+  };
   [key: string]: unknown;
 }
 
@@ -42,6 +48,7 @@ interface Harness {
   visualMode(): HTMLButtonElement;
   sourceApply(): HTMLButtonElement;
   sourceCancel(): HTMLButtonElement;
+  linkEditor(): HTMLFormElement | null;
  }
 
 // prosemirror-view 在 jsdom 下还需要这些全局（MutationObserver、raf、
@@ -170,6 +177,7 @@ async function bootMain(): Promise<Harness> {
     visualMode: () => dom.window.document.querySelector<HTMLButtonElement>(".editor-mode-visual")!,
     sourceApply: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-apply")!,
     sourceCancel: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-cancel")!,
+    linkEditor: () => dom.window.document.querySelector<HTMLFormElement>(".link-editor"),
   };
 }
 
@@ -200,6 +208,157 @@ it("提供键盘可达的可视/源码切换和草稿提交取消入口", async 
   expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
   expect(h.visualMode().getAttribute("aria-pressed")).toBe("true");
   expect(h.stateMessages()).toHaveLength(1);
+});
+
+it("Mod-K 通过生产 DOM 入口创建链接，取消不改变文档", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-link", documentID: "doc-link", revision: 0,
+    text: "正文\n",
+  });
+  await settle();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const paragraphText = editor.querySelector("p")!.firstChild!;
+  const range = h.dom.window.document.createRange();
+  range.setStart(paragraphText, 0);
+  range.setEnd(paragraphText, 2);
+  const selection = h.dom.window.getSelection()!;
+  selection.removeAllRanges();
+  selection.addRange(range);
+  h.dom.window.document.dispatchEvent(new h.dom.window.Event("selectionchange"));
+
+  const shortcut = new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  });
+  expect(editor.dispatchEvent(shortcut)).toBe(false);
+  const form = h.linkEditor();
+  expect(form).not.toBeNull();
+  const href = form!.querySelector<HTMLInputElement>(".link-editor-href")!;
+  expect(h.dom.window.document.activeElement).toBe(href);
+  expect(form!.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "Escape", bubbles: true, cancelable: true,
+  }))).toBe(false);
+  expect(h.linkEditor()).toBeNull();
+  expect(h.lastRevision()).toBe(0);
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const createForm = h.linkEditor()!;
+  createForm.querySelector<HTMLInputElement>(".link-editor-href")!.value = "./target";
+  createForm.querySelector<HTMLInputElement>(".link-editor-title")!.value = "标题";
+  createForm.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await settle();
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link", documentID: "doc-link", revision: 1,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link", text: '[正文](./target "标题")\n',
+  });
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const noOpForm = h.linkEditor()!;
+  expect(noOpForm.querySelector<HTMLInputElement>(".link-editor-href")!.value).toBe("./target");
+  expect(noOpForm.querySelector<HTMLInputElement>(".link-editor-title")!.value).toBe("标题");
+  noOpForm.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.lastRevision()).toBe(1);
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const editForm = h.linkEditor()!;
+  editForm.querySelector<HTMLInputElement>(".link-editor-href")!.value = "./edited";
+  editForm.querySelector<HTMLInputElement>(".link-editor-title")!.value = "";
+  editForm.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(editForm.querySelector(".link-editor-status")?.textContent).toBe("");
+  expect(h.linkEditor()).toBeNull();
+  expect(h.lastRevision()).toBe(2);
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const removeForm = h.linkEditor()!;
+  removeForm.querySelector<HTMLButtonElement>(".link-editor-remove")!.click();
+  expect(h.lastRevision()).toBe(3);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-unlinked", documentID: "doc-link", revision: 3,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-unlinked", text: "正文\n",
+  });
+
+  let activeEditor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  expect(activeEditor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "z", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  expect(h.lastRevision()).toBe(4);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link-undo", documentID: "doc-link", revision: 4,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link-undo", text: "[正文](./edited)\n",
+  });
+  activeEditor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  expect(activeEditor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "z", metaKey: true, shiftKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  expect(h.lastRevision()).toBe(5);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link-redo", documentID: "doc-link", revision: 5,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link-redo", text: "正文\n",
+  });
+});
+
+it("链接表单拒绝 composition、危险 href 与跨 load 的旧快照", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-link-a", documentID: "link-a", revision: 0,
+    text: "alpha\n",
+  });
+  await settle();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(true);
+  expect(h.linkEditor()).toBeNull();
+  editor.dispatchEvent(new h.dom.window.Event("compositionend", { bubbles: true }));
+  await settle();
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const unsafe = h.linkEditor()!;
+  unsafe.querySelector<HTMLInputElement>(".link-editor-href")!.value = "bad target";
+  unsafe.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(unsafe.querySelector(".link-editor-status")?.textContent).toContain("safe Markdown");
+  expect(h.lastRevision()).toBe(0);
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ dirty: false, canUndo: false });
+  unsafe.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const stale = h.linkEditor()!;
+  stale.querySelector<HTMLInputElement>(".link-editor-href")!.value = "./stale";
+  h.receive({
+    type: "loadDocument", requestID: "load-link-b", documentID: "link-b", revision: 0,
+    text: "bravo\n",
+  });
+  await settle();
+  expect(h.linkEditor()).toBeNull();
+  stale.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(stale.querySelector(".link-editor-status")?.textContent).toContain("过期");
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link-b", documentID: "link-b", revision: 0,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link-b", text: "bravo\n",
+  });
 });
 
 it("拒绝错误文档的保存回执且不污染 dirty 保存基线", async () => {

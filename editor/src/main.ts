@@ -9,6 +9,7 @@ import {
   createEditorRuntime,
   type EditorRuntime,
   type EditorRuntimeStatus,
+  type LinkEditBinding,
   type RuntimeChangeKind,
 } from "./editor-runtime";
 import { analyzeDocument } from "./document-analysis";
@@ -89,6 +90,9 @@ modeBar.append(
   modeStatus,
 );
 workspace.append(modeBar);
+const linkEditorHost = document.createElement("div");
+linkEditorHost.className = "link-editor-host";
+workspace.append(linkEditorHost);
 const editorHost = document.createElement("div");
 editorHost.className = "editor-host";
 workspace.append(editorHost);
@@ -98,6 +102,102 @@ let executingCommand = false;
 let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
 let loadEpoch = 0;
+let activeLinkEditor: HTMLFormElement | undefined;
+
+function closeLinkEditor(form = activeLinkEditor): void {
+  if (!form) return;
+  form.remove();
+  if (activeLinkEditor === form) activeLinkEditor = undefined;
+}
+
+function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
+  if (owner.composing || runtime !== owner || activeDocumentID === undefined ||
+      activeRevision === undefined) return;
+  closeLinkEditor();
+  const documentID = activeDocumentID;
+  const revision = activeRevision;
+  const epoch = loadEpoch;
+  const form = document.createElement("form");
+  form.className = "link-editor";
+  form.setAttribute("role", "dialog");
+  form.setAttribute("aria-label", binding.attrs ? "编辑链接" : "创建链接");
+
+  const hrefLabel = document.createElement("label");
+  hrefLabel.textContent = "链接";
+  const href = document.createElement("input");
+  href.className = "link-editor-href";
+  href.type = "text";
+  href.required = true;
+  href.autocomplete = "off";
+  href.value = binding.attrs?.href ?? "";
+  hrefLabel.append(href);
+
+  const titleLabel = document.createElement("label");
+  titleLabel.textContent = "标题";
+  const title = document.createElement("input");
+  title.className = "link-editor-title";
+  title.type = "text";
+  title.autocomplete = "off";
+  title.value = binding.attrs?.title ?? "";
+  titleLabel.append(title);
+
+  const save = document.createElement("button");
+  save.type = "submit";
+  save.className = "link-editor-save";
+  save.textContent = binding.attrs ? "更新" : "创建";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "link-editor-cancel";
+  cancel.textContent = "取消";
+  const status = document.createElement("span");
+  status.className = "link-editor-status";
+  status.setAttribute("role", "status");
+
+  const apply = (attrs: { href: string; title: string | null } | null): void => {
+    if (runtime !== owner || activeDocumentID !== documentID || activeRevision !== revision ||
+        loadEpoch !== epoch) {
+      status.textContent = "链接编辑请求已过期，请重新执行 Mod-K";
+      return;
+    }
+    const result = owner.applyLinkEdit(binding, attrs);
+    if (!result.ok) {
+      status.textContent = result.message;
+      return;
+    }
+    closeLinkEditor(form);
+    owner.focus();
+  };
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    apply({ href: href.value, title: title.value.length ? title.value : null });
+  });
+  cancel.addEventListener("click", () => {
+    closeLinkEditor(form);
+    if (runtime === owner && loadEpoch === epoch) owner.focus();
+  });
+  form.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || event.isComposing) return;
+    event.preventDefault();
+    cancel.click();
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "link-editor-actions";
+  if (binding.attrs) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "link-editor-remove";
+    remove.textContent = "移除链接";
+    remove.addEventListener("click", () => apply(null));
+    actions.append(remove);
+  }
+  actions.append(save, cancel, status);
+  form.append(hrefLabel, titleLabel, actions);
+  linkEditorHost.append(form);
+  activeLinkEditor = form;
+  href.focus();
+  href.select();
+}
 
 function updateModeControls(): void {
   const activeRuntime = runtime;
@@ -120,10 +220,12 @@ function updateModeControls(): void {
 }
 
 sourceModeButton.addEventListener("click", () => {
+  closeLinkEditor();
   runtime?.enterSourceMode();
   updateModeControls();
 });
 visualModeButton.addEventListener("click", () => {
+  closeLinkEditor();
   if (runtime?.mode === "source" && !runtime.status.draftDirty) {
     runtime.cancelSourceDraft();
   }
@@ -467,8 +569,14 @@ window.inkora = {
               // 面板开关保留）。被拒 load 不走这里，查找状态原样保留。
               searchPanel.resetForNewDocument();
               loadEpoch += 1;
+              closeLinkEditor();
               runtime?.destroy();
-              runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange);
+              runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange, {
+                onLinkRequest: (binding) => {
+                  const owner = runtime;
+                  if (owner) openLinkEditor(owner, binding);
+                },
+              });
               updateModeControls();
               // 跨 load 不夺走查询框正在进行的 IME composition；面板会在
               // compositionend 安全收口后执行已声明的新文档查询重置。

@@ -134,6 +134,23 @@ describe("production source authority runtime", () => {
     removed.runtime.destroy();
   });
 
+  it("removes an inline link through the real Mod-Shift-K keymap", () => {
+    const { dom, runtime, session } = createRuntime("[正文](./target)\n");
+    const view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 3)));
+    const editor = dom.window.document.querySelector<HTMLElement>("#editor")!;
+    expect(editor.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "k", metaKey: true, shiftKey: true, bubbles: true, cancelable: true,
+    }))).toBe(false);
+    expect(runtime.getText(), (session as unknown as { diagnostic?: string }).diagnostic).toBe("正文\n");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("[正文](./target)\n");
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("正文\n");
+    runtime.destroy();
+  });
+
   it("removes a mark from only the selected middle and preserves both marked sides", () => {
     const { runtime, session } = createRuntime("**abc**\n");
     session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, 2, 3)));
@@ -201,6 +218,103 @@ describe("production source authority runtime", () => {
     expect(execute(session, blockKeyBindings.Tab)).toBe(true);
     expect(runtime.getText()).toBe("```ts\ncode\n\t\n```\n");
     expect(runtime.status.unresolved).toBe(false);
+    runtime.destroy();
+  });
+
+  it("converts only the active paragraph to a code block in a multi-block document", () => {
+    const { dom, runtime, session } = createRuntime("one\n\ntwo\n");
+    const view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+    const editor = dom.window.document.querySelector<HTMLElement>("#editor")!;
+    expect(editor.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "c",
+      metaKey: true,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    }))).toBe(false);
+    expect(runtime.getText()).toBe("```\none\n```\n\ntwo\n");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("one\n\ntwo\n");
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("```\none\n```\n\ntwo\n");
+    runtime.destroy();
+  });
+
+  it("keeps a requested code language when converting one block among siblings", () => {
+    const { runtime, session } = createRuntime("one\n\ntwo\n");
+    session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, 2)));
+    expect(execute(session, setCodeBlock("ts"))).toBe(true);
+    expect(runtime.getText()).toBe("```ts\none\n```\n\ntwo\n");
+    expect(runtime.status.unresolved).toBe(false);
+    runtime.destroy();
+  });
+
+  it("preserves BOM, CRLF, neighbours, selection and missing final newline on conversion", () => {
+    const raw = "\uFEFFone\r\n\r\ntwo";
+    const { runtime, session } = createRuntime(raw);
+    let two = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "two") two = pos + 1;
+    });
+    session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, two)));
+    expect(execute(session, setCodeBlock("ts"))).toBe(true);
+    expect(runtime.getText()).toBe("\uFEFFone\r\n\r\n```ts\r\ntwo\r\n```");
+    session.dispatch(session.state.tr.insertText("X"));
+    expect(runtime.getText()).toBe("\uFEFFone\r\n\r\n```ts\r\ntXwo\r\n```");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("\uFEFFone\r\n\r\n```ts\r\ntwo\r\n```");
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    runtime.destroy();
+  });
+
+  it("exits a fenced code block through the real Mod-Enter keymap", () => {
+    const { dom, runtime, session } = createRuntime("```ts\none\n```\n\ntwo\n");
+    let end = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "one") end = pos + node.nodeSize;
+    });
+    const view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, end)));
+    const editor = dom.window.document.querySelector<HTMLElement>("#editor")!;
+    const event = new dom.window.KeyboardEvent("keydown", {
+      key: "Enter",
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    expect(editor.dispatchEvent(event)).toBe(false);
+    expect(runtime.getText()).toBe("```ts\none\n```\n\n\ntwo\n");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("```ts\none\n```\n\ntwo\n");
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("```ts\none\n```\n\n\ntwo\n");
+    runtime.destroy();
+  });
+
+  it("exits a CRLF fenced block without changing BOM, fence or trailing neighbour", () => {
+    const raw = "\uFEFF```ts\r\none\r\n```\r\n\r\ntwo";
+    const { dom, runtime, session } = createRuntime(raw);
+    let end = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "one") end = pos + node.nodeSize;
+    });
+    const view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, end)));
+    const editor = dom.window.document.querySelector<HTMLElement>("#editor")!;
+    expect(editor.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "Enter", metaKey: true, bubbles: true, cancelable: true,
+    }))).toBe(false);
+    expect(runtime.getText()).toBe("\uFEFF```ts\r\none\r\n```\r\n\r\n\r\ntwo");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("\uFEFF```ts\r\none\r\n```\r\n\r\n\r\ntwo");
     runtime.destroy();
   });
 
