@@ -14,6 +14,7 @@ import {
 } from "./editor-runtime";
 import { analyzeDocument } from "./document-analysis";
 import { DocumentAnalysisPanel } from "./document-analysis-panel";
+import { sameSearchResult } from "./visual-search";
 import {
   SEARCH_MAX_RESULTS,
   SearchPanel,
@@ -329,25 +330,10 @@ const searchPanel = new SearchPanel(findBar, {
   onReplace: (request) => performSearchReplacement(request),
 });
 
-function sameSearchResult(left: SourceSearchResult, right: SourceSearchResult): boolean {
-  return left.source.raw === right.source.raw &&
-    left.source.revision === right.source.revision &&
-    left.query === right.query &&
-    left.caseSensitive === right.caseSensitive &&
-    left.maxResults === right.maxResults &&
-    left.truncated === right.truncated &&
-    left.matches.length === right.matches.length &&
-    left.matches.every((match, index) => {
-      const other = right.matches[index];
-      return other !== undefined && match.from === other.from && match.to === other.to &&
-        match.text === other.text;
-    });
-}
-
 function performSearchNavigation(request: SearchNavigationRequest): SearchNavigationOutcome {
   const activeRuntime = runtime;
-  if (!activeRuntime || !activeRuntime.sourceNavigation) {
-    return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
+  if (!activeRuntime) {
+    return { ok: false, message: "尚未打开文档" };
   }
   if (activeRuntime.composing || searchPanel.isInputComposing) {
     return { ok: false, message: "请先完成中文输入，再定位查找结果" };
@@ -361,23 +347,28 @@ function performSearchNavigation(request: SearchNavigationRequest): SearchNaviga
     return { ok: false, message: "查询已变化，请等待查找刷新" };
   }
   const raw = activeRuntime.getText();
-  if (raw !== request.binding.raw || raw !== request.result.source.raw ||
+  if (raw !== request.binding.raw ||
+      (activeRuntime.mode !== "visual" && raw !== request.result.source.raw) ||
       request.result.source.revision !== activeRevision) {
     return { ok: false, message: "文档已变化，请等待查找刷新" };
   }
 
   let current: SourceSearchResult;
   try {
-    current = searchSource(
-      { raw, revision: activeRevision },
-      searchPanel.query,
-      { caseSensitive: searchPanel.caseSensitive, maxResults: SEARCH_MAX_RESULTS },
-    );
+    current = activeRuntime.search(searchPanel.query, activeRevision,
+      { caseSensitive: searchPanel.caseSensitive, maxResults: SEARCH_MAX_RESULTS });
   } catch {
     return { ok: false, message: "无法重新校验当前查找结果" };
   }
   if (!sameSearchResult(current, request.result)) {
     return { ok: false, message: "查找结果已过期，请等待刷新" };
+  }
+
+  if (activeRuntime.mode === "visual") {
+    const located = activeRuntime.navigateVisualSearch(raw, current, request);
+    return located.ok
+      ? { ok: true, matchIndex: located.value.matchIndex, wrapped: located.value.wrapped }
+      : located;
   }
 
   const selection = activeRuntime.getSourceSelection(raw);
@@ -410,7 +401,7 @@ function performSearchNavigation(request: SearchNavigationRequest): SearchNaviga
 
 function performSearchReplacement(request: SearchReplacementRequest): SearchReplacementOutcome {
   const activeRuntime = runtime;
-  if (!activeRuntime?.sourceReplacement) {
+  if (!activeRuntime || (activeRuntime.mode !== "visual" && !activeRuntime.sourceReplacement)) {
     return { ok: false, message: "当前编辑模式不支持原文替换" };
   }
   if (activeRuntime.composing || searchPanel.isInputComposing) {
@@ -426,14 +417,14 @@ function performSearchReplacement(request: SearchReplacementRequest): SearchRepl
     return { ok: false, message: "查询或替换文本已变化，请重新执行" };
   }
   const raw = activeRuntime.getText();
-  if (raw !== request.binding.raw || raw !== request.result.source.raw ||
+  if (raw !== request.binding.raw || (activeRuntime.mode !== "visual" && raw !== request.result.source.raw) ||
       request.result.source.revision !== activeRevision) {
     return { ok: false, message: "文档已变化，请等待查找刷新" };
   }
 
   let current: SourceSearchResult;
   try {
-    current = searchSource({ raw, revision: activeRevision }, searchPanel.query, {
+    current = activeRuntime.search(searchPanel.query, activeRevision, {
       caseSensitive: searchPanel.caseSensitive, maxResults: SEARCH_MAX_RESULTS,
     });
   } catch {
@@ -442,10 +433,10 @@ function performSearchReplacement(request: SearchReplacementRequest): SearchRepl
   if (!sameSearchResult(current, request.result)) {
     return { ok: false, message: "查找结果已过期，请等待刷新" };
   }
-  if (request.kind === "replace-all" && current.truncated) {
-    return { ok: false, message: "全部替换需要完整结果；当前结果已截断" };
+  if (activeRuntime.mode === "visual") {
+    const applied = activeRuntime.replaceVisualSearch(raw, current, request.kind, request.replacement);
+    return applied.ok ? { ok: true, ...applied.value } : applied;
   }
-
   const selection = activeRuntime.getSourceSelection(raw);
   if (!selection.ok) return selection;
   let planned;
@@ -457,7 +448,20 @@ function performSearchReplacement(request: SearchReplacementRequest): SearchRepl
     planned = planSourceReplacement(current, { raw, revision: activeRevision }, matchIndex,
       request.replacement, selection.value);
   } else {
-    planned = planSourceReplaceAll(current, { raw, revision: activeRevision },
+    let complete = current;
+    if (current.truncated) {
+      try {
+        complete = activeRuntime.search(searchPanel.query, activeRevision, {
+          caseSensitive: searchPanel.caseSensitive,
+        });
+      } catch {
+        return { ok: false, message: "无法重新校验完整查找结果" };
+      }
+      if (complete.truncated) {
+        return { ok: false, message: "完整匹配达到安全上限，整批未应用" };
+      }
+    }
+    planned = planSourceReplaceAll(complete, { raw, revision: activeRevision },
       request.replacement, selection.value);
   }
   if (!planned.ok) return { ok: false, message: planned.failure.message };
@@ -547,21 +551,20 @@ function scheduleSearch(documentID: string, revision: number): void {
     if (loadEpoch !== epoch) return;
     try {
       const raw = activeRuntime.getText();
-      const result = searchSource(
-        { raw, revision },
-        query,
-        { caseSensitive, maxResults: SEARCH_MAX_RESULTS },
-      );
+      const result = activeRuntime.search(query, revision, { caseSensitive, maxResults: SEARCH_MAX_RESULTS });
       if (generation !== searchGeneration) return;
       searchPanel.update({
         kind: "document",
         binding: { documentID, revision, epoch, raw },
         result,
-        navigation: activeRuntime.sourceNavigation
+        scope: activeRuntime.mode === "visual" ? "content" : "source",
+        navigation: activeRuntime.mode === "visual" || activeRuntime.sourceNavigation
           ? { available: true }
           : { available: false, reason: "结构化编辑模式暂不支持原文范围定位" },
-        replacement: activeRuntime.sourceReplacement
-          ? { available: true }
+        replacement: activeRuntime.mode === "visual"
+          ? { available: true, completeOnReplaceAll: true }
+          : activeRuntime.sourceReplacement
+          ? { available: true, completeOnReplaceAll: true }
           : { available: false, reason: activeRuntime.sourceNavigation
               ? "当前文档只读，不能替换"
               : "结构化编辑模式不支持原文替换" },
@@ -598,7 +601,14 @@ function recordRuntimeChange(
   kind: RuntimeChangeKind = "document",
 ): void {
   updateModeControls();
-  if (kind === "status") return;
+  if (kind === "status") {
+    // Mode/projection changes can change the searchable surface without
+    // changing document bytes or the Bridge revision.
+    if (activeDocumentID !== undefined && activeRevision !== undefined && searchPanel.shouldSearch) {
+      scheduleSearch(activeDocumentID, activeRevision);
+    }
+    return;
+  }
   if (executingCommand) return;
   const message = session.recordChange(status);
   if (message) postToNative(message);

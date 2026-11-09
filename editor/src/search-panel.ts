@@ -30,8 +30,9 @@ export type SearchPanelState =
       kind: "document";
       binding: SearchSnapshotBinding;
       result: SourceSearchResult;
+      scope?: "content" | "source";
       navigation?: { readonly available: boolean; readonly reason?: string };
-      replacement?: { readonly available: boolean; readonly reason?: string };
+      replacement?: { readonly available: boolean; readonly reason?: string; readonly completeOnReplaceAll?: boolean };
     }
   | { kind: "error"; message: string };
 
@@ -598,7 +599,7 @@ export class SearchPanel {
       this.showStatus("请输入查询内容后再替换");
       return;
     }
-    if (kind === "replace-all" && state.result.truncated) {
+    if (kind === "replace-all" && state.result.truncated && !state.replacement.completeOnReplaceAll) {
       this.showStatus("全部替换需要完整结果；当前结果已截断");
       return;
     }
@@ -663,7 +664,7 @@ export class SearchPanel {
     if (replacementAvailable && state.kind === "document") {
       const empty = state.result.query.length === 0 || state.result.matches.length === 0;
       this.replaceSelectedButton.disabled = empty;
-      this.replaceAllButton.disabled = empty || state.result.truncated;
+      this.replaceAllButton.disabled = empty || (state.result.truncated && !state.replacement?.completeOnReplaceAll);
     }
 
     if (state.kind === "error") {
@@ -677,7 +678,9 @@ export class SearchPanel {
     if (state.kind === "idle" || state.result.query === "") {
       const note = document.createElement("p");
       note.className = "search-panel-note";
-      note.textContent = "输入查询以在当前文档中查找（结果基于 Markdown 原文）。";
+      note.textContent = state.kind === "document" && state.scope === "content"
+        ? "输入查询以查找可编辑内容（不含 Markdown 定界符、链接目标和工具栏）。"
+        : "输入查询以在当前文档中查找（结果基于 Markdown 原文）。";
       this.resultsBody.append(note);
       return;
     }
@@ -701,7 +704,9 @@ export class SearchPanel {
     if (state.replacement?.available && state.result.truncated) {
       const replaceNote = document.createElement("p");
       replaceNote.className = "search-panel-note";
-      replaceNote.textContent = "全部替换需要完整结果；当前结果已截断，操作已禁用。";
+      replaceNote.textContent = state.replacement.completeOnReplaceAll
+        ? "列表仅显示部分匹配；全部替换会重新校验完整结果并一次提交。"
+        : "全部替换需要完整结果；当前结果已截断，操作已禁用。";
       this.resultsBody.append(replaceNote);
     } else if (state.replacement && !state.replacement.available) {
       const replaceNote = document.createElement("p");
@@ -731,8 +736,8 @@ export class SearchPanel {
         [next, "forward"],
       ] as const) {
         button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
           if (this.isInteractionBlocked()) {
-            event.preventDefault();
             this.showStatus("请先完成中文输入，再定位查找结果");
           }
         });
@@ -755,7 +760,8 @@ export class SearchPanel {
 
     const list = document.createElement("ul");
     list.className = "search-panel-matches";
-    const graphemes = segmentGraphemes(state.binding.raw);
+    const displayText = state.result.source.raw;
+    const graphemes = segmentGraphemes(displayText);
     state.result.matches.forEach((match, matchIndex) => {
       const item = document.createElement("li");
       item.className = "search-panel-match";
@@ -769,14 +775,14 @@ export class SearchPanel {
         button.className = "search-panel-match-button";
         button.setAttribute("aria-label", `定位到第 ${matchIndex + 1} 处匹配`);
         button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
           if (this.isInteractionBlocked()) {
-            event.preventDefault();
             this.showStatus("请先完成中文输入，再定位查找结果");
           }
         });
         button.addEventListener("click", () => this.navigateIndex(matchIndex, state));
       }
-      const snippet = buildSnippet(state.binding.raw, graphemes, match.from, match.to);
+      const snippet = buildSnippet(displayText, graphemes, match.from, match.to);
       content.append(document.createTextNode(snippet.before));
       const hit = document.createElement("mark");
       hit.textContent = snippet.hit;
@@ -788,9 +794,10 @@ export class SearchPanel {
 
     const hint = document.createElement("p");
     hint.className = "search-panel-hint";
+    const scope = state.scope === "content" ? "结果基于可编辑内容" : "结果基于 Markdown 原文";
     hint.textContent = state.navigation?.available
-      ? `结果基于 Markdown 原文；Enter/Shift-Enter 或结果按钮仅在显示的 ${state.result.matches.length} 处内定位${state.result.truncated ? "，未显示部分不参与循环" : ""}。`
-      : `结果基于 Markdown 原文；${state.navigation?.reason ?? "当前编辑模式不支持原文定位"}。`;
+      ? `${scope}；Enter/Shift-Enter 或结果按钮仅在显示的 ${state.result.matches.length} 处内定位${state.result.truncated ? "，未显示部分不参与循环" : ""}。`
+      : `${scope}；${state.navigation?.reason ?? "当前编辑模式不支持原文定位"}。`;
     this.resultsBody.append(hint);
   }
 }
