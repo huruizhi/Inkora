@@ -1,0 +1,50 @@
+{
+  "recordCount": 66,
+  "snapshot": {
+    "kind": "snapshot",
+    "payload": {
+      "activeElement": "prosemirror",
+      "blocked": null,
+      "composing": false,
+      "dirty": false,
+      "future": 1,
+      "past": 0,
+      "pending": false,
+      "revision": 9,
+      "saveDisabled": false,
+      "selection": {
+        "anchor": 2,
+        "from": 2,
+        "head": 2,
+        "to": 2
+      },
+      "sourceAuthority": {
+        "currentRaw": "a\n",
+        "draftDirty": false,
+        "draftRaw": null,
+        "epoch": 1,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 1,
+          "head": 1
+        },
+        "savedRaw": "a\n",
+        "saveEligible": true,
+        "sourceAccessible": true,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": false,
+      "sourceMode": false,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": true,
+        "selectionDirection": "forward",
+        "selectionEnd": 1,
+        "selectionStart": 1
+      },
+      "version": "ink-prot-031-observer-v3"
+    },
+    "timestamp": "2026-11-09T08:54:33Z"
+  }
+}

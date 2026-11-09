@@ -23,3 +23,11 @@ H2-H3-runtime-prefix.jsonl包含392条真实宿主记录，其SHA为b2b43edf54b4
 取消诊断仅在本原型window记录Esc/Return/Space/Delete键，原样返回事件；不监听全局、不申请权限。NSTextView的setMarkedText/unmarkText/insertText/command仅记录后调用super。尚未宣称真实取消通过。第一次CUA无候选Escape仅验证记录接缝收到keyCode53/cancelOperation，不能作为物理搜狗证据。
 
 实际执行：make -C editor/prototypes/fidelity/native-host verify ENTRY_HTML=<本worktree>/editor/prototypes/source-authority/PROTOTYPE.html，通过编译、ad-hoc严格签名和资源哈希核验。未重复生产315项测试（无生产变更）。M0/架构/首阶段交付均未据此宣布通过。
+
+## 取消诊断最终结果
+
+H1-result-verified.json记录11项独立断言全部通过：实际物理Esc keyCode53→WK deleteCompositionText→空compositionend，原文/保存点/有向选区恢复，past0/future1保留，Redo真实重放原Space，Undo回基线。原生NSTextView对照也收到Esc并清除marked text。72条原始记录SHA为8abe40be087da84c5c0f3f059ab876db81a57a6efb838267ff0e5d87e08b90e6。宿主正常terminate已记录，CUA确认窗口消失；UI锁已释放。之后的额外启动是CUA读取已退出App导致重开，未参与上述判据，随即关闭。
+
+版本2→9来自组合内真实接受的原文字节变化，取消恢复文档/历史但不倒退单调版本；此处没有宣称revision未变化。当前H1/H2/H3/U1的物理/运行时项已闭合；先前quxiao试验未确定原因，原记录保持，不编造修复。
+
+EOF-REVIEW.cjs为管理者从准备阶段观察独立制作的真实bundle/EditorView红例。node运行exit1：raw caret2（a+LF之后）被接受，输入X后candidate是a+LF+X，却因未证明语义投影被拒。完整红输出EOF-RED.txt。对应029不变量6的位置契约，未丢字节但不能当正常写作通过；交给限定后续修正，不扩为完整Markdown实现。该脚本使用当前主仓已锁定jsdom绝对路径以免新增依赖，仅是评审接缝。

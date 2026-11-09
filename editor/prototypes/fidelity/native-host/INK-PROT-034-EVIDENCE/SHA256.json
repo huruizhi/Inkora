@@ -1,5 +1,12 @@
 {
+  "EOF-RED.txt": "9574a62b714d9936cfb39538752c8accc1d84e1cbb2a0dcacce8b7424d1d0507",
+  "EOF-REVIEW.cjs": "38987a58f3ddc48afbc739fcff3db1bde120447a0b57b50bbc4da148db24ac23",
+  "H1-WK-after-cancel.json": "8ba715aab85a7be8ac584d49bc630b75e80b2dc0c107f5189914bb84e7c1ef23",
+  "H1-WK-before.json": "c01674474a87cb2cde9de88bc699b95d71cad0a02496153df3da5735ccd8ed5e",
   "H1-before.json": "53a2c1c5dd034a79b5c7a5ca14aeeacd6fe5310acfa8d0ac87bee55f95c36f65",
+  "H1-diagnostic-runtime.jsonl": "8abe40be087da84c5c0f3f059ab876db81a57a6efb838267ff0e5d87e08b90e6",
+  "H1-native-control-prefix.jsonl": "5b624c21026684918bd19a38058d3bd5654554f1c77497c37aa771423e2711e7",
+  "H1-result-verified.json": "30d16bf36e238639d269404c3b2f82b97095c735e9a1587133a405a7398e82c8",
   "H1-result.json": "c8b51b9d9d501b26bb5f726b7182c1f0ba155844847405f6f71ec1d696f5df20",
   "H1-runtime-prefix.jsonl": "f5b6a1c043366dd1884b67ae72dc2d44fb8a6895f9b904c7b03c8da14469eb47",
   "H2-H3-runtime-prefix.jsonl": "b2b43edf54b420a8c15aa9b8c067d65f8a4785b72083a9687feccc844f881537",
@@ -13,5 +20,6 @@
   "H3-after-save.json": "77c18569ae7a26666278a12eedbca71f2112672bc9469940cb588ec6500ace6c",
   "H3-after-undo.json": "e7032dd01ae930b7a99f8e03f967586302928a95dfc580a6e8a852547b8f3b51",
   "H3-before.json": "52eebc68dbd9d28749cffa431f15cc8b7698f05a11a2f932d667318f2dfe0ab2",
-  "M0-034-progress.json": "f83209a157fa8f7fe841f3464f38a2397411e446a70cf5759c3443fe1aa1e63c"
+  "M0-034-progress.json": "f83209a157fa8f7fe841f3464f38a2397411e446a70cf5759c3443fe1aa1e63c",
+  "README.md": "0dd1f174703909260e52818b755a7879075f1967a8e58e37dd0c9bc564e46c9c"
 }

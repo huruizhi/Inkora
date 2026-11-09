@@ -1,0 +1,25 @@
+{
+  "verdict": "PASS-H1",
+  "inputMethod": "Sogou",
+  "inputSource": "Mac physical keyboard confirmed by user",
+  "checks": {
+    "sameRaw": true,
+    "sameSavedRaw": true,
+    "sameRawSelection": true,
+    "sameVisualSelection": true,
+    "historyPreserved": true,
+    "cleanAndSaveEligible": true,
+    "nativeEscapeDeliveredToWK": true,
+    "wkCancelled": true,
+    "redoRestoredOriginalFuture": true,
+    "undoReturnsToBaseline": true,
+    "nativeReferenceCancelled": true
+  },
+  "versionBefore": 2,
+  "versionAfter": 9,
+  "versionNote": "实际组合中接受的原文变化推进版本；取消恢复原文/选区和past/future，不要求回退单调版本号。",
+  "rawLogSHA256": "8abe40be087da84c5c0f3f059ab876db81a57a6efb838267ff0e5d87e08b90e6",
+  "rows": 72,
+  "previousQuXiaoTrial": "inconclusive; preserved, no inferred root cause",
+  "hostTerminated": true
+}

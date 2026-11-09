@@ -1,0 +1,112 @@
+{
+  "before": {
+    "epoch": 2,
+    "currentRaw": "a\n",
+    "savedRaw": "a\n",
+    "projection": {
+      "kind": "exact",
+      "reason": "scratch UTF-8 重开新 epoch",
+      "anchors": [
+        {
+          "visual": 2,
+          "raw": 2,
+          "reason": "显式 adjacent-gap：原文 2 位于非可视语法，吸附到 source 1 / PM 2；owner=line-ending/unprojected-gap"
+        }
+      ],
+      "provenance": [
+        "new epoch"
+      ]
+    },
+    "rawSelection": {
+      "anchor": 2,
+      "head": 2,
+      "affinity": "right"
+    },
+    "visualSelection": {
+      "type": "text",
+      "anchor": 2,
+      "head": 2
+    },
+    "version": 0,
+    "undo": 0,
+    "redo": 0,
+    "documentDirty": false,
+    "draftDirty": false,
+    "saveEligible": true,
+    "sourceAccessible": true,
+    "issues": [],
+    "unresolvedIntent": null,
+    "diagnostic": "",
+    "composing": false,
+    "semanticBreak": "none"
+  },
+  "after": {
+    "epoch": 2,
+    "currentRaw": "a\n",
+    "savedRaw": "a\n",
+    "projection": {
+      "kind": "exact",
+      "reason": "scratch UTF-8 重开新 epoch",
+      "anchors": [
+        {
+          "visual": 2,
+          "raw": 2,
+          "reason": "显式 adjacent-gap：原文 2 位于非可视语法，吸附到 source 1 / PM 2；owner=line-ending/unprojected-gap"
+        }
+      ],
+      "provenance": [
+        "new epoch"
+      ]
+    },
+    "rawSelection": {
+      "anchor": 2,
+      "head": 2,
+      "affinity": "right"
+    },
+    "visualSelection": {
+      "type": "text",
+      "anchor": 2,
+      "head": 2
+    },
+    "version": 0,
+    "undo": 0,
+    "redo": 0,
+    "documentDirty": false,
+    "draftDirty": false,
+    "saveEligible": false,
+    "sourceAccessible": true,
+    "issues": [],
+    "unresolvedIntent": {
+      "description": "parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝",
+      "raw": "a\nX"
+    },
+    "diagnostic": "parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝",
+    "composing": false,
+    "semanticBreak": "none"
+  }
+}
+node:internal/assert/utils:146
+  throw error;
+  ^
+
+AssertionError [ERR_ASSERTION]: an accepted EOF raw caret must insert at that exact raw boundary
+
+'a\n' !== 'a\nX'
+
+    at Object.<anonymous> (/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-034/editor/prototypes/fidelity/native-host/INK-PROT-034-EVIDENCE/EOF-REVIEW.cjs:15:10)
+    at Module._compile (node:internal/modules/cjs/loader:1968:14)
+    at Object..js (node:internal/modules/cjs/loader:2108:10)
+    at Module.load (node:internal/modules/cjs/loader:1690:32)
+    at Module._load (node:internal/modules/cjs/loader:1480:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'a\n',
+  expected: 'a\nX',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.13.0
