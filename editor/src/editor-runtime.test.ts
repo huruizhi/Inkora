@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createEditorRuntime } from "./editor-runtime";
 import type { EditorRuntime } from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
+import { analyzeDocument } from "./document-analysis";
+import { planSourceReplaceAll, searchSource } from "./source-search";
 
 const originalDocument = globalThis.document;
 const originalWindow = globalThis.window;
@@ -41,6 +43,231 @@ function stubBrowserEnvironment(html = "<!doctype html><main id='app'></main>"):
 }
 
 describe("editor runtime", () => {
+  it("captures replacement history selection by value independently of the caller plan", () => {
+    const { parent } = stubBrowserEnvironment();
+    const raw = "<x>a</x>\n";
+    const runtime = createEditorRuntime(parent, raw, () => {});
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.setSelectionRange(3, 4, "backward");
+    const planned = planSourceReplaceAll(searchSource({ raw, revision: 0 }, "a"),
+      { raw, revision: 0 }, "B");
+    if (!planned.ok) throw new Error(planned.failure.message);
+    const expected = { ...planned.plan.selection };
+    expect(runtime.applySourceReplacement(planned.plan).ok).toBe(true);
+    const callerSelection = planned.plan.selection as { anchor: number; head: number };
+    callerSelection.anchor = 0;
+    callerSelection.head = 0;
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getSourceSelection(planned.plan.resultRaw)).toEqual({ ok: true, value: expected });
+    runtime.destroy();
+  });
+  it("applies a source replacement atomically with one directed-selection undo/redo unit", () => {
+    const { parent } = stubBrowserEnvironment();
+    const raw = "<x>one one</x>\r\n";
+    const states: unknown[] = [];
+    const runtime = createEditorRuntime(parent, raw, (state) => states.push(state));
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.setSelectionRange(7, 4, "backward");
+    const beforeSelection = runtime.getSourceSelection(raw);
+    expect(beforeSelection.ok).toBe(true);
+    const planned = planSourceReplaceAll(searchSource({ raw, revision: 4 }, "one"), { raw, revision: 4 }, "$&-$1", beforeSelection.ok ? beforeSelection.value : undefined);
+    if (!planned.ok) throw new Error(planned.failure.message);
+    expect(runtime.sourceReplacement).toBe(true);
+    expect(runtime.applySourceReplacement(planned.plan)).toEqual({ ok: true, value: { changed: true, replacedCount: 2 } });
+    expect(runtime.getText()).toBe("<x>$&-$1 $&-$1</x>\r\n");
+    expect(states).toHaveLength(1);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.getSourceSelection(raw)).toEqual(beforeSelection);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("<x>$&-$1 $&-$1</x>\r\n");
+    runtime.destroy();
+  });
+
+  it("keeps committed selections across two replacements and later caret moves", () => {
+    const { parent } = stubBrowserEnvironment();
+    const raw = "<x>a a</x>\n";
+    const runtime = createEditorRuntime(parent, raw, () => {});
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.setSelectionRange(3, 4, "backward");
+
+    const first = planSourceReplaceAll(searchSource({ raw, revision: 0 }, "a"),
+      { raw, revision: 0 }, "B", { anchor: 4, head: 3 });
+    if (!first.ok) throw new Error(first.failure.message);
+    expect(runtime.applySourceReplacement(first.plan).ok).toBe(true);
+    const afterFirst = first.plan.resultRaw;
+
+    const second = planSourceReplaceAll(searchSource({ raw: afterFirst, revision: 1 }, "B"),
+      { raw: afterFirst, revision: 1 }, "CC", first.plan.selection);
+    if (!second.ok) throw new Error(second.failure.message);
+    expect(runtime.applySourceReplacement(second.plan).ok).toBe(true);
+    const afterSecond = second.plan.resultRaw;
+    area.setSelectionRange(0, 0);
+
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(afterFirst);
+    expect(runtime.getSourceSelection(afterFirst)).toEqual({ ok: true, value: first.plan.selection });
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.getSourceSelection(raw)).toEqual({ ok: true, value: { anchor: 4, head: 3 } });
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getSourceSelection(afterFirst)).toEqual({ ok: true, value: first.plan.selection });
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(afterSecond);
+    expect(runtime.getSourceSelection(afterSecond)).toEqual({ ok: true, value: second.plan.selection });
+    runtime.destroy();
+  });
+
+  it("does not expose replacement for structured or bare-CR runtimes", () => {
+    const structured = createEditorRuntime(stubBrowserEnvironment().parent, "# Heading\n", () => {});
+    expect(structured.sourceReplacement).toBe(false);
+    structured.destroy();
+    const readOnly = createEditorRuntime(stubBrowserEnvironment().parent, "a\rb", () => {});
+    expect(readOnly.sourceNavigation).toBe(true);
+    expect(readOnly.sourceReplacement).toBe(false);
+    readOnly.destroy();
+  });
+
+  it("keeps selection, notifications and redo future unchanged for a no-op replacement", () => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const original = "<x>same</x>\n";
+    const edited = "<x>same edited</x>\n";
+    const states: unknown[] = [];
+    const runtime = createEditorRuntime(parent, original, (state) => states.push(state));
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.value = edited;
+    area.dispatchEvent(new dom.window.Event("input"));
+    expect(runtime.undo()).toBe(true);
+    area.setSelectionRange(3, 7, "backward");
+    const selection = runtime.getSourceSelection(original);
+    const planned = planSourceReplaceAll(searchSource({ raw: original, revision: 2 }, "same"),
+      { raw: original, revision: 2 }, "same", selection.ok ? selection.value : undefined);
+    if (!planned.ok) throw new Error(planned.failure.message);
+    const notifications = states.length;
+    expect(runtime.applySourceReplacement(planned.plan)).toEqual({
+      ok: true, value: { changed: false, replacedCount: 0 },
+    });
+    expect(runtime.getSourceSelection(original)).toEqual(selection);
+    expect(states).toHaveLength(notifications);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(edited);
+    runtime.destroy();
+  });
+
+  it("rejects composition and forged result plans atomically", () => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const raw = "<x>a a</x>\n";
+    const states: unknown[] = [];
+    const runtime = createEditorRuntime(parent, raw, (state) => states.push(state));
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.setSelectionRange(3, 4);
+    const planned = planSourceReplaceAll(searchSource({ raw, revision: 1 }, "a"),
+      { raw, revision: 1 }, "b");
+    if (!planned.ok) throw new Error(planned.failure.message);
+    const before = { value: area.value, selection: [area.selectionStart, area.selectionEnd], status: runtime.status };
+    area.dispatchEvent(new dom.window.Event("compositionstart"));
+    expect(runtime.applySourceReplacement(planned.plan).ok).toBe(false);
+    area.dispatchEvent(new dom.window.Event("compositionend"));
+    expect(runtime.applySourceReplacement({ ...planned.plan, resultRaw: "forged" }).ok).toBe(false);
+    expect({ value: area.value, selection: [area.selectionStart, area.selectionEnd], status: runtime.status }).toEqual(before);
+    expect(states).toHaveLength(0);
+    runtime.destroy();
+  });
+  it("explicitly exposes source navigation only for source and bare-CR runtimes", () => {
+    const structured = createEditorRuntime(stubBrowserEnvironment().parent, "# Heading\n", () => {});
+    expect(structured.sourceNavigation).toBe(false);
+    expect(structured.getSourceSelection("# Heading\n").ok).toBe(false);
+    structured.destroy();
+
+    const source = createEditorRuntime(stubBrowserEnvironment().parent, "<x>same same</x>\r\n", () => {});
+    expect(source.sourceNavigation).toBe(true);
+    source.destroy();
+
+    const readOnly = createEditorRuntime(stubBrowserEnvironment().parent, "same\rsame", () => {});
+    expect(readOnly.sourceNavigation).toBe(true);
+    readOnly.destroy();
+  });
+
+  it.each(["<x>same same</x>\r\n", "same\rsame"])(
+    "reads and applies directed source selections without changing state: %j",
+    (raw) => {
+      const { parent } = stubBrowserEnvironment();
+      const runtime = createEditorRuntime(parent, raw, () => {});
+      const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+      const first = area.value.indexOf("same");
+      area.setSelectionRange(first, first + 4, "backward");
+      const before = { text: runtime.getText(), status: runtime.status };
+      const selection = runtime.getSourceSelection(raw);
+      expect(selection.ok && selection.value.anchor > selection.value.head).toBe(true);
+      expect(runtime.selectSourceRange(raw, { anchor: raw.lastIndexOf("same") + 4, head: raw.lastIndexOf("same") }))
+        .toEqual({ ok: true, value: undefined });
+      expect(area.selectionDirection).toBe("backward");
+      expect(runtime.getText()).toBe(before.text);
+      expect(runtime.status).toEqual(before.status);
+      runtime.destroy();
+    },
+  );
+
+  it("navigates the second duplicate structured heading without changing document state", () => {
+    const raw = "Setext *标题*\n====\n\n# **同名** &amp; 👩‍💻\n\n> ## 引用\n\n- ### 同名\n";
+    const { runtime, session } = structuredRuntimeWithSession(raw);
+    const headings = analyzeDocument({ raw, revision: 8 }).headings;
+    const before = { text: runtime.getText(), status: runtime.status, revision: session.status.revision };
+    const result = runtime.navigateToHeading(raw, { ...headings[3], index: 3 });
+    expect(result).toEqual({ ok: true });
+    expect(session.state.selection.from).toBeGreaterThan(1);
+    expect(runtime.getText()).toBe(before.text);
+    expect(runtime.status).toEqual(before.status);
+    expect(session.status.revision).toBe(before.revision);
+    expect(document.activeElement?.id).toBe("editor");
+    runtime.destroy();
+  });
+
+  it("rejects a protected-document pseudo heading when PM sequence cannot prove correspondence", () => {
+    const raw = "---\ntitle: value\n---\n\n# Real\n";
+    const { runtime, session } = structuredRuntimeWithSession(raw);
+    const headings = analyzeDocument({ raw, revision: 0 }).headings;
+    const selection = session.state.selection;
+    expect(headings.length).toBeGreaterThan(1);
+    expect(runtime.navigateToHeading(raw, { ...headings[0], index: 0 })).toEqual({
+      ok: false,
+      message: "当前编辑视图与原文大纲不一致，无法安全定位",
+    });
+    expect(session.state.selection.eq(selection)).toBe(true);
+    runtime.destroy();
+  });
+
+  it.each([
+    "\uFEFF# First\r\n\n<x>source</x>\n\n## Second 👩‍💻\r\n",
+    "# First\r# Second",
+  ])("navigates source/read-only heading with explicit original offset mapping: %j", (raw) => {
+    const { parent } = stubBrowserEnvironment();
+    const runtime = createEditorRuntime(parent, raw, () => {});
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    const headings = analyzeDocument({ raw, revision: 0 }).headings;
+    const target = headings.at(-1)!;
+    expect(runtime.navigateToHeading(raw, { ...target, index: headings.length - 1 })).toEqual({ ok: true });
+    expect(area.selectionStart).toBe(raw.slice(0, target.start).replace(/\r\n?/g, "\n").length);
+    expect(area.selectionEnd).toBe(area.selectionStart);
+    runtime.destroy();
+  });
+
+  it("refuses navigation during composition without changing focus, selection, text or history", () => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const raw = "<x>source</x>\n\n# Heading\n";
+    const runtime = createEditorRuntime(parent, raw, () => {});
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.focus();
+    area.setSelectionRange(2, 4);
+    area.dispatchEvent(new dom.window.Event("compositionstart"));
+    const before = { value: area.value, start: area.selectionStart, end: area.selectionEnd, status: runtime.status };
+    const heading = analyzeDocument({ raw, revision: 0 }).headings[0];
+    expect(runtime.navigateToHeading(raw, { ...heading, index: 0 }).ok).toBe(false);
+    expect(document.activeElement).toBe(area);
+    expect({ value: area.value, start: area.selectionStart, end: area.selectionEnd, status: runtime.status }).toEqual(before);
+    runtime.destroy();
+  });
   it.each(["\n", "\r\n"])("renders protected extensions with %j and preserves body edits and history", (eol) => {
     const original = '---\ntitle: "原样"\n---\n\n# 标题\n\n正文\n\n| A  | B |\n| :--- | ---: |\n| x | y |\n\n- 参见 [[目标|别名]]。\n'.replace(/\n/g, eol);
     const { runtime, session } = structuredRuntimeWithSession(original);
