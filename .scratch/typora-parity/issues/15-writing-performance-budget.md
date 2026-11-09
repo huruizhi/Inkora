@@ -31,3 +31,7 @@ Parent: ../map.md
 079已消除owner/range全表扫描热点；085在包含084容器修正的固定组合cb54基础上进一步单项复用同raw解析，再单项验证完整字符串的按需Unicode边界查询。原始输入/源码/bundle SHA、before/parse-only/noisy/final分层样本已保存，未改旧基线。最终Node medium/large/CRLF输入median92.75/916.27/886.19ms；真实离屏WK输入→精确快照median133.14/970.91/964.83ms，CRLF p95仍1048.63ms。
 
 当前070接回085/086为2fa3a9e，完整611和Native172/0/8、五模型通过；083图片owner接口仍在实施，最终候选需组合复核。上述指标没有测量可见paint、实体中文composition、原生写盘或macOS14，正式全分位数预算和最低系统承诺保持未冻结。本票继续claimed，不以中位数达到方向性目标关闭，不缩减1MB样本/首阶段功能。
+
+## 2026-11-10 当前生产与自动链接增量
+
+图片生命周期PR74已合main1568743，精确CI42666505028 success（UI/full-bench按政策skip）。093自动链接候选04b7f18上五组Node模型通过；report commit及六个生产源文件SHA逐项对git blob核验一致。medium/large/large-crlf select-and-input median93.95/936.90/925.05ms，CRLF p951012.66ms。修正前独立dirty数据另行保留，不互相替代。该候选尚待094/095复核与精确CI，不将Node数据套到旧WK970ms结果，也不据此冻结paint、物理IME、原生写盘或最低系统预算。
