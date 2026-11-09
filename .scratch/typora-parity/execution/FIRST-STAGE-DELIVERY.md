@@ -166,3 +166,13 @@ main仍48258a9；M0有界门槛保持通过。V1最终IME发布未闭合，V3/V4
 已通过GitHub连接器建立草稿 PR #71：https://github.com/huruizhi/Inkora/pull/71 ，head93a3b59、base最新main48258a9（fetch和祖先验证已执行）。内容为V1/V5/导航与其证据，不把V3/V4/V6规格当实现，也不解除用户暂缓的物理IME步骤。默认CI手动触发中（ui-tests=false，full-bench=false）；仍需CI/独立审查，不启用自动合并、不提前宣告首阶段完成。
 
 workflow_dispatch 已实际返回 run 42611845164：https://github.com/huruizhi/Inkora/actions/runs/42611845164 。随即按分支列表尚为空，属于索引延迟；保持确切run handle查询，不重复触发，不把此时CI记成功。Paseo两执行者继续；根临时.tools已清理，UI锁未持有，未启动新的App。
+
+## 当前覆盖：PR71审查与V3独立集成
+
+CI 42611845164 已实际 completed/success，受检 head 为93a3b5933b8ca2ae221681bb5afc480e83bb247d；默认非UI、离线Release与轻量基准通过，UI及完整基准按参数跳过。PR71仍是draft，不能把CI绿灯当成规格审查通过。
+
+057 Standards@927bde00c16bff16eb8781f29e2ff9f134b3364d：0条hard、5组judgement，不阻塞。058 Spec@c9a57a0d3380ad6697b9498ac3ce77773a0ad5af：2项P1，生产Mod-K创建链接入口缺失、多块内转代码/Mod-Enter退出被拒并阻断snapshot。两轴保留各自报告，不合并评级。两Agent已归档，分别303 tracked文件SHA/tar/Git bundle校验备份后工作区回收；累计61个完成workspace（含050）。
+
+050@eb703563ea1e7367e5446a1ff62a021600114804已交付表格/任务候选，291 tracked文件及实际Bridge Native9证据备份后两层回收。根在独立task/INK-M1-056-tables-tasks-integration（.worktrees/INK-M1-056）合入050并保留049/051封口逻辑；组合基线451测试通过。真实input.click()检查又复现取消默认激活使checked与raw不一致、状态字符补丁误绑正文anchor导致第二次切换失败，以及isComposing Space/Tab被消费；单变量修复后8项新接缝和完整459测试通过。原12例100字节/8语义oracle保持，native/lint/build仍在本轮验证。不是WK/物理IME/完整阶段验收。
+
+当前实施Agent仅055图片（原handle保持）与059链接/代码块补正：task/INK-M1-059-link-code-commands，基线93a3b59，Sol5.6/high/default，无配置profile，agent6c42e3f5-fd39-4682-854a-d3b669f3e1b1 / workspace wks_95b8e9310529800a。059须真实生产DOM/keydown入口、过期与composition守卫、局部补丁、字节/选区/UndoRedo，不开GUI、不改055/050、不新建Agent。用户物理输入继续按“稍后”保留，main仍48258a9，总目标active。
