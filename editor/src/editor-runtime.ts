@@ -22,6 +22,7 @@ import {
 import type { DirectedSelection, SourceReplacementPlan } from "./source-search";
 import { validateSourceReplacementPlan } from "./source-replacement";
 import { SourceAuthoritySession } from "./source-authority";
+import { revealTextareaOffset } from "./textarea-visibility";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
@@ -212,6 +213,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       mapped.value.end,
       selection.anchor > selection.head ? "backward" : "forward",
     );
+    revealTextareaOffset(area, mapped.value.start);
     return { ok: true, value: undefined };
   }
 
@@ -276,6 +278,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       }
       this.textArea.focus();
       this.textArea.setSelectionRange(offset, offset);
+      revealTextareaOffset(this.textArea, offset);
       return { ok: true };
     }
     const headings: Array<{ level: number; text: string; position: number }> = [];
@@ -512,6 +515,7 @@ class SourceEditorRuntime implements EditorRuntime {
       mapped.value.end,
       selection.anchor > selection.head ? "backward" : "forward",
     );
+    revealTextareaOffset(this.textArea, mapped.value.start);
     return { ok: true, value: undefined };
   }
 
@@ -585,6 +589,7 @@ class SourceEditorRuntime implements EditorRuntime {
     }
     this.textArea.focus();
     this.textArea.setSelectionRange(offset, offset);
+    revealTextareaOffset(this.textArea, offset);
     return { ok: true };
   }
 
@@ -665,6 +670,7 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
       mapped.value.end,
       selection.anchor > selection.head ? "backward" : "forward",
     );
+    revealTextareaOffset(this.textArea, mapped.value.start);
     return { ok: true, value: undefined };
   }
   applySourceReplacement(_plan: SourceReplacementPlan): SourceNavigationResult<never> {
@@ -685,6 +691,7 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
     }
     this.textArea.focus();
     this.textArea.setSelectionRange(offset, offset);
+    revealTextareaOffset(this.textArea, offset);
     return { ok: true };
   }
   focus(): void { this.textArea.focus(); }
