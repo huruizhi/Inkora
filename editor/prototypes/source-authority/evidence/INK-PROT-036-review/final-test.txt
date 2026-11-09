@@ -1,0 +1,45 @@
+PROTOTYPE.html ready (SHA-256 ce8e3800fb7ad1dbf2f4d405ac255e6826c1ccf54ece46804cbcd40025cdb808; offline; double-click).
+source-authority EOF regression: 7 domains PASS (synthetic composition; not physical IME)
+PASS: textarea CRLF/BOM no-op is a complete no-op through DOM buttons
+PASS: textarea local edit preserves mixed EOL and maps LF selection to raw offsets
+PASS: textarea backward LF selection is preserved and cancel resets the draft
+PASS: textarea composition commits through the production kernel before travel
+PASS: dirty source draft rejects Undo with past and preserves all travel state
+PASS: dirty source draft rejects Redo with future and preserves all travel state
+PASS: dirty source draft rejects empty Undo/Redo without inventing travel
+PASS: clean source session can travel and exits source mode explicitly
+PASS: all projection anchors map across repeated real EditorView edits
+PASS: anchor mapping covers backward replacement, repeats, and marked hidden space
+PASS: unproven semantic reprojection is rejected atomically with intent
+source-authority regression: 11 PASS
+PASS: PRIMARY 8/8 + scratch UTF-8 write/read
+RUN: repeat EOF_NO_NEWLINE
+RUN: repeat BOM_CRLF
+RUN: repeat CRLF
+RUN: repeat STRONG
+RUN: repeat EM
+RUN: repeat STRIKE
+RUN: repeat INLINE_LINK
+RUN: repeat REFERENCE
+RUN: repeat HEADING
+RUN: repeat LIST
+RUN: repeat QUOTE
+RUN: repeat PROTECTED_NEIGHBOR
+RUN: repeat UNICODE_RAW
+PASS: repeatPrimaryVectors 13/13
+RUN: paragraph PARAGRAPH_ENTER
+RUN: paragraph SPACE_ENTER
+RUN: paragraph CRLF_ENTER
+source-authority: 10 groups PASS
+PASS: PRIMARY 8/8 + scratch UTF-8 write/read
+PASS: repeatPrimaryVectors 13/13
+PASS: paragraphCases 3/3 via EditorView Enter
+PASS: softbreak/hardbreak semantic projection
+PASS: reopened hidden-space real Backspace
+PASS: save/history, backward selection, source format/draft
+PASS: negative boundaries: pending/protected/stale/unicode/composition/empty-history
+PASS: composition replay: two units + cancel/no-op future
+PASS: composition lifecycle: before/late final + boundaries + selection + future
+PASS: # input rule bounded positive proof
+oracle sha256: c53b2f9c54357a624c7ccd7a1e4a7d1ccf272f665d871de96f686bc46e031d08
+evidence: jsdom real EditorView + Node scratch UTF-8; not WK/physical IME/NSDocument

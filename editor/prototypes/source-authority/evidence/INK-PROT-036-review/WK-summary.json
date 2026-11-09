@@ -1,0 +1,17 @@
+{
+  "checks": {
+    "sourceEOFaccepted": true,
+    "nativeEditorViewContinuation": true,
+    "saveOnlyChangesSavepoint": true,
+    "UndoRestoresEOF": true,
+    "RedoRestoresInternalBreak": true,
+    "newEpochSameRawAndCaret": true,
+    "hostTerminated": true
+  },
+  "bundleSourceSHA256": "ce8e3800fb7ad1dbf2f4d405ac255e6826c1ccf54ece46804cbcd40025cdb808",
+  "bundleSHA256": "c62466a08ced7527f700f88328d7ca07569a92ddf2921bd5cbd6213259cc291c",
+  "runtimeSHA256": "16f8ac12f0d6138768cbf67e8974e07ec201821a8de632738b274e86be939ee3",
+  "CUAObservedVisualTextAfterType": "b\nb",
+  "scope": "WK real EditorView button dispatch and source textarea; not physical IME; memory save/reopen only",
+  "physicalIMEReuse": "034 tests exercised unaffected non-EOF code paths; no claim of new physical EOF composition test"
+}

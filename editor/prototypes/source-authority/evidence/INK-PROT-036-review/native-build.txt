@@ -1,0 +1,115 @@
+rm -rf artifacts/FidelityHost.app
+mkdir -p artifacts/FidelityHost.app/Contents/MacOS artifacts/FidelityHost.app/Contents/Resources artifacts
+# 1) 编译：失败必须让 make 非零退出，日志完整保留
+if ! swiftc -O -target arm64-apple-macos14.0 \
+		-o artifacts/FidelityHost.app/Contents/MacOS/FidelityHost Sources/main.swift \
+		-framework AppKit -framework WebKit > artifacts/swiftc.log 2>&1; then \
+		cat artifacts/swiftc.log; echo "swiftc FAILED"; exit 1; fi
+# 2) 入口副本 + CSP 注入（仅副本）与字节级证据
+python3 scripts/prepare_entry.py /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-036-VERIFY/editor/prototypes/source-authority/PROTOTYPE.html artifacts/FidelityHost.app/Contents/Resources/entry.html 1 \
+		> artifacts/entry-report.json
+cat artifacts/entry-report.json
+{
+  "source": "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-036-VERIFY/editor/prototypes/source-authority/PROTOTYPE.html",
+  "dest": "artifacts/FidelityHost.app/Contents/Resources/entry.html",
+  "csp_requested": true,
+  "csp_inserted": true,
+  "csp_source": "injected-by-host",
+  "csp_meta": "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'\">",
+  "source_sha256": "ce8e3800fb7ad1dbf2f4d405ac255e6826c1ccf54ece46804cbcd40025cdb808",
+  "bundled_sha256": "c62466a08ced7527f700f88328d7ca07569a92ddf2921bd5cbd6213259cc291c",
+  "source_script_sha256": "ff599a517c0cb97ba2473b7d7ef320e65d602d7e21ccfaedd7c0a494d57eccaf",
+  "bundled_script_sha256": "ff599a517c0cb97ba2473b7d7ef320e65d602d7e21ccfaedd7c0a494d57eccaf",
+  "script_bytes_identical": true
+}
+cp Resources/runtime-observer.js artifacts/FidelityHost.app/Contents/Resources/runtime-observer.js
+# 3) 版本元数据：每次从模板全新生成，写入真实 SHA/基线，无残留
+BASELINE=$(cd ../../../.. && git rev-parse HEAD); \
+	SRC_SHA=$(shasum -a 256 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-036-VERIFY/editor/prototypes/source-authority/PROTOTYPE.html | cut -d' ' -f1); \
+	BUNDLED_SHA=$(python3 -c "import json;print(json.load(open('artifacts/entry-report.json'))['bundled_sha256'])"); \
+	OBSERVER_SHA=$(shasum -a 256 Resources/runtime-observer.js | cut -d' ' -f1); \
+	CSP_FLAG=$(python3 -c "import json;print('1' if json.load(open('artifacts/entry-report.json'))['csp_inserted'] else '0')"); \
+	sed -e "s|__FIDELITY_ENTRY_NAME__|$(basename /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-036-VERIFY/editor/prototypes/source-authority/PROTOTYPE.html)|" \
+	    -e "s|__FIDELITY_SOURCE_SHA__|$SRC_SHA|" \
+	    -e "s|__FIDELITY_BUNDLE_SHA__|$BUNDLED_SHA|" \
+	    -e "s|__FIDELITY_BASELINE__|$BASELINE|" \
+	    -e "s|__FIDELITY_OBSERVER_SHA__|$OBSERVER_SHA|" \
+	    -e "s|__FIDELITY_CSP_INJECTED__|$CSP_FLAG|" \
+	    Resources/Info.plist > artifacts/FidelityHost.app/Contents/Info.plist
+# 4) manifest（在签名前固化内容哈希，签名信息单独记录）
+BASELINE=$(cd ../../../.. && git rev-parse HEAD); \
+	SDK=$(sw_vers -productVersion); XCODE=$(xcodebuild -version | tr '\n' ' '); \
+	OBSERVER_SHA=$(shasum -a 256 Resources/runtime-observer.js | cut -d' ' -f1); \
+	python3 -c "import json,sys; \
+	r=json.load(open('artifacts/entry-report.json')); \
+	o={'path':'Resources/runtime-observer.js','sha256':sys.argv[1]}; \
+	m={'bundle_id':'com.huruizhi.Inkora.FidelityPrototype','baseline_commit':'$BASELINE','os':'$SDK','toolchain':'$XCODE','entry':r,'runtime_observer':o}; \
+	json.dump(m,open('artifacts/build-manifest.json','w'),indent=2,ensure_ascii=False)" "$OBSERVER_SHA"
+# 5) 最后统一 ad-hoc 签名（Hardened Runtime + entitlements，entitlements 改动必然触发重签）
+codesign --force --sign - --timestamp=none --options runtime \
+		--entitlements Entitlements.plist artifacts/FidelityHost.app
+artifacts/FidelityHost.app: replacing existing signature
+codesign --verify --strict --verbose=2 artifacts/FidelityHost.app
+artifacts/FidelityHost.app: valid on disk
+artifacts/FidelityHost.app: satisfies its Designated Requirement
+== build OK ==
+-- codesign --
+Executable=/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-036-VERIFY/editor/prototypes/fidelity/native-host/artifacts/FidelityHost.app/Contents/MacOS/FidelityHost
+Identifier=com.huruizhi.Inkora.FidelityPrototype
+Format=app bundle with Mach-O thin (arm64)
+CodeDirectory v=20500 size=646 flags=0x10002(adhoc,runtime) hashes=9+7 location=embedded
+Signature=adhoc
+Info.plist entries=16
+TeamIdentifier=not set
+Runtime Version=27.2.0
+Sealed Resources version=2 rules=13 files=2
+Internal requirements count=0 size=12
+Total signatures=1
+Chosen signature=1
+codesign --verify --strict --verbose=2 artifacts/FidelityHost.app
+artifacts/FidelityHost.app: valid on disk
+artifacts/FidelityHost.app: satisfies its Designated Requirement
+-- entitlements --
+{
+  "com.apple.security.app-sandbox" => true
+  "com.apple.security.network.client" => true
+}
+-- Info.plist version keys --
+  "CFBundleDisplayName" => "Inkora Fidelity Prototype"
+  "CFBundleExecutable" => "FidelityHost"
+  "CFBundleIdentifier" => "com.huruizhi.Inkora.FidelityPrototype"
+  "CFBundleName" => "Inkora Fidelity Prototype Host"
+  "FidelityBuildBaseline" => "27213ddd38f23f266c56e6c54f7ea10978986cb5"
+  "FidelityBundleSHA256" => "c62466a08ced7527f700f88328d7ca07569a92ddf2921bd5cbd6213259cc291c"
+  "FidelityCSPInjected" => "1"
+  "FidelityEntryName" => "PROTOTYPE.html"
+  "FidelityObserverSHA256" => "073c1a46640c0855d7ca2c73068299519cc1faac9403de4536b7f4b906556950"
+  "FidelitySourceSHA256" => "ce8e3800fb7ad1dbf2f4d405ac255e6826c1ccf54ece46804cbcd40025cdb808"
+-- bundle resources --
+total 752
+-rw-r--r--@ 1 rayhu  staff  376845 Nov  9 17:17 entry.html
+-rw-r--r--@ 1 rayhu  staff    3987 Nov  9 17:17 runtime-observer.js
+-- build manifest --
+{
+  "bundle_id": "com.huruizhi.Inkora.FidelityPrototype",
+  "baseline_commit": "27213ddd38f23f266c56e6c54f7ea10978986cb5",
+  "os": "27.2",
+  "toolchain": "Xcode 27.2 Build version 27B52 ",
+  "entry": {
+    "source": "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-036-VERIFY/editor/prototypes/source-authority/PROTOTYPE.html",
+    "dest": "artifacts/FidelityHost.app/Contents/Resources/entry.html",
+    "csp_requested": true,
+    "csp_inserted": true,
+    "csp_source": "injected-by-host",
+    "csp_meta": "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'\">",
+    "source_sha256": "ce8e3800fb7ad1dbf2f4d405ac255e6826c1ccf54ece46804cbcd40025cdb808",
+    "bundled_sha256": "c62466a08ced7527f700f88328d7ca07569a92ddf2921bd5cbd6213259cc291c",
+    "source_script_sha256": "ff599a517c0cb97ba2473b7d7ef320e65d602d7e21ccfaedd7c0a494d57eccaf",
+    "bundled_script_sha256": "ff599a517c0cb97ba2473b7d7ef320e65d602d7e21ccfaedd7c0a494d57eccaf",
+    "script_bytes_identical": true
+  },
+  "runtime_observer": {
+    "path": "Resources/runtime-observer.js",
+    "sha256": "073c1a46640c0855d7ca2c73068299519cc1faac9403de4536b7f4b906556950"
+  }
+}

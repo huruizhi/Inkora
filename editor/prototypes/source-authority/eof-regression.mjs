@@ -53,8 +53,11 @@ function assertEofContinuation(initial, insert, expected, expectedCaret) {
   assert.deepEqual(clone(controller().rawSelection), { anchor: expectedCaret, head: expectedCaret, affinity: 'right' });
   assert.equal(controller().unresolvedIntent, null);
   assert.equal(controller().saveEligible, true, 'the shared projection remains auditable');
-  assert.match(controller().projection.provenance[0], /accepted raw EOF anchor preserves/);
-  assert.ok(controller().projection.anchors.some(anchor => anchor.raw === initial.length), 'projection retains the original EOF boundary');
+  assert.match(controller().projection.provenance[0], /accepted raw EOF anchor reveals/);
+  assert.equal(controller().projection.kind, 'exact', 'internal EOL is projected with its real semantics');
+  const acceptedDocument = controller().state.doc;
+  const reloaded = new (controller().constructor)(expected);
+  assert.ok(reloaded.state.doc.eq(acceptedDocument), 'same bytes must have the same semantic document after reopening');
 }
 
 try {
@@ -115,7 +118,8 @@ try {
   reopen('a\n');
   prototype.view.dom.dispatchEvent(new dom.window.CompositionEvent('compositionstart', { bubbles: true }));
   viewType('zhongwen', 73);
-  const finalTransaction = prototype.view.state.tr.insertText('中文', 2, 10).setMeta('composition', 73);
+  const compositionHead = prototype.view.state.selection.head;
+  const finalTransaction = prototype.view.state.tr.insertText('中文', compositionHead - 'zhongwen'.length, compositionHead).setMeta('composition', 73);
   prototype.view.dispatch(finalTransaction);
   prototype.view.dom.dispatchEvent(new dom.window.CompositionEvent('compositionend', { bubbles: true }));
   assert.equal(controller().currentRaw, 'a\n中文');

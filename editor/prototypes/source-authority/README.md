@@ -66,3 +66,13 @@ make -C editor/prototypes/source-authority build
   其他差异原子拒绝并保留候选意图。
 
 结果与证据分层见 [RESULTS.md](RESULTS.md)，本轮红绿过程见 [RED-GREEN.md](RED-GREEN.md)。
+
+## 036 管理者复核后的限定补正
+
+初稿27213dd原文虽正确，但以gap隐藏了已变为段内softbreak的换行：同字节a+LF+X打开时是a/换行/X，初稿连续输入时投影为aX。管理者独立semantic-review红例准确失败，故该初稿未采纳。
+
+当前只保留“原来接受的EOF原文锚点 + 原文件末行尾 + 去该末行尾后PM事务精确匹配”的输入意图证明；证明成立后重新建立真实原文语义投影，使段内softbreak显式存在。不再使用anchoredEofContext或运行时gap例外。未证明的mark继承/语义差异仍拒绝并保留候选。
+
+独立字节红例和语义红例均转绿；EOF七域现在同时断言与同字节重开文档doc.eq，且不重置受测会话。原11回归/10集成域及冻结oracle均通过，原始scope不变。源码末尾caret→真实WK EditorView按钮输入→保存点→Undo/Redo→source no-op→新epoch重开通过，AX正文确实含中间换行。证据在evidence/INK-PROT-036-review/。source SHA ce8e3800fb7ad1dbf2f4d405ac255e6826c1ccf54ece46804cbcd40025cdb808，WK bundle c62466a08ced7527f700f88328d7ca07569a92ddf2921bd5cbd6213259cc291c。
+
+真实WK本轮使用按钮驱动真实EditorView事务，未宣称物理EOF输入法验收。034物理取消/选区替换/源码输入及031已测路径不经过此EOF证明分支，证据按各自bundle限定复用；不是宣称新bundle全部重跑。inclusive strong EOF继承仍安全拒绝，生产V1必须明确并补齐常用格式编辑边界。M0采纳目标契约不等于全Markdown/生产架构实现通过。
