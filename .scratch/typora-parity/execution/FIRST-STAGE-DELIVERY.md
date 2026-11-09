@@ -1,5 +1,17 @@
 # 首阶段基础功能：交付总表
 
+## 最新检查点：103 进入独立复核，尚未合并
+
+生产 main 仍为 acf33923081e066812603269da6a332b7c8e02e3（PR76）。103 代码固定 47c0d54735c70b9e55268ad43f9f085f08ff4dd6：真正 inline atom、footnote/Wiki/HTML/comment、nested block、同次 delimiter/raw-unit provenance、U 候选规则、D 可视删除拒绝、统计/大纲与 main/Bridge 接线已经实现。旧 source-document D/U regex 后处理和 ledger emphasis 再解析已退出生产路径。冻结 18 oracle、真实 DOM 邻接输入/snapshot/proof/search/source no-op/UndoRedo 已跑；不是只排除已知红例的控制组。
+
+固定代码实际结算：完整 editor 760/760；Bridge Web14/Swift15；Native187 total/179 passed/0 failed/8 existing perf skips；make lint、Release/offline、test-ci 均通过。模型 small/medium/large/large-crlf/mixed 5/5，输入中位数 medium62.7ms/large704.741ms/CRLF692.015ms；不是 paint/物理IME 或冻结性能预算通过。hostless WK 性能另结算，不覆盖实际窗口。未建 PR、未合 main，独立 Spec/Standards 与 EOF/metadata、Mermaid/S、未知 gap 等边界核对仍有实际工作，不能宣告 V2 或首阶段通过。
+
+双轴遵照 code-review 技能新鲜上下文：104 Standards，Luna5.6 medium/default/full-access，Agent a16e56a5-dd79-429b-933f-1edae9626004 / workspace wks_87d8d6dda1b12eae；105 Spec，Sol5.6 high/default/full-access，Agent 395fb388-b28b-43b9-a958-9b46e5e82ecd / workspace wks_e8e883ae29a0e0a5。受检47c0d54，固定基线acf3392。profile列表为空，已明确采用默认档位；根不把760等外部证据冒充审查者自跑。
+
+88个已管理 Agent/workspace 归档计数不变，新增两位审查者活动中。099/100根本地 worktree 已在分支/Git bundle/逐文件tar/实际Native产物备份后回收，不混入Paseo计数。103上轮块级检查点832fd32备份551文件，tar SHA23c69e06b6c03026bc28537f349209f97dd110ca87dacbd934ab35ee8cddc094；本轮稍后另存固定47c的证据与备份。物理验收继续按用户“稍后”保留，不开 App/窗口/NSAlert/面板/XCUITest/bench-full，不重新催问。
+
+下方含旧时点的“当前/未实现”字样，均为过程历史；以本节及最终代码/证据SHA为准。
+
 **当前生产main `acf33923081e066812603269da6a332b7c8e02e3`，PR76已合。** 精确head0b64d62经CI42678426122 completed/success，默认非UI/Release-offline/lightbench通过，UI/full-bench按参数skip；root本地main与该受检head整树diff为空。100最终521文件tar SHA `7fa0e0a1f88f1e151ad425169c7774b4b4a93f1e2d0da52e9d78f5ceba2f79cf`，CI JSON/log另存，临时symlink已清理。099源码保存切片已交付不代表V2全完成。
 
 103本轮额外公共保存检查发现水平线可解析/输入却不可保存；已在PR76受检代码0b64原样重放为红，确认预存而非新parser回归。账本按accepted hr token与PM nodeSize=1显式映射后保存转绿；NodeSelection删除又暴露缺少原生replace规划，补唯一局部删除并全doc.eq验证后单历史/dirty/UndoRedo控制绿。输入`---` EOF无换行的旧有效HR回归保留，元数据开始围栏要求已有行结束，同字节打开/输入一致；该边界明确记入任务而非入口特例。真正inline保护仍未实现，103尚未完成。
