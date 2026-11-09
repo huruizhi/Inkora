@@ -41,3 +41,13 @@
 ## 调度
 
 profiles为空，核实OMP provider可用且实际模型为zhipu-coding-plan/glm-5.3后，采用medium/full。执行Agent `a8507558-5fa9-4f0e-8be8-b38af7ff05f2`，workspace `wks_0c68cfedb19731f3`，host `srv_MEqRNkRW6fSx`，分支 `task/INK-M1-004-analysis-panel`，目录 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-004-analysis-panel`。已取得running回执，notifyOnFinish=true。当前仅此一项执行任务；完成后独立验收、备份与Agent/workspace两层回收。
+
+## 交付与独立复核
+
+首稿f62ae15仅改7文件，管理者实际重跑197非UI/lint/build通过。独立真实main/Bridge/root公共接缝两反例证明拒绝stale/duplicate load仍清空有效面板，已退回同workspace限定修正，原Agent立即归档。接续Agent a1f40774-4ea2-4555-9780-c1c78d8b4c9d，GLM-5.3/low，profiles/provider已核实，无新workspace。
+
+补正3047c55dbe6f2ad071584accfc5da99dd7f9e54c：只在合法stateChanged接受load后才重置面板/分析代际。管理者独立原2红转绿，干净完整套件14文件200项、lint/build通过；执行者202口径含临时根反例2，不相加夸大覆盖。补正Agent已归档。真实产品布局仍待管理者检查，不宣称WK/VoiceOver通过。
+
+流程偏差：接续执行者曾向只读根RED输出追加green。管理者保留混合文件为PANEL-REJECTED-LOAD-WORKER-APPENDED.txt、按明确分隔符恢复红前缀，另独立运行绿色结果到PANEL-REJECTED-LOAD-GREEN.txt；详见root-m1-checks/PANEL-REJECTED-LOAD-PROVENANCE.md。原预期/断言未变，此追加不当作独立证据。
+
+本地验证目录 `/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-004-VERIFY`，分支task/INK-M1-005-panel-runtime-review，基于3047c55，不登记新Paseo侧栏。现准备使用隔离bundle ID及独立defaults suite做真实产品窗口检查；004代码尚未合main。
