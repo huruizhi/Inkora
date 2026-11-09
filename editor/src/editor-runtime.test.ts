@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createEditorRuntime } from "./editor-runtime";
 import type { EditorRuntime } from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
+import type { EditorView } from "prosemirror-view";
 import { analyzeDocument } from "./document-analysis";
 import { planSourceReplaceAll, searchSource } from "./source-search";
 
@@ -82,6 +83,95 @@ describe("editor runtime", () => {
     expect(area.value).toBe("abcd\n");
     expect([area.selectionStart, area.selectionEnd, area.selectionDirection]).toEqual([1, 3, "backward"]);
     expect(runtime.status).toMatchObject({ dirty: false, canUndo: false, canRedo: false });
+    runtime.destroy();
+  });
+
+  it("mounts offline code highlighting and patches only the fence language token", () => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const raw = "\uFEFF正文\r\n\r\n```rust  title=x   \r\nconst x = 1;\r\n```\r\n\r\n结尾\r\n";
+    const changes: string[] = [];
+    const runtime = createEditorRuntime(parent, raw, (_status, kind) => changes.push(kind ?? "status"));
+    const select = parent.querySelector<HTMLSelectElement>("select.inkora-code-language");
+    expect(select).not.toBeNull();
+    expect(select!.value).toBe("rust");
+    expect(parent.querySelector("code .hljs-keyword")?.textContent).toBe("const");
+    const internals = runtime as unknown as { view: EditorView };
+    let codeFrom = -1;
+    internals.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === "code_block") codeFrom = pos + 1;
+    });
+    internals.view.dispatch(internals.view.state.tr.setSelection(
+      TextSelection.create(internals.view.state.doc, codeFrom + 6),
+    ));
+    const selection = internals.view.state.selection;
+
+    select!.value = "javascript";
+    select!.dispatchEvent(new dom.window.Event("change", { bubbles: true, cancelable: true }));
+    const changed = raw.replace("```rust  title=x", "```javascript  title=x");
+    expect(runtime.getText()).toBe(changed);
+    expect(internals.view.state.selection.eq(selection)).toBe(true);
+    expect(changes).toEqual(["document"]);
+    expect(runtime.status.dirty).toBe(true);
+    expect(runtime.snapshotText()).toEqual({ ok: true, value: changed });
+    runtime.markSaved(changed);
+    expect(runtime.status.dirty).toBe(false);
+
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.status.dirty).toBe(true);
+    expect(parent.querySelector<HTMLSelectElement>("select.inkora-code-language")?.value).toBe("rust");
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(changed);
+    expect(runtime.status.dirty).toBe(false);
+    expect(runtime.enterSourceMode()).toBe(true);
+    expect(parent.querySelector("textarea")?.value).toBe(changed.replace(/\r\n/g, "\n"));
+    expect(runtime.cancelSourceDraft()).toBe(true);
+    expect(parent.querySelector<HTMLSelectElement>("select.inkora-code-language")?.value).toBe("javascript");
+    runtime.destroy();
+
+    const reopened = createEditorRuntime(parent, changed, () => {});
+    expect(parent.querySelector<HTMLSelectElement>("select.inkora-code-language")?.value).toBe("javascript");
+    expect(parent.querySelector("code .hljs-keyword")?.textContent).toBe("const");
+    reopened.destroy();
+  });
+
+  it("updates real runtime decorations after code editing without changing code text", () => {
+    const { parent } = stubBrowserEnvironment();
+    const runtime = createEditorRuntime(parent, "```python\nx = 1\n```\n", () => {});
+    const internals = runtime as unknown as { view: EditorView };
+    let codeFrom = -1;
+    internals.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === "code_block") codeFrom = pos + 1;
+    });
+    internals.view.dispatch(internals.view.state.tr.insertText("def f(): ", codeFrom));
+    expect(runtime.getText()).toBe("```python\ndef f(): x = 1\n```\n");
+    expect(parent.querySelector("code")?.textContent).toBe("def f(): x = 1");
+    expect(parent.querySelector("code .hljs-keyword")?.textContent).toBe("def");
+    runtime.destroy();
+  });
+
+  it("guards the real language selector during composition without dispatching", () => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const raw = "```python\nx = 1\n```\n";
+    const changes: unknown[] = [];
+    const runtime = createEditorRuntime(parent, raw, (status) => changes.push(status));
+    const editor = parent.querySelector<HTMLElement>("#editor")!;
+    const select = parent.querySelector<HTMLSelectElement>("select.inkora-code-language")!;
+    runtime.focus();
+    editor.dispatchEvent(new dom.window.Event("compositionstart", { bubbles: true }));
+    const pointer = new dom.window.Event("pointerdown", { bubbles: true, cancelable: true });
+    select.dispatchEvent(pointer);
+    const click = new dom.window.Event("click", { bubbles: true, cancelable: true });
+    select.dispatchEvent(click);
+    select.value = "go";
+    select.dispatchEvent(new dom.window.Event("change", { bubbles: true, cancelable: true }));
+    expect(pointer.defaultPrevented).toBe(true);
+    expect(click.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(editor);
+    expect(select.value).toBe("python");
+    expect(runtime.getText()).toBe(raw);
+    expect(changes).toEqual([]);
+    expect(parent.querySelector(".inkora-code-message")?.textContent).toContain("请先完成中文输入");
     runtime.destroy();
   });
 

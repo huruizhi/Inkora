@@ -20,6 +20,7 @@
     "vitest": "5.1.0"
   },
   "dependencies": {
+    "highlight.js": "11.12.0",
     "markdown-it": "14.3.3",
     "prosemirror-commands": "1.7.2",
     "prosemirror-history": "1.5.1",

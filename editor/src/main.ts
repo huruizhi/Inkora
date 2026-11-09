@@ -30,6 +30,7 @@ import {
   type SourceSearchResult,
 } from "./source-search";
 import "./style.css";
+import "./code-highlighting.css";
 
 declare global {
   interface Window {
