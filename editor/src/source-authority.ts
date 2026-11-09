@@ -14,7 +14,7 @@ import { applyNativePatches, planNativeTransaction, type NativePatch, type Nativ
 import { createInkoraProjectionState, type EditorStateOptions } from "./editor-session";
 import { isWellFormed } from "./source-replacement";
 import type { VisualTextEdit } from "./visual-search";
-import { planVisualReplacementPatch } from "./visual-replacement";
+import { planVisualReplacementPatch, renderAutolinkLabel } from "./visual-replacement";
 
 export type Affinity = 'left' | 'right';
 export type RawSelection = { anchor: number; head: number; affinity: Affinity };
@@ -850,16 +850,33 @@ export class SourceAuthoritySession {
 
   private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping']): void {
     const parsed = parse(raw);
+    const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
+      patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
+    const exactTargetLedger = needsAnchorReproof && !parsed.issues.length && parsed.doc.eq(target.doc)
+      ? baseLedger(raw, parsed)
+      : undefined;
     this.currentRaw = raw;
     this.issues = parsed.issues;
     const mappedAnchors = this.projection.anchors.map(anchor => {
       const visualResult = mapping?.mapResult(anchor.visual, -1);
       const visual = visualResult?.pos ?? anchor.visual;
-      const mappedRaw = mapRawOffset(anchor.raw, patches, -1);
+      let mappedRaw = mapRawOffset(anchor.raw, patches, -1);
+      let rebound = false;
+      if (exactTargetLedger && !visualResult?.deletedAcross &&
+          patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to)) {
+        const proven = visualToSource(exactTargetLedger, visual, visual, {
+          collapsedAffinity: before.rawSelection.affinity,
+        });
+        if (!proven.ok) throw Error(`owner 改写后的 anchor 无法重证：${proven.reason}`);
+        mappedRaw = sourceCaret !== undefined && target.selection.empty &&
+          visual === target.selection.head ? sourceCaret : proven.head;
+        rebound = true;
+      }
       return {
         visual,
         raw: mappedRaw,
-        reason: visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
+        reason: rebound ? `${anchor.reason}；owner 改写后按目标 ledger 重证` :
+          visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
       };
     });
     const step = target.selection;
@@ -1018,6 +1035,11 @@ export class SourceAuthoritySession {
       const patches: NativePatch[] = [];
       let replacedCount = 0;
       const { ledger } = this.projectionContext();
+      const autolinkGroups = new Map<number, {
+        owner: SourceLedger['links'][number];
+        labelPatches: NativePatch[];
+        emitted: Set<NativePatch>;
+      }>();
       const boundaries = new Set<number>([0, raw.length]);
       for (const part of segmenter.segment(raw)) {
         boundaries.add(part.index);
@@ -1025,11 +1047,9 @@ export class SourceAuthoritySession {
       }
       let transaction = this.state.tr;
       let previousVisualFrom = this.state.doc.content.size + 1;
-      const selectedEdit = edits.length === 1 &&
-        Math.min(this.state.selection.anchor, this.state.selection.head) === edits[0]?.from &&
-        Math.max(this.state.selection.anchor, this.state.selection.head) === edits[0]?.to
-        ? edits[0]
-        : undefined;
+      const selectedEdit = edits.find(edit =>
+        Math.min(this.state.selection.anchor, this.state.selection.head) === edit.from &&
+        Math.max(this.state.selection.anchor, this.state.selection.head) === edit.to);
       let previousFrom = this.state.doc.content.size + 1;
       for (const edit of ordered) {
         if (!Number.isInteger(edit.from) || !Number.isInteger(edit.to) || edit.from < 0 ||
@@ -1060,9 +1080,36 @@ export class SourceAuthoritySession {
         transaction = transaction.replaceWith(owned.visualFrom, owned.visualTo,
           owned.visualInsert ? schema.text(owned.visualInsert, owned.marks) : []);
         const eol = raw.slice(from).match(/\r\n|\n/)?.[0] ?? this.preferredEol;
-        patches.push({ from: owned.from, to: owned.to, insert: owned.insert.replace(/\r\n|\n/g, eol) });
+        const patch = { from: owned.from, to: owned.to, insert: owned.insert.replace(/\r\n|\n/g, eol) };
+        patches.push(patch);
+        const autolink = ledger.links.find(owner => owner.kind === 'autolink' &&
+          edit.from >= owner.visual.from && edit.to <= owner.visual.to);
+        if (autolink) {
+          let group = autolinkGroups.get(autolink.source.from);
+          if (!group) {
+            group = { owner: autolink, labelPatches: [], emitted: new Set() };
+            autolinkGroups.set(autolink.source.from, group);
+          }
+          group.labelPatches.push({
+            from: from - autolink.labelMarkupSource.from,
+            to: to - autolink.labelMarkupSource.from,
+            insert: edit.insert,
+          });
+          group.emitted.add(patch);
+        }
       }
       if (!patches.length) return { ok: true, value: { changed: false, replacedCount: 0 } };
+      for (const { owner, labelPatches, emitted } of autolinkGroups.values()) {
+        if (labelPatches.length < 2) continue;
+        const label = applyNativePatches(
+          raw.slice(owner.labelMarkupSource.from, owner.labelMarkupSource.to), labelPatches,
+        );
+        for (let index = patches.length - 1; index >= 0; index--) {
+          if (emitted.has(patches[index]!)) patches.splice(index, 1);
+        }
+        patches.push({ from: owner.source.from, to: owner.source.to,
+          insert: renderAutolinkLabel(raw, owner, label) });
+      }
       // A code owner may contain several matches. Rebuild only its exact raw
       // span once, retaining untouched body bytes while growing delimiters.
       const codeOpens = ledger.spans.filter(span => span.syntax === 'code-open');
@@ -1096,7 +1143,7 @@ export class SourceAuthoritySession {
       if (selectedEdit) {
         transaction = transaction.setSelection(TextSelection.create(
           transaction.doc,
-          selectedEdit.from + selectedEdit.insert.length,
+          transaction.mapping.map(selectedEdit.from, -1) + selectedEdit.insert.length,
         ));
       }
       const target = this.state.apply(transaction);

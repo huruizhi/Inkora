@@ -1,5 +1,5 @@
 import type { Mark } from "prosemirror-model";
-import type { LedgerSpan, SourceLedger } from "./source-ledger";
+import type { LedgerSpan, SourceLedger, SourceLinkOwner } from "./source-ledger";
 
 interface MarkScope {
   readonly name: "strong" | "em" | "strike";
@@ -58,6 +58,11 @@ function escapeEditableText(value: string): string {
   let escaped = "";
   for (const character of value) escaped += ESCAPABLE.has(character) ? `\\${character}` : character;
   return escaped;
+}
+
+export function renderAutolinkLabel(raw: string, owner: SourceLinkOwner, label: string): string {
+  const destination = raw.slice(owner.labelMarkupSource.from, owner.labelMarkupSource.to);
+  return `[${escapeEditableText(label)}](<${destination}>)`;
 }
 
 /** Keep untouched link owners around partial selections; drop consumed owners. */
@@ -124,9 +129,8 @@ export function planVisualReplacementPatch(
       const after = edit.to < scope.visual.to
         ? raw.slice(rawTo, scope.labelMarkupSource.to)
         : "";
-      const destination = raw.slice(scope.labelMarkupSource.from, scope.labelMarkupSource.to);
       const inlineLink = (label: string): string =>
-        `[${escapeEditableText(label)}](<${destination}>)`;
+        renderAutolinkLabel(raw, scope, label);
       const startsInLink = edit.from >= scope.visual.from;
       return {
         from: Math.min(rawFrom, scope.source.from),

@@ -1,5 +1,6 @@
 import { JSDOM } from "jsdom";
 import { afterEach, expect, it } from "vitest";
+import type { EditorView } from "prosemirror-view";
 import { createEditorRuntime } from "./editor-runtime";
 
 const previousDocument = globalThis.document;
@@ -53,6 +54,34 @@ it("converts a changed autolink label to an owned inline link without changing i
   const link = parent.querySelector<HTMLAnchorElement>(".ProseMirror a")!;
   expect(link.textContent).toBe("https://sample.test/path");
   expect(link.getAttribute("href")).toBe("https://example.test/path");
+});
+
+it.each([0, 1])("replaces repeated matches in one autolink and preserves selected match %i", (matchIndex) => {
+  const raw = "<https://example.test/example> tail\r\n";
+  const { runtime, parent } = boot(raw);
+  const expected = "[https\\:\\/\\/sample\\.test\\/sample](<https://example.test/example>) tail\r\n";
+  const result = runtime.search("example", 0);
+  expect(runtime.navigateVisualSearch(raw, result, { kind: "index", matchIndex }).ok).toBe(true);
+  expect(runtime.replaceVisualSearch(raw, result, "replace-all", "sample"))
+    .toEqual({ ok: true, value: { changed: true, replacedCount: 2 } });
+  expect(runtime.getText()).toBe(expected);
+  const link = parent.querySelector<HTMLAnchorElement>(".ProseMirror a")!;
+  expect(link.textContent).toBe("https://sample.test/sample");
+  expect(link.getAttribute("href")).toBe("https://example.test/example");
+  expect(runtime.enterSourceMode()).toBe(true);
+  const caret = (matchIndex === 0 ? expected.indexOf("sample") : expected.lastIndexOf("sample")) + "sample".length;
+  expect(runtime.getSourceSelection(expected)).toEqual({ ok: true, value: { anchor: caret, head: caret } });
+  expect(runtime.cancelSourceDraft()).toBe(true);
+  const liveView = (runtime as unknown as { view: EditorView }).view;
+  liveView.dispatch(liveView.state.tr.insertText("X"));
+  expect(runtime.getText()).toBe(expected.slice(0, caret) + "X" + expected.slice(caret));
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(expected);
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(raw);
+  expect(runtime.status.canUndo).toBe(false);
+  expect(runtime.redo()).toBe(true);
+  expect(runtime.getText()).toBe(expected);
 });
 
 it("removes a fully consumed autolink when the match crosses into plain text", () => {
