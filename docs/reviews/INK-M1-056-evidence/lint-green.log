@@ -1,0 +1,3 @@
+xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests tests/InkoraUITests
+/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm --dir editor lint
+$ tsc --noEmit

@@ -581,14 +581,6 @@ export class SourceAuthoritySession {
     });
     const step = target.selection;
     if (sourceCaret !== undefined) mappedAnchors.push({ visual: step.head, raw: sourceCaret, reason });
-    if (patches.length === 1) {
-      const patch = patches[0];
-      // The post-transaction collapsed selection is the right edge of the
-      // inserted bytes. The left edge remains represented by the pre-existing
-      // visual/raw anchor; assigning both raw edges to the new caret would
-      // manufacture an ambiguity on the next insertion.
-      mappedAnchors.push({ visual: step.head, raw: patch.from + patch.insert.length, reason: `${reason} 接受后 caret` });
-    }
     for (const anchor of mappedAnchors) {
       if (anchor.visual < 0 || anchor.visual > target.doc.content.size) throw Error(`投影 anchor 的 PM 位置 ${anchor.visual} 越界`);
       const boundaryError = rawBoundaryError(raw, anchor.raw);
@@ -688,7 +680,12 @@ export class SourceAuthoritySession {
       attemptedRaw = plan.candidate;
       const target = this.state.apply(tr);
       let sourceCaret = plan.sourceCaret;
-      if (sourceCaret === undefined && plan.patches.length === 1) {
+      // Only a text replacement proves that the resulting caret belongs at
+      // the end of inserted source. Attribute/format patches can be far from
+      // the unchanged selection (for example a task marker before its label).
+      const textReplacement = step?.stepType === 'replace' &&
+        !(step.slice?.content ?? []).some(node => node.text === undefined);
+      if (sourceCaret === undefined && plan.patches.length === 1 && textReplacement) {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
       const parsed = parse(plan.candidate);

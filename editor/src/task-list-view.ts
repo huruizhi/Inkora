@@ -44,6 +44,7 @@ export function createTaskListItemNodeViews(options: TaskNodeViewOptions) {
             checked,
             stateChar: checked ? "x" : " ",
           }).setMeta("inkoraTaskToggle", meta));
+          input!.checked = Boolean(current.attrs.checked);
         };
         input.addEventListener("pointerdown", (event) => {
           if (!options.isComposing()) return;
@@ -51,11 +52,17 @@ export function createTaskListItemNodeViews(options: TaskNodeViewOptions) {
           view.focus();
         });
         input.addEventListener("click", (event) => {
-          event.preventDefault();
+          if (options.isComposing()) {
+            // Let native canceled activation restore its previous checked
+            // value; resetting it inside this listener would invert it again.
+            event.preventDefault();
+            view.focus();
+            return;
+          }
           toggle(!Boolean(current.attrs.checked));
         });
         input.addEventListener("keydown", (event) => {
-          if (event.key !== " ") return;
+          if (event.key !== " " || event.isComposing || options.isComposing()) return;
           event.preventDefault();
           toggle(!Boolean(current.attrs.checked));
         });

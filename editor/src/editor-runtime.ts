@@ -412,7 +412,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       },
       handleDOMEvents: {
         keydown: (activeView, event) => {
-          if (event.key !== "Tab" || this.session.composing || activeView.composing) return false;
+          if (event.key !== "Tab" || event.isComposing || this.session.composing || activeView.composing) return false;
           if (!handleTableTab(activeView, event.shiftKey)) return false;
           event.preventDefault();
           return true;
