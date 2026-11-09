@@ -59,6 +59,21 @@ export const insertHorizontalRule: Command = (state, dispatch) => {
   return true;
 };
 
+const splitTaskListItem: Command = (state, dispatch, view) => {
+  const resolved = state.selection.$from;
+  for (let depth = resolved.depth; depth > 0; depth--) {
+    const node = resolved.node(depth);
+    if (node.type === inkoraSchema.nodes.list_item && node.attrs.task) {
+      return splitListItem(inkoraSchema.nodes.list_item, {
+        task: true,
+        checked: false,
+        stateChar: " ",
+      })(state, dispatch, view);
+    }
+  }
+  return false;
+};
+
 const insertTabInCode: Command = (state, dispatch) => {
   if (state.selection.$from.parent.type !== inkoraSchema.nodes.code_block) {
     return false;
@@ -70,6 +85,7 @@ const insertTabInCode: Command = (state, dispatch) => {
 export const blockKeyBindings: Record<string, Command> = {
   Enter: chainCommands(
     newlineInCode,
+    splitTaskListItem,
     splitListItem(inkoraSchema.nodes.list_item),
     createParagraphNear,
     liftEmptyBlock,

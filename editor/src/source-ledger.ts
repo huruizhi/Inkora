@@ -4,6 +4,7 @@ import MarkdownIt, { type Token } from 'markdown-it';
 import type { Node as PMNode } from 'prosemirror-model';
 import type { Range } from "./source-document";
 import { installReferenceCapture, referenceLineRanges, type ReferenceLineRange } from "./reference-context";
+import { annotateTaskListItems } from "./markdown-codec";
 
 export type SourceRole =
   | 'text' | 'link-label' | 'image-alt' | 'autolink-text' | 'code-text'
@@ -125,6 +126,7 @@ const markdown = new MarkdownIt('commonmark', {
   linkify: false,
 }).enable(['table', 'strikethrough']);
 installReferenceCapture(markdown);
+markdown.core.ruler.after('inline', 'inkora_task_items', annotateTaskListItems);
 
 const ESCAPABLE = new Set('\\!"#$%&\'()*+,./:;<=>?@[]^_`{|}~-'.split(''));
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
@@ -503,7 +505,11 @@ function mapInlineToken(source: string, lines: ReturnType<typeof lineTable>, tok
     let match: { line: (typeof physical)[number]; start: number; end: number } | undefined;
     for (; physicalIndex < physical.length; physicalIndex++) {
       const line = physical[physicalIndex];
-      const cursor = prefixCursor(line.text, heading && part === 0);
+      let cursor = prefixCursor(line.text, heading && part === 0);
+      if (part === 0 && typeof token.meta?.inkoraTaskPrefixLength === 'number') {
+        const physicalTask = /^\[[ xX]\][\t ]+/.exec(line.text.slice(cursor));
+        cursor += physicalTask?.[0].length ?? token.meta.inkoraTaskPrefixLength;
+      }
       let content = line.text.slice(cursor);
       if (heading && part === 0) content = content.replace(/[ \t]+#+[ \t]*$/, '');
       // CommonMark drops ordinary spaces at the end of the final inline line.
@@ -735,6 +741,113 @@ function fillGaps(source: string, spans: LedgerSpan[], ranges: Range[]): LedgerS
   return [...spans, ...extra].sort((a, b) => a.sourceStart - b.sourceStart || a.sourceEnd - b.sourceEnd || Number(b.visible) - Number(a.visible));
 }
 
+type TableSourceCell = { start: number; end: number; anchor: number };
+
+function tablePipeOffsets(text: string): number[] {
+  const offsets: number[] = [];
+  let codeDelimiter = "";
+  for (let index = 0; index < text.length; index++) {
+    if (text[index] === "`") {
+      let end = index + 1;
+      while (text[end] === "`") end++;
+      const run = text.slice(index, end);
+      if (!codeDelimiter) codeDelimiter = run;
+      else if (run === codeDelimiter) codeDelimiter = "";
+      index = end - 1;
+      continue;
+    }
+    if (text[index] !== "|" || codeDelimiter) continue;
+    let slashes = 0;
+    for (let before = index - 1; before >= 0 && text[before] === "\\"; before--) slashes++;
+    if (slashes % 2 === 0) offsets.push(index);
+  }
+  return offsets;
+}
+
+function tableCellsForLine(line: ReturnType<typeof lineTable>[number], columns: number): TableSourceCell[] {
+  const prefix = prefixCursor(line.text, false);
+  const tableText = line.text.slice(prefix);
+  const pipes = tablePipeOffsets(tableText);
+  const leading = pipes[0] !== undefined && tableText.slice(0, pipes[0]).trim() === "";
+  const trailing = pipes.at(-1) !== undefined && tableText.slice(pipes.at(-1)! + 1).trim() === "";
+  const boundaries = [leading ? pipes[0] + 1 : 0];
+  for (const pipe of pipes) {
+    if (leading && pipe === pipes[0]) continue;
+    if (trailing && pipe === pipes.at(-1)) break;
+    boundaries.push(pipe + 1);
+  }
+  const rowEnd = trailing ? pipes.at(-1)! : tableText.length;
+  const cells: TableSourceCell[] = [];
+  for (let column = 0; column < columns; column++) {
+    const segmentStart = boundaries[column] ?? rowEnd;
+    const segmentEnd = column + 1 < boundaries.length ? boundaries[column + 1] - 1 : rowEnd;
+    let start = segmentStart;
+    let end = Math.max(segmentStart, segmentEnd);
+    while (start < end && /[\t ]/.test(tableText[start])) start++;
+    while (end > start && /[\t ]/.test(tableText[end - 1])) end--;
+    cells.push({
+      start: line.start + prefix + start,
+      end: line.start + prefix + end,
+      anchor: line.start + prefix + segmentEnd,
+    });
+  }
+  return cells;
+}
+
+function tableCellInlineInput(source: string, start: number, end: number): InlineInput {
+  let text = '';
+  const units: RawUnit[] = [];
+  for (let offset = start; offset < end; offset++) {
+    if (source[offset] === '\\' && source[offset + 1] === '|') {
+      text += '|';
+      units.push({ start: offset, end: offset + 2 });
+      offset++;
+      continue;
+    }
+    text += source[offset];
+    units.push({ start: offset, end: offset + 1 });
+  }
+  return { text, units };
+}
+
+function mapTableNode(
+  source: string,
+  physical: ReturnType<typeof lineTable>,
+  table: PMNode,
+  tablePos: number,
+  pmDoc: PMNode,
+  state: ScanState,
+): void {
+  if (table.type.name !== "table") throw Error("table 范围未对应 table 节点");
+  const headRow = table.firstChild?.firstChild;
+  if (!headRow) throw Error("table 缺少表头行");
+  const columns = headRow.childCount;
+  if (physical.length < 2) throw Error("table 缺少分隔行");
+  const sourceRows = [physical[0], ...physical.slice(2)];
+  const modelCells: Array<{ pos: number; node: PMNode }> = [];
+  pmDoc.nodesBetween(tablePos, tablePos + table.nodeSize, (node, pos) => {
+    if (node.type.name === "table_header" || node.type.name === "table_cell") {
+      modelCells.push({ pos: pos + 1, node });
+    }
+  });
+  const expectedCells = sourceRows.length * columns;
+  if (modelCells.length !== expectedCells) {
+    throw Error(`table cell 数量不一致：source=${expectedCells}, PM=${modelCells.length}`);
+  }
+  let modelIndex = 0;
+  for (const line of sourceRows) {
+    for (const cell of tableCellsForLine(line, columns)) {
+      const model = modelCells[modelIndex++];
+      if (!model) throw Error("table cell 投影越界");
+      if (cell.end > cell.start) {
+        scanInline(state, tableCellInlineInput(source, cell.start, cell.end));
+      } else {
+        addAnchor(state, cell.anchor, model.pos, "empty-table-cell", "空表格单元格的可视插入边界");
+      }
+    }
+  }
+}
+
 export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonly Range[]): BuildLedgerResult {
   const diagnostics: LedgerDiagnostic[] = [];
   try {
@@ -756,6 +869,32 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         continue;
       }
       const state: ScanState = { spans: [], atoms: [], expectations: [], references, ownerSerial };
+      if (range.kind === 'table') {
+        const table = pmDoc.nodeAt(range.pos);
+        const tableToken = tokens.find(token => {
+          if (token.type !== 'table_open' || !token.map) return false;
+          const tokenStart = lines[token.map[0]]?.start;
+          const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
+          // A BOF table starts after the BOM in the model range, while its
+          // physical token line starts at zero. Match its owning overlap.
+          return tokenStart !== undefined && tokenEnd !== undefined &&
+            tokenEnd > range.start && tokenStart < range.end;
+        });
+        if (!table || !tableToken?.map) throw Error('顶层 table 缺少 source token 或 PM 节点');
+        mapTableNode(source, lines.slice(tableToken.map[0], tableToken.map[1]), table, range.pos, pmDoc, state);
+        const projectionError = assignVisualPositions(state.atoms, projectionUnitsFor(pmDoc, range), state.expectations);
+        if (projectionError) throw Error(`范围 ${range.start}..${range.end}：${projectionError}`);
+        const visualText = state.atoms.map(atom => atom.text).join('');
+        const block = { range: range as Range, spans: state.spans, visualText, inlineCount: state.atoms.length };
+        blocks.push(block);
+        allSpans.push(...state.spans);
+        allExpectations.push(...state.expectations.map(expectation => ({
+          expectation,
+          blockSource: { from: range.start, to: range.end },
+        })));
+        ownerSerial = state.ownerSerial;
+        continue;
+      }
       if (range.kind === 'code_block') {
         const codeToken = tokens.find(token => {
           if ((token.type !== 'fence' && token.type !== 'code_block') || !token.map) return false;
@@ -787,25 +926,55 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         // that range, so use overlap rather than requiring identical starts.
         return tokenStart !== undefined && tokenEnd !== undefined && tokenEnd > range.start && tokenStart < range.end;
       });
-      for (const token of inlineTokens) {
-        const tokenIndex = tokens.indexOf(token);
-        const heading = tokenIndex > 0 && tokens[tokenIndex - 1].type === 'heading_open';
-        const input = mapInlineToken(source, lines, token, heading, state.spans);
-        scanInline(state, input);
+      const nestedTableTokens = tokens.filter(token => {
+        if (token.type !== 'table_open' || !token.map) return false;
+        const tokenStart = lines[token.map[0]]?.start;
+        const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
+        return tokenStart !== undefined && tokenEnd !== undefined && tokenEnd > range.start && tokenStart < range.end;
+      });
+      const nestedTables: Array<{ node: PMNode; pos: number }> = [];
+      pmDoc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
+        if (node.type.name === 'table') nestedTables.push({ node, pos });
+      });
+      let tableIndex = 0;
+      const actions = [...inlineTokens, ...nestedTableTokens]
+        .sort((left, right) => tokens.indexOf(left) - tokens.indexOf(right));
+      for (const token of actions) {
+        if (token.type === 'table_open') {
+          const target = nestedTables[tableIndex++];
+          if (!target || !token.map) throw Error('容器 table token 与 PM 节点数量不一致');
+          mapTableNode(source, lines.slice(token.map[0], token.map[1]), target.node, target.pos, pmDoc, state);
+        } else {
+          const tokenIndex = tokens.indexOf(token);
+          const heading = tokenIndex > 0 && tokens[tokenIndex - 1].type === 'heading_open';
+          const input = mapInlineToken(source, lines, token, heading, state.spans);
+          scanInline(state, input);
+        }
       }
       const projectionUnits = projectionUnitsFor(pmDoc, range);
-      if (!inlineTokens.length && projectionUnits.length) throw Error(`范围 ${range.start}..${range.end} 有 PM 文本/atom 但没有可审计 inline token`);
+      if (!inlineTokens.length && !nestedTableTokens.length && projectionUnits.length) {
+        throw Error(`范围 ${range.start}..${range.end} 有 PM 文本/atom 但没有可审计 inline token`);
+      }
       const emptyTextblocks: number[] = [];
       pmDoc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
         if (node.isTextblock && node.childCount === 0) emptyTextblocks.push(pos + 1);
       });
-      if (!state.atoms.length && emptyTextblocks.length) {
-        if (emptyTextblocks.length !== 1) throw Error(`范围 ${range.start}..${range.end} 含多个空 textblock，当前无法唯一定位插入 source 边界`);
+      const emptyTaskTokens = inlineTokens.filter(token =>
+        token.content.length === 0 && typeof token.meta?.inkoraTaskPrefixLength === 'number');
+      for (const [index, token] of emptyTaskTokens.entries()) {
+        const line = token.map ? lines[token.map[0]] : undefined;
+        const visual = emptyTextblocks[index];
+        if (!line || visual === undefined) throw Error('空任务缺少唯一 source/PM 锚点');
+        addAnchor(state, line.contentEnd, visual, 'empty-task-label', '空任务标记后的可视插入边界');
+      }
+      const remainingEmpty = emptyTextblocks.slice(emptyTaskTokens.length);
+      if (!state.atoms.length && remainingEmpty.length) {
+        if (remainingEmpty.length !== 1) throw Error(`范围 ${range.start}..${range.end} 含多个空 textblock，当前无法唯一定位插入 source 边界`);
         const line = lines.find(item => range.start >= item.start && range.start <= item.contentEnd);
         if (!line) throw Error('空结构缺少原文行');
         const cursor = prefixCursor(line.text, range.kind === 'heading');
         const sourceOffset = Math.max(range.start, line.start + cursor);
-        addAnchor(state, sourceOffset, emptyTextblocks[0], 'empty-textblock', `空 ${range.kind} 的可视插入位置，锚定在块前缀之后`);
+        addAnchor(state, sourceOffset, remainingEmpty[0], 'empty-textblock', `空 ${range.kind} 的可视插入位置，锚定在块前缀之后`);
       }
       const projectionError = assignVisualPositions(state.atoms, projectionUnits, state.expectations);
       if (projectionError) throw Error(`范围 ${range.start}..${range.end}：${projectionError}`);

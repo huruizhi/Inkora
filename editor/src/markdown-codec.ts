@@ -50,19 +50,81 @@ function preserveSoftBreaks(state: StateCore): void {
   }
 }
 
+export function annotateTaskListItems(state: StateCore): void {
+  for (let index = 0; index < state.tokens.length; index++) {
+    const item = state.tokens[index];
+    if (item.type !== "list_item_open") continue;
+    const inline = state.tokens.slice(index + 1).find((token) =>
+      token.type === "inline" || token.type === "list_item_close");
+    if (!inline || inline.type !== "inline") continue;
+    const match = /^\[([ xX])\](?:[\t ]+|$)/.exec(inline.content);
+    if (!match) continue;
+    item.meta = {
+      ...item.meta,
+      inkoraTask: true,
+      inkoraTaskChecked: match[1].toLowerCase() === "x",
+      inkoraTaskStateChar: match[1],
+    };
+    inline.meta = { ...inline.meta, inkoraTaskPrefixLength: match[0].length };
+    inline.content = inline.content.slice(match[0].length);
+    let remaining = match[0].length;
+    const children: Token[] = [];
+    for (const child of inline.children ?? []) {
+      if (remaining > 0 && child.type === "text") {
+        if (child.content.length <= remaining) {
+          remaining -= child.content.length;
+          continue;
+        }
+        child.content = child.content.slice(remaining);
+        remaining = 0;
+      }
+      children.push(child);
+    }
+    inline.children = children;
+  }
+}
+
+function tableAlignmentFromToken(token: Token): "none" | "left" | "center" | "right" {
+  const style = token.attrGet("style") ?? "";
+  const match = style.match(/text-align\s*:\s*(left|center|right)/i);
+  return (match?.[1]?.toLowerCase() as "left" | "center" | "right" | undefined) ?? "none";
+}
+
 const tokenizer = new MarkdownIt("commonmark", {
   breaks: false,
   html: false,
   linkify: false,
-}).enable("strikethrough");
+}).enable(["table", "strikethrough"]);
 
 tokenizer.core.ruler.after("block", "inkora_fence_closure", annotateFenceClosure);
 tokenizer.core.ruler.after("inline", "inkora_soft_breaks", preserveSoftBreaks);
+tokenizer.core.ruler.after("inkora_soft_breaks", "inkora_task_items", annotateTaskListItems);
 
 const tokenSpecs: Record<string, ParseSpec> = {
+  table: { block: "table" },
+  thead: { block: "table_head" },
+  tbody: { block: "table_body" },
+  tr: { block: "table_row" },
+  th: {
+    block: "table_header",
+    getAttrs: (token) => ({ alignment: tableAlignmentFromToken(token) }),
+  },
+  td: {
+    block: "table_cell",
+    getAttrs: (token) => ({ alignment: tableAlignmentFromToken(token) }),
+  },
   blockquote: { block: "blockquote" },
   paragraph: { block: "paragraph" },
-  list_item: { block: "list_item" },
+  list_item: {
+    block: "list_item",
+    getAttrs: (token) => ({
+      task: token.meta?.inkoraTask === true,
+      checked: token.meta?.inkoraTaskChecked === true,
+      stateChar: typeof token.meta?.inkoraTaskStateChar === "string"
+        ? token.meta.inkoraTaskStateChar
+        : " ",
+    }),
+  },
   bullet_list: {
     block: "bullet_list",
     getAttrs: (token, tokens, index) => ({
@@ -184,9 +246,41 @@ function renderCodeBlock(
   state.closeBlock(node);
 }
 
+function renderTableRow(state: MarkdownSerializerState, row: ProseMirrorNode): void {
+  state.write("| ");
+  row.forEach((cell, _offset, index) => {
+    if (index > 0) state.write(" | ");
+    state.renderInline(cell);
+  });
+  state.write(" |");
+  state.ensureNewLine();
+}
+
 export const inkoraMarkdownSerializer = new MarkdownSerializer(
   {
     ...defaultMarkdownSerializer.nodes,
+    table(state, node) {
+      const head = node.firstChild;
+      const body = node.childCount > 1 ? node.child(1) : null;
+      const headerRow = head?.firstChild;
+      if (!headerRow) return;
+      renderTableRow(state, headerRow);
+      state.write("| ");
+      headerRow.forEach((cell, _offset, index) => {
+        if (index > 0) state.write(" | ");
+        const alignment = cell.attrs.alignment;
+        state.write(alignment === "left" ? ":---" : alignment === "right" ? "---:" : alignment === "center" ? ":---:" : "---");
+      });
+      state.write(" |");
+      state.ensureNewLine();
+      body?.forEach((row) => renderTableRow(state, row));
+      state.closeBlock(node);
+    },
+    table_head() {},
+    table_body() {},
+    table_row() {},
+    table_header() {},
+    table_cell() {},
     protected_block(state, node) {
       state.write(node.attrs.raw);
       state.closeBlock(node);
@@ -205,6 +299,10 @@ export const inkoraMarkdownSerializer = new MarkdownSerializer(
         const number = String(start + index);
         return `${state.repeat(" ", maxWidth - number.length)}${number}${delimiter} `;
       });
+    },
+    list_item(state, node) {
+      if (node.attrs.task) state.write(`[${node.attrs.checked ? "x" : " "}] `);
+      state.renderContent(node);
     },
   },
   {

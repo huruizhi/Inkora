@@ -1,0 +1,32 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-056/editor
+
+ ❯ src/v3-interaction-boundaries.test.ts (8 tests | 1 failed) 102ms
+   × keeps native checked state unchanged when an active composition refuses a click 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/v3-interaction-boundaries.test.ts > keeps native checked state unchanged when an active composition refuses a click
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/v3-interaction-boundaries.test.ts:74:83
+     72|   const before=runtime.status;
+     73|   parent.querySelector<HTMLInputElement>("input[type=checkbox]")!.clic…
+     74|   expect(parent.querySelector<HTMLInputElement>("input[type=checkbox]"…
+       |                                                                                   ^
+     75|   expect(runtime.getText()).toBe("- [ ] item\n");
+     76|   expect(runtime.status).toEqual(before);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  20:11:08
+   Duration  532ms (import 68%, tests 25%, transform 7%)

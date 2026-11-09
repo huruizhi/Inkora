@@ -1,0 +1,72 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-056/editor
+
+ ❯ src/v3-interaction-boundaries.test.ts (3 tests | 3 failed) 59ms
+   × keeps checkbox native click state equal to accepted Markdown 44ms
+   × does not consume a flag-only composing Space on a task checkbox 6ms
+   × does not consume a flag-only composing Tab or move the selected table cell 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/v3-interaction-boundaries.test.ts > keeps checkbox native click state equal to accepted Markdown
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/v3-interaction-boundaries.test.ts:30:28
+     28|   checkbox.click();
+     29|   expect(runtime.getText()).toBe("- [x] item\n");
+     30|   expect(checkbox.checked).toBe(true);
+       |                            ^
+     31|   checkbox.click();
+     32|   expect(runtime.getText()).toBe("- [ ] item\n");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/v3-interaction-boundaries.test.ts > does not consume a flag-only composing Space on a task checkbox
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/v3-interaction-boundaries.test.ts:41:34
+     39|   const event=new dom.window.KeyboardEvent("keydown",{key:" ",isCompos…
+     40|   checkbox.dispatchEvent(event);
+     41|   expect(event.defaultPrevented).toBe(false);
+       |                                  ^
+     42|   expect(runtime.getText()).toBe("- [ ] item\n");
+     43|   expect(runtime.status).toEqual(before);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/v3-interaction-boundaries.test.ts > does not consume a flag-only composing Tab or move the selected table cell
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/v3-interaction-boundaries.test.ts:55:34
+     53|   const event=new dom.window.KeyboardEvent("keydown",{key:"Tab",isComp…
+     54|   view.dom.dispatchEvent(event);
+     55|   expect(event.defaultPrevented).toBe(false);
+       |                                  ^
+     56|   expect(view.state.selection.eq(selection)).toBe(true);
+     57|   expect(runtime.getText()).toBe(raw);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  20:00:28
+   Duration  466ms (import 74%, tests 16%, transform 9%, worker 1%)
