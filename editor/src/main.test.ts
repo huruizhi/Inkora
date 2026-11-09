@@ -226,6 +226,70 @@ async function rootLinkHarness(
   return h;
 }
 
+it("root070: rejected image descriptors never update the current document DOM", async () => {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "image-owner-load", documentID: "image-current",
+    revision: 0, text: "![local](./a.png)\n" });
+  const before = h.editorHost().innerHTML;
+  const messages = h.stateMessages().length;
+  h.receive({
+    type: "setImageDescriptors", requestID: "image-stale-descriptors", documentID: "image-old",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    descriptors: [{ href: "./a.png", status: "ready",
+      displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174001" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "stale_revision" });
+  expect(h.editorHost().innerHTML).toBe(before);
+  expect(h.stateMessages()).toHaveLength(messages);
+  h.receive({
+    type: "setImageDescriptors", requestID: "image-valid-descriptors", documentID: "image-current",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    descriptors: [{ href: "./a.png", status: "ready",
+      displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174003" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 0, dirty: false } });
+  expect(h.editorHost().querySelector(".image-node img")?.getAttribute("src"))
+    .toBe("inkora-asset://resource/123e4567-e89b-12d3-a456-426614174003");
+});
+
+it("root070: image import preserves an active link-field composition", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const input = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  input.value = "zhong";
+  input.focus();
+  input.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  const messages = h.stateMessages().length;
+  const revision = h.lastRevision();
+  h.receive({
+    type: "applyImageImport", requestID: "image-during-link-composition", documentID: "root-link",
+    revision, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    assetID: "123e4567-e89b-12d3-a456-426614174001",
+    uri: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174001",
+    alt: "image", title: null,
+    displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174002",
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  expect(form.isConnected).toBe(true);
+  expect(input.value).toBe("zhong");
+  expect(h.dom.window.document.activeElement).toBe(input);
+  expect(h.editorHost().querySelector(".image-node")).toBeNull();
+  expect(h.stateMessages()).toHaveLength(messages);
+  expect(h.lastRevision()).toBe(revision);
+  input.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  h.receive({
+    type: "applyImageImport", requestID: "image-after-link-composition", documentID: "root-link",
+    revision, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    assetID: "123e4567-e89b-12d3-a456-426614174001",
+    uri: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174001",
+    alt: "image", title: null,
+    displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174002",
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: revision + 1, dirty: true } });
+  expect(h.editorHost().querySelector(".image-node")).not.toBeNull();
+});
+
 it("root062: link action pointerdown keeps an active candidate field focused", async () => {
   const h = await rootLinkHarness();
   const form = h.linkEditor()!;

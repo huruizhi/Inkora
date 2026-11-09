@@ -180,9 +180,10 @@ const tokenSpecs: Record<string, ParseSpec> = {
     }),
   },
   image: {
-    mark: "image_ref",
+    node: "image",
     noCloseToken: true,
     getAttrs: (token) => ({
+      alt: token.content,
       href: token.attrGet("src"),
       title: token.attrGet("title") || null,
     }),
@@ -304,6 +305,14 @@ export const inkoraMarkdownSerializer = new MarkdownSerializer(
       if (node.attrs.task) state.write(`[${node.attrs.checked ? "x" : " "}] `);
       state.renderContent(node);
     },
+    image(state, node) {
+      const alt = String(node.attrs.alt).replace(/([\\\]])/g, "\\$1");
+      const href = String(node.attrs.href);
+      const title = node.attrs.title === null
+        ? ""
+        : ` \"${String(node.attrs.title).replace(/([\\\"])/g, "\\$1")}\"`;
+      state.write(`![${alt}](${href}${title})`);
+    },
   },
   {
     ...defaultMarkdownSerializer.marks,
@@ -312,15 +321,6 @@ export const inkoraMarkdownSerializer = new MarkdownSerializer(
       close: "~~",
       mixable: true,
       expelEnclosingWhitespace: true,
-    },
-    image_ref: {
-      open: "![",
-      close: (_state, mark) => {
-        const title = mark.attrs.title ? ` \"${String(mark.attrs.title)}\"` : "";
-        return `](${String(mark.attrs.href)}${title})`;
-      },
-      mixable: false,
-      expelEnclosingWhitespace: false,
     },
   },
 );

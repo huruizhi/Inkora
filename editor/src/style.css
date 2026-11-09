@@ -94,6 +94,74 @@ li[data-task-state] {
 .inkora-task-content > :last-child { margin-bottom: 0; }
 div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 
+.image-node {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+  border-radius: 5px;
+}
+.image-node img {
+  display: block;
+  max-width: min(100%, 720px);
+  max-height: 70vh;
+  object-fit: contain;
+}
+.image-node.ProseMirror-selectednode {
+  outline: 2px solid AccentColor;
+  outline-offset: 2px;
+}
+.image-placeholder {
+  padding: 6px 9px;
+  border: 1px dashed color-mix(in srgb, CanvasText 32%, transparent);
+  border-radius: 5px;
+  color: color-mix(in srgb, CanvasText 70%, Canvas);
+  font-size: 12px;
+}
+.image-access-button {
+  border: 1px solid color-mix(in srgb, CanvasText 28%, transparent);
+  border-radius: 5px;
+  padding: 4px 7px;
+  background: Canvas;
+  color: CanvasText;
+}
+.image-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-inline-start: 6px;
+}
+.image-edit-button,
+.image-attributes-form button {
+  border: 1px solid color-mix(in srgb, CanvasText 28%, transparent);
+  border-radius: 5px;
+  padding: 4px 7px;
+  background: Canvas;
+  color: CanvasText;
+}
+.image-attributes-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid color-mix(in srgb, CanvasText 22%, transparent);
+  border-radius: 6px;
+  background: Canvas;
+}
+.image-attributes-form input {
+  width: min(22ch, 25vw);
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: Canvas;
+  color: CanvasText;
+}
+.image-attributes-error {
+  color: Mark;
+  font-size: 12px;
+}
+
 /* 大纲与统计面板：INK-055 约束 —— 页面不滚动，编辑区与面板各自内层滚动。 */
 #app {
   display: flex;

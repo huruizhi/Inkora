@@ -10,7 +10,7 @@ export type NativeAnchor = { pmPos: number; sourceOffset: number };
 export type NativePlan = {
   patches: NativePatch[];
   candidate: string;
-  kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'inline-mark' | 'block-structure' | 'table-text' | 'table-structure' | 'task-toggle' | 'projection-sync' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join' | 'code-exit';
+  kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'inline-mark' | 'image-attrs' | 'block-structure' | 'table-text' | 'table-structure' | 'task-toggle' | 'projection-sync' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join' | 'code-exit';
   /** A Markdown source cannot represent a newly-created empty paragraph. */
   mayStage?: boolean;
   /** Proven source caret in candidate coordinates after a text/input-rule edit. */
@@ -18,6 +18,43 @@ export type NativePlan = {
 };
 
 type SourcePosition = (position: number, side?: 'from' | 'to' | 'any') => number;
+
+function imageSource(attrs: Record<string, unknown>): string {
+  const href = attrs.href;
+  const alt = attrs.alt;
+  const title = attrs.title;
+  if (typeof href !== 'string' || href.length === 0 || /[\u0000-\u0020<>]/.test(href) || /%(?![0-9A-Fa-f]{2})/.test(href)) {
+    throw Error('图片目标不能安全表示为 Markdown destination');
+  }
+  if (typeof alt !== 'string' || /[\r\n]/.test(alt)) throw Error('图片 alt 不能包含换行');
+  if (title !== null && title !== undefined && (typeof title !== 'string' || /[\r\n]/.test(title))) {
+    throw Error('图片 title 无效');
+  }
+  const escapedAlt = alt.replace(/([\\\]])/g, '\\$1');
+  const suffix = title === null || title === undefined
+    ? ''
+    : ` "${title.replace(/([\\"])/g, '\\$1')}"`;
+  return `![${escapedAlt}](${href}${suffix})`;
+}
+
+function imageAttributePlan(
+  source: string,
+  state: EditorState,
+  step: Record<string, any>,
+  position: SourcePosition,
+): NativePlan | null {
+  if (step.stepType !== 'replace' || step.structure || step.from + 1 !== step.to ||
+      step.slice?.openStart || step.slice?.openEnd) return null;
+  const content = step.slice?.content ?? [];
+  if (content.length !== 1 || content[0]?.type !== 'image') return null;
+  const before = state.doc.nodeAt(step.from);
+  if (before?.type.name !== 'image') return null;
+  const from = position(step.from, 'from');
+  const to = position(step.to, 'to');
+  if (from >= to) throw Error('图片 owner 无法唯一映射到原文');
+  const patches = [{ from, to, insert: imageSource(content[0].attrs ?? {}) }];
+  return { patches, candidate: applyNativePatches(source, patches), kind: 'image-attrs' };
+}
 
 function pastePlan(
   source: string,
@@ -875,6 +912,8 @@ export function planNativeTransaction(
 
   const table = tableCommandPlan(source, state, tr, ranges, fallbackEol);
   if (table) return table;
+  const imageAttributes = imageAttributePlan(source, state, step, position);
+  if (imageAttributes) return imageAttributes;
 
   const mark = markPlan(source, state, tr, position);
   if (mark) return mark;

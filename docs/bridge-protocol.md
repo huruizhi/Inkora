@@ -93,6 +93,14 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
 
 返回带相同 `requestID` 的 `stateChanged`。尚未加载文档时返回 `editor_not_ready`。
 
+### 图片命令
+
+`applyImageImport` 携带 document/revision、`documentEpoch`、asset UUID、已确定 URI、alt、可空 title 与单个 `inkora-asset://resource/<uuid>` capability。成功是一次正文/history/revision 事务；composition、源码 dirty draft、过期 revision 或无法证明 owner 时拒绝。
+
+`setImageDescriptors` 携带同一 document epoch 的 descriptor 数组。状态限定为 `ready/missing/denied/unsupported/error/pending`；只有 ready 必须且只能带 capability URL。它只刷新 NodeView，不改变正文、dirty、revision、selection 或 history。
+
+`prepareImageSave` 携带非空 rewrite 数组，每项以 asset ID 绑定唯一 `from` owner 和确定 `to` URI。编辑器整体校验并作为一个内容事务接受或拒绝；该命令不能由 `markSaved` 替代，也不得改写已有非托管引用。
+
 ## Editor → Native
 
 ### `ready`
@@ -165,6 +173,10 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
 | `internal_error` | `stop_saving` | 停止保存，允许重新加载或用户另存恢复 |
 
 `code` 与 `action` 的组合是固定契约；不匹配的组合本身视为 `invalid_message`。
+
+### `imageAccessRequested`
+
+图片占位的「授权/定位」动作发送 document ID、revision 和原 `href`。原生只接受当前 document/revision，经过用户选择签发新 capability，再用 `setImageDescriptors` 回填；该事件本身不改正文或焦点。
 
 ## 请求、超时与乱序
 

@@ -1,5 +1,11 @@
 import AppKit
 
+struct DocumentImageSavePreparation {
+  let managedPlan: LocalImageSavePlan?
+  let sourceAuthorizedDirectory: URL?
+  let targetAuthorizedDirectory: URL?
+}
+
 enum InkoraDocumentError: LocalizedError {
   case invalidUTF8
   case utf16Detected
@@ -31,6 +37,10 @@ enum InkoraDocumentError: LocalizedError {
 @objc(InkoraDocument)
 final class InkoraDocument: NSDocument {
   typealias SnapshotRequester = (@escaping (Result<BridgeSnapshot, Error>) -> Void) -> Void
+  typealias ImageSavePreparer = (
+    _ targetURL: URL,
+    _ completion: @escaping (Result<DocumentImageSavePreparation?, Error>) -> Void
+  ) -> Void
 
   private struct PendingSave {
     let url: URL
@@ -77,6 +87,10 @@ final class InkoraDocument: NSDocument {
   private var lastRecoveryData: Data?
   private(set) var recoveryError: Error?
   private let openHistory: DocumentOpenHistory
+  private var localImageSession: LocalImageSession?
+  private var preparedImageSave: DocumentImageSavePreparation?
+  private var preparedImageMigration: LocalImageMigrationPlan?
+  private var imageSavePreparer: ImageSavePreparer?
 
   override init() {
     openHistory = .shared
@@ -128,6 +142,105 @@ final class InkoraDocument: NSDocument {
   func configureRecovery(store: RecoveryStore, snapshotRequester: SnapshotRequester? = nil) {
     recoveryStore = store
     recoverySnapshotRequester = snapshotRequester
+  }
+
+  func configureImageSavePreparer(_ preparer: ImageSavePreparer?) {
+    imageSavePreparer = preparer
+  }
+
+  func localImages() throws -> LocalImageSession {
+    if let localImageSession { return localImageSession }
+    guard let recoveryStore else { throw CocoaError(.fileNoSuchFile) }
+    let root = recoveryStore.directory.appendingPathComponent("LocalImages", isDirectory: true)
+    let session = try LocalImageStore(root: root).begin(
+      documentID: recoveryID.uuidString.lowercased(), sessionID: recoveryID)
+    localImageSession = session
+    return session
+  }
+
+  func rememberImageDirectory(
+    _ directory: URL,
+    for documentURL: URL,
+    role: String,
+    access: AssetDirectoryAccess
+  ) throws {
+    guard let recoveryStore else { throw CocoaError(.fileNoSuchFile) }
+    let store = AssetBookmarkStore(
+      url: recoveryStore.directory.appendingPathComponent(
+        "LocalImages/\(recoveryID.uuidString.lowercased())-bookmarks.json")
+    )
+    try store.remember(directory, role: role, access: access)
+    if role == "document-directory" || role == "document-read-directory" {
+      try AssetBookmarkStore(
+        url: recoveryStore.directory.appendingPathComponent(
+          "LocalImages/Documents/\(Self.imageDocumentKey(documentURL)).json")
+      ).remember(directory, role: role, access: access)
+    }
+  }
+
+  func restoredImageDirectory(role: String, for documentURL: URL) -> URL? {
+    guard let recoveryStore else { return nil }
+    if role == "document-directory" || role == "document-read-directory",
+      let directory = try? AssetBookmarkStore(
+        url: recoveryStore.directory.appendingPathComponent(
+          "LocalImages/Documents/\(Self.imageDocumentKey(documentURL)).json")
+      ).resolve(role: role)
+    {
+      return directory
+    }
+    return try? AssetBookmarkStore(
+      url: recoveryStore.directory.appendingPathComponent(
+        "LocalImages/\(recoveryID.uuidString.lowercased())-bookmarks.json")
+    ).resolve(role: role)
+  }
+
+  private static func imageDocumentKey(_ url: URL) -> String {
+    RecoveryFingerprint.hash(Data(url.standardizedFileURL.absoluteString.utf8))
+  }
+
+  func importLocalImage(
+    fileURL: URL,
+    preferredName: String? = nil,
+    authorizedDirectory: URL?
+  ) throws -> LocalImageAsset {
+    let sourceAccessed = fileURL.startAccessingSecurityScopedResource()
+    let directoryAccessed = authorizedDirectory?.startAccessingSecurityScopedResource() ?? false
+    defer {
+      if sourceAccessed { fileURL.stopAccessingSecurityScopedResource() }
+      if directoryAccessed { authorizedDirectory?.stopAccessingSecurityScopedResource() }
+    }
+    return try localImages().importFile(
+      from: fileURL, preferredName: preferredName, documentURL: self.fileURL,
+      authorizedDirectory: authorizedDirectory)
+  }
+
+  func importPastedPNG(
+    _ data: Data,
+    preferredName: String = "Pasted Image.png",
+    authorizedDirectory: URL?
+  ) throws -> LocalImageAsset {
+    let directoryAccessed = authorizedDirectory?.startAccessingSecurityScopedResource() ?? false
+    defer { if directoryAccessed { authorizedDirectory?.stopAccessingSecurityScopedResource() } }
+    return try localImages().importBitmapPNG(
+      data, preferredName: preferredName, documentURL: fileURL,
+      authorizedDirectory: authorizedDirectory)
+  }
+
+  func prepareLocalImagesForSave(
+    documentURL: URL,
+    authorizedDirectory: URL
+  ) throws -> LocalImageSavePlan? {
+    let session = try localImages()
+    guard
+      session.assets.contains(where: {
+        ($0.state == .draft || $0.state == .awaitingMarkdown)
+          && $0.insertion == .accepted
+      })
+    else { return nil }
+    let accessed = authorizedDirectory.startAccessingSecurityScopedResource()
+    defer { if accessed { authorizedDirectory.stopAccessingSecurityScopedResource() } }
+    return try session.prepareFirstSave(
+      documentURL: documentURL, authorizedDirectory: authorizedDirectory)
   }
 
   var text: String {
@@ -404,6 +517,26 @@ final class InkoraDocument: NSDocument {
     }
 
     saveInProgress = true
+    if let imageSavePreparer {
+      imageSavePreparer(save.url) { [weak self] result in
+        guard let self else { return }
+        switch result {
+        case .success(let plan):
+          self.preparedImageSave = plan
+          self.requestSnapshotForSave(save, using: snapshotRequester)
+        case .failure(let error):
+          self.finishCurrentSave(error)
+        }
+      }
+      return
+    }
+    requestSnapshotForSave(save, using: snapshotRequester)
+  }
+
+  private func requestSnapshotForSave(
+    _ save: PendingSave,
+    using snapshotRequester: @escaping SnapshotRequester
+  ) {
     snapshotRequester { [weak self] result in
       guard let self else { return }
       switch result {
@@ -434,6 +567,44 @@ final class InkoraDocument: NSDocument {
         return
       }
     }
+    if let plan = preparedImageSave?.managedPlan {
+      let accessed = plan.authorizedDirectory.startAccessingSecurityScopedResource()
+      defer { if accessed { plan.authorizedDirectory.stopAccessingSecurityScopedResource() } }
+      do { try localImages().publish(plan) } catch {
+        finishCurrentSave(error)
+        return
+      }
+    }
+    if let sourceURL = fileURL,
+      sourceURL.standardizedFileURL != save.url.standardizedFileURL,
+      let sourceGrant = preparedImageSave?.sourceAuthorizedDirectory,
+      let targetGrant = preparedImageSave?.targetAuthorizedDirectory,
+      let recoveryStore
+    {
+      let sourceAccessed = sourceGrant.startAccessingSecurityScopedResource()
+      let targetAccessed = targetGrant.startAccessingSecurityScopedResource()
+      defer {
+        if sourceAccessed { sourceGrant.stopAccessingSecurityScopedResource() }
+        if targetAccessed { targetGrant.stopAccessingSecurityScopedResource() }
+      }
+      do {
+        let migrator = LocalImageMigrationCoordinator(
+          journalRoot: recoveryStore.directory.appendingPathComponent(
+            "ImageMigrationJournal", isDirectory: true))
+        let migration = try migrator.prepare(
+          markdown: snapshot.text,
+          sourceDocumentURL: sourceURL,
+          targetDocumentURL: save.url,
+          sourceAuthorizedDirectory: sourceGrant,
+          targetAuthorizedDirectory: targetGrant,
+          excludingURIs: Set(preparedImageSave?.managedPlan?.items.map(\.targetURI) ?? []))
+        try migrator.publish(migration)
+        preparedImageMigration = migration
+      } catch {
+        finishCurrentSave(error)
+        return
+      }
+    }
     super.save(
       to: save.url,
       ofType: save.typeName,
@@ -441,6 +612,20 @@ final class InkoraDocument: NSDocument {
     ) { [weak self] error in
       guard let self else { return }
       if error == nil {
+        if let session = self.localImageSession {
+          if let plan = self.preparedImageSave?.managedPlan {
+            try? session.confirmMarkdownCommit(plan)
+          }
+          try? session.retireTransferredStorageIfPossible()
+        }
+        if let migration = self.preparedImageMigration, let recoveryStore = self.recoveryStore {
+          try? LocalImageMigrationCoordinator(
+            journalRoot: recoveryStore.directory.appendingPathComponent(
+              "ImageMigrationJournal", isDirectory: true)
+          ).confirm(migration)
+        }
+        self.preparedImageSave = nil
+        self.preparedImageMigration = nil
         self.invalidateRecoveryWork()
         self.recoveredUnsaved = false
         self.retireRecovery()
@@ -728,6 +913,10 @@ final class InkoraDocument: NSDocument {
   private func finishCurrentSave(_ error: Error?) {
     guard !pendingSaves.isEmpty else { return }
     let save = pendingSaves.removeFirst()
+    if error != nil {
+      preparedImageSave = nil
+      preparedImageMigration = nil
+    }
     saveInProgress = false
     save.completion(error)
     processNextSave()

@@ -246,6 +246,7 @@ const guardLinkCompositionAction = (event: Event): void => {
 };
 app.addEventListener("pointerdown", guardLinkCompositionAction, true);
 app.addEventListener("click", guardLinkCompositionAction, true);
+let assetEpoch: string | undefined;
 
 function updateModeControls(): void {
   const activeRuntime = runtime;
@@ -626,11 +627,22 @@ window.inkora = {
               searchPanel.resetForNewDocument();
               loadEpoch += 1;
               closeLinkEditor();
+              assetEpoch = undefined;
               runtime?.destroy();
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange, {
                 onLinkRequest: (binding) => {
                   const owner = runtime;
                   if (owner) openLinkEditor(owner, binding);
+                },
+                onImageAccessRequest: href => {
+                  if (activeDocumentID === undefined || activeRevision === undefined) return;
+                  postToNative({
+                    protocolVersion: BRIDGE_PROTOCOL_VERSION,
+                    type: "imageAccessRequested",
+                    documentID: activeDocumentID,
+                    revision: activeRevision,
+                    href,
+                  });
                 },
               });
               updateModeControls();
@@ -740,6 +752,68 @@ window.inkora = {
           break;
         case "queryState":
           postToNative(session.queryState(command));
+          break;
+        case "applyImageImport":
+          executingCommand = true;
+          try {
+            const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const response = session.executeMutation(
+              command,
+              () => epochMatches && !searchPanel.isInputComposing &&
+                !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)) &&
+                (runtime?.insertImage({
+                uri: command.uri, alt: command.alt, title: command.title,
+              }) ?? false),
+              () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+            );
+            if (response.type === "stateChanged") {
+              assetEpoch = command.documentEpoch;
+              runtime?.applyImageDescriptors([{
+                href: command.uri, status: "ready", displayURL: command.displayURL,
+              }]);
+            }
+            postToNative(response);
+          } finally {
+            executingCommand = false;
+            updateModeControls();
+          }
+          break;
+        case "prepareImageSave":
+          executingCommand = true;
+          try {
+            const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const response = session.executeMutation(
+              command,
+              () => epochMatches && !searchPanel.isInputComposing &&
+                !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)) &&
+                (runtime?.rewriteManagedImages(command.rewrites) ?? false),
+              () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+            );
+            if (response.type === "stateChanged") assetEpoch = command.documentEpoch;
+            postToNative(response);
+          } finally {
+            executingCommand = false;
+            updateModeControls();
+          }
+          break;
+        case "setImageDescriptors":
+          {
+            const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const response = epochMatches
+              ? session.acknowledge(
+                command,
+                runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+              )
+              : session.executeMutation(
+                command, () => false,
+                () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+              );
+            if (response.type === "stateChanged") {
+              runtime?.applyImageDescriptors(command.descriptors);
+              assetEpoch = command.documentEpoch;
+            }
+            postToNative(response);
+          }
           break;
       }
     } catch (error) {

@@ -60,6 +60,50 @@ describe("Bridge protocol v1 contracts", () => {
     });
   });
 
+  it("strictly decodes image import, descriptor, and first-save commands", () => {
+    expect(decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1,
+      type: "applyImageImport",
+      requestID: "image-1",
+      documentID: "doc-1",
+      revision: 4,
+      documentEpoch: "epoch-1",
+      assetID: "asset-1",
+      uri: "Note.assets/a%20b.png",
+      alt: "a b",
+      title: null,
+      displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000",
+    }))).toMatchObject({ type: "applyImageImport", assetID: "asset-1", title: null });
+    expect(decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1,
+      type: "setImageDescriptors",
+      requestID: "descriptors-1",
+      documentID: "doc-1",
+      revision: 4,
+      documentEpoch: "epoch-1",
+      descriptors: [{ href: "Note.assets/a.png", status: "missing", message: "图片缺失" }],
+    }))).toMatchObject({ type: "setImageDescriptors", descriptors: [{ status: "missing" }] });
+    expect(decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1,
+      type: "prepareImageSave",
+      requestID: "prepare-1",
+      documentID: "doc-1",
+      revision: 4,
+      documentEpoch: "epoch-1",
+      rewrites: [{
+        assetID: "asset-1",
+        from: "inkora-draft://asset/asset-1",
+        to: "Note.assets/a.png",
+      }],
+    }))).toMatchObject({ type: "prepareImageSave", rewrites: [{ assetID: "asset-1" }] });
+
+    expect(() => decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1, type: "setImageDescriptors", requestID: "bad",
+      documentID: "doc-1", revision: 4, documentEpoch: "epoch-1",
+      descriptors: [{ href: "x", status: "ready", displayURL: "file:///tmp/x" }],
+    }))).toThrow("Invalid displayURL");
+  });
+
   it("rejects unsupported versions, invalid revisions, and malformed commands", () => {
     expect(() =>
       decodeNativeCommand(
@@ -121,6 +165,19 @@ describe("Bridge protocol v1 contracts", () => {
         }),
       ),
     ).toMatchObject({ type: "editorError", action: "stop_saving" });
+    expect(JSON.parse(encodeEditorMessage({
+      protocolVersion: 1,
+      type: "imageAccessRequested",
+      documentID: "doc-1",
+      revision: 2,
+      href: "Old.assets/a.png",
+    }))).toEqual({
+      protocolVersion: 1,
+      type: "imageAccessRequested",
+      documentID: "doc-1",
+      revision: 2,
+      href: "Old.assets/a.png",
+    });
   });
 
   it("keeps revisions monotonic and rejects stale or duplicate requests", () => {

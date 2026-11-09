@@ -25,6 +25,16 @@ export interface EditableState {
   canRedo: boolean;
 }
 
+export type ImageDescriptorStatus =
+  | "ready" | "missing" | "denied" | "unsupported" | "error" | "pending";
+
+export interface BridgeImageDescriptor {
+  href: string;
+  status: ImageDescriptorStatus;
+  displayURL?: string;
+  message?: string;
+}
+
 export type NativeCommand =
   | {
       protocolVersion: 1;
@@ -61,6 +71,37 @@ export type NativeCommand =
       protocolVersion: 1;
       type: "queryState";
       requestID: string;
+    }
+  | {
+      protocolVersion: 1;
+      type: "applyImageImport";
+      requestID: string;
+      documentID: string;
+      revision: number;
+      documentEpoch: string;
+      assetID: string;
+      uri: string;
+      alt: string;
+      title: string | null;
+      displayURL: string;
+    }
+  | {
+      protocolVersion: 1;
+      type: "setImageDescriptors";
+      requestID: string;
+      documentID: string;
+      revision: number;
+      documentEpoch: string;
+      descriptors: BridgeImageDescriptor[];
+    }
+  | {
+      protocolVersion: 1;
+      type: "prepareImageSave";
+      requestID: string;
+      documentID: string;
+      revision: number;
+      documentEpoch: string;
+      rewrites: Array<{ assetID: string; from: string; to: string }>;
     };
 
 export type EditorMessage =
@@ -88,6 +129,13 @@ export type EditorMessage =
       code: EditorErrorCode;
       action: RecoveryAction;
       message: string;
+    }
+  | {
+      protocolVersion: 1;
+      type: "imageAccessRequested";
+      documentID: string;
+      revision: number;
+      href: string;
     };
 
 export function decodeNativeCommand(serialized: string): NativeCommand {
@@ -146,6 +194,40 @@ export function decodeNativeCommand(serialized: string): NativeCommand {
         protocolVersion: BRIDGE_PROTOCOL_VERSION,
         type: "queryState",
         requestID,
+      };
+    case "applyImageImport":
+      return {
+        protocolVersion: BRIDGE_PROTOCOL_VERSION,
+        type: "applyImageImport",
+        requestID,
+        documentID: requireString(value, "documentID"),
+        revision: requireRevision(value),
+        documentEpoch: requireString(value, "documentEpoch"),
+        assetID: requireString(value, "assetID"),
+        uri: requireString(value, "uri"),
+        alt: requireString(value, "alt", true),
+        title: requireNullableString(value, "title"),
+        displayURL: requireCapabilityURL(value, "displayURL"),
+      };
+    case "setImageDescriptors":
+      return {
+        protocolVersion: BRIDGE_PROTOCOL_VERSION,
+        type: "setImageDescriptors",
+        requestID,
+        documentID: requireString(value, "documentID"),
+        revision: requireRevision(value),
+        documentEpoch: requireString(value, "documentEpoch"),
+        descriptors: requireImageDescriptors(value.descriptors),
+      };
+    case "prepareImageSave":
+      return {
+        protocolVersion: BRIDGE_PROTOCOL_VERSION,
+        type: "prepareImageSave",
+        requestID,
+        documentID: requireString(value, "documentID"),
+        revision: requireRevision(value),
+        documentEpoch: requireString(value, "documentEpoch"),
+        rewrites: requireImageRewrites(value.rewrites),
       };
     default:
       throw new Error(`Unsupported native command: ${value.type}`);
@@ -293,6 +375,37 @@ export class EditorProtocolSession {
     return this.stateChanged(command.requestID);
   }
 
+  executeMutation(
+    command: { requestID: string; documentID: string; revision: number },
+    execute: () => boolean,
+    getEditableState: () => EditableState,
+  ): EditorMessage {
+    const duplicate = this.claimRequest(command.requestID);
+    if (duplicate) return duplicate;
+    const mismatch = this.validateDocumentRevision(command);
+    if (mismatch) return mismatch;
+    if (!this.state || this.state.revision >= Number.MAX_SAFE_INTEGER) {
+      return this.error("internal_error", command.requestID, "Revision limit reached");
+    }
+    if (!execute()) {
+      return this.error("command_rejected", command.requestID, "Image content transaction was rejected");
+    }
+    this.state = { ...this.state, revision: this.state.revision + 1, ...getEditableState() };
+    return this.stateChanged(command.requestID);
+  }
+
+  acknowledge(
+    command: { requestID: string; documentID: string; revision: number },
+    editable: EditableState,
+  ): EditorMessage {
+    const duplicate = this.claimRequest(command.requestID);
+    if (duplicate) return duplicate;
+    const mismatch = this.validateDocumentRevision(command);
+    if (mismatch) return mismatch;
+    this.state = { ...this.state!, ...editable };
+    return this.stateChanged(command.requestID);
+  }
+
   private validateDocumentRevision(command: {
     requestID: string;
     documentID: string;
@@ -367,6 +480,51 @@ function requireString(
     throw new Error(`Invalid ${key}`);
   }
   return field;
+}
+
+function requireNullableString(value: Record<string, unknown>, key: string): string | null {
+  const field = value[key];
+  // Swift's synthesized Codable omits nil optionals. Treat an omitted nullable
+  // field exactly like JSON null so both encoders preserve protocol semantics.
+  if (field === undefined) return null;
+  if (field !== null && typeof field !== "string") throw new Error(`Invalid ${key}`);
+  return field as string | null;
+}
+
+const capabilityPattern = /^inkora-asset:\/\/resource\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function requireCapabilityURL(value: Record<string, unknown>, key: string): string {
+  const field = requireString(value, key);
+  if (!capabilityPattern.test(field)) throw new Error(`Invalid ${key}`);
+  return field;
+}
+
+function requireImageDescriptors(value: unknown): BridgeImageDescriptor[] {
+  if (!Array.isArray(value)) throw new Error("Invalid image descriptor");
+  return value.map(item => {
+    if (!isRecord(item)) throw new Error("Invalid image descriptor");
+    const href = requireString(item, "href");
+    const status = requireString(item, "status") as ImageDescriptorStatus;
+    if (!["ready", "missing", "denied", "unsupported", "error", "pending"].includes(status)) {
+      throw new Error("Invalid image descriptor");
+    }
+    const displayURL = item.displayURL === undefined ? undefined : requireCapabilityURL(item, "displayURL");
+    const message = item.message === undefined ? undefined : requireString(item, "message");
+    if ((status === "ready") !== (displayURL !== undefined)) throw new Error("Invalid image descriptor");
+    return { href, status, ...(displayURL ? { displayURL } : {}), ...(message ? { message } : {}) };
+  });
+}
+
+function requireImageRewrites(value: unknown): Array<{ assetID: string; from: string; to: string }> {
+  if (!Array.isArray(value) || value.length === 0) throw new Error("Invalid image rewrites");
+  return value.map(item => {
+    if (!isRecord(item)) throw new Error("Invalid image rewrites");
+    return {
+      assetID: requireString(item, "assetID"),
+      from: requireString(item, "from"),
+      to: requireString(item, "to"),
+    };
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

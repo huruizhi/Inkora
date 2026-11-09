@@ -11,6 +11,9 @@ enum BridgeCommandType: String, Codable {
   case markSaved
   case executeCommand
   case queryState
+  case applyImageImport
+  case setImageDescriptors
+  case prepareImageSave
 }
 
 enum BridgeEventType: String, Codable {
@@ -18,11 +21,34 @@ enum BridgeEventType: String, Codable {
   case stateChanged
   case snapshotReady
   case editorError
+  case imageAccessRequested
 }
 
 enum BridgeEditorCommand: String, Codable {
   case undo
   case redo
+}
+
+enum BridgeImageStatus: String, Codable {
+  case ready
+  case missing
+  case denied
+  case unsupported
+  case error
+  case pending
+}
+
+struct BridgeImageDescriptor: Codable, Equatable {
+  let href: String
+  let status: BridgeImageStatus
+  let displayURL: String?
+  let message: String?
+}
+
+struct BridgeImageRewrite: Codable, Equatable {
+  let assetID: String
+  let from: String
+  let to: String
 }
 
 enum BridgeErrorCode: String, Codable, CaseIterable {
@@ -68,6 +94,48 @@ struct BridgeNativeCommand: Codable, Equatable {
   let revision: Int?
   let text: String?
   let command: BridgeEditorCommand?
+  let documentEpoch: String?
+  let assetID: String?
+  let uri: String?
+  let alt: String?
+  let title: String?
+  let displayURL: String?
+  let descriptors: [BridgeImageDescriptor]?
+  let rewrites: [BridgeImageRewrite]?
+
+  init(
+    protocolVersion: Int,
+    type: BridgeCommandType,
+    requestID: String,
+    documentID: String?,
+    revision: Int?,
+    text: String?,
+    command: BridgeEditorCommand?,
+    documentEpoch: String? = nil,
+    assetID: String? = nil,
+    uri: String? = nil,
+    alt: String? = nil,
+    title: String? = nil,
+    displayURL: String? = nil,
+    descriptors: [BridgeImageDescriptor]? = nil,
+    rewrites: [BridgeImageRewrite]? = nil
+  ) {
+    self.protocolVersion = protocolVersion
+    self.type = type
+    self.requestID = requestID
+    self.documentID = documentID
+    self.revision = revision
+    self.text = text
+    self.command = command
+    self.documentEpoch = documentEpoch
+    self.assetID = assetID
+    self.uri = uri
+    self.alt = alt
+    self.title = title
+    self.displayURL = displayURL
+    self.descriptors = descriptors
+    self.rewrites = rewrites
+  }
 
   static func loadDocument(
     requestID: String,
@@ -82,7 +150,15 @@ struct BridgeNativeCommand: Codable, Equatable {
       documentID: documentID,
       revision: revision,
       text: text,
-      command: nil
+      command: nil,
+      documentEpoch: nil,
+      assetID: nil,
+      uri: nil,
+      alt: nil,
+      title: nil,
+      displayURL: nil,
+      descriptors: nil,
+      rewrites: nil
     )
   }
 
@@ -94,7 +170,15 @@ struct BridgeNativeCommand: Codable, Equatable {
       documentID: documentID,
       revision: revision,
       text: nil,
-      command: nil
+      command: nil,
+      documentEpoch: nil,
+      assetID: nil,
+      uri: nil,
+      alt: nil,
+      title: nil,
+      displayURL: nil,
+      descriptors: nil,
+      rewrites: nil
     )
   }
 
@@ -111,7 +195,15 @@ struct BridgeNativeCommand: Codable, Equatable {
       documentID: documentID,
       revision: revision,
       text: text,
-      command: nil
+      command: nil,
+      documentEpoch: nil,
+      assetID: nil,
+      uri: nil,
+      alt: nil,
+      title: nil,
+      displayURL: nil,
+      descriptors: nil,
+      rewrites: nil
     )
   }
 
@@ -128,7 +220,15 @@ struct BridgeNativeCommand: Codable, Equatable {
       documentID: documentID,
       revision: revision,
       text: nil,
-      command: command
+      command: command,
+      documentEpoch: nil,
+      assetID: nil,
+      uri: nil,
+      alt: nil,
+      title: nil,
+      displayURL: nil,
+      descriptors: nil,
+      rewrites: nil
     )
   }
 
@@ -140,7 +240,97 @@ struct BridgeNativeCommand: Codable, Equatable {
       documentID: nil,
       revision: nil,
       text: nil,
-      command: nil
+      command: nil,
+      documentEpoch: nil,
+      assetID: nil,
+      uri: nil,
+      alt: nil,
+      title: nil,
+      displayURL: nil,
+      descriptors: nil,
+      rewrites: nil
+    )
+  }
+
+  static func applyImageImport(
+    requestID: String,
+    documentID: String,
+    revision: Int,
+    documentEpoch: String,
+    assetID: String,
+    uri: String,
+    alt: String,
+    title: String?,
+    displayURL: String
+  ) -> Self {
+    Self(
+      protocolVersion: BridgeProtocolV1.version,
+      type: .applyImageImport,
+      requestID: requestID,
+      documentID: documentID,
+      revision: revision,
+      text: nil,
+      command: nil,
+      documentEpoch: documentEpoch,
+      assetID: assetID,
+      uri: uri,
+      alt: alt,
+      title: title,
+      displayURL: displayURL,
+      descriptors: nil,
+      rewrites: nil
+    )
+  }
+
+  static func setImageDescriptors(
+    requestID: String,
+    documentID: String,
+    revision: Int,
+    documentEpoch: String,
+    descriptors: [BridgeImageDescriptor]
+  ) -> Self {
+    Self(
+      protocolVersion: BridgeProtocolV1.version,
+      type: .setImageDescriptors,
+      requestID: requestID,
+      documentID: documentID,
+      revision: revision,
+      text: nil,
+      command: nil,
+      documentEpoch: documentEpoch,
+      assetID: nil,
+      uri: nil,
+      alt: nil,
+      title: nil,
+      displayURL: nil,
+      descriptors: descriptors,
+      rewrites: nil
+    )
+  }
+
+  static func prepareImageSave(
+    requestID: String,
+    documentID: String,
+    revision: Int,
+    documentEpoch: String,
+    rewrites: [BridgeImageRewrite]
+  ) -> Self {
+    Self(
+      protocolVersion: BridgeProtocolV1.version,
+      type: .prepareImageSave,
+      requestID: requestID,
+      documentID: documentID,
+      revision: revision,
+      text: nil,
+      command: nil,
+      documentEpoch: documentEpoch,
+      assetID: nil,
+      uri: nil,
+      alt: nil,
+      title: nil,
+      displayURL: nil,
+      descriptors: nil,
+      rewrites: rewrites
     )
   }
 
@@ -166,7 +356,72 @@ struct BridgeNativeCommand: Codable, Equatable {
       guard command != nil else { throw BridgeProtocolValidationError.missingField("command") }
     case .queryState:
       break
+    case .applyImageImport:
+      try validateDocumentRevision()
+      try validateDocumentEpoch()
+      guard let assetID, !assetID.isEmpty else {
+        throw BridgeProtocolValidationError.missingField("assetID")
+      }
+      guard let uri, !uri.isEmpty else {
+        throw BridgeProtocolValidationError.missingField("uri")
+      }
+      guard alt != nil else { throw BridgeProtocolValidationError.missingField("alt") }
+      guard let displayURL, Self.isCapabilityURL(displayURL) else {
+        throw BridgeProtocolValidationError.invalidCapabilityURL
+      }
+    case .setImageDescriptors:
+      try validateDocumentRevision()
+      try validateDocumentEpoch()
+      guard let descriptors else {
+        throw BridgeProtocolValidationError.missingField("descriptors")
+      }
+      for descriptor in descriptors {
+        guard !descriptor.href.isEmpty else {
+          throw BridgeProtocolValidationError.missingField("descriptors.href")
+        }
+        if descriptor.status == .ready {
+          guard let displayURL = descriptor.displayURL, Self.isCapabilityURL(displayURL) else {
+            throw BridgeProtocolValidationError.invalidCapabilityURL
+          }
+        } else if descriptor.displayURL != nil {
+          throw BridgeProtocolValidationError.invalidCapabilityURL
+        }
+      }
+    case .prepareImageSave:
+      try validateDocumentRevision()
+      try validateDocumentEpoch()
+      guard let rewrites, !rewrites.isEmpty else {
+        throw BridgeProtocolValidationError.missingField("rewrites")
+      }
+      for rewrite in rewrites
+      where
+        rewrite.assetID.isEmpty || rewrite.from.isEmpty || rewrite.to.isEmpty
+      {
+        throw BridgeProtocolValidationError.invalidImageRewrite
+      }
     }
+  }
+
+  private func validateDocumentEpoch() throws {
+    guard let documentEpoch, !documentEpoch.isEmpty else {
+      throw BridgeProtocolValidationError.missingField("documentEpoch")
+    }
+  }
+
+  private static func isCapabilityURL(_ string: String) -> Bool {
+    guard
+      let components = URLComponents(string: string),
+      components.scheme == "inkora-asset",
+      components.host == "resource",
+      components.user == nil,
+      components.password == nil,
+      components.port == nil,
+      components.query == nil,
+      components.fragment == nil
+    else { return false }
+    let path = components.percentEncodedPath
+    guard path.first == "/", !path.dropFirst().contains("/") else { return false }
+    return UUID(uuidString: String(path.dropFirst())) != nil
   }
 
   private func validateDocumentRevision() throws {
@@ -194,6 +449,33 @@ struct BridgeEditorEvent: Codable, Equatable {
   let code: BridgeErrorCode?
   let action: BridgeRecoveryAction?
   let message: String?
+  let href: String?
+
+  init(
+    protocolVersion: Int,
+    type: BridgeEventType,
+    requestID: String?,
+    documentID: String?,
+    revision: Int?,
+    state: BridgeEditorState?,
+    text: String?,
+    code: BridgeErrorCode?,
+    action: BridgeRecoveryAction?,
+    message: String?,
+    href: String? = nil
+  ) {
+    self.protocolVersion = protocolVersion
+    self.type = type
+    self.requestID = requestID
+    self.documentID = documentID
+    self.revision = revision
+    self.state = state
+    self.text = text
+    self.code = code
+    self.action = action
+    self.message = message
+    self.href = href
+  }
 
   func validate() throws {
     guard protocolVersion == BridgeProtocolV1.version else {
@@ -227,6 +509,15 @@ struct BridgeEditorEvent: Codable, Equatable {
       guard let message, !message.isEmpty else {
         throw BridgeProtocolValidationError.missingField("message")
       }
+    case .imageAccessRequested:
+      guard let documentID, !documentID.isEmpty else {
+        throw BridgeProtocolValidationError.missingField("documentID")
+      }
+      guard let revision else { throw BridgeProtocolValidationError.missingField("revision") }
+      try Self.validateRevision(revision)
+      guard let href, !href.isEmpty else {
+        throw BridgeProtocolValidationError.missingField("href")
+      }
     }
   }
 
@@ -242,6 +533,8 @@ enum BridgeProtocolValidationError: Error, Equatable {
   case missingField(String)
   case invalidRevision
   case invalidErrorAction
+  case invalidCapabilityURL
+  case invalidImageRewrite
 }
 
 struct BridgeRevisionTracker {

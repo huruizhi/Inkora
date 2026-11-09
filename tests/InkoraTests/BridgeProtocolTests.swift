@@ -127,6 +127,64 @@ final class BridgeProtocolTests: XCTestCase {
     XCTAssertEqual(command.command, .undo)
   }
 
+  func testImageCommandsRoundTripWithStrictDocumentEpochAndCapabilities() throws {
+    let descriptor = BridgeImageDescriptor(
+      href: "Note.assets/a.png", status: .ready,
+      displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000",
+      message: nil)
+    let importCommand = BridgeNativeCommand.applyImageImport(
+      requestID: "image-1", documentID: "doc-1", revision: 4,
+      documentEpoch: "epoch-1", assetID: "asset-1", uri: "Note.assets/a.png",
+      alt: "图", title: nil, displayURL: descriptor.displayURL!)
+    let descriptors = BridgeNativeCommand.setImageDescriptors(
+      requestID: "descriptors-1", documentID: "doc-1", revision: 4,
+      documentEpoch: "epoch-1", descriptors: [descriptor])
+    let prepare = BridgeNativeCommand.prepareImageSave(
+      requestID: "prepare-1", documentID: "doc-1", revision: 4,
+      documentEpoch: "epoch-1",
+      rewrites: [
+        BridgeImageRewrite(
+          assetID: "asset-1", from: "inkora-draft://asset/asset-1",
+          to: "Note.assets/a.png")
+      ])
+
+    for command in [importCommand, descriptors, prepare] {
+      try command.validate()
+      XCTAssertEqual(
+        try JSONDecoder().decode(BridgeNativeCommand.self, from: JSONEncoder().encode(command)),
+        command)
+    }
+  }
+
+  func testImageDescriptorRejectsFileURLAndReadyWithoutCapability() throws {
+    let invalid = BridgeNativeCommand.setImageDescriptors(
+      requestID: "bad", documentID: "doc-1", revision: 0,
+      documentEpoch: "epoch-1",
+      descriptors: [
+        BridgeImageDescriptor(
+          href: "a.png", status: .ready, displayURL: "file:///tmp/a.png", message: nil)
+      ])
+    XCTAssertThrowsError(try invalid.validate())
+  }
+
+  func testImageAccessRequestRequiresCurrentDocumentRevisionAndHrefShape() throws {
+    let json = """
+      {"protocolVersion":1,"type":"imageAccessRequested","documentID":"doc-1",\
+      "revision":3,"href":"Old.assets/a.png"}
+      """
+    let event = try JSONDecoder().decode(BridgeEditorEvent.self, from: Data(json.utf8))
+    try event.validate()
+    XCTAssertEqual(event.href, "Old.assets/a.png")
+
+    let missing = """
+      {"protocolVersion":1,"type":"imageAccessRequested","documentID":"doc-1","revision":3}
+      """
+    let invalid = try JSONDecoder().decode(BridgeEditorEvent.self, from: Data(missing.utf8))
+    XCTAssertThrowsError(try invalid.validate()) {
+      XCTAssertEqual($0 as? BridgeProtocolValidationError, .missingField("href"))
+    }
+  }
+
   func testRevisionTrackerRejectsWrongDocumentAndOlderRevision() {
     var tracker = BridgeRevisionTracker()
     tracker.beginDocument(documentID: "doc-1", revision: 4)

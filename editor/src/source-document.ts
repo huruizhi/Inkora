@@ -36,8 +36,8 @@ const inlineTokenizer = new MarkdownIt('commonmark', { breaks: false, html: fals
 inlineTokenizer.core.ruler.after('block', 'inkora_fence_closure', annotateFenceClosure);
 inlineTokenizer.core.ruler.after('inline', 'inkora_soft_breaks', preserveSoftBreaks);
 // Production token specs reused verbatim (inkoraMarkdownParser.tokens is the
-// public copy point); the only addition is `image` → image_ref mark so image
-// tokens are no longer an unsupported-token hard failure.
+// public copy point); image tokens become selectable atoms whose source owner
+// is audited by source-ledger rather than exposed as marked alt text.
 const markdownParser = inkoraMarkdownParser;
 export function parse(source: string) {
   const starts = [0];
@@ -118,7 +118,7 @@ export function parse(source: string) {
       } else {
         // Bare URLs stay plain text (tokenizer linkify is off) and reference
         // links/images resolve against the appended definitions into real
-        // link/image_ref marks — display text, href/title and delimiter forms
+        // link marks / image atoms — alt, href/title and delimiter forms
         // all stay separated. Unknown syntax is still a bounded source-owned
         // block: keep it beside editable body text and expose one repair issue
         // instead of throwing the entire document into the legacy textarea.

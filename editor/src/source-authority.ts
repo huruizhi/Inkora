@@ -23,6 +23,8 @@ export type ProjectionAudit = {
   provenance: string[];
 };
 export type SourceDraft = { raw: string; selection: RawSelection };
+export type ManagedImageInsertion = { uri: string; alt: string; title: string | null };
+export type ManagedImageRewrite = { assetID: string; from: string; to: string };
 
 type Snapshot = {
   raw: string;
@@ -143,6 +145,18 @@ function cloneProjection(value: ProjectionAudit): ProjectionAudit {
     anchors: value.anchors.map(anchor => ({ ...anchor })),
     provenance: [...value.provenance],
   };
+}
+
+function markdownImage(value: ManagedImageInsertion): string {
+  if (!value.uri || /[\u0000-\u0020<>]/.test(value.uri) || /%(?![0-9A-Fa-f]{2})/.test(value.uri)) {
+    throw Error('图片 URI 必须是已按 UTF-8 百分号编码的安全相对 URI 或受控草稿 URI');
+  }
+  if (/[\r\n]/.test(value.alt) || (value.title !== null && /[\r\n]/.test(value.title))) {
+    throw Error('图片 alt/title 不能包含换行');
+  }
+  const alt = value.alt.replace(/([\\\]])/g, '\\$1');
+  const title = value.title === null ? '' : ` "${value.title.replace(/([\\"])/g, '\\$1')}"`;
+  return `![${alt}](${value.uri}${title})`;
 }
 
 function eolAt(raw: string, offset: number): '\n' | '\r\n' {
@@ -1057,6 +1071,111 @@ export class SourceAuthoritySession {
     this.logicalRevision++;
     this.unresolvedIntent = null; this.diagnostic = '';
     return true;
+  }
+
+  insertImage(value: ManagedImageInsertion): boolean {
+    if (this.composing) return this.guard('image_import');
+    if (this.draftDirty || this.issues.length || this.unresolvedIntent) {
+      this.diagnostic = '源码草稿、含混原文或未解决输入存在；图片已由原生保留但不能应用到当前原文';
+      return false;
+    }
+    this.finishComposition();
+    const before = this.snapshot();
+    try {
+      const image = markdownImage(value);
+      const from = Math.min(this.rawSelection.anchor, this.rawSelection.head);
+      const to = Math.max(this.rawSelection.anchor, this.rawSelection.head);
+      const raw = this.currentRaw.slice(0, from) + image + this.currentRaw.slice(to);
+      const parsed = parse(raw);
+      if (parsed.issues.length) throw Error(parsed.issues[0].message);
+      this.currentRaw = raw;
+      this.state = createInkoraProjectionState(parsed.doc, this.options);
+      this.issues = [];
+      this.projection = {
+        kind: 'exact',
+        reason: '原生确认资源后应用图片原文事务',
+        anchors: [],
+        provenance: [`managed image ${from}..${to} -> ${value.uri}`],
+      };
+      const caret = from + image.length;
+      this.rawSelection = { anchor: caret, head: caret, affinity: 'right' };
+      if (!this.setRawSelection(caret, caret, 'right')) throw Error(this.diagnostic);
+      this.past.push(before);
+      this.future = [];
+      this.version++;
+      this.logicalRevision++;
+      this.unresolvedIntent = null;
+      this.diagnostic = '';
+      return true;
+    } catch (error) {
+      this.restore(before);
+      this.diagnostic = error instanceof Error ? error.message : String(error);
+      return false;
+    }
+  }
+
+  rewriteManagedImages(rewrites: readonly ManagedImageRewrite[]): boolean {
+    if (this.composing) return this.guard('image_save_prepare');
+    if (!rewrites.length || this.draftDirty || this.issues.length || this.unresolvedIntent) {
+      this.diagnostic = '当前源码草稿、含混原文或未解决输入阻止图片保存路径准备';
+      return false;
+    }
+    this.finishComposition();
+    const before = this.snapshot();
+    try {
+      const patches: NativePatch[] = [];
+      const seenAssets = new Set<string>();
+      for (const rewrite of rewrites) {
+        if (!rewrite.assetID || seenAssets.has(rewrite.assetID)) throw Error('图片保存映射包含重复 asset owner');
+        seenAssets.add(rewrite.assetID);
+        markdownImage({ uri: rewrite.to, alt: '', title: null });
+        const hits: number[] = [];
+        for (let at = this.currentRaw.indexOf(rewrite.from); at >= 0;
+          at = this.currentRaw.indexOf(rewrite.from, at + rewrite.from.length)) hits.push(at);
+        if (hits.length !== 1) throw Error(`图片草稿 owner ${rewrite.assetID} 不是唯一当前原文引用`);
+        let imageAtoms = 0;
+        this.state.doc.descendants(node => {
+          if (node.type.name === 'image' && node.attrs.href === rewrite.from) imageAtoms++;
+        });
+        if (imageAtoms !== 1) {
+          throw Error(`图片草稿 owner ${rewrite.assetID} 不再对应唯一图片 atom`);
+        }
+        const from = hits[0];
+        if (this.currentRaw.slice(Math.max(0, from - 2), from) !== '](') {
+          throw Error(`图片草稿 owner ${rewrite.assetID} 不在行内图片 destination 边界`);
+        }
+        patches.push({ from, to: from + rewrite.from.length, insert: rewrite.to });
+      }
+      const raw = applyNativePatches(this.currentRaw, patches);
+      const parsed = parse(raw);
+      if (parsed.issues.length) throw Error(parsed.issues[0].message);
+      const mappedAnchor = mapRawOffset(this.rawSelection.anchor, patches, -1);
+      const mappedHead = mapRawOffset(this.rawSelection.head, patches, 1);
+      this.currentRaw = raw;
+      this.state = createInkoraProjectionState(parsed.doc, this.options);
+      this.issues = [];
+      this.projection = {
+        kind: 'exact',
+        reason: '首次保存前图片 owner 路径准备事务',
+        anchors: [],
+        provenance: patches.map(patch => `${patch.from}..${patch.to} -> ${patch.insert}`),
+      };
+      this.rawSelection = { anchor: mappedAnchor, head: mappedHead, affinity: this.rawSelection.affinity };
+      if (!this.setRawSelection(mappedAnchor, mappedHead, this.rawSelection.affinity)) {
+        throw Error(this.diagnostic);
+      }
+      this.past.push(before);
+      this.future = [];
+      this.version++;
+      this.logicalRevision++;
+      this.unresolvedIntent = null;
+      this.diagnostic = '';
+      return true;
+    } catch (error) {
+      this.restore(before);
+      this.diagnostic = error instanceof Error ? error.message : String(error);
+      return false;
+    }
   }
 
   private guard(command: string): false {
