@@ -33,6 +33,7 @@ analyzeDocument({ raw, revision }, { excludedRanges?: SourceRange[] })
 - 显示文本来自 inline token：链接取 label、行内代码取内容、图片取 alt；换行位显示为空格；HTML token 不执行也不显示；
 - 解析器启用 HTML tokenization：行内/块级 HTML 按锁定 CommonMark token 语义识别（`html_inline`/`html_block`），标签不进入大纲与统计；block HTML 内部不作为 Markdown 解析，代码作用域内的 HTML 字面内容照常计入；
 - HTML 仅 tokenize：任何输出进入 UI 一律经 `textContent`，不执行、不渲染 DOM；
+- 尾随 EOL 指 LF、CRLF 或孤立 CR；标题 `end` 均不含尾随 EOL，其余按原文折算。
 
 ## 统计口径
 

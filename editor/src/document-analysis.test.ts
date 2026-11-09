@@ -151,6 +151,53 @@ describe("回归：UTF-16 排除偏移与围栏/CR 边界", () => {
     const result = analyzeDocument(snap(raw));
     expect(result.headings.map((h) => raw.slice(h.start, h.end))).toEqual(["# A", "# B", "# C"]);
   });
+
+  it("CRLF：标题后空行/连续空行时首标题 end 不含 CRLF（含 BOM）", () => {
+    // 边界切片由原字符串独立定义，不用实现反推 expected。
+    const raw = "\uFEFF# 甲\r\n\r\n\r\n## 乙\r\n";
+    const first = raw.indexOf("# 甲");
+    const second = raw.indexOf("## 乙");
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings.map((h) => raw.slice(h.start, h.end)))
+      .toEqual(["# 甲", "## 乙"]);
+    expect(result.headings[0].start).toBe(first);
+    expect(result.headings[0].end).toBe(first + "# 甲".length);
+    expect(result.headings[1].start).toBe(second);
+    expect(result.headings[1].end).toBe(second + "## 乙".length);
+  });
+
+  it("CRLF：标题后无空行、EOF 无尾 EOL 时 end 到标题末字符为止", () => {
+    const raw = "# 甲\r\n## 乙"; // 无空行、无尾 EOL
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings.map((h) => raw.slice(h.start, h.end)))
+      .toEqual(["# 甲", "## 乙"]);
+    expect(result.headings[1].end).toBe(raw.length);
+  });
+
+  it("CRLF：Setext 标题 end 不含下划线行尾的 CRLF", () => {
+    const raw = "甲\r\n===\r\n\r\n# 乙\r\n";
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings.map((h) => raw.slice(h.start, h.end)))
+      .toEqual(["甲\r\n===", "# 乙"]);
+  });
+
+  it("CRLF：嵌套引用/列表内标题与中文/emoji 偏移不漂移", () => {
+    const raw = "> - # 甲😀\r\n>   ## 乙\r\n";
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings.map((h) => raw.slice(h.start, h.end)))
+      .toEqual(["> - # 甲😀", ">   ## 乙"]);
+    expect(result.headings.map((h) => h.text)).toEqual(["甲😀", "乙"]);
+  });
+
+  it("CRLF：排除范围不因 EOL 归一化映射修复而漂移", () => {
+    const raw = "\uFEFFmeta\r\n# 标题\r\n\r\n# 保留\r\n";
+    const start = raw.indexOf("meta");
+    const result = analyzeDocument(snap(raw), {
+      excludedRanges: [{ start, end: start + "meta".length }],
+    });
+    expect(result.headings.map((h) => raw.slice(h.start, h.end)))
+      .toEqual(["# 标题", "# 保留"]);
+  });
 });
 });
 

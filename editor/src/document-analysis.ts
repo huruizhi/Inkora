@@ -206,8 +206,10 @@ function buildParseCopy(raw: string, excluded: readonly SourceRange[]): ParseCop
     const ch = masked[i];
     if (ch === "\r" || ch === "\n") {
       // \r\n 折叠为一个 \n，映射指向 \r 的原文位置；孤立 \r 同样按一行处理。
-      if (ch === "\r" && i + 1 < masked.length && masked[i + 1] === "\n") i += 1;
+      // 先记映射再跳过 \n：否则归一化换行会错指向 \n，标题尾随 CRLF 的
+      // 剥离判定（slice(-2) === "\r\n"）随之错位。
       toRaw.push(i + bomLength);
+      if (ch === "\r" && i + 1 < masked.length && masked[i + 1] === "\n") i += 1;
       text += "\n";
       lineStarts.push(text.length);
     } else {
