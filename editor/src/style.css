@@ -241,6 +241,9 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   align-items: center;
   gap: 6px;
 }
+.search-panel[hidden] {
+  display: none;
+}
 .search-panel-controls {
   display: flex;
   align-items: center;

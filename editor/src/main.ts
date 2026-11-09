@@ -140,26 +140,36 @@ function cancelPendingSearch(): void {
 
 function scheduleSearch(documentID: string, revision: number): void {
   cancelPendingSearch();
-  if (!searchPanel.shouldSearch) return;
-  if (runtime?.composing) return;
+  if (!searchPanel.shouldSearch) {
+    searchPanel.update({ kind: "idle" });
+    return;
+  }
+  if (runtime?.composing || searchPanel.isQueryComposing) return;
   const generation = searchGeneration;
+  const epoch = loadEpoch;
+  const query = searchPanel.query;
+  const caseSensitive = searchPanel.caseSensitive;
   searchTimer = window.setTimeout(() => {
     searchTimer = undefined;
     // 跨文档/重复 load 已 bump generation，旧任务到此作废。
     if (generation !== searchGeneration) return;
     const activeRuntime = runtime;
-    if (!activeRuntime || activeRuntime.composing) return;
+    if (!activeRuntime || activeRuntime.composing || searchPanel.isQueryComposing) return;
+    if (!searchPanel.isOpen || searchPanel.query !== query) return;
+    if (searchPanel.caseSensitive !== caseSensitive) return;
+    if (activeDocumentID !== documentID || activeRevision !== revision) return;
+    if (loadEpoch !== epoch) return;
     try {
       const raw = activeRuntime.getText();
       const result = searchSource(
         { raw, revision },
-        searchPanel.query,
-        { caseSensitive: searchPanel.caseSensitive, maxResults: SEARCH_MAX_RESULTS },
+        query,
+        { caseSensitive, maxResults: SEARCH_MAX_RESULTS },
       );
       if (generation !== searchGeneration) return;
       searchPanel.update({
         kind: "document",
-        binding: { documentID, revision, epoch: loadEpoch, raw },
+        binding: { documentID, revision, epoch, raw },
         result,
       });
     } catch (error) {
@@ -209,6 +219,7 @@ window.inkora = {
             // 取消旧任务并进入"正在打开文档"过渡态。
             const response = session.loadDocument(command);
             if (response.type === "stateChanged") {
+              const queryWasComposing = searchPanel.isQueryComposing;
               cancelPendingSearch();
               // 接受新 load：立即清旧查找结果与绑定（查询/大小写回到默认，
               // 面板开关保留）。被拒 load 不走这里，查找状态原样保留。
@@ -216,7 +227,9 @@ window.inkora = {
               loadEpoch += 1;
               runtime?.destroy();
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange);
-              runtime.focus();
+              // 跨 load 不夺走查询框正在进行的 IME composition；面板会在
+              // compositionend 安全收口后执行已声明的新文档查询重置。
+              if (!queryWasComposing) runtime.focus();
             }
             postToNative(response);
           }

@@ -46,25 +46,31 @@ const graphemeSegmenter = new Intl.Segmenter(undefined, {
   granularity: "grapheme",
 });
 
-function isGraphemeBoundary(raw: string, position: number): boolean {
-  if (position <= 0 || position >= raw.length) return true;
-  const windowStart = Math.max(0, position - 32);
-  const windowEnd = Math.min(raw.length, position + 32);
-  for (const segment of graphemeSegmenter.segment(raw.slice(windowStart, windowEnd))) {
-    if (windowStart + segment.index === position) return true;
-  }
-  return false;
+interface GraphemeRange {
+  start: number;
+  end: number;
 }
 
-/** 把代码单元边界向 dir 方向吸附到最近的字素边界，避免摘要切断字素。 */
-function snapToGrapheme(raw: string, position: number, dir: -1 | 1): number {
-  if (isGraphemeBoundary(raw, position)) return position;
-  for (let distance = 1; distance <= 16; distance += 1) {
-    const candidate = position + distance * dir;
-    if (candidate < 0 || candidate > raw.length) break;
-    if (isGraphemeBoundary(raw, candidate)) return candidate;
+/** 每次 render 只对完整原文分段一次，后续每个命中只做二分与有限片段拼接。 */
+function segmentGraphemes(raw: string): GraphemeRange[] {
+  const ranges: GraphemeRange[] = [];
+  for (const segment of graphemeSegmenter.segment(raw)) {
+    const previous = ranges.at(-1);
+    if (previous) previous.end = segment.index;
+    ranges.push({ start: segment.index, end: raw.length });
   }
-  return Math.max(0, Math.min(raw.length, position));
+  return ranges;
+}
+
+function lowerBound(ranges: readonly GraphemeRange[], position: number): number {
+  let low = 0;
+  let high = ranges.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (ranges[middle]!.start < position) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 }
 
 interface SnippetParts {
@@ -74,24 +80,87 @@ interface SnippetParts {
 }
 
 const SNIPPET_CONTEXT_UNITS = 24;
-const SNIPPET_MAX_HIT_UNITS = 96;
+const SNIPPET_HIT_EDGE_UNITS = 48;
+
+function takeBefore(
+  raw: string,
+  ranges: readonly GraphemeRange[],
+  position: number,
+): string {
+  let start = position;
+  let remaining = SNIPPET_CONTEXT_UNITS;
+  for (let index = lowerBound(ranges, position) - 1; index >= 0; index -= 1) {
+    const range = ranges[index]!;
+    const length = range.end - range.start;
+    if (length > remaining) break;
+    start = range.start;
+    remaining -= length;
+  }
+  return (start > 0 ? "…" : "") + raw.slice(start, position);
+}
+
+function takeAfter(
+  raw: string,
+  ranges: readonly GraphemeRange[],
+  position: number,
+): string {
+  let end = position;
+  let remaining = SNIPPET_CONTEXT_UNITS;
+  for (let index = lowerBound(ranges, position); index < ranges.length; index += 1) {
+    const range = ranges[index]!;
+    const length = range.end - range.start;
+    if (length > remaining) break;
+    end = range.end;
+    remaining -= length;
+  }
+  return raw.slice(position, end) + (end < raw.length ? "…" : "");
+}
+
+function takeHit(
+  raw: string,
+  ranges: readonly GraphemeRange[],
+  from: number,
+  to: number,
+): string {
+  if (to - from <= SNIPPET_HIT_EDGE_UNITS * 2) return raw.slice(from, to);
+
+  const first = lowerBound(ranges, from);
+  const last = lowerBound(ranges, to);
+  let prefixEnd = from;
+  let remainingPrefix = SNIPPET_HIT_EDGE_UNITS;
+  for (let index = first; index < last; index += 1) {
+    const range = ranges[index]!;
+    const length = range.end - range.start;
+    if (length > remainingPrefix) break;
+    prefixEnd = range.end;
+    remainingPrefix -= length;
+  }
+
+  let suffixStart = to;
+  let remainingSuffix = SNIPPET_HIT_EDGE_UNITS;
+  for (let index = last - 1; index >= first; index -= 1) {
+    const range = ranges[index]!;
+    if (range.start < prefixEnd) break;
+    const length = range.end - range.start;
+    if (length > remainingSuffix) break;
+    suffixStart = range.start;
+    remainingSuffix -= length;
+  }
+  return `${raw.slice(from, prefixEnd)}…${raw.slice(suffixStart, to)}`;
+}
 
 /** 摘要为字素安全的有限上下文；超长命中只保留首尾并加省略号。 */
-function buildSnippet(raw: string, from: number, to: number): SnippetParts {
-  let hitStart = from;
-  let hitEnd = to;
-  let hitOmitted = false;
-  if (to - from > SNIPPET_MAX_HIT_UNITS) {
-    hitStart = snapToGrapheme(raw, from + SNIPPET_MAX_HIT_UNITS / 2, -1);
-    hitEnd = snapToGrapheme(raw, to - SNIPPET_MAX_HIT_UNITS / 2, 1);
-    hitOmitted = true;
-  }
-  const start = snapToGrapheme(raw, Math.max(0, hitStart - SNIPPET_CONTEXT_UNITS), -1);
-  const end = snapToGrapheme(raw, Math.min(raw.length, hitEnd + SNIPPET_CONTEXT_UNITS), 1);
-  const before = (start > 0 ? "…" : "") + raw.slice(start, hitStart);
-  const hit = raw.slice(hitStart, hitEnd) + (hitOmitted ? "…" : "");
-  const after = raw.slice(hitEnd, end) + (end < raw.length ? "…" : "");
-  return { before, hit, after };
+function buildSnippet(
+  raw: string,
+  ranges: readonly GraphemeRange[],
+  from: number,
+  to: number,
+): SnippetParts {
+  return {
+    before: takeBefore(raw, ranges, from),
+    hit: takeHit(raw, ranges, from, to),
+    after: takeAfter(raw, ranges, to),
+  };
 }
 
 export class SearchPanel {
@@ -108,6 +177,9 @@ export class SearchPanel {
   private caseValue = true;
   private openValue = false;
   private queryComposing = false;
+  private resetQueryAfterComposition = false;
+  private ignoreLateCompositionInput = false;
+  private lateCompositionInputTimer: number | undefined;
   private state: SearchPanelState = { kind: "idle" };
 
   constructor(
@@ -124,14 +196,13 @@ export class SearchPanel {
     findButton.setAttribute("aria-controls", "search-panel-body");
     findButton.textContent = "查找";
     findButton.addEventListener("pointerdown", (event) => {
-      if (this.handlers.isEditorComposing()) {
+      if (this.isInteractionBlocked()) {
         // 阻止按钮夺走焦点，避免迫使编辑器 composition 提交。
         event.preventDefault();
         this.showStatus("请先完成中文输入，再使用查找");
       }
     });
     findButton.addEventListener("click", () => {
-      if (this.handlers.isEditorComposing()) return;
       if (this.openValue) return;
       this.open();
     });
@@ -157,15 +228,36 @@ export class SearchPanel {
       this.queryComposing = true;
     });
     queryInput.addEventListener("input", (event) => {
-      this.queryValue = queryInput.value;
       // 查询框自身 composition（半拼音）期间不重搜，保留上一份稳定结果。
       const composing =
         this.queryComposing || (event as InputEvent).isComposing === true;
       if (composing) return;
+      if (this.ignoreLateCompositionInput) {
+        queryInput.value = "";
+        this.queryValue = "";
+        return;
+      }
+      if (this.queryValue === queryInput.value) return;
+      this.queryValue = queryInput.value;
       this.handlers.onSearchRequest();
     });
     queryInput.addEventListener("compositionend", () => {
       this.queryComposing = false;
+      if (this.resetQueryAfterComposition) {
+        this.resetQueryAfterComposition = false;
+        this.ignoreLateCompositionInput = true;
+        this.clearQuery();
+        if (this.lateCompositionInputTimer !== undefined) {
+          window.clearTimeout(this.lateCompositionInputTimer);
+        }
+        this.lateCompositionInputTimer = window.setTimeout(() => {
+          this.ignoreLateCompositionInput = false;
+          this.lateCompositionInputTimer = undefined;
+        }, 0);
+        this.handlers.onSearchRequest();
+        return;
+      }
+      this.queryValue = queryInput.value;
       // 组合收口后自然重算一次。
       this.handlers.onSearchRequest();
     });
@@ -182,14 +274,15 @@ export class SearchPanel {
     caseInput.type = "checkbox";
     caseInput.checked = true;
     caseInput.addEventListener("pointerdown", (event) => {
-      if (this.handlers.isEditorComposing()) {
+      if (this.isInteractionBlocked()) {
         event.preventDefault();
         this.showStatus("请先完成中文输入，再切换大小写");
       }
     });
     caseInput.addEventListener("change", () => {
-      if (this.handlers.isEditorComposing()) {
+      if (this.isInteractionBlocked()) {
         caseInput.checked = this.caseValue;
+        this.showStatus("请先完成中文输入，再切换大小写");
         return;
       }
       this.caseValue = caseInput.checked;
@@ -205,13 +298,12 @@ export class SearchPanel {
     closeButton.setAttribute("aria-label", "关闭查找");
     closeButton.textContent = "关闭";
     closeButton.addEventListener("pointerdown", (event) => {
-      if (this.handlers.isEditorComposing()) {
+      if (this.isInteractionBlocked()) {
         event.preventDefault();
         this.showStatus("请先完成中文输入，再关闭查找");
       }
     });
     closeButton.addEventListener("click", () => {
-      if (this.handlers.isEditorComposing()) return;
       this.close();
     });
 
@@ -219,13 +311,15 @@ export class SearchPanel {
 
     const statusLine = document.createElement("p");
     statusLine.className = "search-panel-status";
+    statusLine.setAttribute("role", "status");
     statusLine.hidden = true;
 
     const resultsBody = document.createElement("div");
     resultsBody.className = "search-panel-results";
 
-    panel.append(controls, statusLine, resultsBody);
-    root.append(findButton, panel);
+    panel.append(controls, resultsBody);
+    // 拒绝打开时面板仍 hidden，因此提示必须位于 hidden 子树之外。
+    root.append(findButton, statusLine, panel);
     this.root = root;
     this.findButton = findButton;
     this.panelBody = panel;
@@ -263,24 +357,28 @@ export class SearchPanel {
   }
 
   open(): void {
+    if (this.isInteractionBlocked()) {
+      this.showStatus("请先完成中文输入，再使用查找");
+      return;
+    }
     this.openValue = true;
     this.panelBody.hidden = false;
     this.findButton.setAttribute("aria-expanded", "true");
-    if (this.handlers.isEditorComposing()) {
-      // 编辑器组合中只呈现面板，不夺焦点。
-      this.showStatus("请先完成中文输入，再使用查找");
-    } else {
-      this.hideStatus();
-      this.queryInput.focus();
-    }
+    this.hideStatus();
+    this.queryInput.focus();
     if (this.queryValue.length > 0) this.handlers.onSearchRequest();
   }
 
   close(): void {
+    if (this.isInteractionBlocked()) {
+      this.showStatus("请先完成中文输入，再关闭查找");
+      return;
+    }
     this.openValue = false;
     this.panelBody.hidden = true;
     this.findButton.setAttribute("aria-expanded", "false");
     this.hideStatus();
+    this.handlers.onSearchRequest();
     this.handlers.onFocusEditor();
   }
 
@@ -293,14 +391,22 @@ export class SearchPanel {
   /** 接受新 load 后：清旧结果与绑定，查询/大小写回到默认；保留展开开关。 */
   resetForNewDocument(): void {
     this.state = { kind: "idle" };
-    this.queryValue = "";
-    this.queryInput.value = "";
     this.caseValue = true;
     this.caseInput.checked = true;
+    if (this.queryComposing) {
+      // 不在 IME 候选期间改写输入值；收口后再执行已声明的新文档重置。
+      this.resetQueryAfterComposition = true;
+    } else {
+      this.clearQuery();
+    }
     this.render();
   }
 
   destroy(): void {
+    if (this.lateCompositionInputTimer !== undefined) {
+      window.clearTimeout(this.lateCompositionInputTimer);
+      this.lateCompositionInputTimer = undefined;
+    }
     this.root.remove();
   }
 
@@ -312,6 +418,15 @@ export class SearchPanel {
   private hideStatus(): void {
     this.statusLine.textContent = "";
     this.statusLine.hidden = true;
+  }
+
+  private clearQuery(): void {
+    this.queryValue = "";
+    this.queryInput.value = "";
+  }
+
+  private isInteractionBlocked(): boolean {
+    return this.queryComposing || this.handlers.isEditorComposing();
   }
 
   private render(): void {
@@ -352,10 +467,11 @@ export class SearchPanel {
 
     const list = document.createElement("ul");
     list.className = "search-panel-matches";
+    const graphemes = segmentGraphemes(state.binding.raw);
     for (const match of state.result.matches) {
       const item = document.createElement("li");
       item.className = "search-panel-match";
-      const snippet = buildSnippet(state.binding.raw, match.from, match.to);
+      const snippet = buildSnippet(state.binding.raw, graphemes, match.from, match.to);
       item.append(document.createTextNode(snippet.before));
       const hit = document.createElement("mark");
       hit.textContent = snippet.hit;

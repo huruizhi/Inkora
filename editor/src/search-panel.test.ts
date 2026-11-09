@@ -105,7 +105,7 @@ describe("SearchPanel：打开/关闭与焦点", () => {
     expect(handlers.onSearchRequest).not.toHaveBeenCalled();
   });
 
-  it("重新打开时保留查询并触发一次重算请求", () => {
+  it("关闭取消待执行搜索，重新打开时保留查询并重算", () => {
     const { panel, handlers } = setup();
     findButton().click();
     typeQuery("foo");
@@ -113,7 +113,7 @@ describe("SearchPanel：打开/关闭与焦点", () => {
     closeButton().click();
     expect(panel.query).toBe("foo");
     findButton().click();
-    expect(handlers.onSearchRequest).toHaveBeenCalledTimes(2);
+    expect(handlers.onSearchRequest).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -175,6 +175,51 @@ describe("SearchPanel：查询输入与 composition", () => {
     expect(handlers.onFocusEditor).not.toHaveBeenCalled();
     expect(handlers.onSearchRequest).not.toHaveBeenCalled();
   });
+
+  it("查询组合中拒绝关闭和大小写切换，保留稳定查询与焦点", () => {
+    const { panel, handlers } = setup();
+    findButton().click();
+    typeQuery("foo");
+    queryInput().focus();
+    queryInput().dispatchEvent(new dom.window.Event("compositionstart"));
+    queryInput().value = "pinyin";
+    typeQuery("pinyin", { isComposing: true });
+
+    expect(pointerDown(closeButton())).toBe(false);
+    closeButton().click();
+    expect(panel.isOpen).toBe(true);
+    expect(panel.query).toBe("foo");
+    expect(doc().activeElement).toBe(queryInput());
+
+    caseInput().checked = false;
+    caseInput().dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    expect(caseInput().checked).toBe(true);
+    expect(panel.caseSensitive).toBe(true);
+    expect(handlers.onSearchRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("组合期间的新文档重置延后清查询，收口后忽略晚到 final input", async () => {
+    const { panel, handlers } = setup();
+    findButton().click();
+    typeQuery("stable");
+    queryInput().dispatchEvent(new dom.window.Event("compositionstart"));
+    queryInput().value = "候选草稿";
+
+    panel.resetForNewDocument();
+    expect(queryInput().value).toBe("候选草稿");
+    expect(panel.query).toBe("stable");
+    expect(resultsText()).toContain("输入查询");
+
+    queryInput().dispatchEvent(new dom.window.Event("compositionend"));
+    queryInput().value = "晚到终态";
+    queryInput().dispatchEvent(
+      new dom.window.InputEvent("input", { bubbles: true, isComposing: false }),
+    );
+    expect(queryInput().value).toBe("");
+    expect(panel.query).toBe("");
+    expect(handlers.onSearchRequest).toHaveBeenCalledTimes(2);
+    await new Promise((resolve) => dom.window.setTimeout(resolve, 0));
+  });
 });
 
 describe("SearchPanel：编辑器 composition 守卫", () => {
@@ -192,6 +237,9 @@ describe("SearchPanel：编辑器 composition 守卫", () => {
     expect(
       doc().querySelector(".search-panel-status")?.textContent,
     ).toContain("完成中文输入");
+    expect(
+      doc().querySelector<HTMLElement>(".search-panel-status")!.closest("[hidden]"),
+    ).toBeNull();
   });
 
   it("组合中关闭按钮 pointerdown 被阻止且 click 不回焦点", () => {
@@ -308,6 +356,38 @@ describe("SearchPanel：结果渲染（真实 searchSource 结果）", () => {
     const marks = Array.from(doc().querySelectorAll(".search-panel-match mark"));
     expect(marks).toHaveLength(2);
     for (const mark of marks) expect(mark.textContent).toBe("👨‍💻");
+  });
+
+  it("超长命中只显示字素安全的首尾有限预览", () => {
+    const { panel } = setup();
+    const raw = `BEGIN${"a".repeat(10_000)}END`;
+    const result = searchSource({ raw, revision: 0 }, raw, {
+      maxResults: SEARCH_MAX_RESULTS,
+    });
+    panel.update({
+      kind: "document",
+      binding: { documentID: "d", revision: 0, epoch: 0, raw },
+      result,
+    });
+    const hit = doc().querySelector(".search-panel-match mark")?.textContent ?? "";
+    expect(hit.length).toBeLessThanOrEqual(128);
+    expect(hit.startsWith("BEGIN")).toBe(true);
+    expect(hit.endsWith("END")).toBe(true);
+  });
+
+  it("摘要上下文遇到超长组合字素时整簇省略，不从组合符开始", () => {
+    const { panel } = setup();
+    const raw = `Xa${"\u0301".repeat(100)}needleZ`;
+    const result = searchSource({ raw, revision: 0 }, "needle", {
+      maxResults: SEARCH_MAX_RESULTS,
+    });
+    panel.update({
+      kind: "document",
+      binding: { documentID: "d", revision: 0, epoch: 0, raw },
+      result,
+    });
+    const text = doc().querySelector(".search-panel-match")?.textContent ?? "";
+    expect(text.replace(/^…/, "")).not.toMatch(/^\p{M}/u);
   });
 
   it("空查询与错误态文案；rejected 不计入计数也不成条目", () => {

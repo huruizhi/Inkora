@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { analyzeDocument } from "./document-analysis";
 
@@ -556,6 +557,15 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.searchResultsText()).toContain("1 处匹配");
     expect(h.searchMatches()).toHaveLength(1);
 
+    // 清空查询必须立即进入 idle，不能残留上次稳定结果。
+    h.typeSearchQuery("");
+    await settle();
+    expect(h.searchMatches()).toHaveLength(0);
+    expect(h.searchResultsText()).toContain("输入查询");
+
+    h.typeSearchQuery("foo");
+    await settle();
+
     // 大小写不敏感。
     h.searchCase().checked = false;
     h.searchCase().dispatchEvent(new h.dom.window.Event("change", { bubbles: true }));
@@ -639,6 +649,32 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.searchResultsText()).not.toContain("needle");
   });
 
+  it("查找面板：查询组合中跨 load 保留候选焦点，收口后安全重置", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 0, text: "<x>foo</x>\n" });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("foo");
+    await settle();
+
+    const input = h.searchQuery();
+    input.focus();
+    input.dispatchEvent(new h.dom.window.Event("compositionstart"));
+    input.value = "候选草稿";
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "doc-b", revision: 0, text: "<x>bar</x>\n" });
+    await settle();
+
+    expect(h.dom.window.document.activeElement).toBe(input);
+    expect(input.value).toBe("候选草稿");
+    expect(h.searchResultsText()).toContain("输入查询");
+    expect(h.searchResultsText()).not.toContain("foo");
+
+    input.dispatchEvent(new h.dom.window.Event("compositionend"));
+    await settle();
+    expect(input.value).toBe("");
+    expect(h.searchResultsText()).toContain("输入查询");
+  });
+
   it("查找面板：快速跨文档同 revision 旧查找任务作废，不覆盖新文档", async () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 7, text: "<x>apple apple</x>\n" });
@@ -698,6 +734,59 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     input.dispatchEvent(new h.dom.window.Event("compositionend"));
     await settle();
     expect(h.searchResultsText()).toContain("0 处匹配");
+  });
+
+  it("查找面板：已排队查询遇到 query composition 时不读取半成品", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>foo foo bar</x>\n" });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("foo");
+    await settle();
+    expect(h.searchMatches()).toHaveLength(2);
+
+    h.typeSearchQuery("bar");
+    h.searchQuery().dispatchEvent(new h.dom.window.Event("compositionstart"));
+    h.searchQuery().value = "pinyin";
+    h.searchQuery().dispatchEvent(
+      new h.dom.window.InputEvent("input", { bubbles: true, isComposing: true }),
+    );
+    await settle();
+    expect(h.searchMatches()).toHaveLength(2);
+  });
+
+  it("查找面板：query composition 中拒绝关闭和大小写变更", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>foo foo</x>\n" });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("foo");
+    await settle();
+    const input = h.searchQuery();
+    input.focus();
+    input.dispatchEvent(new h.dom.window.Event("compositionstart"));
+
+    const pointer = new h.dom.window.MouseEvent("pointerdown", {
+      bubbles: true, cancelable: true,
+    });
+    expect(h.searchClose().dispatchEvent(pointer)).toBe(false);
+    h.searchClose().click();
+    expect(h.searchBody().hidden).toBe(false);
+    expect(h.dom.window.document.activeElement).toBe(input);
+
+    h.searchCase().checked = false;
+    h.searchCase().dispatchEvent(new h.dom.window.Event("change", { bubbles: true }));
+    expect(h.searchCase().checked).toBe(true);
+    expect(h.searchMatches()).toHaveLength(2);
+  });
+
+  it("查找面板：作者样式不覆盖 hidden 属性", async () => {
+    const h = await bootMain();
+    const style = h.dom.window.document.createElement("style");
+    style.textContent = readFileSync(new URL("./style.css", import.meta.url), "utf8");
+    h.dom.window.document.head.append(style);
+    expect(h.searchBody().hidden).toBe(true);
+    expect(h.dom.window.getComputedStyle(h.searchBody()).display).toBe("none");
   });
 
   it("查找面板：Esc 关闭并回焦点正文；面板动作不改正文/历史/revision", async () => {
