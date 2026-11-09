@@ -41,3 +41,11 @@ profiles为空，再核实OMP实际GLM-5.3后采用medium/full。Agent e83acc61-
 限定追加仍在原7文件：明确查询区焦点时文档Undo/Redo不能执行，query composition中大纲导航拒绝；不改原生协议、不重写查询历史或禁用整个文档撤销。正常焦点正文的Undo/Redo须继续可用，focus场景测试用真实焦点定位，不删既有有效断言。原7绿与新2红合为接收控制，不扩功能范围；真实键盘/窗口门槛保留。
 
 接续Agent ebd97cbe-fba6-414e-9ec8-42c6aa39d46a，GPT-5.6-Sol/low/full-access/default，profiles空且provider已核实，复用原workspace取得running回执，notifyOnFinish=true；不轮询或保留已完成Agent窗口。
+
+## 最终非 UI 接收与回收
+
+最终e3fc05e964e01fa27f62258e34fbab13d456d452。管理者独立冻结7+2共9项全绿；移除临时测试后的16文件256项、editor lint/build通过，四份根材料SHA未变。查询区持焦或组合时文档Undo/Redo明确command_rejected且不动正文历史，焦点正文恢复后既有历史/future继续；query composition大纲守卫通过。三名执行Agent均已立即归档。
+
+隔离com.huruizhi.Inkora.SearchReview App构建、codesign严格校验成功，Debug ad-hoc不冒称Hardened Runtime。同轮desktop预检exit78锁屏，未启动App。真实查询Cmd-Z/键盘路由/IME/布局及006长文滚动仍待验，不能以非UI接收冒称阶段完成或合main。
+
+本地续验 `.worktrees/INK-M1-009-VERIFY`，分支task/INK-M1-010-search-runtime-review @ 50584f3，保留最终代码和隔离App；原受管217常规文件tar逐字节核验、Git bundle verify、live origin同SHA后归档，回执确认三Agent归档且owned目录移除。累计40个workspace已回收。独立日志root-m1-checks/SEARCH-FINAL-*和INK-M1-010-native保留。后续进入源码/只读导航，不自动开放可视映射或替换。
