@@ -43,8 +43,15 @@ export function setCodeBlock(language: string | null = null): Command {
 
 export const wrapBlockquote: Command = wrapIn(inkoraSchema.nodes.blockquote);
 export const liftBlock: Command = lift;
-export const wrapBulletList: Command = wrapInList(inkoraSchema.nodes.bullet_list);
-export const wrapOrderedList: Command = wrapInList(inkoraSchema.nodes.ordered_list);
+export const wrapBulletList: Command = wrapInList(inkoraSchema.nodes.bullet_list, {
+  bullet: "-",
+  tight: true,
+});
+export const wrapOrderedList: Command = wrapInList(inkoraSchema.nodes.ordered_list, {
+  order: 1,
+  delimiter: ".",
+  tight: true,
+});
 
 export const insertHorizontalRule: Command = (state, dispatch) => {
   const rule = inkoraSchema.nodes.horizontal_rule.create();
@@ -85,6 +92,7 @@ export const blockKeyBindings: Record<string, Command> = {
   "Mod-Shift-7": wrapOrderedList,
   "Mod-Shift-8": wrapBulletList,
   "Mod-Shift-.": wrapBlockquote,
+  "Mod-Alt-c": setCodeBlock(),
 };
 
 export function createBlockKeymap(): Plugin {
@@ -105,19 +113,25 @@ const blockquoteInputRule = wrappingInputRule(
 const orderedListInputRule = wrappingInputRule(
   /^(\d+)\.\s$/,
   inkoraSchema.nodes.ordered_list,
-  (match) => ({ order: Number(match[1]) }),
+  (match) => ({ order: Number(match[1]), delimiter: ".", tight: true }),
   (match, node) => node.childCount + node.attrs.order === Number(match[1]),
 );
 
 const bulletListInputRule = wrappingInputRule(
   /^\s*([-+*])\s$/,
   inkoraSchema.nodes.bullet_list,
+  (match) => ({ bullet: match[1], tight: true }),
 );
 
 const codeBlockInputRule = textblockTypeInputRule(
   /^```([A-Za-z0-9_-]+)?\s$/,
   inkoraSchema.nodes.code_block,
-  (match) => ({ language: match[1] ?? null }),
+  (match) => ({
+    language: match[1] ?? null,
+    style: "fenced",
+    fence: "```",
+    closed: false,
+  }),
 );
 
 const horizontalRuleInputRule = new InputRule(

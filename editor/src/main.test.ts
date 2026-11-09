@@ -10,7 +10,13 @@ interface SentMessage {
   protocolVersion: number;
   type: string;
   requestID?: string;
-  state?: { documentID: string; revision: number; dirty: boolean };
+  state?: {
+    documentID: string;
+    revision: number;
+    dirty: boolean;
+    canUndo?: boolean;
+    canRedo?: boolean;
+  };
   [key: string]: unknown;
 }
 
@@ -38,6 +44,11 @@ interface Harness {
   replacement(): HTMLInputElement;
   replaceSelected(): HTMLButtonElement;
   replaceAll(): HTMLButtonElement;
+  sourceMode(): HTMLButtonElement;
+  visualMode(): HTMLButtonElement;
+  sourceApply(): HTMLButtonElement;
+  sourceCancel(): HTMLButtonElement;
+  linkEditor(): HTMLFormElement | null;
  }
 
 // prosemirror-view 在 jsdom 下还需要这些全局（MutationObserver、raf、
@@ -162,6 +173,11 @@ async function bootMain(): Promise<Harness> {
     replacement: () => dom.window.document.querySelector<HTMLInputElement>(".search-panel-replacement")!,
     replaceSelected: () => dom.window.document.querySelector<HTMLButtonElement>(".search-panel-replace-selected")!,
     replaceAll: () => dom.window.document.querySelector<HTMLButtonElement>(".search-panel-replace-all")!,
+    sourceMode: () => dom.window.document.querySelector<HTMLButtonElement>(".editor-mode-source")!,
+    visualMode: () => dom.window.document.querySelector<HTMLButtonElement>(".editor-mode-visual")!,
+    sourceApply: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-apply")!,
+    sourceCancel: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-cancel")!,
+    linkEditor: () => dom.window.document.querySelector<HTMLFormElement>(".link-editor"),
   };
 }
 
@@ -170,6 +186,535 @@ async function bootMain(): Promise<Harness> {
 // 无法驱动；集成测试用有界真实等待。Promise.withResolvers 需 es2024 lib
 // （仓库 tsconfig 较低且不在本任务允许修改范围），沿用 executor 形式。
 const settle = (ms = 60): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+function openLinkEditorAtCaret(h: Harness, offset = 1): HTMLFormElement {
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const label = editor.querySelector("a")!.firstChild!;
+  const range = h.dom.window.document.createRange();
+  range.setStart(label, offset);
+  range.collapse(true);
+  h.dom.window.getSelection()!.removeAllRanges();
+  h.dom.window.getSelection()!.addRange(range);
+  h.dom.window.document.dispatchEvent(new h.dom.window.Event("selectionchange"));
+  editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }));
+  const form = h.linkEditor();
+  if (!form) throw new Error("Expected link editor");
+  return form;
+}
+
+async function rootLinkHarness(
+  withHistory = false,
+  text = "[alpha](./old)\n\nbody\n",
+): Promise<Harness> {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "root-link-load", documentID: "root-link", revision: 0,
+    text });
+  if (withHistory) {
+    h.sourceMode().click();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+    area.value = text.replace(/\n$/, "!\n");
+    area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.sourceApply().click();
+    h.visualMode().click();
+  }
+  await settle();
+  openLinkEditorAtCaret(h);
+  return h;
+}
+
+it("root062: link action pointerdown keeps an active candidate field focused", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  href.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", {bubbles:true}));
+  href.value = "zhong";
+  const cancel = form.querySelector<HTMLButtonElement>(".link-editor-cancel")!;
+  const pointer = new h.dom.window.MouseEvent("pointerdown", {bubbles:true,cancelable:true});
+  cancel.dispatchEvent(pointer);
+  expect(pointer.defaultPrevented).toBe(true);
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(href);
+  expect(href.value).toBe("zhong");
+});
+
+it("root062: link submit blocks form navigation without consuming an IME Enter key", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  href.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", {bubbles:true}));
+  const before = h.sent.length;
+  const enter = new h.dom.window.KeyboardEvent("keydown", {key:"Enter",isComposing:true,bubbles:true,cancelable:true});
+  href.dispatchEvent(enter);
+  expect(enter.defaultPrevented).toBe(false);
+  const submit = new h.dom.window.Event("submit", {bubbles:true,cancelable:true});
+  form.dispatchEvent(submit);
+  expect(submit.defaultPrevented).toBe(true);
+  expect(form.isConnected).toBe(true);
+  expect(h.sent).toHaveLength(before);
+});
+
+it("root061: caret inside a link edits its existing target", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  expect(href.value).toBe("./old");
+  href.value = "./new";
+  form.dispatchEvent(new h.dom.window.Event("submit", {bubbles:true,cancelable:true}));
+  h.receive({type:"createSnapshot",requestID:"root-link-snapshot",documentID:"root-link",revision:h.lastRevision()});
+  expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:"[alpha](./new)\n\nbody\n"});
+});
+
+it("root061: link input composition keeps the form and candidate on Cancel", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  href.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart",{bubbles:true}));
+  href.value = "zhong";
+  href.dispatchEvent(new h.dom.window.InputEvent("input",{bubbles:true,isComposing:true}));
+  const before = h.sent.length;
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(href);
+  expect(href.value).toBe("zhong");
+  expect(h.sent).toHaveLength(before);
+});
+
+it("链接输入 composition 守卫表单动作、外部导航与跨 load 候选", async () => {
+  const h = await rootLinkHarness(false, "# [alpha](./old)\n\nbody\n");
+  const form = h.linkEditor()!;
+  const title = form.querySelector<HTMLInputElement>(".link-editor-title")!;
+  title.focus();
+  title.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  title.value = "zhong";
+  title.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, isComposing: true }));
+  const revision = h.lastRevision();
+  const messages = h.stateMessages().length;
+
+  // submit 取消的是表单导航；下方键盘 Esc 的输入法默认行为仍保留。
+  expect(form.dispatchEvent(new h.dom.window.Event("submit", {
+    bubbles: true, cancelable: true,
+  }))).toBe(false);
+  form.querySelector<HTMLButtonElement>(".link-editor-remove")!.click();
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  expect(form.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "Escape", isComposing: true, bubbles: true, cancelable: true,
+  }))).toBe(true);
+  h.sourceMode().click();
+  h.searchButton().click();
+  h.headingButtons()[0]!.click();
+
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(title);
+  expect(title.value).toBe("zhong");
+  expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+  expect(h.findBar().classList.contains("is-open")).toBe(false);
+  expect(h.stateMessages()).toHaveLength(messages);
+  expect(h.lastRevision()).toBe(revision);
+
+  h.receive({
+    type: "loadDocument", requestID: "root-link-next", documentID: "root-link-next", revision: 0,
+    text: "next\n",
+  });
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(title);
+  expect(title.value).toBe("zhong");
+  title.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  expect(form.isConnected).toBe(false);
+  form.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(form.querySelector(".link-editor-status")?.textContent).toContain("过期");
+  h.receive({
+    type: "createSnapshot", requestID: "root-link-next-snapshot",
+    documentID: "root-link-next", revision: 0,
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: "next\n" });
+});
+
+it("root061: Native document Undo is refused while a link field holds focus", async () => {
+  const h = await rootLinkHarness(true);
+  const revision = h.lastRevision();
+  const messages = h.stateMessages().length;
+  h.receive({type:"executeCommand",requestID:"root-link-undo",documentID:"root-link",revision,command:"undo"});
+  expect(h.sent.at(-1)).toMatchObject({type:"editorError",code:"command_rejected"});
+  expect(h.stateMessages()).toHaveLength(messages);
+  expect(h.lastRevision()).toBe(revision);
+});
+
+it("链接取消和 no-op 不清除 future，回正文后 Native Redo 仍可用", async () => {
+  const h = await rootLinkHarness(true);
+  h.linkEditor()!.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  h.receive({
+    type: "executeCommand", requestID: "root-link-future-undo", documentID: "root-link",
+    revision: h.lastRevision(), command: "undo",
+  });
+  expect(h.stateMessages().at(-1)?.state?.canRedo).toBe(true);
+
+  let form = openLinkEditorAtCaret(h);
+  const afterUndoMessages = h.stateMessages().length;
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  expect(h.stateMessages()).toHaveLength(afterUndoMessages);
+  expect(h.stateMessages().at(-1)?.state?.canRedo).toBe(true);
+
+  form = openLinkEditorAtCaret(h);
+  form.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.stateMessages()).toHaveLength(afterUndoMessages);
+  expect(h.stateMessages().at(-1)?.state?.canRedo).toBe(true);
+  h.receive({
+    type: "executeCommand", requestID: "root-link-future-redo", documentID: "root-link",
+    revision: h.lastRevision(), command: "redo",
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { canRedo: false } });
+});
+
+it("root061: flag-only composing document Cmd-Z does not consume the key", async () => {
+  const h = await rootLinkHarness(true);
+  h.linkEditor()!.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  const revision = h.lastRevision();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const event = new h.dom.window.KeyboardEvent("keydown",{key:"z",metaKey:true,isComposing:true,bubbles:true,cancelable:true});
+  editor.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(false);
+  expect(h.lastRevision()).toBe(revision);
+});
+
+it("提供键盘可达的可视/源码切换和草稿提交取消入口", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-mode", documentID: "doc-mode", revision: 0,
+    text: "# 标题\n\n正文\n",
+  });
+  await settle();
+  expect(h.sourceMode().type).toBe("button");
+  expect(h.sourceMode().getAttribute("aria-pressed")).toBe("false");
+  h.sourceMode().click();
+  expect(h.editorHost().querySelector("textarea#editor")).not.toBeNull();
+  expect(h.sourceMode().getAttribute("aria-pressed")).toBe("true");
+  expect(h.sourceApply().disabled).toBe(true);
+  const draft = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  draft.value = "# 标题\n\n源码修改\n";
+  draft.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+  expect(h.sourceApply().disabled).toBe(false);
+  h.sourceCancel().click();
+  expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+  expect(h.visualMode().getAttribute("aria-pressed")).toBe("true");
+  expect(h.stateMessages()).toHaveLength(1);
+});
+
+it("Mod-K 通过生产 DOM 入口创建链接，取消不改变文档", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-link", documentID: "doc-link", revision: 0,
+    text: "正文\n",
+  });
+  await settle();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const paragraphText = editor.querySelector("p")!.firstChild!;
+  const range = h.dom.window.document.createRange();
+  range.setStart(paragraphText, 0);
+  range.setEnd(paragraphText, 2);
+  const selection = h.dom.window.getSelection()!;
+  selection.removeAllRanges();
+  selection.addRange(range);
+  h.dom.window.document.dispatchEvent(new h.dom.window.Event("selectionchange"));
+
+  const shortcut = new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  });
+  expect(editor.dispatchEvent(shortcut)).toBe(false);
+  const form = h.linkEditor();
+  expect(form).not.toBeNull();
+  const href = form!.querySelector<HTMLInputElement>(".link-editor-href")!;
+  expect(h.dom.window.document.activeElement).toBe(href);
+  expect(form!.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "Escape", bubbles: true, cancelable: true,
+  }))).toBe(false);
+  expect(h.linkEditor()).toBeNull();
+  expect(h.lastRevision()).toBe(0);
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const createForm = h.linkEditor()!;
+  createForm.querySelector<HTMLInputElement>(".link-editor-href")!.value = "./target";
+  createForm.querySelector<HTMLInputElement>(".link-editor-title")!.value = "标题";
+  createForm.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await settle();
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link", documentID: "doc-link", revision: 1,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link", text: '[正文](./target "标题")\n',
+  });
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const noOpForm = h.linkEditor()!;
+  expect(noOpForm.querySelector<HTMLInputElement>(".link-editor-href")!.value).toBe("./target");
+  expect(noOpForm.querySelector<HTMLInputElement>(".link-editor-title")!.value).toBe("标题");
+  noOpForm.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.lastRevision()).toBe(1);
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const editForm = h.linkEditor()!;
+  editForm.querySelector<HTMLInputElement>(".link-editor-href")!.value = "./edited";
+  editForm.querySelector<HTMLInputElement>(".link-editor-title")!.value = "";
+  editForm.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(editForm.querySelector(".link-editor-status")?.textContent).toBe("");
+  expect(h.linkEditor()).toBeNull();
+  expect(h.lastRevision()).toBe(2);
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const removeForm = h.linkEditor()!;
+  removeForm.querySelector<HTMLButtonElement>(".link-editor-remove")!.click();
+  expect(h.lastRevision()).toBe(3);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-unlinked", documentID: "doc-link", revision: 3,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-unlinked", text: "正文\n",
+  });
+
+  let activeEditor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  expect(activeEditor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "z", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  expect(h.lastRevision()).toBe(4);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link-undo", documentID: "doc-link", revision: 4,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link-undo", text: "[正文](./edited)\n",
+  });
+  activeEditor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  expect(activeEditor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "z", metaKey: true, shiftKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  expect(h.lastRevision()).toBe(5);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link-redo", documentID: "doc-link", revision: 5,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link-redo", text: "正文\n",
+  });
+});
+
+it("链接表单拒绝 composition、危险 href 与跨 load 的旧快照", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-link-a", documentID: "link-a", revision: 0,
+    text: "alpha\n",
+  });
+  await settle();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(true);
+  expect(h.linkEditor()).toBeNull();
+  editor.dispatchEvent(new h.dom.window.Event("compositionend", { bubbles: true }));
+  await settle();
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const unsafe = h.linkEditor()!;
+  unsafe.querySelector<HTMLInputElement>(".link-editor-href")!.value = "bad target";
+  unsafe.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(unsafe.querySelector(".link-editor-status")?.textContent).toContain("safe Markdown");
+  expect(h.lastRevision()).toBe(0);
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ dirty: false, canUndo: false });
+  unsafe.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const stale = h.linkEditor()!;
+  stale.querySelector<HTMLInputElement>(".link-editor-href")!.value = "./stale";
+  h.receive({
+    type: "loadDocument", requestID: "load-link-b", documentID: "link-b", revision: 0,
+    text: "bravo\n",
+  });
+  await settle();
+  expect(h.linkEditor()).toBeNull();
+  stale.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(stale.querySelector(".link-editor-status")?.textContent).toContain("过期");
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link-b", documentID: "link-b", revision: 0,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link-b", text: "bravo\n",
+  });
+});
+
+it("拒绝错误文档的保存回执且不污染 dirty 保存基线", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-receipt", documentID: "doc-receipt",
+    revision: 0, text: "a\n",
+  });
+  h.sourceMode().click();
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  area.value = "ab\n";
+  area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+  h.sourceApply().click();
+  expect(h.stateMessages().at(-1)?.state?.dirty).toBe(true);
+
+  h.receive({
+    type: "markSaved", requestID: "wrong-receipt", documentID: "wrong-document",
+    revision: h.lastRevision(), text: "ab\n",
+  });
+  expect(h.sent.at(-1)?.type).toBe("editorError");
+  expect(h.sent.at(-1)?.code).toBe("stale_revision");
+
+  area.focus();
+  h.receive({
+    type: "executeCommand", requestID: "undo-after-wrong", documentID: "doc-receipt",
+    revision: h.lastRevision(), command: "undo",
+  });
+  h.receive({
+    type: "executeCommand", requestID: "redo-after-wrong", documentID: "doc-receipt",
+    revision: h.lastRevision(), command: "redo",
+  });
+  expect(h.stateMessages().at(-1)?.state?.dirty).toBe(true);
+});
+
+it("未知容器与正文混排时保留可视投影并阻断快照", () => {
+  const hPromise = bootMain();
+  return hPromise.then((h) => {
+    h.receive({
+      type: "loadDocument", requestID: "load-container", documentID: "doc-container",
+      revision: 0, text: "正文\n\n::: note\n未知内容\n:::\n\n尾段\n",
+    });
+    expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+    expect(h.editorHost().querySelector("textarea#editor")).toBeNull();
+    expect(h.editorHost().textContent).toContain("正文");
+    expect(h.editorHost().textContent).toContain("尾段");
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-container", documentID: "doc-container",
+      revision: 0,
+    });
+    expect(h.sent.at(-1)?.type).toBe("editorError");
+    expect(h.sent.at(-1)?.code).toBe("editor_not_ready");
+  });
+});
+
+it("synthetic PM composition 只发布一次 Bridge revision 且快照读取最终原文", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-ime", documentID: "doc-ime",
+    revision: 0, text: "a\n",
+  });
+  const editor = h.editorHost().querySelector<HTMLElement>(".ProseMirror")!;
+  const paragraph = editor.querySelector("p")!;
+  const text = paragraph.firstChild as Text;
+  editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+  text.data = "a中文";
+  editor.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+  editor.dispatchEvent(new h.dom.window.Event("compositionend", { bubbles: true }));
+  await settle(150);
+
+  expect(h.stateMessages().filter(message => message.requestID === undefined)).toHaveLength(1);
+  expect(h.lastRevision()).toBe(1);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-ime", documentID: "doc-ime",
+    revision: 1,
+  });
+  expect(h.sent.find(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-ime")).toMatchObject({
+      revision: 1,
+      text: "a中文\n",
+    });
+});
+
+it("compositionend 后排空 PM final 再唯一发布、快照与面板", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-late-ime", documentID: "doc-late-ime",
+    revision: 0, text: "a\n",
+  });
+  h.searchButton().click();
+  h.typeSearchQuery("中文");
+  await settle();
+  expect(h.searchResultsText()).toContain("0 处匹配");
+
+  const editor = h.editorHost().querySelector<HTMLElement>(".ProseMirror")!;
+  const text = editor.querySelector("p")!.firstChild as Text;
+  editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+  text.data = "azh";
+  editor.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+  // 最终候选先落 DOM，但交给 prosemirror-view 在 compositionend 后的
+  // observer 排空；此时发起 snapshot，不能同步读到中间拼音。
+  text.data = "a中文";
+  editor.dispatchEvent(new h.dom.window.Event("compositionend", { bubbles: true }));
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-late-ime", documentID: "doc-late-ime",
+    revision: 0,
+  });
+  expect(h.sent.some(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-late-ime")).toBe(false);
+
+  await settle(120);
+  expect(h.stateMessages().filter(message => message.requestID === undefined)).toHaveLength(1);
+  expect(h.lastRevision()).toBe(1);
+  expect(h.sent.find(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-late-ime")).toMatchObject({
+      revision: 1,
+      text: "a中文\n",
+    });
+  expect(h.panelStat("字数")).toBe(expectedStats("a中文\n").writingUnits);
+  expect(h.searchResultsText()).toContain("1 处匹配");
+
+  h.receive({
+    type: "markSaved", requestID: "old-ime-receipt", documentID: "doc-late-ime",
+    revision: 0, text: "a\n",
+  });
+  expect(h.stateMessages().at(-1)?.state?.dirty).toBe(true);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-after-old-receipt",
+    documentID: "doc-late-ime", revision: 1,
+  });
+  expect(h.sent.find(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-after-old-receipt")).toMatchObject({
+      revision: 1,
+      text: "a中文\n",
+    });
+});
+
+it("composition drain 跨 load 作废旧快照且不覆盖新文档", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-drain-a", documentID: "drain-a",
+    revision: 0, text: "A\n",
+  });
+  const editor = h.editorHost().querySelector<HTMLElement>(".ProseMirror")!;
+  editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-drain-a", documentID: "drain-a",
+    revision: 0,
+  });
+  h.receive({
+    type: "loadDocument", requestID: "load-drain-b", documentID: "drain-b",
+    revision: 0, text: "B\n",
+  });
+  await settle();
+
+  expect(h.sent.some(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-drain-a")).toBe(false);
+  expect(h.sent.find(message => message.type === "editorError" &&
+    message.requestID === "snapshot-drain-a")).toMatchObject({
+      code: "editor_not_ready",
+      action: "retry",
+    });
+  expect(h.stateMessages().at(-1)?.state?.documentID).toBe("drain-b");
+  expect(h.editorHost().textContent).toContain("B");
+  expect(h.editorHost().textContent).not.toContain("A");
+});
 
 function expectedStats(raw: string): { characters: string; writingUnits: string } {
   const analysis = analyzeDocument({ raw, revision: 0 });
@@ -192,11 +737,66 @@ afterEach(() => {
 });
 
 describe("main：真实 main/Bridge/runtime 面板集成", () => {
+  it("草稿与含混原文拒绝快照，取消或源码修复后可恢复保存", async () => {
+    const h = await bootMain();
+    const original = "# 标题\n\n正文\n";
+    h.receive({
+      type: "loadDocument", requestID: "load-draft", documentID: "draft", revision: 0,
+      text: original,
+    });
+    await settle();
+    h.sourceMode().click();
+    const draft = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    draft.value = "# 标题\n\n未提交草稿\n";
+    draft.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-draft", documentID: "draft", revision: 0,
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "editorError", requestID: "snapshot-draft", code: "editor_not_ready",
+    });
+    h.sourceCancel().click();
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-after-cancel", documentID: "draft", revision: 0,
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "snapshotReady", requestID: "snapshot-after-cancel", text: original,
+    });
+
+    const malformed = "正文\n\n$$\n未闭合\n";
+    h.receive({
+      type: "loadDocument", requestID: "load-malformed", documentID: "malformed", revision: 0,
+      text: malformed,
+    });
+    await settle();
+    expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-malformed", documentID: "malformed", revision: 0,
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "editorError", requestID: "snapshot-malformed", code: "editor_not_ready",
+    });
+    h.sourceMode().click();
+    const repair = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    const repaired = `${malformed}$$\n`;
+    repair.value = repaired;
+    repair.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.sourceApply().click();
+    expect(h.lastRevision()).toBe(1);
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-repaired", documentID: "malformed", revision: 1,
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "snapshotReady", requestID: "snapshot-repaired", revision: 1, text: repaired,
+    });
+  });
+
   it("源码模式只替换正文精确选中匹配，单次 revision 且 Undo/Redo 精确", async () => {
     const h = await bootMain();
     const raw = "<x>one one</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "load", documentID: "doc", revision: 4, text: raw });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("one");
     await settle();
@@ -225,6 +825,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "load", documentID: "source", revision: 0, text: "<x>中 中</x>\n" });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("中");
     await settle();
@@ -266,6 +867,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "\uFEFF# 第一\r\n\n## 第二 👩‍💻\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 1, text: raw });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     const target = analyzeDocument({ raw, revision: 1 }).headings[1];
     const before = h.sent.length;
@@ -280,6 +882,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "<x>正文</x>\n\n# 标题\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: raw });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     area.focus();
     area.setSelectionRange(2, 4);
@@ -415,6 +1018,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 2, text: original,
     });
     await settle();
+    h.sourceMode().click();
     expect(h.panelStat("字符数")).toBe(expectedStats(original).characters);
 
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor");
@@ -423,6 +1027,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     // 真实编辑：input 事件 → kernel → runtime → recordChange → stateChanged。
     area.value = "<custom-element>改后中文</custom-element>\r\n";
     area.dispatchEvent(new h.dom.window.Event("input"));
+    h.sourceApply().click();
     await settle();
     const afterEdit = h.stateMessages().length;
     expect(afterEdit).toBe(2); // load + edit，各一条
@@ -435,6 +1040,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       revision: revisionBeforeUndo, command: "undo",
     });
     await settle();
+    h.sourceMode().click();
     expect(h.stateMessages()).toHaveLength(afterEdit + 1);
     expect(h.panelStat("字数")).toBe(expectedStats(original).writingUnits);
     expect(h.lastRevision()).toBe(revisionBeforeUndo + 1);
@@ -457,6 +1063,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       text: original,
     });
     await settle();
+    h.sourceMode().click();
 
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor");
     if (!area) throw new Error("Expected source mode textarea");
@@ -464,6 +1071,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const edited = "<custom-element>已编辑中文</custom-element>\r\n";
     area.value = edited;
     area.dispatchEvent(new h.dom.window.Event("input"));
+    h.sourceApply().click();
     await settle();
     expect(h.panelStat("字数")).toBe(expectedStats(edited).writingUnits);
 
@@ -472,6 +1080,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       revision: h.lastRevision(), text: edited,
     });
     await settle();
+    h.sourceMode().click();
     // load + edit + markSaved 各一条：executingCommand 抑制了 runtime 回调重复上报。
     expect(h.stateMessages()).toHaveLength(3);
     expect(h.stateMessages().at(-1)?.state?.dirty).toBe(false);
@@ -488,6 +1097,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       text: "<x>正文</x>\n",
     });
     await settle();
+    h.sourceMode().click();
     const stable = expectedStats("<x>正文</x>\n");
     expect(h.panelStat("字数")).toBe(stable.writingUnits);
 
@@ -507,6 +1117,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(area.selectionStart).toBe(4);
 
     area.dispatchEvent(new h.dom.window.Event("compositionend"));
+    h.sourceApply().click();
     await settle();
     expect(h.panelStat("字数")).toBe(expectedStats("<x>正文nihongo</x>\n").writingUnits);
     expect(h.dom.window.document.activeElement).toBe(area);
@@ -616,6 +1227,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "<x>foo Foo FOO bar</x>\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: raw });
     await settle();
+    h.sourceMode().click();
 
     expect(h.searchBody().hidden).toBe(true);
     h.searchButton().click();
@@ -655,6 +1267,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = `<x>${"ha ".repeat(150)}</x>\n`;
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: raw });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("ha");
     await settle(120);
@@ -669,6 +1282,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "<x>one one one</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "source", revision: 4, text: raw });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("one");
     await settle();
@@ -733,6 +1347,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "<x>one one</x>\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "source", revision: 0, text: raw });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("one");
     await settle();
@@ -761,6 +1376,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "same", revision: 2, text: "<x>one one</x>\n" });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("one");
     await settle();
@@ -768,6 +1384,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
 
     h.receive({ type: "loadDocument", requestID: "r2", documentID: "same", revision: 2, text: "<x>one one</x>\n" });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
     area.setSelectionRange(1, 3);
     oldNext.click();
@@ -781,9 +1398,11 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const edited = "<x>one edited</x>\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "history", revision: 0, text: original });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
     area.value = edited;
     area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.sourceApply().click();
     await settle();
     area.focus();
     h.receive({
@@ -815,6 +1434,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const original = "<x>foo foo</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 2, text: original });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("foo");
     await settle();
@@ -823,6 +1443,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     area.value = "<x>foo bar</x>\r\n";
     area.dispatchEvent(new h.dom.window.Event("input"));
+    h.sourceApply().click();
     await settle();
     expect(h.searchResultsText()).toContain("1 处匹配");
 
@@ -849,9 +1470,11 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const edited = "<x>edited</x>\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: original });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     area.value = edited;
     area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.sourceApply().click();
     await settle();
 
     h.searchButton().click();
@@ -1000,6 +1623,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 0, text: "<x>a</x>\n" });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("a");
     await settle();
@@ -1041,6 +1665,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>foo</x>\n" });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("foo");
     await settle();
@@ -1056,11 +1681,9 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.searchResultsText()).toContain("1 处匹配");
 
     area.dispatchEvent(new h.dom.window.Event("compositionend"));
+    h.sourceApply().click();
     await settle();
-    // 收口后的真实 stateChanged 才重算。
-    area.value = "<x>foo foo</x>\n";
-    area.dispatchEvent(new h.dom.window.Event("input"));
-    await settle();
+    // 源码草稿显式提交后的真实 stateChanged 才重算。
     expect(h.searchResultsText()).toContain("2 处匹配");
   });
 
@@ -1143,6 +1766,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const original = "<x>foo</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 3, text: original });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
 
     h.searchButton().click();
@@ -1168,6 +1792,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     // 编辑历史仍可用：编辑后 undo 回到 load 基线。
     area.value = "<x>foo edited</x>\r\n";
     area.dispatchEvent(new h.dom.window.Event("input"));
+    h.sourceApply().click();
     await settle();
     h.receive({
       type: "executeCommand", requestID: "r2", documentID: "doc-src",
@@ -1182,6 +1807,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const original = "<x>foo foo</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 1, text: original });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("foo");
     await settle();
@@ -1205,6 +1831,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>正文</x>\n" });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     area.focus();
     area.setSelectionRange(2, 4);

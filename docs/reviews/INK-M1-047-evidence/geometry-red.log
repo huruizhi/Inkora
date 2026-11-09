@@ -1,0 +1,39 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-047/editor
+
+ ❯ src/textarea-visibility.test.ts (4 tests | 2 failed) 58ms
+   × reveals a target below the viewport without changing content, focus or selection 44ms
+   × reveals a target above the viewport in read-only mode 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/textarea-visibility.test.ts > reveals a target below the viewport without changing content, focus or selection
+AssertionError: expected 920 to be less than or equal to 180
+ ❯ src/textarea-visibility.test.ts:33:32
+     31|   revealTextareaOffset(area, 6);
+     32|   expect(900 - area.scrollTop).toBeGreaterThanOrEqual(0);
+     33|   expect(920 - area.scrollTop).toBeLessThanOrEqual(area.clientHeight);
+       |                                ^
+     34|   expect(area.value).toBe(before);
+     35|   expect([area.selectionStart, area.selectionEnd, area.selectionDirect…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/textarea-visibility.test.ts > reveals a target above the viewport in read-only mode
+AssertionError: expected 850 to be less than or equal to 100
+ ❯ src/textarea-visibility.test.ts:44:26
+     42|   area.readOnly = true;
+     43|   revealTextareaOffset(area, 0);
+     44|   expect(area.scrollTop).toBeLessThanOrEqual(100);
+       |                          ^
+     45|   expect(120 - area.scrollTop).toBeLessThanOrEqual(area.clientHeight);
+     46|   expect(area.readOnly).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  18:33:22
+   Duration  285ms (import 62%, tests 30%, transform 6%, worker 1%)
+

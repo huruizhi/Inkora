@@ -1,0 +1,342 @@
+{
+  "schema_version": 1,
+  "status": "frozen functional oracles; no product pass claimed",
+  "baseline": "271922e",
+  "operation_basis": "manager-selected interaction policy; independent of implementation",
+  "cases": [
+    {
+      "id": "01-cell-crlf",
+      "title": "中文单元格局部替换",
+      "action": "只将数据行第二格「旧值」改为「新值」",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/01-cell-crlf/input.md",
+      "expected": "cases/01-cell-crlf/expected.md",
+      "operations": [
+        {
+          "find": "旧值",
+          "replace": "新值"
+        }
+      ],
+      "input_sha256": "6021a811516be7b4ad8c2cc274482c7cc74d74ccdaf7554351b66fadbcc7adc1",
+      "expected_sha256": "f56dd6bee708b687fa09e39f90ebf14cb1384ede50ef428cb53bec7dbe9d42a9",
+      "input_bytes": 110,
+      "expected_bytes": 110,
+      "expected_semantics": {
+        "tables": 1,
+        "columns": 2,
+        "body_rows": 1,
+        "last_row": [
+          "服务",
+          "新值"
+        ],
+        "unchanged": "BOM/CRLF/no trailing EOL/math/strong markers"
+      }
+    },
+    {
+      "id": "02-cell-pipe",
+      "title": "文字竖线最小转义",
+      "action": "把第二格占位文字替换为可见文字 A|B，写入必要转义",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/02-cell-pipe/input.md",
+      "expected": "cases/02-cell-pipe/expected.md",
+      "operations": [
+        {
+          "find": "占位",
+          "replace": "A\\|B"
+        }
+      ],
+      "input_sha256": "b471a8d2733a3a87d2e2035d0a536e2e4b30a157ed463699c7d8f0801f77a2f4",
+      "expected_sha256": "dc98bec7640ffcc8cfd782612e7c3e32f49c637a40de5b978ddf90f141d7fcf1",
+      "input_bytes": 54,
+      "expected_bytes": 52,
+      "expected_semantics": {
+        "tables": 1,
+        "columns": 2,
+        "body_rows": 1,
+        "last_row": [
+          "服务",
+          "A|B"
+        ]
+      }
+    },
+    {
+      "id": "03-add-row",
+      "title": "末行后添加空行",
+      "action": "选末格后执行添加下一行，新增两格空数据行；尚未继续输入也可保存",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/03-add-row/input.md",
+      "expected": "cases/03-add-row/expected.md",
+      "operations": [
+        {
+          "find": "| api | ready |\n",
+          "replace": "| api | ready |\n|  |  |\n"
+        }
+      ],
+      "input_sha256": "47d7fe5c2d62fc18938bc8b730f3b89272f06752eff633c9a50405d5c8db05f8",
+      "expected_sha256": "869e2cc29f0541a44162c04d32d4d948dcbab83ad3f0323ef5edab381a43a9ec",
+      "input_bytes": 60,
+      "expected_bytes": 68,
+      "expected_semantics": {
+        "tables": 1,
+        "columns": 2,
+        "body_rows": 2,
+        "last_row": [
+          "",
+          ""
+        ]
+      }
+    },
+    {
+      "id": "04-add-column",
+      "title": "末列后增加列",
+      "action": "在末列后添加空列，仅追加各行必要单元格和分隔符",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/04-add-column/input.md",
+      "expected": "cases/04-add-column/expected.md",
+      "operations": [
+        {
+          "find": "| 名称 | 状态 |",
+          "replace": "| 名称 | 状态 |  |"
+        },
+        {
+          "find": "| :---- | ---: |",
+          "replace": "| :---- | ---: | --- |"
+        },
+        {
+          "find": "| api | **好** |",
+          "replace": "| api | **好** |  |"
+        }
+      ],
+      "input_sha256": "7a59425dcf68a57ab93392df54d055b59a0aa81d50bcd37bd85eb6be9b923582",
+      "expected_sha256": "e8f08fe2bd762ab1c9a6ccff5ba4e594568edc4efd6da030b3fb38b66f03069e",
+      "input_bytes": 58,
+      "expected_bytes": 70,
+      "expected_semantics": {
+        "tables": 1,
+        "columns": 3,
+        "body_rows": 1,
+        "last_row": [
+          "api",
+          "好",
+          ""
+        ]
+      }
+    },
+    {
+      "id": "05-delete-column",
+      "title": "删除末列",
+      "action": "删除第二列，保留第一列原有写法与对齐",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/05-delete-column/input.md",
+      "expected": "cases/05-delete-column/expected.md",
+      "operations": [
+        {
+          "find": " | State |",
+          "replace": " |"
+        },
+        {
+          "find": " | ---: |",
+          "replace": " |"
+        },
+        {
+          "find": " | ready |",
+          "replace": " |"
+        }
+      ],
+      "input_sha256": "9e41a265c6ae034be8cdd70e1ad83510464d73c9f82f4037b5c3a8d093572b91",
+      "expected_sha256": "34260e9a74f837689b2237c1b57c7f7116403ae8e289ddd3e87e71c0abab6887",
+      "input_bytes": 53,
+      "expected_bytes": 30,
+      "expected_semantics": {
+        "tables": 1,
+        "columns": 1,
+        "body_rows": 1,
+        "last_row": [
+          "api"
+        ]
+      }
+    },
+    {
+      "id": "06-align",
+      "title": "对齐只改必要冒号",
+      "action": "首列由左对齐变为居中，仅在其分隔单元尾添加冒号",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/06-align/input.md",
+      "expected": "cases/06-align/expected.md",
+      "operations": [
+        {
+          "find": ":---- ",
+          "replace": ":----: "
+        }
+      ],
+      "input_sha256": "54d9125549ff12f53b688089e8ce5d66582f97dd90eada6c8c8529f62cf4a5d2",
+      "expected_sha256": "def0c9c53d180959ba8d69277c7acc549360052b2733bacbb935c78c03f38fe3",
+      "input_bytes": 51,
+      "expected_bytes": 52,
+      "expected_semantics": {
+        "tables": 1,
+        "columns": 2,
+        "body_rows": 1,
+        "last_row": [
+          "api",
+          "好"
+        ],
+        "first_alignment": "center"
+      }
+    },
+    {
+      "id": "07-hidden-extra-cell",
+      "title": "额外单元格字节保留",
+      "action": "表头两列而数据行三格时，只编辑第一格，不丢弃额外原文单元",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/07-hidden-extra-cell/input.md",
+      "expected": "cases/07-hidden-extra-cell/expected.md",
+      "operations": [
+        {
+          "find": "| api |",
+          "replace": "| app |"
+        }
+      ],
+      "input_sha256": "4db1246c4a5fc0853bcfde0229f6d4cfd8bb02375bd34a08930bcdc4d18b1bad",
+      "expected_sha256": "39dceefb45c0831d0bb18cc45c38dae71bc11df8cac6c83d3dc9de5534d36863",
+      "input_bytes": 65,
+      "expected_bytes": 65,
+      "expected_semantics": {
+        "tables": 1,
+        "columns": 2,
+        "body_rows": 1,
+        "last_row": [
+          "app",
+          "ready"
+        ],
+        "must_preserve": "| 隐藏保留 |"
+      }
+    },
+    {
+      "id": "08-not-table",
+      "title": "非表格普通文本",
+      "action": "表头与分隔行列数不同时不构造假表格；只编辑普通文本",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/08-not-table/input.md",
+      "expected": "cases/08-not-table/expected.md",
+      "operations": [
+        {
+          "find": "说明。",
+          "replace": "说明！"
+        }
+      ],
+      "input_sha256": "e9009734ef2eaffa650c7e9e6f7cfc7ba7d162cffaa02fd39b9bb8f46be9a8f8",
+      "expected_sha256": "9a3f64b215e8947d8b7cf90dfdcc871f3c222e3f4747e6a61c053f30e0efe685",
+      "input_bytes": 45,
+      "expected_bytes": 45,
+      "expected_semantics": {
+        "tables": 0
+      }
+    },
+    {
+      "id": "09-task-toggle",
+      "title": "任务状态单字符",
+      "action": "勾选中文项，既有大写X不归一化",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/09-task-toggle/input.md",
+      "expected": "cases/09-task-toggle/expected.md",
+      "operations": [
+        {
+          "find": "[ ] 中文",
+          "replace": "[x] 中文"
+        }
+      ],
+      "input_sha256": "a27e27cf6c9f99b48465336a9664e8b1032329a33667763e8d74a6ffee73a9a7",
+      "expected_sha256": "ac0b84f41d2020239505aace55882499e3cb71162b426bcf0031627426f1baf7",
+      "input_bytes": 76,
+      "expected_bytes": 76,
+      "expected_semantics": {
+        "checkboxes": 2,
+        "checked": [
+          true,
+          true
+        ],
+        "mutated_state_characters": 1,
+        "unchanged": "BOM/CRLF/no trailing EOL/uppercase X"
+      }
+    },
+    {
+      "id": "10-task-enter",
+      "title": "完成项后回车建未完成项",
+      "action": "光标位于任务项尾，Enter新建同标记的未完成任务；空任务可保存",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/10-task-enter/input.md",
+      "expected": "cases/10-task-enter/expected.md",
+      "operations": [
+        {
+          "find": "* [x] 已完成",
+          "replace": "* [x] 已完成\n* [ ] "
+        }
+      ],
+      "input_sha256": "e90ddae9889be0d139d7989e255908c2f549e3e6d1b8371a253701474560d931",
+      "expected_sha256": "0fa0738808660cef57c8271c705b11a33f2bceb3b9518d25d57bdf0d01fb20b4",
+      "input_bytes": 15,
+      "expected_bytes": 22,
+      "expected_semantics": {
+        "checkboxes": 2,
+        "checked": [
+          true,
+          false
+        ],
+        "caret_after_empty_marker": true
+      }
+    },
+    {
+      "id": "11-nested-task",
+      "title": "嵌套有序任务",
+      "action": "取消嵌套子项，父项编号、缩进和其他任务不变",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/11-nested-task/input.md",
+      "expected": "cases/11-nested-task/expected.md",
+      "operations": [
+        {
+          "find": "[X] 子项",
+          "replace": "[ ] 子项"
+        }
+      ],
+      "input_sha256": "4e07775a8d1448521dd4688f7480bd6c894d84d561133106658ebf92158dac10",
+      "expected_sha256": "fc86198b63740ccbbde7d8d9eff4837d1d1e2caa5a2d5eddaacd3b4573981139",
+      "input_bytes": 50,
+      "expected_bytes": 50,
+      "expected_semantics": {
+        "checkboxes": 3,
+        "checked": [
+          false,
+          false,
+          false
+        ],
+        "mutated_state_characters": 1
+      }
+    },
+    {
+      "id": "12-task-not-code",
+      "title": "代码中的假任务不变",
+      "action": "只勾选实际列表任务，代码与普通段落的同形字符不改变",
+      "scope": "real visual action required; byte oracle alone is not product acceptance",
+      "input": "cases/12-task-not-code/input.md",
+      "expected": "cases/12-task-not-code/expected.md",
+      "operations": [
+        {
+          "find": "[ ] **实际任务**",
+          "replace": "[x] **实际任务**"
+        }
+      ],
+      "input_sha256": "772ed54051fece2994eddf530e7f5d05cf6db56b02197588291d882faca46f82",
+      "expected_sha256": "65abec580151694da8dfeec03ee7ff9975cf5c48bbed0e9b19e595f5e5df4c3a",
+      "input_bytes": 72,
+      "expected_bytes": 72,
+      "expected_semantics": {
+        "checkboxes": 1,
+        "checked": [
+          true
+        ],
+        "must_preserve": "- [ ] 代码示例"
+      }
+    }
+  ]
+}

@@ -137,19 +137,41 @@ final class EditorWebViewTests: XCTestCase {
       (controller.view as? WKWebView)
         ?? controller.view.subviews.compactMap { $0 as? WKWebView }.first)
 
-    _ = try await waitForJavaScriptValue(
-      in: webView,
-      script: editorTextScript
-    ) { $0 as? String == initialText }
-    _ = try await webView.evaluateJavaScript("document.querySelector('#editor').value = 'stale'")
+    let beforeReload: BridgeSnapshot
+    do {
+      beforeReload = try await waitForSnapshot(from: controller)
+    } catch {
+      XCTFail("Snapshot before reload failed: \(error)")
+      return
+    }
+    XCTAssertEqual(beforeReload.text, initialText)
+    do {
+      _ = try await webView.evaluateJavaScript(
+        "document.documentElement.dataset.inkoraTestPage = 'before-reload'"
+      )
+    } catch {
+      XCTFail("Marking the old page failed: \(error)")
+      return
+    }
 
     webView.reload()
-    let reloaded = try await waitForJavaScriptValue(
-      in: webView,
-      script: editorTextScript
-    ) { $0 as? String == initialText }
+    do {
+      try await waitForReloadedEditor(in: webView)
+    } catch {
+      XCTFail("Waiting for the reloaded page failed: \(error)")
+      return
+    }
+    let reloaded: BridgeSnapshot
+    do {
+      reloaded = try await waitForSnapshot(from: controller)
+    } catch {
+      XCTFail("Snapshot after reload failed: \(error)")
+      return
+    }
 
-    XCTAssertEqual(reloaded as? String, initialText)
+    XCTAssertEqual(reloaded.documentID, beforeReload.documentID)
+    XCTAssertEqual(reloaded.revision, beforeReload.revision)
+    XCTAssertEqual(reloaded.text, initialText)
   }
 
   @MainActor
@@ -746,23 +768,10 @@ final class EditorWebViewTests: XCTestCase {
       initialText: "# 标题\r\n正文 e\u{0301} 👩‍💻\r\n"
     )
 
-    // Source-mode documents edit through a textarea; set its value directly
-    // and dispatch a real input event so the kernel observes the change.
     let replacement = "第一行\n第二行 组合 e\u{0301}"
-    let data = try JSONEncoder().encode(replacement)
-    let literal = try XCTUnwrap(String(data: data, encoding: .utf8))
-    _ = try await webView.evaluateJavaScript(
-      """
-      (() => {
-        const editor = document.querySelector('#editor');
-        editor.value = \(literal);
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
-      })()
-      """
-    )
-    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
-      $0 as? String == replacement
-    }
+    try await enterSourceMode(in: webView)
+    try await replaceSourceDraft(in: webView, with: replacement)
+    try await applySourceDraft(in: webView)
 
     let snapshot = try await requestText(from: controller)
 
@@ -859,39 +868,26 @@ final class EditorWebViewTests: XCTestCase {
     button.performClick(nil)
     _ = try await waitForJavaScriptValue(
       in: webView,
-      script: "document.querySelector('#editor')?.readOnly"
-    ) { $0 as? Bool == false }
+      script: "document.querySelector('#editor.ProseMirror') !== null"
+    ) { $0 as? Bool == true }
     let converted = try await requestText(from: controller)
     XCTAssertEqual(converted, "<x>中文</x>\n第二行\n")
     XCTAssertTrue(document.isDocumentEdited)
     XCTAssertFalse(
       controller.canPerformEditorCommand(.undo), "Conversion is an explicit irreversible boundary")
-    _ = try await webView.evaluateJavaScript(
-      """
-      (() => {
-        const editor = document.querySelector('#editor');
-        editor.value = '<x>修改</x>\\n第二行\\n';
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
-      })()
-      """)
-    _ = try await waitForJavaScriptValue(
-      in: webView,
-      script: "document.querySelector('#editor').value"
-    ) { ($0 as? String)?.contains("修改") == true }
+    try await enterSourceMode(in: webView)
+    try await replaceSourceDraft(in: webView, with: "<x>修改</x>\n第二行\n")
+    try await applySourceDraft(in: webView)
     try await waitForEditorCommand(.undo, enabled: true, in: controller)
     controller.performEditorCommand(.undo)
-    _ = try await waitForJavaScriptValue(
-      in: webView,
-      script: "document.querySelector('#editor').value"
-    ) { $0 as? String == "<x>中文</x>\n第二行\n" }
+    let undone = try await requestText(from: controller)
+    XCTAssertEqual(undone, "<x>中文</x>\n第二行\n")
     XCTAssertTrue(document.isDocumentEdited)
     XCTAssertFalse(document.isBareCRReadOnly)
     try await waitForEditorCommand(.redo, enabled: true, in: controller)
     controller.performEditorCommand(.redo)
-    _ = try await waitForJavaScriptValue(
-      in: webView,
-      script: "document.querySelector('#editor').value"
-    ) { ($0 as? String)?.contains("修改") == true }
+    let redone = try await requestText(from: controller)
+    XCTAssertEqual(redone, "<x>修改</x>\n第二行\n")
     XCTAssertTrue(document.isDocumentEdited)
   }
 
@@ -899,13 +895,18 @@ final class EditorWebViewTests: XCTestCase {
   func testMixedAndBareCRRemainInSourceMode() async throws {
     for input in ["first\r\nsecond\nthird", "first\rsecond", "first\rsecond\r\nthird"] {
       let (document, controller, webView) = try await loadedEditor(initialText: input)
-      let source =
+      let mode =
         try await webView.evaluateJavaScript(
-          "document.querySelector('#editor') instanceof HTMLTextAreaElement") as? Bool
-      XCTAssertEqual(source, true)
-      let readOnly =
-        try await webView.evaluateJavaScript("document.querySelector('#editor').readOnly") as? Bool
-      XCTAssertEqual(readOnly, document.isBareCRReadOnly)
+          "document.querySelector('#editor') instanceof HTMLTextAreaElement ? 'read_only' : 'visual'"
+        )
+        as? String
+      XCTAssertEqual(mode, document.isBareCRReadOnly ? "read_only" : "visual")
+      if document.isBareCRReadOnly {
+        let readOnly =
+          try await webView.evaluateJavaScript("document.querySelector('#editor').readOnly")
+          as? Bool
+        XCTAssertEqual(readOnly, true)
+      }
       let snapshot = try await requestText(from: controller)
       XCTAssertEqual(snapshot, input)
       document.close()
@@ -914,30 +915,29 @@ final class EditorWebViewTests: XCTestCase {
 
   @MainActor
   func testSnapshotRejectsUncommittedCompositionAndKeepsContent() async throws {
-    let (document, controller, webView) = try await loadedEditor(initialText: "<x>before</x>")
-    _ = try await webView.evaluateJavaScript(
-      """
-      (() => {
-        const editor = document.querySelector('#editor');
-        editor.dispatchEvent(new Event('compositionstart'));
-        editor.value = '<x>中文</x>';
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
-      })()
-      """
-    )
+    let (document, controller, webView) = try await loadedEditor(initialText: "before\n")
+    try await beginSyntheticVisualComposition(in: webView, text: "中文")
     XCTAssertFalse(document.isDocumentEdited, "Composition intermediate state is not published")
     do {
       _ = try await requestText(from: controller)
       XCTFail("Uncommitted composition must not produce a snapshot")
-    } catch {
+    } catch EditorBridgeError.remote(.editorNotReady, .retry, _) {
       XCTAssertFalse(document.isDocumentEdited)
+    } catch {
+      XCTFail("Unexpected snapshot error: \(error)")
     }
-    _ = try await webView.evaluateJavaScript(
-      "document.querySelector('#editor').dispatchEvent(new Event('compositionend'))"
-    )
+    XCTAssertEqual(document.bridgeRevision, 0)
+    let intermediateText =
+      try await webView.evaluateJavaScript("document.querySelector('#editor').textContent")
+      as? String
+    XCTAssertEqual(intermediateText, "中文")
+    try await endSyntheticVisualComposition(in: webView)
     let snapshot = try await requestText(from: controller)
-    XCTAssertEqual(snapshot, "<x>中文</x>")
+    XCTAssertEqual(snapshot, "中文\n")
+    XCTAssertEqual(document.bridgeRevision, 1)
     XCTAssertTrue(document.isDocumentEdited)
+    XCTAssertTrue(controller.canPerformEditorCommand(.undo))
+    XCTAssertFalse(controller.canPerformEditorCommand(.redo))
   }
 
   @MainActor
@@ -962,7 +962,7 @@ final class EditorWebViewTests: XCTestCase {
 
   @MainActor
   func testBackgroundRecoveryRejectsCompositionWithoutBlurOrHistoryChanges() async throws {
-    let (document, controller, webView) = try await loadedEditor(initialText: "<x>before</x>")
+    let (document, controller, webView) = try await loadedEditor(initialText: "before\n")
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(
       "recovery-ime-\(UUID())")
     defer {
@@ -971,19 +971,25 @@ final class EditorWebViewTests: XCTestCase {
     }
     let store = RecoveryStore(directory: root)
     document.configureRecovery(store: store)
+    try await replaceEditorText(in: webView, with: "committed")
+    let revisionBeforeComposition = document.bridgeRevision
     _ = try await webView.evaluateJavaScript(
       """
       (() => {
-        const editor = document.querySelector('#editor');
+        const editor = document.querySelector('#editor.ProseMirror');
         editor.focus();
-        editor.value = '<x>committed</x>';
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
         window.recoveryBlurCount = 0;
         editor.addEventListener('blur', () => window.recoveryBlurCount++);
-        editor.dispatchEvent(new Event('compositionstart'));
-        editor.value = '<x>中间态</x>';
-        editor.setSelectionRange(5, 5);
+        const text = editor.querySelector('p').firstChild;
+        editor.dispatchEvent(new Event('compositionstart', { bubbles: true }));
+        text.data = '中间态';
         editor.dispatchEvent(new Event('input', { bubbles: true }));
+        const range = document.createRange();
+        range.setStart(text, 2);
+        range.collapse(true);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
       })()
       """)
     do {
@@ -992,22 +998,34 @@ final class EditorWebViewTests: XCTestCase {
       }
       try document.writeRecovery(snapshot)
       XCTFail("Composition must not yield a recovery snapshot")
-    } catch { XCTAssertTrue(store.discover().drafts.isEmpty) }
+    } catch EditorBridgeError.remote(.editorNotReady, .retry, _) {
+      XCTAssertTrue(store.discover().drafts.isEmpty)
+    } catch {
+      XCTFail("Unexpected recovery snapshot error: \(error)")
+    }
+    XCTAssertEqual(document.bridgeRevision, revisionBeforeComposition)
     let blur = try await webView.evaluateJavaScript("window.recoveryBlurCount") as? Int
     XCTAssertEqual(blur, 0)
     let selection =
-      try await webView.evaluateJavaScript("document.querySelector('#editor').selectionStart")
+      try await webView.evaluateJavaScript("window.getSelection().anchorOffset")
       as? Int
-    XCTAssertEqual(selection, 5)
-    _ = try await webView.evaluateJavaScript(
-      "document.querySelector('#editor').dispatchEvent(new Event('compositionend'))")
+    XCTAssertEqual(selection, 2)
+    try await endSyntheticVisualComposition(in: webView)
     let snapshot: BridgeSnapshot = try await withCheckedThrowingContinuation { continuation in
       controller.requestRecoverySnapshot { continuation.resume(with: $0) }
     }
     try document.writeRecovery(snapshot)
-    XCTAssertEqual(store.discover().drafts.first?.data, Data("<x>中间态</x>".utf8))
+    XCTAssertEqual(store.discover().drafts.first?.data, Data("中间态\n".utf8))
+    XCTAssertEqual(document.bridgeRevision, revisionBeforeComposition + 1)
     XCTAssertTrue(controller.canPerformEditorCommand(.undo))
     XCTAssertFalse(controller.canPerformEditorCommand(.redo))
+    controller.performEditorCommand(.undo)
+    let undone = try await requestText(from: controller)
+    XCTAssertEqual(undone, "committed\n")
+    try await waitForEditorCommand(.redo, enabled: true, in: controller)
+    controller.performEditorCommand(.redo)
+    let redone = try await requestText(from: controller)
+    XCTAssertEqual(redone, "中间态\n")
   }
 
   @MainActor
@@ -1042,14 +1060,35 @@ final class EditorWebViewTests: XCTestCase {
     let webView = try XCTUnwrap(
       (controller.view as? WKWebView)
         ?? controller.view.subviews.compactMap { $0 as? WKWebView }.first)
-    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
-      // HTML textarea.value normalizes CRLF/CR to LF; disk/snapshot assertions
-      // below still require the original line endings byte for byte.
-      $0 as? String
-        == initialText.replacingOccurrences(of: "\r\n", with: "\n")
-        .replacingOccurrences(of: "\r", with: "\n")
-    }
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('#editor') !== null"
+    ) { $0 as? Bool == true }
+    let initialSnapshot = try await waitForSnapshot(from: controller)
+    XCTAssertEqual(initialSnapshot.text, initialText)
     return (document, controller, webView)
+  }
+
+  @MainActor
+  private func waitForReloadedEditor(in webView: WKWebView) async throws {
+    var lastError: Error?
+    for _ in 0..<40 {
+      do {
+        let ready =
+          try await webView.evaluateJavaScript(
+            "document.documentElement.dataset.inkoraTestPage !== 'before-reload' && document.querySelector('#editor') !== null"
+          ) as? Bool
+        if ready == true { return }
+        lastError = nil
+      } catch {
+        // WKWebView rejects evaluation while the old page is being torn down.
+        // A successful evaluation on the new page is still required below.
+        lastError = error
+      }
+      try await Task.sleep(for: .milliseconds(50))
+    }
+    if let lastError { throw lastError }
+    XCTFail("Timed out waiting for the reloaded editor page")
   }
 
   @MainActor
@@ -1075,12 +1114,105 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  private func enterSourceMode(in webView: WKWebView) async throws {
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.editor-mode-source').click()"
+    )
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('textarea#editor') !== null"
+    ) { $0 as? Bool == true }
+  }
+
+  @MainActor
+  private func replaceSourceDraft(in webView: WKWebView, with text: String) async throws {
+    let data = try JSONEncoder().encode(text)
+    let literal = try XCTUnwrap(String(data: data, encoding: .utf8))
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const editor = document.querySelector('textarea#editor');
+        editor.value = \(literal);
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      })()
+      """
+    )
+    _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+      $0 as? String == text
+    }
+  }
+
+  @MainActor
+  private func applySourceDraft(in webView: WKWebView) async throws {
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.source-draft-apply').click()"
+    )
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('.source-draft-apply').disabled"
+    ) { $0 as? Bool == true }
+  }
+
+  @MainActor
+  private func beginSyntheticVisualComposition(
+    in webView: WKWebView,
+    text replacement: String
+  ) async throws {
+    let data = try JSONEncoder().encode(replacement)
+    let literal = try XCTUnwrap(String(data: data, encoding: .utf8))
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const editor = document.querySelector('#editor.ProseMirror');
+        const text = editor.querySelector('p').firstChild;
+        editor.focus();
+        editor.dispatchEvent(new Event('compositionstart', { bubbles: true }));
+        text.data = \(literal);
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      })()
+      """
+    )
+  }
+
+  @MainActor
+  private func endSyntheticVisualComposition(in webView: WKWebView) async throws {
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('#editor.ProseMirror').dispatchEvent(new Event('compositionend', { bubbles: true }))"
+    )
+  }
+
+  @MainActor
   private func requestText(from controller: EditorViewController) async throws -> String {
     try await withCheckedThrowingContinuation { continuation in
       controller.requestText { result in
         continuation.resume(with: result)
       }
     }
+  }
+
+  @MainActor
+  private func requestSnapshot(from controller: EditorViewController) async throws
+    -> BridgeSnapshot
+  {
+    try await withCheckedThrowingContinuation { continuation in
+      controller.requestSnapshot { result in
+        continuation.resume(with: result)
+      }
+    }
+  }
+
+  @MainActor
+  private func waitForSnapshot(from controller: EditorViewController) async throws
+    -> BridgeSnapshot
+  {
+    for _ in 0..<40 {
+      do {
+        return try await requestSnapshot(from: controller)
+      } catch EditorBridgeError.editorNotReady {
+        try await Task.sleep(for: .milliseconds(50))
+      }
+    }
+    throw EditorBridgeError.editorNotReady
   }
 
   @MainActor

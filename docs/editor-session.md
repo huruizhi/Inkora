@@ -13,13 +13,15 @@
 
 ## 中文输入法组合
 
-组合期间的 transaction 会正常应用到 `EditorState`，因此光标和候选文本始终以 ProseMirror 为准；会话层暂缓对外发布文档变化。在 `compositionend` 后，仅当最终文档与组合前不同，发布一次逻辑 revision。重复的结束事件和最终无变化的组合不会产生重复通知。
+组合期间的 transaction 会正常应用到 `EditorState`，因此光标和候选文本始终以 ProseMirror 为准；会话层暂缓对外发布文档变化。DOM `compositionend` 只表示 UI 候选会话结束，不等于最终 PM transaction 已排空。生产 runtime 进入 `settling`，继续接受同一 `composition` meta 的 post-end final，并以每次已接受事务重置 24ms quiet window；quiet window 到达且公开 `EditorView.composing` 为 false 后，才同时封口原文、投影、selection、history、逻辑 revision 与唯一文档发布。
+
+该窗口依据锁定的 `prosemirror-view@1.42.9` 在 `compositionend` 后的 microtask DOM observer flush 与 20ms composition cleanup，并保留余量；不读取或强刷私有 `domObserver`。等待稳定的调用方最多等待 120ms，超时明确得到可重试拒绝，当前原文、投影和历史保持不变；quiet window 后仍会自动恢复保存资格。重复结束事件、最终无变化的组合和取消不会产生 revision 或清空既有 future；新 composition、不同 meta 或下一普通事务是显式封口边界。
 
 真实 macOS 验收时需检查：
 
 1. 使用系统简体拼音连续输入“中文输入法”；
 2. 选词、翻页、回删候选，确认候选窗不消失且光标不跳动；
-3. 结束组合后只出现一次文档变化上报；
+3. 稳定边界后只出现一次文档变化上报，正文是最终上屏值而非中间拼音；
 4. 一次 Undo 撤销整次组合，一次 Redo 恢复；
 5. 在粗体、列表、链接边界重复以上操作。
 

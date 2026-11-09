@@ -1,0 +1,168 @@
+.inkora-code-block {
+  --inkora-code-red: #cf222e;
+  --inkora-code-purple: #8250df;
+  --inkora-code-blue: #0550ae;
+  --inkora-code-string: #0a3069;
+  --inkora-code-orange: #953800;
+  --inkora-code-muted: #6e7781;
+  --inkora-code-green: #116329;
+  --inkora-code-add-bg: #dafbe1;
+  --inkora-code-delete: #82071e;
+  --inkora-code-delete-bg: #ffebe9;
+  margin: 1.2em 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, CanvasText 16%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, CanvasText 4%, Canvas);
+}
+
+.inkora-code-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 13%, transparent);
+  color: color-mix(in srgb, CanvasText 68%, Canvas);
+  font-size: 11px;
+  line-height: 1.3;
+  user-select: none;
+}
+
+.inkora-code-language-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.inkora-code-language {
+  max-width: min(260px, 42vw);
+  border: 1px solid color-mix(in srgb, CanvasText 22%, transparent);
+  border-radius: 5px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  padding: 2px 22px 2px 6px;
+}
+
+.inkora-code-language:focus-visible {
+  outline: 2px solid AccentColor;
+  outline-offset: 1px;
+}
+
+.inkora-code-language:disabled {
+  opacity: 0.55;
+}
+
+.inkora-code-message {
+  min-width: 0;
+  flex: 1 1 auto;
+  color: color-mix(in srgb, #b42318 82%, CanvasText);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inkora-code-license {
+  flex: 0 0 auto;
+  color: inherit;
+}
+
+.inkora-code-block pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.inkora-code-block code {
+  color: CanvasText;
+  font: 13px/1.6 ui-monospace, "SFMono-Regular", Menlo, monospace;
+  tab-size: 2;
+}
+
+.inkora-code-block .hljs-keyword,
+.inkora-code-block .hljs-meta .hljs-keyword,
+.inkora-code-block .hljs-template-tag,
+.inkora-code-block .hljs-template-variable,
+.inkora-code-block .hljs-type,
+.inkora-code-block .hljs-variable.language_ {
+  color: var(--inkora-code-red);
+}
+
+.inkora-code-block .hljs-title,
+.inkora-code-block .hljs-title.class_,
+.inkora-code-block .hljs-title.function_ {
+  color: var(--inkora-code-purple);
+}
+
+.inkora-code-block .hljs-attr,
+.inkora-code-block .hljs-attribute,
+.inkora-code-block .hljs-literal,
+.inkora-code-block .hljs-number,
+.inkora-code-block .hljs-operator,
+.inkora-code-block .hljs-property,
+.inkora-code-block .hljs-variable,
+.inkora-code-block .hljs-selector-attr,
+.inkora-code-block .hljs-selector-class,
+.inkora-code-block .hljs-selector-id {
+  color: var(--inkora-code-blue);
+}
+
+.inkora-code-block .hljs-regexp,
+.inkora-code-block .hljs-string,
+.inkora-code-block .hljs-meta .hljs-string {
+  color: var(--inkora-code-string);
+}
+
+.inkora-code-block .hljs-built_in,
+.inkora-code-block .hljs-symbol {
+  color: var(--inkora-code-orange);
+}
+
+.inkora-code-block .hljs-comment,
+.inkora-code-block .hljs-code,
+.inkora-code-block .hljs-doctag,
+.inkora-code-block .hljs-quote {
+  color: var(--inkora-code-muted);
+}
+
+.inkora-code-block .hljs-name,
+.inkora-code-block .hljs-selector-tag,
+.inkora-code-block .hljs-selector-pseudo {
+  color: var(--inkora-code-green);
+}
+
+.inkora-code-block .hljs-section,
+.inkora-code-block .hljs-strong {
+  font-weight: 650;
+}
+
+.inkora-code-block .hljs-emphasis {
+  font-style: italic;
+}
+
+.inkora-code-block .hljs-addition {
+  color: var(--inkora-code-green);
+  background: var(--inkora-code-add-bg);
+}
+
+.inkora-code-block .hljs-deletion {
+  color: var(--inkora-code-delete);
+  background: var(--inkora-code-delete-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .inkora-code-block {
+    --inkora-code-red: #ff7b72;
+    --inkora-code-purple: #d2a8ff;
+    --inkora-code-blue: #79c0ff;
+    --inkora-code-string: #a5d6ff;
+    --inkora-code-orange: #ffa657;
+    --inkora-code-muted: #8b949e;
+    --inkora-code-green: #7ee787;
+    --inkora-code-add-bg: #033a16;
+    --inkora-code-delete: #ffdcd7;
+    --inkora-code-delete-bg: #67060c;
+  }
+}

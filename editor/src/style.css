@@ -74,6 +74,100 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
 }
 
+.editor-mode-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+}
+.editor-mode-bar button {
+  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border-radius: 6px;
+  padding: 3px 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+.editor-mode-bar button[aria-pressed="true"] {
+  background: color-mix(in srgb, AccentColor 18%, transparent);
+  border-color: AccentColor;
+}
+.editor-mode-bar button:focus-visible {
+  outline: 2px solid AccentColor;
+  outline-offset: 1px;
+}
+.editor-mode-bar button:disabled { opacity: 0.5; }
+.editor-mode-status {
+  min-width: 0;
+  color: color-mix(in srgb, CanvasText 70%, Canvas);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-editor-host {
+  position: relative;
+  flex: 0 0 auto;
+}
+.link-editor {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  background: color-mix(in srgb, Canvas 96%, CanvasText);
+}
+.link-editor label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 11px;
+}
+.link-editor input {
+  box-sizing: border-box;
+  min-width: 160px;
+  border: 1px solid color-mix(in srgb, CanvasText 28%, transparent);
+  border-radius: 5px;
+  padding: 4px 7px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+  font-size: 13px;
+}
+.link-editor input:focus-visible,
+.link-editor button:focus-visible {
+  outline: 2px solid AccentColor;
+  outline-offset: 1px;
+}
+.link-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.link-editor button {
+  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border-radius: 5px;
+  padding: 4px 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+.link-editor-remove { color: #b42318; }
+.link-editor-status {
+  min-width: 0;
+  color: #b42318;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .editor-host {
   flex: 1 1 auto;
   min-width: 0;
@@ -246,8 +340,16 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   }
 }
 
-/* 当前文档查找（INK-M1-009 阶段 A）：只查询与列表，无定位/替换。 */
+/* 查找结果占据工具区布局空间，不能覆盖已定位到的正文。 */
+.search-root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
 .search-toggle {
+  align-self: flex-start;
   border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
   border-radius: 6px;
   background: transparent;
@@ -263,10 +365,11 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 }
 
 .search-panel {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 6px;
 }
 .search-panel[hidden] {
@@ -274,6 +377,7 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 }
 .search-panel-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
@@ -332,13 +436,10 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   color: color-mix(in srgb, CanvasText 65%, Canvas);
 }
 .search-panel-results {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 100%;
-  z-index: 10;
+  position: static;
   box-sizing: border-box;
-  max-height: min(240px, 40vh);
+  width: 100%;
+  max-height: min(200px, 28vh);
   overflow: auto;
   padding: 8px 10px;
   border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);

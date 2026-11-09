@@ -117,6 +117,14 @@ const tokenSpecs: Record<string, ParseSpec> = {
       title: token.attrGet("title") || null,
     }),
   },
+  image: {
+    mark: "image_ref",
+    noCloseToken: true,
+    getAttrs: (token) => ({
+      href: token.attrGet("src"),
+      title: token.attrGet("title") || null,
+    }),
+  },
   code_inline: { mark: "code", noCloseToken: true },
 };
 
@@ -206,6 +214,15 @@ export const inkoraMarkdownSerializer = new MarkdownSerializer(
       close: "~~",
       mixable: true,
       expelEnclosingWhitespace: true,
+    },
+    image_ref: {
+      open: "![",
+      close: (_state, mark) => {
+        const title = mark.attrs.title ? ` \"${String(mark.attrs.title)}\"` : "";
+        return `](${String(mark.attrs.href)}${title})`;
+      },
+      mixable: false,
+      expelEnclosingWhitespace: false,
     },
   },
 );

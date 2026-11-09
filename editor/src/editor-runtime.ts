@@ -1,11 +1,8 @@
-import { parseProtectedMarkdown } from "./protected-markdown";
 import { EditorView } from "prosemirror-view";
 import { InkoraEditorSession } from "./editor-session";
 import { TextAreaEditorKernel } from "./editor-kernel";
-import { parseMarkdown, serializeMarkdown } from "./markdown-codec";
-import { classifyLineEndings, structuredInput, structuredOutput, type LineEndings } from "./line-endings";
-import { analyzeMarkdownSafety } from "./markdown-safety";
-import { TextSelection } from "prosemirror-state";
+import { classifyLineEndings } from "./line-endings";
+import { TextSelection, type EditorState } from "prosemirror-state";
 import { analyzeDocument } from "./document-analysis";
 import {
   sameHeading,
@@ -21,15 +18,51 @@ import {
 } from "./source-navigation";
 import type { DirectedSelection, SourceReplacementPlan } from "./source-search";
 import { validateSourceReplacementPlan } from "./source-replacement";
+import { SourceAuthoritySession } from "./source-authority";
+import { revealTextareaOffset } from "./textarea-visibility";
+import { createCodeHighlightDecorations } from "./code-highlighting";
+import { createCodeBlockNodeViews } from "./code-block-view";
+import {
+  normalizedLinkAttrs,
+  setLink,
+  unsetLink,
+  type LinkAttrs,
+} from "./inline-formatting";
+import type { SourceLinkOwner } from "./source-ledger";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  draftDirty: boolean;
+  unresolved: boolean;
+  saveEligible: boolean;
+}
+
+export type EditorMode = "visual" | "source" | "read_only";
+export type RuntimeChangeKind = "document" | "status";
+
+export interface LinkEditBinding {
+  readonly raw: string;
+  readonly revision: number;
+  readonly epoch: number;
+  readonly selection: {
+    readonly anchor: number;
+    readonly head: number;
+    readonly affinity: "left" | "right";
+  };
+  readonly visualSelection: { readonly anchor: number; readonly head: number };
+  readonly attrs: LinkAttrs | null;
+  readonly target: SourceLinkOwner | null;
+}
+
+export interface EditorRuntimeOptions {
+  readonly onLinkRequest?: (binding: LinkEditBinding) => void;
 }
 
 export interface EditorRuntime {
   readonly status: EditorRuntimeStatus;
+  readonly mode: EditorMode;
   readonly sourceNavigation: boolean;
   readonly sourceReplacement: boolean;
   getText(): string;
@@ -40,119 +73,332 @@ export interface EditorRuntime {
     readonly replacedCount: number;
   }>;
   readonly composing: boolean;
+  enterSourceMode(): boolean;
+  applySourceDraft(): boolean;
+  cancelSourceDraft(): boolean;
+  snapshotText(): SourceNavigationResult<string>;
+  whenCompositionStable(): Promise<boolean>;
   markSaved(text: string): void;
   undo(): boolean;
   redo(): boolean;
+  applyLinkEdit(
+    binding: LinkEditBinding,
+    attrs: LinkAttrs | null,
+  ): SourceNavigationResult<{ readonly changed: boolean }>;
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult;
   focus(): void;
   destroy(): void;
 }
 
-export type RuntimeChangeListener = (status: EditorRuntimeStatus) => void;
+export type RuntimeChangeListener = (
+  status: EditorRuntimeStatus,
+  kind?: RuntimeChangeKind,
+) => void;
 
-interface SourceHistorySnapshot {
-  readonly raw: string;
-  /** 仅替换链承诺精确有向选区；普通输入沿用既有 textarea 行为。 */
-  readonly selection?: DirectedSelection;
-}
-
-interface SourceHistoryEntry {
-  readonly before: SourceHistorySnapshot;
-  readonly after: SourceHistorySnapshot;
-}
-
-class StructuredEditorRuntime implements EditorRuntime {
-  readonly sourceNavigation = false;
-  readonly sourceReplacement = false;
-  private readonly session: InkoraEditorSession;
-  private readonly view: EditorView;
-  private compositionTimer: number | undefined;
-  private readonly lineEndings: LineEndings;
+class SourceAuthorityEditorRuntime implements EditorRuntime {
+  private readonly ownerWindow: Window;
+  private view: EditorView | undefined;
+  private textArea: HTMLTextAreaElement | undefined;
+  private sourceKernel: TextAreaEditorKernel | undefined;
+  private compositionQuietTimer: number | undefined;
+  private compositionPhase: "idle" | "active" | "settling" = "idle";
+  private compositionID: unknown;
+  private sourceCompositionUnsubscribe: (() => void) | undefined;
+  private readonly stabilityWaiters = new Set<{
+    resolve: (stable: boolean) => void;
+    timer: number;
+  }>();
+  private publishedLogicalRevision = 0;
+  private readonly session: SourceAuthoritySession;
 
   constructor(
-    parent: HTMLElement,
-    private savedText: string,
-    onChange: RuntimeChangeListener,
-    private readonly protectedMode = false,
+    private readonly parent: HTMLElement,
+    text: string,
+    private readonly onChange: RuntimeChangeListener,
+    private readonly options: EditorRuntimeOptions,
   ) {
-    this.lineEndings = classifyLineEndings(savedText);
-    this.session = new InkoraEditorSession(this.parse(savedText));
-    let view: EditorView;
-    view = new EditorView(parent, {
-      state: this.session.state,
-      dispatchTransaction: (transaction) => {
-        this.session.dispatch(transaction);
-        view.updateState(this.session.state);
-      },
+    const ownerWindow = parent.ownerDocument.defaultView;
+    if (!ownerWindow) throw new Error("Editor runtime requires an attached window");
+    this.ownerWindow = ownerWindow;
+    this.session = new SourceAuthoritySession(text, {
+      requestLink: (state) => this.requestLink(state),
     });
-    this.view = view;
-    this.view.dom.id = "editor";
-    this.view.dom.setAttribute("aria-label", "Markdown editor");
-    this.view.dom.addEventListener("compositionstart", this.handleCompositionStart);
-    this.view.dom.addEventListener("compositionend", this.handleCompositionEnd);
-    this.session.onStateChange(() => onChange(this.status));
+    this.renderVisual();
   }
 
-  private parse(text: string) {
-    const input = structuredInput(text);
-    return (this.protectedMode ? parseProtectedMarkdown(input) : null) ?? parseMarkdown(input);
+  get mode(): EditorMode {
+    return this.textArea ? "source" : "visual";
+  }
+
+  get sourceNavigation(): boolean {
+    return this.mode === "source";
+  }
+
+  get sourceReplacement(): boolean {
+    return this.mode === "source";
   }
 
   get composing(): boolean {
-    return this.session.status.composing;
+    return this.mode === "source"
+      ? (this.sourceKernel?.composing ?? false)
+      : this.session.composing;
   }
 
   get status(): EditorRuntimeStatus {
-    const { dirty, canUndo, canRedo } = this.session.status;
-    return { dirty, canUndo, canRedo };
+    return {
+      dirty: this.session.documentDirty,
+      canUndo: this.session.past.length > 0,
+      canRedo: this.session.future.length > 0,
+      draftDirty: this.session.draftDirty,
+      unresolved: this.session.unresolvedIntent !== null || this.session.issues.length > 0,
+      saveEligible: this.session.saveEligible,
+    };
   }
 
   getText(): string {
-    if (!this.status.dirty) {
-      return this.savedText;
+    return this.session.currentRaw;
+  }
+
+  snapshotText(): SourceNavigationResult<string> {
+    if (!this.session.saveEligible) {
+      const reason = this.session.draftDirty
+        ? "源码草稿尚未提交"
+        : this.session.issues[0]?.message ??
+          this.session.unresolvedIntent?.description ??
+          "当前输入尚未形成可安全保存的原文";
+      return { ok: false, message: reason };
     }
-    return structuredOutput(serializeMarkdown(this.session.state.doc), this.savedText, this.lineEndings);
+    return { ok: true, value: this.session.currentRaw };
   }
 
-  getSourceSelection(_raw: string): SourceNavigationResult<DirectedSelection> {
-    return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
+  whenCompositionStable(): Promise<boolean> {
+    if (!this.composing) return Promise.resolve(true);
+    return new Promise(resolve => {
+      const waiter = {
+        resolve,
+        timer: this.ownerWindow.setTimeout(() => {
+          this.stabilityWaiters.delete(waiter);
+          resolve(false);
+        }, COMPOSITION_STABILITY_TIMEOUT_MS),
+      };
+      this.stabilityWaiters.add(waiter);
+    });
   }
 
-  selectSourceRange(_raw: string, _selection: DirectedSelection): SourceNavigationResult {
-    return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
+  enterSourceMode(): boolean {
+    if (this.composing || !this.session.beginSource()) return false;
+    this.renderSource();
+    this.onChange(this.status, "status");
+    return true;
   }
 
-  applySourceReplacement(_plan: SourceReplacementPlan): SourceNavigationResult<never> {
-    return { ok: false, message: "结构化编辑模式不支持原文替换" };
+  applySourceDraft(): boolean {
+    const kernel = this.sourceKernel;
+    const area = this.textArea;
+    if (!kernel || !area || kernel.composing) return false;
+    const draftRaw = kernel.getText();
+    const selection = readRawSelection(
+      draftRaw,
+      area.value,
+      area.selectionStart,
+      area.selectionEnd,
+      area.selectionDirection,
+    );
+    if (!selection.ok) return false;
+    this.session.updateDraft(draftRaw, { ...selection.value, affinity: "right" });
+    const before = this.session.currentRaw;
+    if (!this.session.applySource()) return false;
+    this.session.beginSource();
+    kernel.setText(this.session.currentRaw);
+    this.applySourceSelection(this.session.currentRaw, this.session.rawSelection);
+    this.notifyChange(before === this.session.currentRaw ? "status" : "document");
+    return true;
+  }
+
+  cancelSourceDraft(): boolean {
+    const area = this.textArea;
+    const kernel = this.sourceKernel;
+    if (!area || !kernel || this.composing) return false;
+    if (kernel.getText() === this.session.currentRaw) {
+      const selection = readRawSelection(
+        this.session.currentRaw,
+        area.value,
+        area.selectionStart,
+        area.selectionEnd,
+        area.selectionDirection,
+      );
+      if (!selection.ok || !this.session.setSourceSelection(
+        selection.value.anchor,
+        selection.value.head,
+        "right",
+      )) return false;
+    }
+    if (!this.session.cancelSource()) return false;
+    this.renderVisual();
+    this.onChange(this.status, "status");
+    return true;
+  }
+
+  getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
+    const area = this.textArea;
+    if (!area || this.composing) {
+      return { ok: false, message: this.composing
+        ? "请先完成中文输入，再定位查找结果"
+        : "可视编辑模式暂不支持原文范围定位" };
+    }
+    if (this.session.draftDirty) return { ok: false, message: "请先提交或取消源码草稿" };
+    if (this.session.currentRaw !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
+    return readRawSelection(
+      raw,
+      area.value,
+      area.selectionStart,
+      area.selectionEnd,
+      area.selectionDirection,
+    );
+  }
+
+  selectSourceRange(raw: string, selection: DirectedSelection): SourceNavigationResult {
+    const area = this.textArea;
+    if (!area || this.composing) {
+      return { ok: false, message: this.composing
+        ? "请先完成中文输入，再定位查找结果"
+        : "可视编辑模式暂不支持原文范围定位" };
+    }
+    if (this.session.draftDirty) return { ok: false, message: "请先提交或取消源码草稿" };
+    if (this.session.currentRaw !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
+    const mapped = mapRawRangeToTextarea(raw, area.value, {
+      from: Math.min(selection.anchor, selection.head),
+      to: Math.max(selection.anchor, selection.head),
+    });
+    if (!mapped.ok) return mapped;
+    area.setSelectionRange(
+      mapped.value.start,
+      mapped.value.end,
+      selection.anchor > selection.head ? "backward" : "forward",
+    );
+    revealTextareaOffset(area, mapped.value.start);
+    return { ok: true, value: undefined };
+  }
+
+  applySourceReplacement(plan: SourceReplacementPlan): SourceNavigationResult<{
+    readonly changed: boolean;
+    readonly replacedCount: number;
+  }> {
+    const area = this.textArea;
+    if (!area || this.composing) return { ok: false, message: "当前不能执行原文替换" };
+    if (this.session.draftDirty) return { ok: false, message: "请先提交或取消源码草稿" };
+    const validation = validateSourceReplacementPlan(plan, this.session.currentRaw, area.value);
+    if (!validation.ok) return validation;
+    if (!plan.changed) return { ok: true, value: { changed: false, replacedCount: 0 } };
+    const currentSelection = this.getSourceSelection(this.session.currentRaw);
+    if (!currentSelection.ok || !this.session.setSourceSelection(
+      currentSelection.value.anchor,
+      currentSelection.value.head,
+      "right",
+    )) {
+      return { ok: false, message: "当前原文选区无效" };
+    }
+    const before = this.session.currentRaw;
+    if (!this.session.updateDraft(plan.resultRaw, { ...plan.selection, affinity: "right" }) ||
+        !this.session.applySource()) {
+      return { ok: false, message: this.session.diagnostic || "无法应用原文替换" };
+    }
+    this.session.beginSource();
+    this.sourceKernel?.setText(this.session.currentRaw);
+    this.applySourceSelection(plan.resultRaw, plan.selection);
+    this.notifyChange(before === this.session.currentRaw ? "status" : "document");
+    return { ok: true, value: { changed: true, replacedCount: plan.replacedCount } };
   }
 
   markSaved(text: string): void {
-    this.savedText = text;
-    this.session.markSaved(this.parse(text));
-    if (!this.composing) this.view.updateState(this.session.state);
+    this.session.markSaved(text);
+    this.onChange(this.status, "status");
   }
 
   undo(): boolean {
-    const applied = this.session.undo();
-    if (applied) this.view.updateState(this.session.state);
-    return applied;
+    if (this.composing) return false;
+    if (!this.session.undo()) return false;
+    this.publishedLogicalRevision = this.session.status.revision;
+    this.renderCurrentMode();
+    return true;
   }
 
   redo(): boolean {
-    const applied = this.session.redo();
-    if (applied) this.view.updateState(this.session.state);
-    return applied;
+    if (this.composing) return false;
+    if (!this.session.redo()) return false;
+    this.publishedLogicalRevision = this.session.status.revision;
+    this.renderCurrentMode();
+    return true;
+  }
+
+  applyLinkEdit(
+    binding: LinkEditBinding,
+    attrs: LinkAttrs | null,
+  ): SourceNavigationResult<{ readonly changed: boolean }> {
+    const view = this.view;
+    const selection = this.session.rawSelection;
+    const visualSelection = this.session.state.selection;
+    if (!view || this.composing || this.session.currentRaw !== binding.raw ||
+        this.session.version !== binding.revision || this.session.epoch !== binding.epoch ||
+        selection.anchor !== binding.selection.anchor || selection.head !== binding.selection.head ||
+        selection.affinity !== binding.selection.affinity ||
+        visualSelection.anchor !== binding.visualSelection.anchor ||
+        visualSelection.head !== binding.visualSelection.head) {
+      return { ok: false, message: "链接编辑请求已过期，请重新执行 Mod-K" };
+    }
+
+    let normalized: { href: string; title: string | null } | null = null;
+    try {
+      normalized = attrs
+        ? normalizedLinkAttrs(attrs) as { href: string; title: string | null }
+        : null;
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "链接属性无效" };
+    }
+    const current = binding.target
+      ? { href: binding.target.href, title: binding.target.title }
+      : this.linkAttrs(this.session.state);
+    if ((!normalized && !current) || (normalized && current &&
+        normalized.href === current.href && (normalized.title ?? null) === (current.title ?? null))) {
+      return { ok: true, value: { changed: false } };
+    }
+
+    const before = this.session.currentRaw;
+    if (binding.target) {
+      if (!this.session.applyLinkOwnerEdit(binding.target, normalized)) {
+        return { ok: false, message: this.session.diagnostic || "无法安全应用链接编辑" };
+      }
+      view.updateState(this.session.state);
+      this.notifyChange(before === this.session.currentRaw ? "status" : "document");
+      return { ok: true, value: { changed: before !== this.session.currentRaw } };
+    }
+    const handled = (normalized ? setLink(normalized) : unsetLink)(
+      view.state,
+      transaction => view.dispatch(transaction),
+    );
+    if (!handled || this.session.unresolvedIntent) {
+      return { ok: false, message: this.session.diagnostic || "无法安全应用链接编辑" };
+    }
+    return { ok: true, value: { changed: before !== this.session.currentRaw } };
   }
 
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
     if (this.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
-    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
-
+    if (this.session.currentRaw !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
     const analyzed = analyzeDocument({ raw, revision: 0 }).headings;
     if (!sameHeading(analyzed[target.index], target)) {
       return { ok: false, message: "大纲快照已过期，无法定位标题" };
     }
-
+    if (this.mode === "source") {
+      const offset = rawOffsetToTextareaOffset(raw, target.start);
+      if (offset === undefined || !this.textArea) {
+        return { ok: false, message: "标题原文范围无效，无法定位" };
+      }
+      this.textArea.focus();
+      this.textArea.setSelectionRange(offset, offset);
+      revealTextareaOffset(this.textArea, offset);
+      return { ok: true };
+    }
     const headings: Array<{ level: number; text: string; position: number }> = [];
     this.session.state.doc.descendants((node, position) => {
       if (node.type.name === "heading") {
@@ -166,226 +412,307 @@ class StructuredEditorRuntime implements EditorRuntime {
     }
     const heading = headings[target.index];
     if (!heading) return { ok: false, message: "目标标题不存在" };
-    const transaction = this.session.state.tr
-      .setSelection(TextSelection.create(this.session.state.doc, heading.position + 1))
-      .setMeta("addToHistory", false)
-      .scrollIntoView();
-    this.session.dispatch(transaction);
-    this.view.updateState(this.session.state);
-    this.view.focus();
+    this.session.dispatch(
+      this.session.state.tr
+        .setSelection(TextSelection.create(this.session.state.doc, heading.position + 1))
+        .setMeta("addToHistory", false)
+        .scrollIntoView(),
+    );
+    this.view?.updateState(this.session.state);
+    this.view?.focus();
     return { ok: true };
   }
 
   focus(): void {
-    this.view.focus();
+    if (this.mode === "source") this.sourceKernel?.focus();
+    else this.view?.focus();
   }
 
   destroy(): void {
-    if (this.compositionTimer !== undefined) window.clearTimeout(this.compositionTimer);
-    this.view.dom.removeEventListener("compositionstart", this.handleCompositionStart);
-    this.view.dom.removeEventListener("compositionend", this.handleCompositionEnd);
-    this.view.destroy();
+    this.cancelCompositionQuietTimer();
+    this.resolveStabilityWaiters(false);
+    this.destroySurface();
   }
 
-  private readonly handleCompositionStart = (): void => {
-    if (this.compositionTimer !== undefined) window.clearTimeout(this.compositionTimer);
-    this.compositionTimer = undefined;
-    this.session.beginComposition();
-  };
+  private renderCurrentMode(): void {
+    if (this.mode === "source") {
+      this.session.beginSource();
+      this.sourceKernel?.setText(this.session.currentRaw);
+      this.applySourceSelection(this.session.currentRaw, this.session.rawSelection);
+    } else {
+      this.renderVisual();
+    }
+  }
 
-  private readonly handleCompositionEnd = (): void => {
-    if (this.compositionTimer !== undefined) window.clearTimeout(this.compositionTimer);
-    this.compositionTimer = window.setTimeout(() => {
-      this.compositionTimer = undefined;
-      this.session.endComposition();
-      this.view.updateState(this.session.state);
-    }, 0);
-  };
-}
+  private requestLink(state: EditorState): boolean {
+    if (!this.options.onLinkRequest || this.composing || this.mode !== "visual" ||
+        state !== this.session.state) return false;
+    const target = this.session.linkOwnerAtSelection();
+    this.options.onLinkRequest(Object.freeze({
+      raw: this.session.currentRaw,
+      revision: this.session.version,
+      epoch: this.session.epoch,
+      selection: Object.freeze({ ...this.session.rawSelection }),
+      visualSelection: Object.freeze({
+        anchor: state.selection.anchor,
+        head: state.selection.head,
+      }),
+      attrs: target
+        ? { href: target.href, title: target.title }
+        : this.linkAttrs(state),
+      target,
+    }));
+    return true;
+  }
 
-class SourceEditorRuntime implements EditorRuntime {
-  readonly sourceNavigation = true;
-  readonly sourceReplacement = true;
-  private readonly textArea: HTMLTextAreaElement;
-  private readonly kernel: TextAreaEditorKernel;
-  private readonly undoStack: SourceHistoryEntry[] = [];
-  private readonly redoStack: SourceHistoryEntry[] = [];
-  private currentText: string;
-
-  constructor(
-    parent: HTMLElement,
-    private savedText: string,
-    private readonly onChange: RuntimeChangeListener,
-  ) {
-    this.textArea = document.createElement("textarea");
-    this.textArea.id = "editor";
-    this.textArea.autocapitalize = "off";
-    this.textArea.autocomplete = "off";
-    this.textArea.spellcheck = false;
-    this.textArea.setAttribute("aria-label", "Markdown source editor");
-    parent.append(this.textArea);
-    this.kernel = new TextAreaEditorKernel(this.textArea);
-    this.kernel.setText(savedText);
-    this.currentText = savedText;
-    this.kernel.onChange((text) => {
-      this.undoStack.push({
-        before: { raw: this.currentText },
-        after: { raw: text },
-      });
-      this.redoStack.length = 0;
-      this.currentText = text;
-      this.onChange(this.status);
+  private linkAttrs(state: EditorState): LinkAttrs | null {
+    const { from, to, empty } = state.selection;
+    if (empty) {
+      const mark = (state.storedMarks ?? state.selection.$from.marks())
+        .find(candidate => candidate.type === state.schema.marks.link);
+      return mark ? { href: String(mark.attrs.href), title: mark.attrs.title ?? null } : null;
+    }
+    let attrs: LinkAttrs | null | undefined;
+    let sawText = false;
+    state.doc.nodesBetween(from, to, node => {
+      if (!node.isText) return;
+      sawText = true;
+      const mark = node.marks.find(candidate => candidate.type === state.schema.marks.link);
+      const next = mark ? { href: String(mark.attrs.href), title: mark.attrs.title ?? null } : null;
+      if (attrs === undefined) attrs = next;
+      else if (!attrs || !next || attrs.href !== next.href ||
+          (attrs.title ?? null) !== (next.title ?? null)) attrs = null;
     });
+    return sawText ? attrs ?? null : null;
   }
 
-  get composing(): boolean {
-    return this.kernel.composing;
+  private renderVisual(): void {
+    this.destroySurface();
+    this.parent.replaceChildren();
+    let view: EditorView;
+    let lastDispatchAccepted: boolean | undefined;
+    const codeBlockNodeView = createCodeBlockNodeViews({
+      isComposing: () => this.session.composing || view?.composing === true,
+      applyLanguageChange: (getPos, expectedNode, nextLanguage) => {
+        if (this.session.composing || view.composing) {
+          return { ok: false, message: "请先完成中文输入，再选择代码语言。" };
+        }
+        const pos = getPos();
+        if (pos === undefined) return { ok: false, message: "代码块已变化，请重试。" };
+        const currentNode = view.state.doc.nodeAt(pos);
+        if (!currentNode || currentNode.type !== expectedNode.type) {
+          return { ok: false, message: "代码块已变化，请重试。" };
+        }
+        lastDispatchAccepted = undefined;
+        view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, {
+          ...currentNode.attrs,
+          language: nextLanguage,
+        }));
+        return lastDispatchAccepted
+          ? { ok: true }
+          : { ok: false, message: this.session.diagnostic || "无法安全修改代码语言。" };
+      },
+    });
+    const codeDecorations = createCodeHighlightDecorations();
+    view = new EditorView(this.parent, {
+      state: this.session.state,
+      decorations: codeDecorations,
+      nodeViews: { code_block: codeBlockNodeView },
+      handleKeyDown: (_view, event) => {
+        if (event.isComposing) return false;
+        const modifier = event.metaKey || event.ctrlKey;
+        if (!modifier || event.altKey) return false;
+        const key = event.key.toLowerCase();
+        const redoRequested = (key === "z" && event.shiftKey) || (key === "y" && !event.shiftKey);
+        const undoRequested = key === "z" && !event.shiftKey;
+        if (!undoRequested && !redoRequested) return false;
+        const changed = redoRequested ? this.redo() : this.undo();
+        if (changed) this.onChange(this.status, "document");
+        return changed;
+      },
+      dispatchTransaction: (transaction) => {
+        const compositionID = transaction.getMeta("composition");
+        if (transaction.docChanged && this.compositionPhase === "settling" &&
+            (compositionID === undefined ||
+              (this.compositionID !== undefined && compositionID !== this.compositionID))) {
+          this.settleComposition(true);
+        }
+        if (this.compositionPhase !== "idle" && compositionID !== undefined &&
+            this.compositionID === undefined) {
+          this.compositionID = compositionID;
+        }
+        const before = this.session.currentRaw;
+        const accepted = this.session.dispatch(transaction);
+        lastDispatchAccepted = accepted;
+        view.updateState(this.session.state);
+        if (accepted && this.compositionPhase === "settling" &&
+            compositionID !== undefined && compositionID === this.compositionID) {
+          this.scheduleCompositionSettlement();
+        }
+        if (!accepted || before === this.session.currentRaw || this.session.composing) return;
+        if (this.session.status.revision > this.publishedLogicalRevision) {
+          this.publishedLogicalRevision = this.session.status.revision;
+          this.onChange(this.status, "document");
+        } else {
+          this.onChange(this.status, "status");
+        }
+      },
+    });
+    this.view = view;
+    view.dom.id = "editor";
+    view.dom.setAttribute("aria-label", "Markdown editor");
+    view.dom.addEventListener("compositionstart", this.handleCompositionStart);
+    view.dom.addEventListener("compositionend", this.handleCompositionEnd);
   }
 
-  get status(): EditorRuntimeStatus {
-    return {
-      dirty: this.currentText !== this.savedText,
-      canUndo: this.undoStack.length > 0,
-      canRedo: this.redoStack.length > 0,
-    };
+  private renderSource(): void {
+    this.destroySurface();
+    this.parent.replaceChildren();
+    const area = document.createElement("textarea");
+    area.id = "editor";
+    area.autocapitalize = "off";
+    area.autocomplete = "off";
+    area.spellcheck = false;
+    area.setAttribute("aria-label", "Markdown source draft");
+    this.parent.append(area);
+    const kernel = new TextAreaEditorKernel(area);
+    kernel.setText(this.session.draft?.raw ?? this.session.currentRaw);
+    kernel.onChange((text) => {
+      const selection = readRawSelection(
+        text,
+        area.value,
+        area.selectionStart,
+        area.selectionEnd,
+        area.selectionDirection,
+      );
+      const rawSelection = selection.ok
+        ? { ...selection.value, affinity: "right" as const }
+        : { anchor: text.length, head: text.length, affinity: "right" as const };
+      this.session.updateDraft(text, rawSelection);
+      this.onChange(this.status, "status");
+    });
+    this.sourceCompositionUnsubscribe = kernel.onCompositionChange(composing => {
+      if (!composing) this.resolveStabilityWaiters(true);
+    });
+    this.textArea = area;
+    this.sourceKernel = kernel;
+    const selection = this.session.draft?.selection ?? this.session.rawSelection;
+    this.applySourceSelection(this.session.draft?.raw ?? this.session.currentRaw, selection);
   }
 
-  getText(): string {
-    return this.currentText;
-  }
-
-  getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
-    if (this.composing) return { ok: false, message: "请先完成中文输入，再定位查找结果" };
-    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
-    return readRawSelection(
-      raw,
-      this.textArea.value,
-      this.textArea.selectionStart,
-      this.textArea.selectionEnd,
-      this.textArea.selectionDirection,
-    );
-  }
-
-  selectSourceRange(raw: string, selection: DirectedSelection): SourceNavigationResult {
-    if (this.composing) return { ok: false, message: "请先完成中文输入，再定位查找结果" };
-    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
-    const from = Math.min(selection.anchor, selection.head);
-    const to = Math.max(selection.anchor, selection.head);
-    const mapped = mapRawRangeToTextarea(raw, this.textArea.value, { from, to });
-    if (!mapped.ok) return mapped;
-    this.textArea.setSelectionRange(
+  private applySourceSelection(raw: string, selection: DirectedSelection): void {
+    const area = this.textArea;
+    if (!area) return;
+    const mapped = mapRawRangeToTextarea(raw, area.value, {
+      from: Math.min(selection.anchor, selection.head),
+      to: Math.max(selection.anchor, selection.head),
+    });
+    if (!mapped.ok) return;
+    area.setSelectionRange(
       mapped.value.start,
       mapped.value.end,
       selection.anchor > selection.head ? "backward" : "forward",
     );
-    return { ok: true, value: undefined };
   }
 
-  applySourceReplacement(plan: SourceReplacementPlan): SourceNavigationResult<{
-    readonly changed: boolean;
-    readonly replacedCount: number;
-  }> {
-    if (this.composing) return { ok: false, message: "请先完成中文输入，再执行替换" };
-    const validation = validateSourceReplacementPlan(plan, this.currentText, this.textArea.value);
-    if (!validation.ok) return validation;
-    const currentSelection = readRawSelection(
-      this.currentText,
-      this.textArea.value,
-      this.textArea.selectionStart,
-      this.textArea.selectionEnd,
-      this.textArea.selectionDirection,
+  private destroySurface(): void {
+    this.sourceCompositionUnsubscribe?.();
+    this.sourceCompositionUnsubscribe = undefined;
+    if (this.view) {
+      this.view.dom.removeEventListener("compositionstart", this.handleCompositionStart);
+      this.view.dom.removeEventListener("compositionend", this.handleCompositionEnd);
+      this.view.destroy();
+      this.view = undefined;
+    }
+    this.textArea?.remove();
+    this.textArea = undefined;
+    this.sourceKernel = undefined;
+  }
+
+  private readonly handleCompositionStart = (): void => {
+    if (this.compositionPhase === "settling") this.settleComposition(true);
+    this.cancelCompositionQuietTimer();
+    this.compositionPhase = "active";
+    this.compositionID = undefined;
+    this.session.startComposition();
+  };
+
+  private readonly handleCompositionEnd = (): void => {
+    if (this.compositionPhase !== "active") return;
+    this.compositionPhase = "settling";
+    this.scheduleCompositionSettlement();
+  };
+
+  private scheduleCompositionSettlement(): void {
+    this.cancelCompositionQuietTimer();
+    // prosemirror-view exposes `composing`, but deliberately does not expose
+    // its pending DOM observer. A quiet window, reset by each accepted final
+    // transaction, is the public seam that covers its microtask/20ms cleanup
+    // without calling private domObserver APIs.
+    this.compositionQuietTimer = this.ownerWindow.setTimeout(
+      () => this.settleComposition(),
+      COMPOSITION_QUIET_WINDOW_MS,
     );
-    if (!currentSelection.ok) return currentSelection;
-    if (!plan.changed) {
-      return { ok: true, value: { changed: false, replacedCount: 0 } };
+  }
+
+  private settleComposition(force = false): void {
+    if (this.compositionPhase === "idle") return;
+    if (!force && this.view?.composing) {
+      this.scheduleCompositionSettlement();
+      return;
     }
-    const entry: SourceHistoryEntry = {
-      before: { raw: this.currentText, selection: currentSelection.value },
-      after: { raw: plan.resultRaw, selection: { ...plan.selection } },
-    };
-    this.undoStack.push(entry);
-    this.redoStack.length = 0;
-    this.currentText = plan.resultRaw;
-    this.kernel.setText(plan.resultRaw);
-    this.applySelection(plan.resultRaw, plan.selection);
-    this.onChange(this.status);
-    return { ok: true, value: { changed: true, replacedCount: plan.replacedCount } };
-  }
-
-  markSaved(text: string): void {
-    this.savedText = text;
-    this.onChange(this.status);
-  }
-
-  undo(): boolean {
-    if (this.kernel.composing) return false;
-    const entry = this.undoStack.pop();
-    if (entry === undefined) return false;
-    this.redoStack.push(entry);
-    this.replaceSnapshot(entry.before);
-    return true;
-  }
-
-  redo(): boolean {
-    if (this.kernel.composing) return false;
-    const entry = this.redoStack.pop();
-    if (entry === undefined) return false;
-    this.undoStack.push(entry);
-    this.replaceSnapshot(entry.after);
-    return true;
-  }
-
-  navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
-    if (this.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
-    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
-    const analyzed = analyzeDocument({ raw, revision: 0 }).headings;
-    if (!sameHeading(analyzed[target.index], target)) {
-      return { ok: false, message: "大纲快照已过期，无法定位标题" };
+    this.cancelCompositionQuietTimer();
+    this.compositionPhase = "idle";
+    this.compositionID = undefined;
+    this.session.endComposition();
+    this.view?.updateState(this.session.state);
+    if (this.session.status.revision > this.publishedLogicalRevision) {
+      this.publishedLogicalRevision = this.session.status.revision;
+      this.onChange(this.status, "document");
     }
-    if (this.textArea.value !== textareaProjection(raw)) {
-      return { ok: false, message: "原文与源码编辑器映射不一致，无法安全定位" };
+    this.resolveStabilityWaiters(true);
+  }
+
+  private notifyChange(kind: RuntimeChangeKind): void {
+    if (kind === "document") {
+      this.publishedLogicalRevision = this.session.status.revision;
     }
-    const offset = rawOffsetToTextareaOffset(raw, target.start);
-    if (offset === undefined || offset > this.textArea.value.length) {
-      return { ok: false, message: "标题原文范围无效，无法定位" };
+    this.onChange(this.status, kind);
+  }
+
+  private cancelCompositionQuietTimer(): void {
+    if (this.compositionQuietTimer !== undefined) {
+      this.ownerWindow.clearTimeout(this.compositionQuietTimer);
+      this.compositionQuietTimer = undefined;
     }
-    this.textArea.focus();
-    this.textArea.setSelectionRange(offset, offset);
-    return { ok: true };
   }
 
-  focus(): void {
-    this.kernel.focus();
-  }
-
-  destroy(): void {
-    this.textArea.remove();
-  }
-
-  private applySelection(raw: string, selection: DirectedSelection): void {
-    const mapped = mapRawRangeToTextarea(raw, this.textArea.value, {
-      from: Math.min(selection.anchor, selection.head),
-      to: Math.max(selection.anchor, selection.head),
-    });
-    if (!mapped.ok) throw new Error(mapped.message);
-    this.textArea.setSelectionRange(mapped.value.start, mapped.value.end,
-      selection.anchor > selection.head ? "backward" : "forward");
-  }
-
-  private replaceSnapshot(snapshot: SourceHistorySnapshot): void {
-    this.currentText = snapshot.raw;
-    this.kernel.setText(snapshot.raw);
-    if (snapshot.selection) this.applySelection(snapshot.raw, snapshot.selection);
-    this.onChange(this.status);
+  private resolveStabilityWaiters(stable: boolean): void {
+    for (const waiter of this.stabilityWaiters) {
+      this.ownerWindow.clearTimeout(waiter.timer);
+      waiter.resolve(stable);
+    }
+    this.stabilityWaiters.clear();
   }
 }
 
+const COMPOSITION_QUIET_WINDOW_MS = 24;
+const COMPOSITION_STABILITY_TIMEOUT_MS = 120;
+
 // EOL-003: keep exact bytes independent of textarea's LF normalization.
 class ReadOnlyEditorRuntime implements EditorRuntime {
+  readonly mode = "read_only" as const;
   readonly sourceNavigation = true;
   readonly sourceReplacement = false;
   private readonly textArea: HTMLTextAreaElement;
-  readonly status = { dirty: false, canUndo: false, canRedo: false };
+  readonly status = {
+    dirty: false,
+    canUndo: false,
+    canRedo: false,
+    draftDirty: false,
+    unresolved: false,
+    saveEligible: true,
+  };
   readonly composing = false;
 
   constructor(parent: HTMLElement, private readonly text: string) {
@@ -398,6 +725,11 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   }
 
   getText(): string { return this.text; }
+  enterSourceMode(): boolean { return true; }
+  applySourceDraft(): boolean { return false; }
+  cancelSourceDraft(): boolean { return false; }
+  snapshotText(): SourceNavigationResult<string> { return { ok: true, value: this.text }; }
+  whenCompositionStable(): Promise<boolean> { return Promise.resolve(true); }
   getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
     if (this.text !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
     return readRawSelection(
@@ -419,6 +751,7 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
       mapped.value.end,
       selection.anchor > selection.head ? "backward" : "forward",
     );
+    revealTextareaOffset(this.textArea, mapped.value.start);
     return { ok: true, value: undefined };
   }
   applySourceReplacement(_plan: SourceReplacementPlan): SourceNavigationResult<never> {
@@ -427,6 +760,12 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   markSaved(_text: string): void {}
   undo(): boolean { return false; }
   redo(): boolean { return false; }
+  applyLinkEdit(
+    _binding: LinkEditBinding,
+    _attrs: LinkAttrs | null,
+  ): SourceNavigationResult<never> {
+    return { ok: false, message: "只读文档不能编辑链接" };
+  }
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
     if (this.text !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
     const analyzed = analyzeDocument({ raw, revision: 0 }).headings;
@@ -439,6 +778,7 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
     }
     this.textArea.focus();
     this.textArea.setSelectionRange(offset, offset);
+    revealTextareaOffset(this.textArea, offset);
     return { ok: true };
   }
   focus(): void { this.textArea.focus(); }
@@ -449,37 +789,10 @@ export function createEditorRuntime(
   parent: HTMLElement,
   text: string,
   onChange: RuntimeChangeListener,
+  options: EditorRuntimeOptions = {},
 ): EditorRuntime {
   parent.replaceChildren();
   const endings = classifyLineEndings(text);
   if (endings === "bare_cr") return new ReadOnlyEditorRuntime(parent, text);
-  const input = structuredInput(text);
-  if (endings !== "mixed" &&
-      analyzeMarkdownSafety(input).structuredSaveAllowed) {
-    try {
-      // CRLF support must not introduce unrelated codec normalization diffs.
-      if (endings === "crlf" &&
-          structuredOutput(serializeMarkdown(parseMarkdown(input)), text) !== text) {
-        return new SourceEditorRuntime(parent, text, onChange);
-      }
-      return new StructuredEditorRuntime(parent, text, onChange);
-    } catch {
-      parent.replaceChildren();
-    }
-  }
-  if (endings !== "mixed") {
-    try {
-      const protectedDocument = parseProtectedMarkdown(input);
-      if (protectedDocument) {
-        if (endings === "crlf" &&
-            structuredOutput(serializeMarkdown(protectedDocument), text) !== text) {
-          return new SourceEditorRuntime(parent, text, onChange);
-        }
-        return new StructuredEditorRuntime(parent, text, onChange, true);
-      }
-    } catch {
-      parent.replaceChildren();
-    }
-  }
-  return new SourceEditorRuntime(parent, text, onChange);
+  return new SourceAuthorityEditorRuntime(parent, text, onChange, options);
 }

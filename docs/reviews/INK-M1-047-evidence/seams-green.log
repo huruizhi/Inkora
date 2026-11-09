@@ -1,0 +1,9 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-047/editor
+
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  18:35:20
+   Duration  416ms (import 48%, tests 28%, transform 24%)
+
