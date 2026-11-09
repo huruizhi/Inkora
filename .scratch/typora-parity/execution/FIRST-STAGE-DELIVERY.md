@@ -128,3 +128,13 @@ main未变，下一整合点是047接回049/046后独立运行核心/辅助/代�
 当前两名执行Agent：049保持原handle，负责IME最终值/一次稳定发布与snapshot barrier；050实际生产表格/任务列表，基线f30ef346，Sol5.6/high/default（无配置profile），agent 2a381265-4405-4055-8d90-3781dbc50b49 / workspace wks_2c898384256215db / task/INK-M1-050-tables-tasks。050须真实cell编辑/增删行列/对齐/checkbox/键盘/字节/history/保存接缝，不得手供oracle补丁，不改冻结12例、不新增未声明依赖、不使用GUI。完成即独立验收与两层回收。
 
 main仍48258a9；M0有界门槛保持通过。V1最终IME发布未闭合，V3/V4/V6及正式保存重开仍缺完整交付，目标active。
+
+## 当前覆盖：真实高亮与发布边界补正
+
+046/047 组合在真实 WK 中验证了颜色、语言菜单、alias/unknown 字面值和脚本形代码的字面显示。Python→Swift 的 Undo/Redo 正确；正式 Cmd-S 后只反向替换语言 token 即与初始 SHA 相同，BOM 与 22 处 CRLF 完整，关闭重开仍为 Swift。临时代码编辑的 CUA AX 选区出现偏移，未将此计为精确选区替换通过，仅丢弃自有 fixture 的该临时会话。源码长文从文末查找 Start-042 后正文可见、查询持焦，原未执行项已补齐；042 三文件磁盘 SHA 不变，隔离 App 已退出并释放该轮 UI 锁。047 的证据记录在 82e2919。
+
+049@50cdf2c 已交付候选。Agent 立即归档，240 文件与 Git bundle 校验备份后 workspace 回收，累计 57。根在真实 runtime/EditorView 接缝另造选区-only事务反例：2 红 1 绿，compositionend 后同步选区移动就发布 azh；单改 runtime 后发布正确但 Undo 仍回 azh，证明 session 的无 meta 选区也拆开历史。根 051@250a7cf 在两层仅让 docChanged 启动/结束输入单元，永久 4 项及完整 406（含 Bridge）、lint/build 全绿，红绿日志保留。原 049 与旧冻结原件不改，不据作者全绿直接宣告验收。
+
+组合 047 HEAD b80a968 已包含 049/051，隔离 UITesting App 构建及严格签名通过。新窗口 IME Production 051.md 在自有 fixture 上已打开，光标在 Input here. 后，基线字符 49、字数 9；通过 async 问题请用户实体搜狗分两次输入中文/测试，尚未收到结果，绝不预填通过。UI 锁属于 root（pid59240，exec40421，FIFO /tmp/inkora-051-ui-hold），本轮配合结束后必须关闭自有应用并释放；当前不能在此物理输入期间让其他 Agent 启动 GUI。
+
+当前功能执行只有 050（V3 表格/任务列表），未轮询或重启。新 production IME、NSDocument 完整保存重开仍待集中验收；V4 图片和 V6 可视替换未实现，main 未变，总目标 active。
