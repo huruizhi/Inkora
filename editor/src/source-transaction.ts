@@ -1,5 +1,6 @@
 import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorState, Transaction } from 'prosemirror-state';
+import { parse } from './source-document';
 
 export type NativeRange = { start: number; end: number; pos: number; size: number; kind: string };
 export type NativePatch = { from: number; to: number; insert: string };
@@ -8,7 +9,7 @@ export type NativeAnchor = { pmPos: number; sourceOffset: number };
 export type NativePlan = {
   patches: NativePatch[];
   candidate: string;
-  kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'remove-strong' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join';
+  kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'inline-mark' | 'block-structure' | 'projection-sync' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join';
   /** A Markdown source cannot represent a newly-created empty paragraph. */
   mayStage?: boolean;
   /** Source caret in candidate coordinates, used only while a split is staged. */
@@ -36,6 +37,33 @@ function pastePlan(
   const insert = paste.source.replace(/\r\n?|\n/g, `${eol}${eol}`);
   const patches = [{ from, to, insert }];
   return { patches, candidate: applyNativePatches(source, patches), kind: 'paste' };
+}
+
+function inputRulePlan(
+  source: string,
+  tr: Transaction,
+  position: SourcePosition,
+  fallbackEol: '\r\n' | '\n',
+): NativePlan | null {
+  const metadata = Object.values((tr as unknown as { meta?: Record<string, unknown> }).meta ?? {})
+    .find((value): value is { transform: Transaction; from: number; to: number; text: string } => {
+      if (typeof value !== 'object' || value === null) return false;
+      const candidate = value as Record<string, unknown>;
+      return candidate.transform === tr && Number.isInteger(candidate.from) &&
+        Number.isInteger(candidate.to) && typeof candidate.text === 'string';
+    });
+  if (!metadata || metadata.text.length === 0) return null;
+  const from = position(metadata.from, 'from');
+  const to = position(metadata.to, 'to');
+  const insert = metadata.text.replace(/\n/g, eolForLine(source, from, fallbackEol));
+  const patches = [{ from, to, insert }];
+  const candidate = applyNativePatches(source, patches);
+  try {
+    if (parse(candidate).issues.length) return null;
+  } catch {
+    return null;
+  }
+  return { patches, candidate, kind: 'projection-sync' };
 }
 
 export function applyNativePatches(source: string, patches: readonly NativePatch[]): string {
@@ -114,15 +142,161 @@ function inlineCodePlan(source: string, state: EditorState, step: Record<string,
   return { patches, candidate: applyNativePatches(source, patches), kind: 'inline-code' };
 }
 
-function removeStrongPlan(source: string, step: Record<string, any>, position: SourcePosition): NativePlan | null {
-  if (step.stepType !== 'removeMark' || step.mark?.type !== 'strong') return null;
-  const from = position(step.from, 'from');
-  const to = position(step.to, 'to');
-  const open = source.slice(Math.max(0, from - 2), from);
-  const close = source.slice(to, to + 2);
-  if (!['**', '__'].includes(open) || close !== open) throw Error('strong 定界符不是可安全局部删除的成对写法');
-  const patches = [{ from: to, to: to + 2, insert: '' }, { from: from - 2, to: from, insert: '' }];
-  return { patches, candidate: applyNativePatches(source, patches), kind: 'remove-strong' };
+function longestRun(text: string, character: string): number {
+  const expression = new RegExp(`${character.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')}+`, 'g');
+  let longest = 0;
+  for (const match of text.matchAll(expression)) longest = Math.max(longest, match[0].length);
+  return longest;
+}
+
+function linkTail(attrs: Record<string, unknown>): string {
+  const href = attrs.href;
+  const title = attrs.title;
+  if (typeof href !== 'string' || href.length === 0 || /[\u0000-\u001f<>\s]/.test(href)) {
+    throw Error('链接目标不能安全表示为局部 Markdown destination');
+  }
+  if (title !== null && title !== undefined && typeof title !== 'string') throw Error('链接 title 无效');
+  const suffix = title === null || title === undefined
+    ? ''
+    : ` "${title.replace(/([\\"])/g, '\\$1')}"`;
+  return `](${href}${suffix})`;
+}
+
+function markDelimiters(mark: Record<string, any>, sourceText: string): { open: string; close: string } {
+  switch (mark.type) {
+    case 'strong': return { open: '**', close: '**' };
+    case 'em': return { open: '*', close: '*' };
+    case 'strike': return { open: '~~', close: '~~' };
+    case 'code': {
+      const delimiter = '`'.repeat(Math.max(1, longestRun(sourceText, '`') + 1));
+      const padding = sourceText.startsWith(' ') || sourceText.endsWith(' ') ? ' ' : '';
+      return { open: delimiter + padding, close: padding + delimiter };
+    }
+    case 'link': return { open: '[', close: linkTail(mark.attrs ?? {}) };
+    default: throw Error(`尚未支持 ${String(mark.type)} mark 的原文局部事务`);
+  }
+}
+
+function existingMarkDelimiters(
+  source: string,
+  from: number,
+  to: number,
+  mark: Record<string, any>,
+): { openFrom: number; open: string; closeTo: number; close: string } {
+  if (mark.type === 'strong') {
+    const open = source.slice(Math.max(0, from - 2), from);
+    if (!['**', '__'].includes(open) || source.slice(to, to + 2) !== open) throw Error('strong 定界符不是可安全局部删除的成对写法');
+    return { openFrom: from - 2, open, closeTo: to + 2, close: open };
+  }
+  if (mark.type === 'em') {
+    const open = source.slice(Math.max(0, from - 1), from);
+    if (!['*', '_'].includes(open) || source.slice(to, to + 1) !== open) throw Error('em 定界符不是可安全局部删除的成对写法');
+    return { openFrom: from - 1, open, closeTo: to + 1, close: open };
+  }
+  if (mark.type === 'strike') {
+    if (source.slice(Math.max(0, from - 2), from) !== '~~' || source.slice(to, to + 2) !== '~~') throw Error('strike 定界符不是可安全局部删除的成对写法');
+    return { openFrom: from - 2, open: '~~', closeTo: to + 2, close: '~~' };
+  }
+  if (mark.type === 'code') {
+    const open = /(`+)[ ]?$/.exec(source.slice(0, from));
+    if (!open) throw Error('code opening delimiter 无法安全定位');
+    const close = /^ ?(`+)/.exec(source.slice(to));
+    if (!close || open[1] !== close[1]) throw Error('code closing delimiter 无法安全定位');
+    return { openFrom: from - open[0].length, open: open[0], closeTo: to + close[0].length, close: close[0] };
+  }
+  if (mark.type === 'link') {
+    if (source[from - 1] !== '[' || source[to] !== ']' || source[to + 1] !== '(') throw Error('link 定界符无法安全定位');
+    let depth = 0;
+    let escaped = false;
+    for (let index = to + 1; index < source.length; index++) {
+      const character = source[index];
+      if (escaped) { escaped = false; continue; }
+      if (character === '\\') { escaped = true; continue; }
+      if (character === '(') depth++;
+      if (character === ')' && --depth === 0) {
+        return { openFrom: from - 1, open: '[', closeTo: index + 1, close: source.slice(to, index + 1) };
+      }
+    }
+    throw Error('link closing delimiter 无法安全定位');
+  }
+  throw Error(`尚未支持 ${String(mark.type)} mark 的原文局部删除`);
+}
+
+function sameMark(left: Record<string, any>, right: { type: { name: string }; attrs: Record<string, unknown> }): boolean {
+  return left.type === right.type.name && JSON.stringify(left.attrs ?? {}) === JSON.stringify(right.attrs ?? {});
+}
+
+function textSegments(
+  state: EditorState,
+  from: number,
+  to: number,
+): Array<{ from: number; to: number }> {
+  const segments: Array<{ from: number; to: number }> = [];
+  state.doc.nodesBetween(from, to, (node, pos) => {
+    if (!node.isText) return;
+    const start = Math.max(from, pos);
+    const end = Math.min(to, pos + node.nodeSize);
+    if (start < end) segments.push({ from: start, to: end });
+  });
+  return segments;
+}
+
+function markedRuns(
+  state: EditorState,
+  mark: Record<string, any>,
+): Array<{ from: number; to: number }> {
+  const segments: Array<{ from: number; to: number }> = [];
+  state.doc.descendants((node, pos) => {
+    if (!node.isText || !node.marks.some(candidate => sameMark(mark, candidate))) return;
+    const previous = segments.at(-1);
+    if (previous?.to === pos) previous.to = pos + node.nodeSize;
+    else segments.push({ from: pos, to: pos + node.nodeSize });
+  });
+  return segments;
+}
+
+function markPlan(source: string, state: EditorState, tr: Transaction, position: SourcePosition): NativePlan | null {
+  const steps = tr.steps.map(step => step.toJSON() as Record<string, any>);
+  if (!steps.length || steps.some(step => step.stepType !== 'addMark' && step.stepType !== 'removeMark')) return null;
+  const patches: NativePatch[] = [];
+  for (const step of steps) {
+    if (step.stepType === 'addMark') {
+      const segments = textSegments(state, step.from, step.to);
+      if (!segments.length) throw Error('mark 事务缺少可编辑文字范围');
+      for (const segment of segments) {
+        const from = position(segment.from, 'from');
+        const to = position(segment.to, 'to');
+        const delimiters = markDelimiters(step.mark, source.slice(from, to));
+        patches.push(
+          { from: to, to, insert: delimiters.close },
+          { from, to: from, insert: delimiters.open },
+        );
+      }
+    } else {
+      const runs = markedRuns(state, step.mark).filter(run => run.from < step.to && run.to > step.from);
+      if (!runs.length) throw Error('removeMark 事务缺少可编辑 mark 范围');
+      for (const run of runs) {
+        const selectedFrom = Math.max(run.from, step.from);
+        const selectedTo = Math.min(run.to, step.to);
+        const runFrom = position(run.from, 'from');
+        const runTo = position(run.to, 'to');
+        const from = position(selectedFrom, 'from');
+        const to = position(selectedTo, 'to');
+        const delimiters = existingMarkDelimiters(source, runFrom, runTo, step.mark);
+        if (selectedFrom === run.from) {
+          patches.push({ from: delimiters.openFrom, to: runFrom, insert: '' });
+        } else {
+          patches.push({ from, to: from, insert: delimiters.close });
+        }
+        if (selectedTo === run.to) {
+          patches.push({ from: runTo, to: delimiters.closeTo, insert: '' });
+        } else {
+          patches.push({ from: to, to, insert: delimiters.open });
+        }
+      }
+    }
+  }
+  return { patches, candidate: applyNativePatches(source, patches), kind: 'inline-mark' };
 }
 
 function topLevelAt(doc: PMNode, pos: number): PMNode | null {
@@ -158,6 +332,109 @@ function attrPlan(source: string, state: EditorState, tr: Transaction, ranges: r
     }
   }
   return null;
+}
+
+function lineStarts(source: string, from: number, to: number): number[] {
+  const starts = [from];
+  for (let index = from; index < to; index++) {
+    if (source[index] === '\n' && index + 1 < to) starts.push(index + 1);
+  }
+  return starts;
+}
+
+function matchingStructuralPlan(
+  source: string,
+  target: PMNode,
+  candidates: Array<{ patches: NativePatch[]; description: string }>,
+): NativePlan | null {
+  const matches = candidates.map(candidate => ({
+    ...candidate,
+    raw: applyNativePatches(source, candidate.patches),
+  })).filter(candidate => {
+    try { return parse(candidate.raw).doc.eq(target); } catch { return false; }
+  });
+  const unique = matches.filter((candidate, index, all) =>
+    all.findIndex(value => value.raw === candidate.raw) === index);
+  if (unique.length !== 1) return null;
+  return {
+    patches: unique[0].patches,
+    candidate: unique[0].raw,
+    kind: 'block-structure',
+  };
+}
+
+function structuralPlan(
+  source: string,
+  state: EditorState,
+  tr: Transaction,
+  ranges: readonly NativeRange[],
+  position: SourcePosition,
+  fallbackEol: '\r\n' | '\n',
+): NativePlan | null {
+  if (!tr.steps.some(step => step.toJSON().stepType === 'replaceAround')) return null;
+  const selected = ranges.filter(range => {
+    const end = range.pos + range.size;
+    return state.selection.from <= end && state.selection.to >= range.pos;
+  });
+  const active = selected.length ? selected : ranges.filter(range =>
+    state.selection.from >= range.pos && state.selection.from <= range.pos + range.size);
+  if (!active.length) return null;
+  const from = Math.min(...active.map(range => range.start));
+  const to = Math.max(...active.map(range => range.end));
+  const raw = source.slice(from, to);
+  const eol = eolForLine(source, from, fallbackEol);
+  const candidates: Array<{ patches: NativePatch[]; description: string }> = [];
+  const add = (patches: NativePatch[], description: string) => candidates.push({ patches, description });
+
+  for (let level = 1; level <= 6; level++) add([{ from, to: from, insert: `${'#'.repeat(level)} ` }], 'paragraph to heading');
+  const atx = /^(#{1,6})([\t ]+)/.exec(raw);
+  if (atx) add([{ from, to: from + atx[0].length, insert: '' }], 'heading to paragraph');
+  const setext = /(?:\r\n|\n)(?:=+|-+)[\t ]*$/.exec(raw);
+  if (setext) add([{ from: from + setext.index, to, insert: '' }], 'setext heading to paragraph');
+
+  const starts = lineStarts(source, from, to);
+  add(starts.map(start => ({ from: start, to: start, insert: '> ' })), 'wrap blockquote');
+  const quotePatches = starts.map(start => {
+    const match = /^( {0,3}>[\t ]?)/.exec(source.slice(start, to));
+    return match ? { from: start, to: start + match[1].length, insert: '' } : null;
+  }).filter((patch): patch is NativePatch => patch !== null);
+  if (quotePatches.length === starts.length) add(quotePatches, 'lift blockquote');
+
+  add(starts.map(start => ({ from: start, to: start, insert: '- ' })), 'wrap bullet list');
+  add(starts.map((start, index) => ({ from: start, to: start, insert: `${index + 1}. ` })), 'wrap ordered list');
+
+  const caret = position(state.selection.from, 'any');
+  const currentLineStart = source.lastIndexOf('\n', Math.max(0, caret - 1)) + 1;
+  const listMarker = /^(\s*)([-+*]|\d+[.)])([\t ]+)/.exec(source.slice(currentLineStart));
+  if (listMarker) {
+    add([{ from: currentLineStart, to: currentLineStart, insert: '  ' }], 'indent list item');
+    if (listMarker[1].length >= 2) {
+      add([{ from: currentLineStart, to: currentLineStart + 2, insert: '' }], 'outdent list item');
+    }
+    if (listMarker[1].length >= 4) {
+      add([{ from: currentLineStart, to: currentLineStart + 4, insert: '' }], 'outdent four-space list item');
+    }
+  }
+
+  const targetTop = tr.doc.childCount === 1 ? tr.doc.firstChild : null;
+  if (active.length === 1 && targetTop?.type.name === 'code_block') {
+    const language = targetTop.attrs.language ? String(targetTop.attrs.language) : '';
+    const fence = String(targetTop.attrs.fence || '```');
+    add([
+      { from: to, to, insert: `${eol}${fence}` },
+      { from, to: from, insert: `${fence}${language}${eol}` },
+    ], 'paragraph to code block');
+  }
+  const fenced = /^( {0,3})(`{3,}|~{3,})[^\r\n]*(?:\r\n|\n)([\s\S]*?)(?:\r\n|\n)\2[\t ]*$/.exec(raw);
+  if (fenced) {
+    const openingEnd = from + raw.indexOf(fenced[3]);
+    const closingStart = openingEnd + fenced[3].length;
+    add([
+      { from: closingStart, to, insert: '' },
+      { from, to: openingEnd, insert: '' },
+    ], 'code block to paragraph');
+  }
+  return matchingStructuralPlan(source, tr.doc, candidates);
 }
 
 function countType(doc: PMNode, type: string): number {
@@ -246,13 +523,26 @@ export function planNativeTransaction(
   if (supplemental.some(step => step.stepType !== 'addMark' && step.stepType !== 'removeMark' && !(step.stepType === 'replace' && step.structure))) throw Error('该多步原生事务尚未支持；可信原文与 PM 状态保持不变');
   const step = tr.steps[0].toJSON() as Record<string, any>;
 
+  try {
+    if (parse(source).doc.eq(tr.doc)) {
+      return { patches: [], candidate: source, kind: 'projection-sync' };
+    }
+  } catch {
+    // The session owns the diagnostic for malformed source. Continue through
+    // the explicit local planners; none may accept by parser failure alone.
+  }
+
   const paste = pastePlan(source, tr, position, fallbackEol);
   if (paste) return paste;
+  const inputRule = inputRulePlan(source, tr, position, fallbackEol);
+  if (inputRule) return inputRule;
 
-  const removeStrong = removeStrongPlan(source, step, position);
-  if (removeStrong) return removeStrong;
+  const mark = markPlan(source, state, tr, position);
+  if (mark) return mark;
   const attrs = attrPlan(source, state, tr, ranges);
   if (attrs) return attrs;
+  const structure = structuralPlan(source, state, tr, ranges, position, fallbackEol);
+  if (structure) return structure;
 
   const insert = textSlice(step);
   if (insert !== null) {

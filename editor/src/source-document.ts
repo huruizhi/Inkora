@@ -119,15 +119,26 @@ export function parse(source: string) {
         // Bare URLs stay plain text (tokenizer linkify is off) and reference
         // links/images resolve against the appended definitions into real
         // link/image_ref marks — display text, href/title and delimiter forms
-        // all stay separated. Every other risk code keeps the existing refusal.
-        if (risks.some(r => !['task_list', 'gfm_autolink', 'image'].includes(r.code))) throw Error('不支持的语法边界：' + risks.map(r => r.code).join(','));
-        const text = normalized + '\n\n' + refs;
-        const parsed = markdownParser.parse(text, { source: text });
-        if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
-        node = parsed.firstChild!;
-        if (node.type.name === 'code_block' && !node.attrs.closed) {
-          issue = { code: 'code_fence', start, end, message: '代码围栏未闭合：已保留原文片段并阻断结构化保存' };
+        // all stay separated. Unknown syntax is still a bounded source-owned
+        // block: keep it beside editable body text and expose one repair issue
+        // instead of throwing the entire document into the legacy textarea.
+        const unsupported = risks.filter(r => !['task_list', 'gfm_autolink', 'image'].includes(r.code));
+        if (unsupported.length) {
+          issue = {
+            code: unsupported[0].code,
+            start,
+            end,
+            message: `语法边界尚未支持（${unsupported.map(r => r.code).join(',')}）：已逐字节保留片段并阻断结构化保存`,
+          };
           node = protect();
+        } else {
+          const text = normalized + '\n\n' + refs;
+          const parsed = markdownParser.parse(text, { source: text });
+          if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
+          node = parsed.firstChild!;
+          // CommonMark permits a fenced code block to end at EOF without a
+          // closing fence. `closed: false` is source metadata, not an issue;
+          // later edits must preserve that absence instead of inventing bytes.
         }
       }
     }

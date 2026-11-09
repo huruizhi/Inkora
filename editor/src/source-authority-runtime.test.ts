@@ -5,6 +5,26 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createEditorRuntime, type EditorRuntime } from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
 import { createPasteTransaction } from "./editor-session";
+import {
+  setHeading,
+  setParagraph,
+  setCodeBlock,
+  wrapBlockquote,
+  liftBlock,
+  wrapBulletList,
+  wrapOrderedList,
+  blockKeyBindings,
+} from "./block-editing";
+import {
+  toggleStrong,
+  toggleEm,
+  toggleStrike,
+  toggleCode,
+  setLink,
+  unsetLink,
+} from "./inline-formatting";
+import type { Command } from "prosemirror-state";
+import type { EditorView } from "prosemirror-view";
 
 const originalDocument = globalThis.document;
 const originalWindow = globalThis.window;
@@ -33,6 +53,240 @@ function createRuntime(raw: string): {
 }
 
 describe("production source authority runtime", () => {
+  function execute(session: InkoraEditorSession, command: Command): boolean {
+    return command(session.state, transaction => session.dispatch(transaction));
+  }
+
+  function typeThroughInputRules(view: EditorView, text: string): void {
+    for (const character of text) {
+      const { from, to } = view.state.selection;
+      const handled = view.someProp("handleTextInput", handler =>
+        handler(view, from, to, character, () => view.state.tr.insertText(character, from, to)));
+      if (!handled) view.dispatch(view.state.tr.insertText(character, from, to));
+    }
+  }
+
+  it.each([
+    ["heading", "## ", "heading"],
+    ["blockquote", "> ", "blockquote"],
+    ["bullet list", "- ", "bullet_list"],
+    ["ordered list", "3. ", "ordered_list"],
+    ["code fence", "```ts ", "code_block"],
+    ["horizontal rule", "---", "horizontal_rule"],
+  ] as const)("keeps the %s input rule on the source projection", (_name, typed, nodeType) => {
+    const { runtime, session } = createRuntime("");
+    const view = (runtime as unknown as { view: EditorView }).view;
+    typeThroughInputRules(view, typed);
+    expect(runtime.getText(), (session as unknown as { diagnostic?: string }).diagnostic).toBe(typed);
+    expect(session.state.doc.firstChild?.type.name).toBe(nodeType);
+    expect(runtime.status.unresolved).toBe(false);
+    runtime.destroy();
+  });
+
+  it.each([
+    ["strong", "**正文**", "strong"],
+    ["em", "*正文*", "em"],
+    ["strike", "~~正文~~", "strike"],
+    ["code", "`正文`", "code"],
+    ["link", "[正文](./target)", "link"],
+  ] as const)("keeps the %s inline input rule on the source projection", (_name, typed, mark) => {
+    const { runtime, session } = createRuntime("");
+    const view = (runtime as unknown as { view: EditorView }).view;
+    typeThroughInputRules(view, typed);
+    expect(runtime.getText(), (session as unknown as { diagnostic?: string }).diagnostic).toBe(typed);
+    expect(session.state.doc.firstChild?.firstChild?.marks.some(value => value.type.name === mark)).toBe(true);
+    expect(runtime.status.unresolved).toBe(false);
+    runtime.destroy();
+  });
+
+  it.each([
+    ["strong", toggleStrong, "**正文**\n"],
+    ["em", toggleEm, "*正文*\n"],
+    ["strike", toggleStrike, "~~正文~~\n"],
+    ["code", toggleCode, "`正文`\n"],
+  ] as const)("adds and removes the %s mark through local source patches", (_name, command, marked) => {
+    const added = createRuntime("正文\n");
+    added.session.dispatch(added.session.state.tr.setSelection(TextSelection.create(added.session.state.doc, 1, 3)));
+    expect(execute(added.session, command)).toBe(true);
+    expect(added.runtime.getText()).toBe(marked);
+    expect(added.runtime.snapshotText()).toEqual({ ok: true, value: marked });
+    added.runtime.destroy();
+
+    const removed = createRuntime(marked);
+    removed.session.dispatch(removed.session.state.tr.setSelection(TextSelection.create(removed.session.state.doc, 1, 3)));
+    expect(execute(removed.session, command)).toBe(true);
+    expect(removed.runtime.getText()).toBe("正文\n");
+    expect(removed.runtime.status.unresolved).toBe(false);
+    removed.runtime.destroy();
+  });
+
+  it("adds and removes an inline link without serializing untouched bytes", () => {
+    const added = createRuntime("前 正文 后\r\n");
+    added.session.dispatch(added.session.state.tr.setSelection(TextSelection.create(added.session.state.doc, 3, 5)));
+    expect(execute(added.session, setLink({ href: "./target", title: "标题" }))).toBe(true);
+    expect(added.runtime.getText()).toBe('前 [正文](./target "标题") 后\r\n');
+    added.runtime.destroy();
+
+    const removed = createRuntime('前 [正文](./target "标题") 后\r\n');
+    removed.session.dispatch(removed.session.state.tr.setSelection(TextSelection.create(removed.session.state.doc, 3, 5)));
+    expect(execute(removed.session, unsetLink)).toBe(true);
+    expect(removed.runtime.getText()).toBe("前 正文 后\r\n");
+    removed.runtime.destroy();
+  });
+
+  it("removes a mark from only the selected middle and preserves both marked sides", () => {
+    const { runtime, session } = createRuntime("**abc**\n");
+    session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, 2, 3)));
+    expect(execute(session, toggleStrong)).toBe(true);
+    expect(runtime.getText()).toBe("**a**b**c**\n");
+    expect(session.state.doc.firstChild?.child(0).marks.some(mark => mark.type.name === "strong")).toBe(true);
+    expect(session.state.doc.firstChild?.child(1).marks).toHaveLength(0);
+    expect(session.state.doc.firstChild?.child(2).marks.some(mark => mark.type.name === "strong")).toBe(true);
+    runtime.destroy();
+  });
+
+  it("adds and removes strong across paragraphs with independent local delimiters", () => {
+    const added = createRuntime("one\n\ntwo\n");
+    added.session.dispatch(added.session.state.tr.setSelection(TextSelection.create(added.session.state.doc, 1, 9)));
+    expect(execute(added.session, toggleStrong)).toBe(true);
+    expect(added.runtime.getText()).toBe("**one**\n\n**two**\n");
+    added.runtime.destroy();
+
+    const removed = createRuntime("**one**\n\n**two**\n");
+    removed.session.dispatch(removed.session.state.tr.setSelection(TextSelection.create(removed.session.state.doc, 1, 9)));
+    expect(execute(removed.session, toggleStrong)).toBe(true);
+    expect(removed.runtime.getText()).toBe("one\n\ntwo\n");
+    removed.runtime.destroy();
+  });
+
+  it.each([
+    ["heading", setHeading(2), "## 正文\n", "heading"],
+    ["blockquote", wrapBlockquote, "> 正文\n", "blockquote"],
+    ["bullet list", wrapBulletList, "- 正文\n", "bullet_list"],
+    ["ordered list", wrapOrderedList, "1. 正文\n", "ordered_list"],
+    ["code block", setCodeBlock("ts"), "```ts\n正文\n```\n", "code_block"],
+  ] as const)("applies the %s command with a bounded source patch", (_name, command, expected, nodeType) => {
+    const { runtime, session } = createRuntime("正文\n");
+    expect(execute(session, command)).toBe(true);
+    expect(runtime.getText()).toBe(expected);
+    expect(session.state.doc.firstChild?.type.name).toBe(nodeType);
+    expect(runtime.status.unresolved).toBe(false);
+    runtime.destroy();
+  });
+
+  it("converts an ATX heading back to paragraph", () => {
+    const { runtime, session } = createRuntime("## 正文\n");
+    expect(execute(session, setParagraph)).toBe(true);
+    expect(runtime.getText()).toBe("正文\n");
+    expect(session.state.doc.firstChild?.type.name).toBe("paragraph");
+    runtime.destroy();
+  });
+
+  it("lifts a blockquote with a local prefix patch", () => {
+    const { runtime, session } = createRuntime("> 正文\n");
+    expect(execute(session, liftBlock)).toBe(true);
+    expect(runtime.getText()).toBe("正文\n");
+    expect(session.state.doc.firstChild?.type.name).toBe("paragraph");
+    runtime.destroy();
+  });
+
+  it("keeps code-block Enter and Tab exact", () => {
+    const { runtime, session } = createRuntime("```ts\ncode\n```\n");
+    let end = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "code") end = pos + node.nodeSize;
+    });
+    session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, end)));
+    expect(execute(session, blockKeyBindings.Enter)).toBe(true);
+    expect(execute(session, blockKeyBindings.Tab)).toBe(true);
+    expect(runtime.getText()).toBe("```ts\ncode\n\t\n```\n");
+    expect(runtime.status.unresolved).toBe(false);
+    runtime.destroy();
+  });
+
+  it("synthetically aggregates final-before-end, replacement and no-op composition sessions", async () => {
+    const dom = new JSDOM("<!doctype html><main id='app'></main>", { pretendToBeVisual: true });
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
+    const changes: string[] = [];
+    const runtime = createEditorRuntime(dom.window.document.querySelector("main")!, "ab\n", (_status, kind) => {
+      if (kind === "document") changes.push(runtime.getText());
+    });
+    let view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 3)));
+    view.dom.dispatchEvent(new dom.window.Event("compositionstart", { bubbles: true }));
+    view.dispatch(view.state.tr.insertText("中文").setMeta("composition", 81));
+    view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubbles: true }));
+    await new Promise(resolve => dom.window.setTimeout(resolve, 10));
+    expect(runtime.getText()).toBe("中文\n");
+    expect(changes).toEqual(["中文\n"]);
+
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("ab\n");
+    view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+    view.dom.dispatchEvent(new dom.window.Event("compositionstart", { bubbles: true }));
+    view.dispatch(view.state.tr.insertText("x").setMeta("composition", 82));
+    view.dispatch(view.state.tr.delete(2, 3).setMeta("composition", 82));
+    view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubbles: true }));
+    await new Promise(resolve => dom.window.setTimeout(resolve, 10));
+    expect(runtime.getText()).toBe("ab\n");
+    expect(changes).toEqual(["中文\n"]);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("中文\n");
+    runtime.destroy();
+    dom.window.close();
+  });
+
+  it("keeps list Enter, indent and outdent on the source-authoritative history", () => {
+    const split = createRuntime("- one\n");
+    let oneEnd = -1;
+    split.session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "one") oneEnd = pos + node.nodeSize;
+    });
+    split.session.dispatch(split.session.state.tr.setSelection(TextSelection.create(split.session.state.doc, oneEnd)));
+    expect(execute(split.session, blockKeyBindings.Enter)).toBe(true);
+    expect(split.runtime.getText()).toBe("- one\n- \n");
+    split.runtime.destroy();
+
+    const nested = createRuntime("- one\n- two\n");
+    let two = -1;
+    nested.session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "two") two = pos + 1;
+    });
+    nested.session.dispatch(nested.session.state.tr.setSelection(TextSelection.create(nested.session.state.doc, two)));
+    expect(execute(nested.session, blockKeyBindings.Tab)).toBe(true);
+    expect(nested.runtime.getText()).toBe("- one\n  - two\n");
+    expect(execute(nested.session, blockKeyBindings["Shift-Tab"])).toBe(true);
+    expect(nested.runtime.getText()).toBe("- one\n- two\n");
+    nested.runtime.destroy();
+  });
+
+  it("synthetically closes one late-final composition as one document publication", async () => {
+    const dom = new JSDOM("<!doctype html><main id='app'></main>", { pretendToBeVisual: true });
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
+    const changes: string[] = [];
+    const runtime = createEditorRuntime(dom.window.document.querySelector("main")!, "a\n", (_status, kind) => {
+      if (kind === "document") changes.push(runtime.getText());
+    });
+    const view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+    view.dom.dispatchEvent(new dom.window.Event("compositionstart", { bubbles: true }));
+    view.dispatch(view.state.tr.insertText("zh").setMeta("composition", 71));
+    view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubbles: true }));
+    await new Promise(resolve => dom.window.setTimeout(resolve, 10));
+    view.dispatch(view.state.tr.insertText("中文", 2, 4).setMeta("composition", 71));
+    expect(changes).toHaveLength(1);
+    expect(runtime.getText()).toBe("a中文\n");
+    expect(runtime.snapshotText()).toEqual({ ok: true, value: "a中文\n" });
+    expect(view.state.doc.textContent).toBe("a中文");
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("a\n");
+    runtime.destroy();
+    dom.window.close();
+  });
+
   it("patches only the edited source range in a BOM CRLF document", () => {
     const raw = "\uFEFF#  标题 ##\r\n\r\n__粗体__ 与 [链接](./a  \"标题\")\r\n";
     const { runtime, session } = createRuntime(raw);

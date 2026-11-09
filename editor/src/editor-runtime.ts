@@ -1,10 +1,7 @@
-import { parseProtectedMarkdown } from "./protected-markdown";
 import { EditorView } from "prosemirror-view";
 import { InkoraEditorSession } from "./editor-session";
 import { TextAreaEditorKernel } from "./editor-kernel";
-import { parseMarkdown, serializeMarkdown } from "./markdown-codec";
-import { classifyLineEndings, structuredInput, structuredOutput, type LineEndings } from "./line-endings";
-import { analyzeMarkdownSafety } from "./markdown-safety";
+import { classifyLineEndings } from "./line-endings";
 import { TextSelection } from "prosemirror-state";
 import { analyzeDocument } from "./document-analysis";
 import {
@@ -66,23 +63,13 @@ export type RuntimeChangeListener = (
   kind?: RuntimeChangeKind,
 ) => void;
 
-interface SourceHistorySnapshot {
-  readonly raw: string;
-  /** 仅替换链承诺精确有向选区；普通输入沿用既有 textarea 行为。 */
-  readonly selection?: DirectedSelection;
-}
-
-interface SourceHistoryEntry {
-  readonly before: SourceHistorySnapshot;
-  readonly after: SourceHistorySnapshot;
-}
-
 class SourceAuthorityEditorRuntime implements EditorRuntime {
   private view: EditorView | undefined;
   private textArea: HTMLTextAreaElement | undefined;
   private sourceKernel: TextAreaEditorKernel | undefined;
   private compositionTimer: number | undefined;
   private compositionStartRaw: string | undefined;
+  private publishedLogicalRevision = 0;
   private readonly session: SourceAuthoritySession;
 
   constructor(
@@ -170,7 +157,24 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }
 
   cancelSourceDraft(): boolean {
-    if (!this.textArea || this.composing || !this.session.cancelSource()) return false;
+    const area = this.textArea;
+    const kernel = this.sourceKernel;
+    if (!area || !kernel || this.composing) return false;
+    if (kernel.getText() === this.session.currentRaw) {
+      const selection = readRawSelection(
+        this.session.currentRaw,
+        area.value,
+        area.selectionStart,
+        area.selectionEnd,
+        area.selectionDirection,
+      );
+      if (!selection.ok || !this.session.setSourceSelection(
+        selection.value.anchor,
+        selection.value.head,
+        "right",
+      )) return false;
+    }
+    if (!this.session.cancelSource()) return false;
     this.renderVisual();
     this.onChange(this.status, "status");
     return true;
@@ -253,12 +257,14 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }
 
   undo(): boolean {
+    if (this.composing) return false;
     if (!this.session.undo()) return false;
     this.renderCurrentMode();
     return true;
   }
 
   redo(): boolean {
+    if (this.composing) return false;
     if (!this.session.redo()) return false;
     this.renderCurrentMode();
     return true;
@@ -336,7 +342,12 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
         const accepted = this.session.dispatch(transaction);
         view.updateState(this.session.state);
         if (!accepted || before === this.session.currentRaw || this.session.composing) return;
-        this.onChange(this.status, "document");
+        if (this.session.status.revision > this.publishedLogicalRevision) {
+          this.publishedLogicalRevision = this.session.status.revision;
+          this.onChange(this.status, "document");
+        } else {
+          this.onChange(this.status, "status");
+        }
       },
     });
     this.view = view;
@@ -420,203 +431,13 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       this.compositionStartRaw = undefined;
       this.session.endComposition();
       this.view?.updateState(this.session.state);
-      if (before !== undefined && before !== this.session.currentRaw) {
+      if (before !== undefined && before !== this.session.currentRaw &&
+          this.session.status.revision > this.publishedLogicalRevision) {
+        this.publishedLogicalRevision = this.session.status.revision;
         this.onChange(this.status, "document");
       }
     }, 0);
   };
-}
-
-class SourceEditorRuntime implements EditorRuntime {
-  readonly mode = "source" as const;
-  readonly sourceNavigation = true;
-  readonly sourceReplacement = true;
-  private readonly textArea: HTMLTextAreaElement;
-  private readonly kernel: TextAreaEditorKernel;
-  private readonly undoStack: SourceHistoryEntry[] = [];
-  private readonly redoStack: SourceHistoryEntry[] = [];
-  private currentText: string;
-
-  constructor(
-    parent: HTMLElement,
-    private savedText: string,
-    private readonly onChange: RuntimeChangeListener,
-  ) {
-    this.textArea = document.createElement("textarea");
-    this.textArea.id = "editor";
-    this.textArea.autocapitalize = "off";
-    this.textArea.autocomplete = "off";
-    this.textArea.spellcheck = false;
-    this.textArea.setAttribute("aria-label", "Markdown source editor");
-    parent.append(this.textArea);
-    this.kernel = new TextAreaEditorKernel(this.textArea);
-    this.kernel.setText(savedText);
-    this.currentText = savedText;
-    this.kernel.onChange((text) => {
-      this.undoStack.push({
-        before: { raw: this.currentText },
-        after: { raw: text },
-      });
-      this.redoStack.length = 0;
-      this.currentText = text;
-      this.onChange(this.status);
-    });
-  }
-
-  get composing(): boolean {
-    return this.kernel.composing;
-  }
-
-  get status(): EditorRuntimeStatus {
-    return {
-      dirty: this.currentText !== this.savedText,
-      canUndo: this.undoStack.length > 0,
-      canRedo: this.redoStack.length > 0,
-      draftDirty: false,
-      unresolved: false,
-      saveEligible: !this.composing,
-    };
-  }
-
-  getText(): string {
-    return this.currentText;
-  }
-
-  enterSourceMode(): boolean { return !this.composing; }
-  applySourceDraft(): boolean { return false; }
-  cancelSourceDraft(): boolean { return false; }
-  snapshotText(): SourceNavigationResult<string> {
-    return this.composing
-      ? { ok: false, message: "请先完成中文输入" }
-      : { ok: true, value: this.currentText };
-  }
-
-  getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
-    if (this.composing) return { ok: false, message: "请先完成中文输入，再定位查找结果" };
-    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
-    return readRawSelection(
-      raw,
-      this.textArea.value,
-      this.textArea.selectionStart,
-      this.textArea.selectionEnd,
-      this.textArea.selectionDirection,
-    );
-  }
-
-  selectSourceRange(raw: string, selection: DirectedSelection): SourceNavigationResult {
-    if (this.composing) return { ok: false, message: "请先完成中文输入，再定位查找结果" };
-    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
-    const from = Math.min(selection.anchor, selection.head);
-    const to = Math.max(selection.anchor, selection.head);
-    const mapped = mapRawRangeToTextarea(raw, this.textArea.value, { from, to });
-    if (!mapped.ok) return mapped;
-    this.textArea.setSelectionRange(
-      mapped.value.start,
-      mapped.value.end,
-      selection.anchor > selection.head ? "backward" : "forward",
-    );
-    revealTextareaOffset(this.textArea, mapped.value.start);
-    return { ok: true, value: undefined };
-  }
-
-  applySourceReplacement(plan: SourceReplacementPlan): SourceNavigationResult<{
-    readonly changed: boolean;
-    readonly replacedCount: number;
-  }> {
-    if (this.composing) return { ok: false, message: "请先完成中文输入，再执行替换" };
-    const validation = validateSourceReplacementPlan(plan, this.currentText, this.textArea.value);
-    if (!validation.ok) return validation;
-    const currentSelection = readRawSelection(
-      this.currentText,
-      this.textArea.value,
-      this.textArea.selectionStart,
-      this.textArea.selectionEnd,
-      this.textArea.selectionDirection,
-    );
-    if (!currentSelection.ok) return currentSelection;
-    if (!plan.changed) {
-      return { ok: true, value: { changed: false, replacedCount: 0 } };
-    }
-    const entry: SourceHistoryEntry = {
-      before: { raw: this.currentText, selection: currentSelection.value },
-      after: { raw: plan.resultRaw, selection: { ...plan.selection } },
-    };
-    this.undoStack.push(entry);
-    this.redoStack.length = 0;
-    this.currentText = plan.resultRaw;
-    this.kernel.setText(plan.resultRaw);
-    this.applySelection(plan.resultRaw, plan.selection);
-    this.onChange(this.status);
-    return { ok: true, value: { changed: true, replacedCount: plan.replacedCount } };
-  }
-
-  markSaved(text: string): void {
-    this.savedText = text;
-    this.onChange(this.status);
-  }
-
-  undo(): boolean {
-    if (this.kernel.composing) return false;
-    const entry = this.undoStack.pop();
-    if (entry === undefined) return false;
-    this.redoStack.push(entry);
-    this.replaceSnapshot(entry.before);
-    return true;
-  }
-
-  redo(): boolean {
-    if (this.kernel.composing) return false;
-    const entry = this.redoStack.pop();
-    if (entry === undefined) return false;
-    this.undoStack.push(entry);
-    this.replaceSnapshot(entry.after);
-    return true;
-  }
-
-  navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
-    if (this.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
-    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
-    const analyzed = analyzeDocument({ raw, revision: 0 }).headings;
-    if (!sameHeading(analyzed[target.index], target)) {
-      return { ok: false, message: "大纲快照已过期，无法定位标题" };
-    }
-    if (this.textArea.value !== textareaProjection(raw)) {
-      return { ok: false, message: "原文与源码编辑器映射不一致，无法安全定位" };
-    }
-    const offset = rawOffsetToTextareaOffset(raw, target.start);
-    if (offset === undefined || offset > this.textArea.value.length) {
-      return { ok: false, message: "标题原文范围无效，无法定位" };
-    }
-    this.textArea.focus();
-    this.textArea.setSelectionRange(offset, offset);
-    revealTextareaOffset(this.textArea, offset);
-    return { ok: true };
-  }
-
-  focus(): void {
-    this.kernel.focus();
-  }
-
-  destroy(): void {
-    this.textArea.remove();
-  }
-
-  private applySelection(raw: string, selection: DirectedSelection): void {
-    const mapped = mapRawRangeToTextarea(raw, this.textArea.value, {
-      from: Math.min(selection.anchor, selection.head),
-      to: Math.max(selection.anchor, selection.head),
-    });
-    if (!mapped.ok) throw new Error(mapped.message);
-    this.textArea.setSelectionRange(mapped.value.start, mapped.value.end,
-      selection.anchor > selection.head ? "backward" : "forward");
-  }
-
-  private replaceSnapshot(snapshot: SourceHistorySnapshot): void {
-    this.currentText = snapshot.raw;
-    this.kernel.setText(snapshot.raw);
-    if (snapshot.selection) this.applySelection(snapshot.raw, snapshot.selection);
-    this.onChange(this.status);
-  }
 }
 
 // EOL-003: keep exact bytes independent of textarea's LF normalization.
@@ -706,10 +527,5 @@ export function createEditorRuntime(
   parent.replaceChildren();
   const endings = classifyLineEndings(text);
   if (endings === "bare_cr") return new ReadOnlyEditorRuntime(parent, text);
-  try {
-    return new SourceAuthorityEditorRuntime(parent, text, onChange);
-  } catch {
-    parent.replaceChildren();
-    return new SourceEditorRuntime(parent, text, onChange);
-  }
+  return new SourceAuthorityEditorRuntime(parent, text, onChange);
 }

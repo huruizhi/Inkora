@@ -262,7 +262,8 @@ export class EditorProtocolSession {
 
   markSaved(
     command: Extract<NativeCommand, { type: "markSaved" }>,
-    editable: EditableState,
+    editable: EditableState | (() => EditableState),
+    apply?: () => void,
   ): EditorMessage {
     const duplicate = this.claimRequest(command.requestID);
     if (duplicate) return duplicate;
@@ -275,7 +276,11 @@ export class EditorProtocolSession {
     ) {
       return this.error("stale_revision", command.requestID, "Saved revision is ahead or mismatched");
     }
-    this.state = { ...this.state, ...editable };
+    apply?.();
+    this.state = {
+      ...this.state,
+      ...(typeof editable === "function" ? editable() : editable),
+    };
     return this.stateChanged(command.requestID);
   }
 

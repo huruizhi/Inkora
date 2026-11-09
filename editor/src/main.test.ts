@@ -202,6 +202,86 @@ it("提供键盘可达的可视/源码切换和草稿提交取消入口", async 
   expect(h.stateMessages()).toHaveLength(1);
 });
 
+it("拒绝错误文档的保存回执且不污染 dirty 保存基线", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-receipt", documentID: "doc-receipt",
+    revision: 0, text: "a\n",
+  });
+  h.sourceMode().click();
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  area.value = "ab\n";
+  area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+  h.sourceApply().click();
+  expect(h.stateMessages().at(-1)?.state?.dirty).toBe(true);
+
+  h.receive({
+    type: "markSaved", requestID: "wrong-receipt", documentID: "wrong-document",
+    revision: h.lastRevision(), text: "ab\n",
+  });
+  expect(h.sent.at(-1)?.type).toBe("editorError");
+  expect(h.sent.at(-1)?.code).toBe("stale_revision");
+
+  area.focus();
+  h.receive({
+    type: "executeCommand", requestID: "undo-after-wrong", documentID: "doc-receipt",
+    revision: h.lastRevision(), command: "undo",
+  });
+  h.receive({
+    type: "executeCommand", requestID: "redo-after-wrong", documentID: "doc-receipt",
+    revision: h.lastRevision(), command: "redo",
+  });
+  expect(h.stateMessages().at(-1)?.state?.dirty).toBe(true);
+});
+
+it("未知容器与正文混排时保留可视投影并阻断快照", () => {
+  const hPromise = bootMain();
+  return hPromise.then((h) => {
+    h.receive({
+      type: "loadDocument", requestID: "load-container", documentID: "doc-container",
+      revision: 0, text: "正文\n\n::: note\n未知内容\n:::\n\n尾段\n",
+    });
+    expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+    expect(h.editorHost().querySelector("textarea#editor")).toBeNull();
+    expect(h.editorHost().textContent).toContain("正文");
+    expect(h.editorHost().textContent).toContain("尾段");
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-container", documentID: "doc-container",
+      revision: 0,
+    });
+    expect(h.sent.at(-1)?.type).toBe("editorError");
+    expect(h.sent.at(-1)?.code).toBe("editor_not_ready");
+  });
+});
+
+it("synthetic PM composition 只发布一次 Bridge revision 且快照读取最终原文", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-ime", documentID: "doc-ime",
+    revision: 0, text: "a\n",
+  });
+  const editor = h.editorHost().querySelector<HTMLElement>(".ProseMirror")!;
+  const paragraph = editor.querySelector("p")!;
+  const text = paragraph.firstChild as Text;
+  editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+  text.data = "a中文";
+  editor.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+  editor.dispatchEvent(new h.dom.window.Event("compositionend", { bubbles: true }));
+  await settle(150);
+
+  expect(h.stateMessages()).toHaveLength(2);
+  expect(h.lastRevision()).toBe(1);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-ime", documentID: "doc-ime",
+    revision: 1,
+  });
+  expect(h.sent.find(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-ime")).toMatchObject({
+      revision: 1,
+      text: "a中文\n",
+    });
+});
+
 function expectedStats(raw: string): { characters: string; writingUnits: string } {
   const analysis = analyzeDocument({ raw, revision: 0 });
   return {

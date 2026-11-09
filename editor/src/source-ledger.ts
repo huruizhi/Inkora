@@ -536,12 +536,18 @@ function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: 
     if (!possibleClosing) throw Error('围栏闭合行不存在');
     const marker = token.markup[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const close = possibleClosing.text.match(new RegExp(`^( {0,3})(${marker}{${token.markup.length},})([\\t ]*)$`));
-    if (!close) throw Error('围栏没有可审计 closing marker；未闭合围栏应由 model 保护');
-    const closeMarkerStart = possibleClosing.start + close[1].length;
-    hiddenRaw(state, possibleClosing.start, closeMarkerStart, 'block-prefix', 'fence-close-indent');
-    hiddenRaw(state, closeMarkerStart, closeMarkerStart + close[2].length, 'delimiter', 'fence-close');
-    hiddenRaw(state, closeMarkerStart + close[2].length, possibleClosing.contentEnd, 'block-suffix', 'fence-close-space');
-    contentLines = lines.slice(token.map[0] + 1, token.map[1] - 1);
+    if (close) {
+      const closeMarkerStart = possibleClosing.start + close[1].length;
+      hiddenRaw(state, possibleClosing.start, closeMarkerStart, 'block-prefix', 'fence-close-indent');
+      hiddenRaw(state, closeMarkerStart, closeMarkerStart + close[2].length, 'delimiter', 'fence-close');
+      hiddenRaw(state, closeMarkerStart + close[2].length, possibleClosing.contentEnd, 'block-suffix', 'fence-close-space');
+      contentLines = lines.slice(token.map[0] + 1, token.map[1] - 1);
+    } else {
+      // CommonMark closes a fence implicitly at EOF. Keep the physical source
+      // exact and map every following line as code content; no synthetic close
+      // delimiter is introduced into the ledger.
+      contentLines = lines.slice(token.map[0] + 1, token.map[1]);
+    }
   }
 
   const logical: Array<{ char: string; start: number; end: number; lineEnding: boolean }> = [];
