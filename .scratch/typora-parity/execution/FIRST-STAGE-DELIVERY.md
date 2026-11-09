@@ -40,7 +40,7 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 
 093候选489文件tar SHA `f748f1d3572cf0a4b6b30d0ffd0ffdb482304b6aad61921f5ba273a3ed680a13`，临时symlink清理、worktree clean；未建PR/合main，等待下述独立复核。070最终450文件tar SHA `77230f07334881c5ce2dd670683606054fca9ce4e23683206b60b68c98388bc3`、最新真实artifact tar SHA `3086438e07bc2e5a3819eb06185f112bd2687a160fec94b16697de0a9b2544fd`；临时symlink清理，不增加managed回收数。
 
-**当前仅Spec评审095仍运行**：固定 `1568743...04b7f18`，新上下文Standards与Spec，只审不修；profiles实时为空，provider核实Luna5.6 medium/default与Sol5.6 high/default。094 Agent `d8daaf8d-4d0e-4a5c-b038-78ae7ccbf47b` / workspace `wks_e0ec2546dd41a2f0`；095 Agent `2061a430-ead9-4898-8c1c-71ea90a7f3ad` / workspace `wks_66755fd30e08b92d`。禁止GUI、新Agent、安装与全量重跑；完成及时备份/两层回收。094现已完成hard0/judgement0，备份487文件/tar SHA `b11e49bc55869f03696adfb385a679da1b7a682b85650531b18705154629cb25`后两层回收；[分轴报告](GFM-AUTOLINK-REVIEW.md)。managed累计83。
+**093双轴094/095均已完成并回收**：固定 `1568743...04b7f18`，Standards hard0/judgement0；Spec wrong1/P2，邮箱及mailto/xmpp缺共同起点边界（missing/partial0、scope creep0）。两轴原文分开保留于[GFM审查](GFM-AUTOLINK-REVIEW.md)。094最终8df46e5，tar SHA `b11e49bc55869f03696adfb385a679da1b7a682b85650531b18705154629cb25`；095最终ffcc25f，tar SHA `3a8820787101f303f038583531c62488d78f0bd8f284429c9e78205f9b46eb4e`。两层归档已核实，managed累计84，当前无Paseo实施者。root在093实际先红后绿修正边界，公共会话+14官方控制28/28，完整测试进行中；尚未建PR/合main。
 物理验收仍按用户“稍后”，不启动App/窗口/系统面板、不反复催问。hostless WK、普通DOM文本、synthetic composition、scratch与真实SIGKILL分别结算，不代替物理中文、当前Sandbox/bookmark/系统拖放粘贴、真实AX、窗口文件生命周期或macOS14。总目标active，main未因本轮变化。
 
 ## 最新交付（覆盖下述历史）
