@@ -58,6 +58,22 @@ function createRuntime(raw: string, options: EditorRuntimeOptions = {}): {
 }
 
 describe("production source authority runtime", () => {
+  it("types in the unchanged code caret after a language attribute change", () => {
+    const { dom, runtime } = createRuntime("```python\nabc\n```\n");
+    const view = (runtime as unknown as { view: EditorView }).view;
+    const caret = view.state.selection.toJSON();
+    const selector = dom.window.document.querySelector<HTMLSelectElement>(".inkora-code-language")!;
+    selector.value = "javascript";
+    selector.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    expect(view.state.selection.toJSON()).toEqual(caret);
+    expect(runtime.getText()).toBe("```javascript\nabc\n```\n");
+    view.dispatch(view.state.tr.insertText("X"));
+    expect(runtime.getText()).toBe("```javascript\nXabc\n```\n");
+    expect(runtime.status.saveEligible).toBe(true);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("```javascript\nabc\n```\n");
+    runtime.destroy();
+  });
   function execute(session: InkoraEditorSession, command: Command): boolean {
     return command(session.state, transaction => session.dispatch(transaction));
   }

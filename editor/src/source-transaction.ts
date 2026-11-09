@@ -12,7 +12,7 @@ export type NativePlan = {
   kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'inline-mark' | 'block-structure' | 'projection-sync' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join' | 'code-exit';
   /** A Markdown source cannot represent a newly-created empty paragraph. */
   mayStage?: boolean;
-  /** Source caret in candidate coordinates, used only while a split is staged. */
+  /** Proven source caret in candidate coordinates after a text/input-rule edit. */
   sourceCaret?: number;
 };
 
@@ -63,7 +63,7 @@ function inputRulePlan(
   } catch {
     return null;
   }
-  return { patches, candidate, kind: 'projection-sync' };
+  return { patches, candidate, kind: 'projection-sync', sourceCaret: from + insert.length };
 }
 
 export function applyNativePatches(source: string, patches: readonly NativePatch[]): string {
