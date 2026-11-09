@@ -640,6 +640,7 @@ window.inkora = {
               assetEpoch = undefined;
               runtime?.destroy();
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange, {
+                searchIdentity: { documentID: command.documentID, epoch: loadEpoch },
                 onLinkRequest: (binding) => {
                   const owner = runtime;
                   if (owner) openLinkEditor(owner, binding);

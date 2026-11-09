@@ -139,6 +139,72 @@ const markdown = new MarkdownIt('commonmark', {
 installReferenceCapture(markdown);
 markdown.core.ruler.after('inline', 'inkora_task_items', annotateTaskListItems);
 
+type EmphasisDelimiter = {
+  from: number;
+  to: number;
+  syntax: 'strong-open' | 'strong-close' | 'em-open' | 'em-close';
+};
+
+type EmphasisCaptureEnvironment = Record<string, unknown> & {
+  inkoraEmphasisTokenPositions?: Map<number, number>;
+  inkoraEmphasisDelimiters?: EmphasisDelimiter[];
+};
+
+// Reuse markdown-it's CommonMark delimiter decisions instead of guessing where
+// one marker ends inside adjacent runs such as `***`. This public ruler seam
+// records source positions before emphasis consumes a run, then reads the
+// resolved em/strong tokens before markdown-it joins text fragments.
+const emphasisMarkdown = new MarkdownIt('commonmark', {
+  breaks: false,
+  html: false,
+  linkify: false,
+});
+emphasisMarkdown.inline.ruler.before('emphasis', 'inkora_emphasis_positions', (state) => {
+  const marker = state.src[state.pos];
+  if (marker !== '*' && marker !== '_') return false;
+  let end = state.pos + 1;
+  while (state.src[end] === marker) end++;
+  const environment = state.env as EmphasisCaptureEnvironment;
+  const positions = environment.inkoraEmphasisTokenPositions ?? new Map<number, number>();
+  environment.inkoraEmphasisTokenPositions = positions;
+  const firstToken = state.tokens.length + (state.pending ? 1 : 0);
+  for (let source = state.pos; source < end; source++) {
+    positions.set(firstToken + source - state.pos, source);
+  }
+  return false;
+});
+emphasisMarkdown.inline.ruler2.after('emphasis', 'inkora_emphasis_delimiters', (state) => {
+  const environment = state.env as EmphasisCaptureEnvironment;
+  const positions = environment.inkoraEmphasisTokenPositions;
+  const delimiters: EmphasisDelimiter[] = [];
+  state.tokens.forEach((token, tokenIndex) => {
+    const position = positions?.get(tokenIndex);
+    if (position === undefined) return;
+    if (token.type === 'strong_open') {
+      delimiters.push({ from: position - 1, to: position + 1, syntax: 'strong-open' });
+    } else if (token.type === 'strong_close') {
+      delimiters.push({ from: position, to: position + 2, syntax: 'strong-close' });
+    } else if (token.type === 'em_open' || token.type === 'em_close') {
+      delimiters.push({
+        from: position,
+        to: position + 1,
+        syntax: token.type === 'em_open' ? 'em-open' : 'em-close',
+      });
+    }
+  });
+  environment.inkoraEmphasisDelimiters = delimiters;
+  return false;
+});
+
+function emphasisDelimiters(text: string, from: number, to: number): Map<number, EmphasisDelimiter> {
+  const environment: EmphasisCaptureEnvironment = {};
+  emphasisMarkdown.parseInline(text.slice(from, to), environment);
+  return new Map((environment.inkoraEmphasisDelimiters ?? []).map(delimiter => {
+    const captured = { ...delimiter, from: delimiter.from + from, to: delimiter.to + from };
+    return [captured.from, captured];
+  }));
+}
+
 const ESCAPABLE = new Set('\\!"#$%&\'()*+,./:;<=>?@[]^_`{|}~-'.split(''));
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
@@ -291,6 +357,7 @@ function scanLinkTail(text: string, pos: number): { end: number; hrefStart: numb
 
 function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.text.length, role: SourceRole = 'text', owner?: string): void {
   const text = input.text;
+  const emphasis = emphasisDelimiters(text, from, to);
   let i = from;
   while (i < to) {
     // A backslash immediately followed by a line ending is one PM hard_break
@@ -475,16 +542,32 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
       }
     }
 
-    // Supported mark delimiters. This is intentionally conservative: a form
-    // not proven here remains literal or fails PM projection validation.
-    const marks = ['**', '__', '~~', '*', '_'];
-    const marker = marks.find(candidate => text.startsWith(candidate, i));
+    const emphasisDelimiter = emphasis.get(i);
+    if (emphasisDelimiter) {
+      addHidden(
+        state,
+        input,
+        emphasisDelimiter.from,
+        emphasisDelimiter.to,
+        'delimiter',
+        emphasisDelimiter.syntax,
+        owner,
+        '由 markdown-it CommonMark delimiter 配对确认',
+      );
+      i = emphasisDelimiter.to;
+      continue;
+    }
+
+    // Strikethrough keeps its existing conservative pair. Emphasis and strong
+    // above use markdown-it's resolved provenance so adjacent `***` / `___`
+    // closing runs cannot be assigned to the wrong nested mark.
+    const marker = text.startsWith('~~', i) ? '~~' : undefined;
     if (marker) {
       const close = delimiterAt(text, i + marker.length, marker);
       if (close > i + marker.length && close < to) {
-        addHidden(state, input, i, i + marker.length, 'delimiter', marker === '~~' ? 'strike-open' : marker.length === 2 ? 'strong-open' : 'em-open', owner);
+        addHidden(state, input, i, i + marker.length, 'delimiter', 'strike-open', owner);
         scanInline(state, input, i + marker.length, close, role, owner);
-        addHidden(state, input, close, close + marker.length, 'delimiter', marker === '~~' ? 'strike-close' : marker.length === 2 ? 'strong-close' : 'em-close', owner);
+        addHidden(state, input, close, close + marker.length, 'delimiter', 'strike-close', owner);
         i = close + marker.length;
         continue;
       }
