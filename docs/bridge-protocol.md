@@ -95,7 +95,7 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
 
 ### 图片命令
 
-`applyImageImport` 携带 document/revision、`documentEpoch`、asset UUID、已确定 URI、alt、可空 title 与单个 `inkora-asset://resource/<uuid>` capability。成功是一次正文/history/revision 事务；composition、源码 dirty draft、过期 revision 或无法证明 owner 时拒绝。
+`applyImageImport` 携带 document/revision、`documentEpoch`、asset UUID、已确定 URI、alt、可空 title、导入意图采样的 `selectionAnchor/selectionHead` 与单个 `inkora-asset://resource/<uuid>` capability。selection 使用当前原文的 directed offsets；执行时 selection、document、revision 或 epoch 任一不匹配都拒绝，不迁移到当前光标。成功是一次正文/history/revision 事务；composition、源码 dirty draft、过期 revision 或无法证明 owner 时拒绝。
 
 `setImageDescriptors` 携带同一 document epoch 的 descriptor 数组。状态限定为 `ready/missing/denied/unsupported/error/pending`；只有 ready 必须且只能带 capability URL。它只刷新 NodeView，不改变正文、dirty、revision、selection 或 history。
 
@@ -123,12 +123,14 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
     "revision": 4,
     "dirty": true,
     "canUndo": true,
-    "canRedo": false
+    "canRedo": false,
+    "selectionAnchor": 12,
+    "selectionHead": 8
   }
 }
 ```
 
-`requestID` 只在响应 `loadDocument`、`queryState` 或 command 时提供；主动状态变化可省略。原生层按 `(documentID, revision)` 丢弃错误文档或旧状态。
+`requestID` 只在响应 `loadDocument`、`queryState` 或 command 时提供；主动状态变化可省略。`queryState` 同 turn 采样当前原文 directed selection，但不增加 revision、dirty 或 history。旧 v1 发送方可省略 selection；图片导入意图必须取得一对完整 selection 后才可持久化。原生层按 `(documentID, revision)` 丢弃错误文档或旧状态。
 
 ### `snapshotReady`
 

@@ -91,6 +91,8 @@ final class InkoraDocument: NSDocument {
   private var preparedImageSave: DocumentImageSavePreparation?
   private var preparedImageMigration: LocalImageMigrationPlan?
   private var imageSavePreparer: ImageSavePreparer?
+  private(set) var imageMigrationRecovery = LocalImageMigrationCoordinator.RecoveryDiscovery(
+    records: [], rejected: [])
 
   override init() {
     openHistory = .shared
@@ -142,6 +144,10 @@ final class InkoraDocument: NSDocument {
   func configureRecovery(store: RecoveryStore, snapshotRequester: SnapshotRequester? = nil) {
     recoveryStore = store
     recoverySnapshotRequester = snapshotRequester
+    imageMigrationRecovery = LocalImageMigrationCoordinator(
+      journalRoot: store.directory.appendingPathComponent(
+        "ImageMigrationJournal", isDirectory: true)
+    ).discoverRecovery()
   }
 
   func configureImageSavePreparer(_ preparer: ImageSavePreparer?) {
@@ -179,16 +185,20 @@ final class InkoraDocument: NSDocument {
   }
 
   func restoredImageDirectory(role: String, for documentURL: URL) -> URL? {
+    try? resolveImageDirectory(role: role, for: documentURL)
+  }
+
+  func resolveImageDirectory(role: String, for documentURL: URL) throws -> URL? {
     guard let recoveryStore else { return nil }
     if role == "document-directory" || role == "document-read-directory",
-      let directory = try? AssetBookmarkStore(
+      let directory = try AssetBookmarkStore(
         url: recoveryStore.directory.appendingPathComponent(
           "LocalImages/Documents/\(Self.imageDocumentKey(documentURL)).json")
       ).resolve(role: role)
     {
       return directory
     }
-    return try? AssetBookmarkStore(
+    return try AssetBookmarkStore(
       url: recoveryStore.directory.appendingPathComponent(
         "LocalImages/\(recoveryID.uuidString.lowercased())-bookmarks.json")
     ).resolve(role: role)
@@ -201,7 +211,8 @@ final class InkoraDocument: NSDocument {
   func importLocalImage(
     fileURL: URL,
     preferredName: String? = nil,
-    authorizedDirectory: URL?
+    authorizedDirectory: URL?,
+    importIntent: LocalImageAsset.ImportIntent? = nil
   ) throws -> LocalImageAsset {
     let sourceAccessed = fileURL.startAccessingSecurityScopedResource()
     let directoryAccessed = authorizedDirectory?.startAccessingSecurityScopedResource() ?? false
@@ -211,19 +222,20 @@ final class InkoraDocument: NSDocument {
     }
     return try localImages().importFile(
       from: fileURL, preferredName: preferredName, documentURL: self.fileURL,
-      authorizedDirectory: authorizedDirectory)
+      authorizedDirectory: authorizedDirectory, importIntent: importIntent)
   }
 
   func importPastedPNG(
     _ data: Data,
     preferredName: String = "Pasted Image.png",
-    authorizedDirectory: URL?
+    authorizedDirectory: URL?,
+    importIntent: LocalImageAsset.ImportIntent? = nil
   ) throws -> LocalImageAsset {
     let directoryAccessed = authorizedDirectory?.startAccessingSecurityScopedResource() ?? false
     defer { if directoryAccessed { authorizedDirectory?.stopAccessingSecurityScopedResource() } }
     return try localImages().importBitmapPNG(
       data, preferredName: preferredName, documentURL: fileURL,
-      authorizedDirectory: authorizedDirectory)
+      authorizedDirectory: authorizedDirectory, importIntent: importIntent)
   }
 
   func prepareLocalImagesForSave(
@@ -570,7 +582,11 @@ final class InkoraDocument: NSDocument {
     if let plan = preparedImageSave?.managedPlan {
       let accessed = plan.authorizedDirectory.startAccessingSecurityScopedResource()
       defer { if accessed { plan.authorizedDirectory.stopAccessingSecurityScopedResource() } }
-      do { try localImages().publish(plan) } catch {
+      do {
+        let session = try localImages()
+        try session.validateMarkdownSnapshot(snapshot.text, for: plan)
+        try session.publish(plan)
+      } catch {
         finishCurrentSave(error)
         return
       }

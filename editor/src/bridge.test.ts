@@ -73,6 +73,8 @@ describe("Bridge protocol v1 contracts", () => {
       alt: "a b",
       title: null,
       displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000",
+      selectionAnchor: 3,
+      selectionHead: 1,
     }))).toMatchObject({ type: "applyImageImport", assetID: "asset-1", title: null });
     expect(decodeNativeCommand(JSON.stringify({
       protocolVersion: 1,
@@ -383,6 +385,24 @@ describe("Bridge protocol v1 contracts", () => {
       type: "editorError",
       code: "editor_not_ready",
       action: "retry",
+    });
+  });
+
+  it("queryState samples the current directed selection without advancing revision", () => {
+    const session = new EditorProtocolSession();
+    session.loadDocument({
+      protocolVersion: 1, type: "loadDocument", requestID: "load-selection",
+      documentID: "doc-selection", revision: 4, text: "正文",
+    });
+    expect(session.queryState(
+      { protocolVersion: 1, type: "queryState", requestID: "state-selection" },
+      {
+        dirty: true, canUndo: true, canRedo: false,
+        selectionAnchor: 7, selectionHead: 3,
+      },
+    )).toMatchObject({
+      type: "stateChanged",
+      state: { revision: 4, selectionAnchor: 7, selectionHead: 3 },
     });
   });
 

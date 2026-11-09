@@ -360,7 +360,8 @@ final class EditorWebViewTests: XCTestCase {
       documentEpoch: UUID(), assetID: UUID(), uri: "inkora-draft://asset/test",
       alt: "", title: nil,
       displayURL: try XCTUnwrap(
-        URL(string: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000"))
+        URL(string: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000")),
+      selectionAnchor: 1, selectionHead: 1
     ) { imageError = $0 }
 
     var commands = try scripts.compactMap(decodeBridgeCommand).filter {

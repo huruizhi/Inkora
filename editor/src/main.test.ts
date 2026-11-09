@@ -16,6 +16,8 @@ interface SentMessage {
     dirty: boolean;
     canUndo?: boolean;
     canRedo?: boolean;
+    selectionAnchor?: number;
+    selectionHead?: number;
   };
   [key: string]: unknown;
 }
@@ -595,6 +597,8 @@ it("root070: rejected image descriptors never update the current document DOM", 
 
 it("root070: image import preserves an active link-field composition", async () => {
   const h = await rootLinkHarness();
+  h.receive({ type: "queryState", requestID: "image-selection-sample" });
+  const selection = h.sent.at(-1)!.state!;
   const form = h.linkEditor()!;
   const input = form.querySelector<HTMLInputElement>(".link-editor-href")!;
   input.value = "zhong";
@@ -606,6 +610,7 @@ it("root070: image import preserves an active link-field composition", async () 
     type: "applyImageImport", requestID: "image-during-link-composition", documentID: "root-link",
     revision, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
     assetID: "123e4567-e89b-12d3-a456-426614174001",
+    selectionAnchor: selection.selectionAnchor, selectionHead: selection.selectionHead,
     uri: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174001",
     alt: "image", title: null,
     displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174002",
@@ -623,6 +628,7 @@ it("root070: image import preserves an active link-field composition", async () 
     type: "applyImageImport", requestID: "image-after-link-composition", documentID: "root-link",
     revision, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
     assetID: "123e4567-e89b-12d3-a456-426614174001",
+    selectionAnchor: selection.selectionAnchor, selectionHead: selection.selectionHead,
     uri: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174001",
     alt: "image", title: null,
     displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174002",

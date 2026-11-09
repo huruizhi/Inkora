@@ -827,6 +827,51 @@ final class InkoraDocumentTests: XCTestCase {
   }
 
   @MainActor
+  func testFirstSaveRejectsSnapshotThatStillOwnsDraftImageURI() async throws {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let target = directory.appendingPathComponent("Note.md")
+    let png = Data(
+      base64Encoded:
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )!
+    var documentID = ""
+    var snapshotText = ""
+    let writer = ObservingDocumentDataWriter {}
+    let document = InkoraDocument(
+      snapshotRequester: { completion in
+        completion(
+          .success(BridgeSnapshot(documentID: documentID, revision: 1, text: snapshotText)))
+      }, dataWriter: writer)
+    documentID = document.bridgeDocumentID
+    document.configureRecovery(
+      store: RecoveryStore(directory: directory.appendingPathComponent("Recovery")))
+    let session = try document.localImages()
+    let asset = try document.importPastedPNG(png, authorizedDirectory: nil)
+    try session.markInsertionAccepted(assetID: asset.id)
+    let plan = try XCTUnwrap(
+      document.prepareLocalImagesForSave(documentURL: target, authorizedDirectory: directory))
+    snapshotText = "![图](\(asset.markdownURI))\n"
+    document.configureImageSavePreparer { _, completion in
+      completion(
+        .success(
+          DocumentImageSavePreparation(
+            managedPlan: plan, sourceAuthorizedDirectory: nil,
+            targetAuthorizedDirectory: directory)))
+    }
+    document.updateChangeCount(.changeDone)
+
+    let error = await save(document, to: target, operation: .saveAsOperation)
+
+    XCTAssertNotNil(error)
+    XCTAssertFalse(writer.observed)
+    XCTAssertFalse(FileManager.default.fileExists(atPath: target.path))
+    XCTAssertEqual(session.assets.first?.state, .draft)
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
+    document.close()
+  }
+
+  @MainActor
   func testSaveAsMigratesRelativeImageBeforeMarkdownWithoutChangingSourceBytes() async throws {
     let scratch = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: scratch) }
