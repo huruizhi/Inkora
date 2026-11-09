@@ -2,15 +2,15 @@
 
 用户已将当前目标设为“完成首阶段基础功能”。范围以03写作闭环票为准；不能用辅助模块合并、原型或非UI测试代替完整闭环。
 
-当前生产 main：`1e686087f6e58ff9b101660d9854f425c742b49c`。原文权威核心 PR #71 已 merge；合入树与受检 `619fbf03` 一致，完整 editor 427/427，默认 CI 42621826345 success。下方按时间累积的旧“当前/执行中”段落均为历史，以本节和紧接的执行指针为准。
+当前生产 main：`0edb13d59532cd19a0fb7afa71e2aab7cf6573a4`。核心 PR #71 与表格/任务 PR #72 均已 merge；main 整树与受检 `c50133e` 一致，完整 editor 485/485，默认 CI 42626828782 success。下方按时间累积的旧“当前/执行中”段落均为历史，以本节和紧接的执行指针为准。
 
 | 能力 | 当前状态 | 交付前剩余事项 |
 | --- | --- | --- |
 | 原生新建/打开/保存/另存/关闭/恢复保护 | 已有生产实现 | 与新编辑内核及图片资源联动验收 |
 | 正文/标题/列表/引用/基础格式/代码/链接 | 原文权威核心已合 main | 新生产组合的物理 IME、NSDocument 保存/关闭/重开集中验收 |
 | 大纲/统计/章节定位 | 已合main | 新内核兼容、真实滚动/键盘/辅助功能点验 |
-| 当前文档查找替换 | 源码能力已合；可视查询/导航/原子批替换正在收口 | 066 修复 caret/marks/字面替换反例，完整 14 例及真实 UI |
-| 可编辑表格/任务列表 | PR #72 非 UI 候选，完整 editor 483/483 | 精确提交 CI、独立合入与真实控件/文件验收 |
+| 当前文档查找替换 | PR #73 draft，071 完整 552/552、lint/build 通过；066 已备份回收 | 最终精确 CI、双轴审查、合入及真实 UI |
+| 可编辑表格/任务列表 | PR #72 已合 main，完整 editor 485/485、精确 CI success | 真实控件/物理输入/文件生命周期与 AX 验收 |
 | 本地图片 | 055 完整生产候选；独立 Spec 审查不通过 | 067 修复首存重试、引用迁移、pending 意图、journal 恢复及授权状态，再集成与真机验收 |
 | 代码高亮/语言选择 | 已合 main；有真实 WK 语言选择、字节及正式保存重开证据 | 新组合回归与最终集中验收 |
 | 高级语法保护混排/异常安全 | 生产接线已合 main | 新组合保护块邻接、含混阻断和主动源码修复回归 |
@@ -20,13 +20,15 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 ## 最新执行指针（2026-11-09，覆盖后文历史）
 
 - PR #71 已合入 main `1e68608`；包含 059/061 链接/代码命令、root 062 表单默认行为保护、root 063 属性修改后的 caret provenance。最终默认非 UI CI [42621826345](https://github.com/huruizhi/Inkora/actions/runs/42621826345) success；物理步骤未冒称通过。
-- PR #72 draft，分支 `task/INK-M1-056-tables-tasks-integration`，HEAD `24fcf9f2071e90a6fe97f8f09986ef2d18811d10`。原 b30b368 的 [CI 42623488092 attempt2](https://github.com/huruizhi/Inkora/actions/runs/42623488092) success；首次仅 checkout 网络超时，产品未运行。管理者随后 068 独立发现并修复表头插行索引和 BOM 顶层表格账本归属，真实三组回归与完整 **483/483**、make lint、editor build 通过。新精确 head 的 [CI 42626094355](https://github.com/huruizhi/Inkora/actions/runs/42626094355) 进行中，不沿用旧 head 成功。
+- PR #72 已 merge，精确 head `c50133e1353aa0339f5aaf396e47b234b42e7161`，main 为 `0edb13d` 且整树与其一致。068 补正表头插行索引/BOM 表格账本，069 补正表格链接 owner/共享引用计数；完整 **485/485**、lint/build 通过。最终 [CI 42626828782](https://github.com/huruizhi/Inkora/actions/runs/42626828782) success，覆盖非 UI、Release 离线与轻量基准；UI/full-bench 按参数 skip。旧 b30b368 checkout 超时及重跑成功、24fcf9f CI 成功只作历史分层，不替代最终 head 证据。
 - 060 合并最新 core/V3，HEAD `fc18f78da7dc6a6000e6aca2a67d9345e0396806`，完整 editor 511/511；11 个冻结 replace-all 正例及 140 处真实面板单历史批替换通过。root 066 新造 7 项控制为 5 红/2 绿，暴露 code owner caret、跨 marks 替换和字面 Markdown 输入问题，故 V6 仍未交付。
-- 066 实施：Sol 5.6/high/default，Agent `0b609331-2228-42a0-8060-627040786f37`，workspace `wks_8b7d6efeb6a0391a`，分支 `task/INK-M1-066-visual-replacement-completion`，红例起点 `19c0e5e`。完成完整 14 例、可视与源码完整查询批替换、caret/marks/owner 和一次原子历史/发布；冻结红例外存不改。不得缩为纯计数或少量正例。
+- 066 已交付 `c6845c7a741b092ee48f0aa68bbdd610442758dc`。作者完整 545；root 将冻结原件按 SHA 不变复制重跑，**7/7** 全绿，随后在 `task/INK-M1-071-visual-replacement-integration` 接回 main，初始完整 **550/550** 通过。root 新造同一 autolink 两次命中真实红例，修复 owner 全范围补丁冲突及批替换续写的锚点归属；以真实 `deletedAcross` 区分已删除位置，保留表格删除语义与未编辑 gap/affinity。最终 **552/552**、56 项表格/owner 控制、make lint、production build 通过。完整 14 面板动作已核对，无 manifest 补丁执行路径。
+- [PR #73](https://github.com/huruizhi/Inkora/pull/73) draft：head `c0b375670a2dedc3df998f3377d398d09f5357e8`，base 为最新 main `0edb13d`。精确默认 [CI 42630358139](https://github.com/huruizhi/Inkora/actions/runs/42630358139) 已触发，尚未判成功。双轴固定三点范围 `0edb13d...c0b3756`：072 Standards（GLM5.3 low/full，Agent `0aac22c8-12d8-45fa-a149-2f1ea68d7596` / workspace `wks_2ddc97e9e94393ff`）；073 Spec（Sol5.6 high/default，Agent `af685ea3-6a37-46be-a210-3e90d3bb840b` / workspace `wks_dcce2d635944c77b`）。两份 fresh-context 报告独立生成，只读产品，完成后保留分轴原文并及时两层回收。CI/双轴通过后才按规则合入。
 - 055 图片候选 `056f74fa` 已校验备份并回收 Agent/workspace。根实际读取 Native xcresult：148 total / 141 pass / 0 fail / 7 性能 skip；BridgeNative 12/12。此为候选非 UI 证据，不是图片授权、拖放、剪贴板或生产窗口验收。
 - 独立双轴报告见 [V4 审查原文](V4-IMAGE-REVIEW.md)：064 Standards 为 0 hard、judgement smell；065 Spec 为 3 P1 + 2 P2，阻断图片合入。两个报告分轴保留，不混用静态合规与功能正确性。
 - 067 实施：Sol 5.6/high/default，Agent `fb19b94d-630a-4622-a726-2132d7da6d39`，workspace `wks_8079e64946c7995e`，分支 `task/INK-M1-067-image-save-recovery-corrections`，固定起点 `056f74fa`。修五项真实图片生产缺陷并保留正式 V4 能力与安全边界；暂不混入 core/V3/V6，待 root 统一集成。
-- 061、055、064、065 均已完成 Agent 归档和逐文件 SHA/tar/Git bundle 校验后工作区回收；累计完成 workspace 回收 **66**。065 备份 312 文件，tar SHA-256 `207d6b680fed6155220b7fb0351ff2a1c172364e1afb7b7dfab9e10733005c54`。仅 066/067 两名功能实施者继续运行。
+- 070 在独立分支 `task/INK-M1-070-image-core-integration` @ `298a265386070258d65537351261f3e6b8543dc0` 预先组合 055/core/V3，保留双方 NodeView/命令/测试/原文契约。root 先红后绿修复链接包裹 image atom/空 link 的账本归属、过期 descriptor 在校验前改 DOM、链接/查询字段 composition 时图片导入与 rewrite 的跨控件守卫；完整 **502/502**、lint/build 通过。尚未跑组合 Native/Release，不合图片 PR，等待 067 五项修复后统一检查。不是图片完整验收。
+- 061、055、064、065、066 均已完成 Agent 归档和逐文件 SHA/tar/Git bundle 校验后工作区回收；累计完成 workspace 回收 **67**。066 备份 362 文件，tar SHA-256 `6f8763131ea0a703ef77b38a623d978226229cb86d9efe8e0e6ab55adadb6a27`；065 备份 312 文件，tar SHA-256 `207d6b680fed6155220b7fb0351ff2a1c172364e1afb7b7dfab9e10733005c54`。当前一名功能实施者 067，加两名只读 072/073 审查者；root 负责独立组合、CI 和合入。
 
 本节为进度文档修订，不因此重复未改产品测试或把待执行检查记成通过。
 
