@@ -13,3 +13,7 @@
 - **Divergent Change** — `editor/src/protected-syntax.ts:35-268` 同时承担 HTML、脚注、Wiki、U 候选、front matter、callout、math、container 候选等多类边界；新增任一语法都改动该单一安装器，职责变化方向明显分叉。
 
 未发现其它可由已读书面规范直接确认的 Standards 背离；未运行 UI、Native、Release、perf 或完整套件。
+
+## 自校核纠正（撤回原首稿 hard finding）
+
+原首稿关于 BOM front matter 的判断错误，现明确撤回，不删除上文原始记录以保留审查轨迹。`source-document.ts:26-28` 先将 BOM 从 parser 输入移除后，`protected-syntax.ts:185-193` 的 `start === 0` 正好命中归一化输入中的 `---`/`+++`；`bindOpaqueInlineSource` 再将保护范围映射回原始 raw，保留 `sourceStart=1`。在公开 `SourceAuthoritySession` 接缝上复核 YAML/TOML + BOM + CRLF：均得到 `protected_block/front_matter`、raw 不含 BOM、offset 1 且 `saveMemory()` 成功。控制测试命令 `pnpm exec vitest run src/protected-source-runtime.test.ts -t 'BOM-prefixed metadata'` 实际 1/1 通过；日志见 `/tmp/ink103-bom-review-control.txt`。因此本次 Standards 轴没有 hard finding；其余 Fowler 项仍仅为 judgement。

@@ -11,8 +11,9 @@
 
 ## 结果
 
-- 书面标准背离：1 项，见审查报告；核心是 BOM 后 front matter 未由 canonical protected rule 优先锁定。
+- 初稿曾记录 1 项书面标准背离，后经公开接缝自校核明确撤回：BOM 已在归一化 parser 输入上正确命中 front matter，原始 raw offset 映射也正确。
 - Fowler smells：Duplicated Code、Primitive Obsession/Mysterious Name、Divergent Change，均为 judgement。
+- 自校核命令：`pnpm exec vitest run src/protected-source-runtime.test.ts -t 'BOM-prefixed metadata'` → 1/1 通过；日志 `/tmp/ink103-bom-review-control.txt`。
 - 未修改产品代码、已有证据或冻结 oracle；仅新增审查报告与本任务记录。
 
 ## 验证与限制
