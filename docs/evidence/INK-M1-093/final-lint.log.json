@@ -1,0 +1,5 @@
+{
+  "sourceLog": "inkora-093-final-lint.log",
+  "sha256": "6cceaa7ff891020871420effeeaa094e02839ca3bb13910174f754c6746e1855",
+  "utf8": "xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests tests/InkoraUITests\n/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm --dir editor lint\n$ tsc --noEmit\n"
+}

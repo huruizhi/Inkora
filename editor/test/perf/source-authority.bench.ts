@@ -81,7 +81,8 @@ for (const name of names) {
 
 afterAll(() => {
   const output = resolve(process.env.INKORA_PRODUCTION_PERF_OUTPUT ?? "../build/production-perf/model.json");
-  const sourcePaths = ["source-authority.ts", "source-document.ts", "source-ledger.ts", "source-transaction.ts"];
+  const sourcePaths = ["source-authority.ts", "source-document.ts", "source-ledger.ts", "source-transaction.ts",
+    "markdown-codec.ts", "gfm-autolinks.ts"];
   const sources = Object.fromEntries(sourcePaths.map(path => [path,
     sha(readFileSync(new URL(`../../src/${path}`, import.meta.url), "utf8"))]));
   const payload = { schema: 1, layer: "production-model-node", repetitions, warmup: 1,

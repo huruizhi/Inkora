@@ -54,15 +54,23 @@ function markScopes(ledger: SourceLedger): MarkScope[] {
   return scopes;
 }
 
-function escapeEditableText(value: string): string {
+export function escapeEditableText(value: string): string {
   let escaped = "";
   for (const character of value) escaped += ESCAPABLE.has(character) ? `\\${character}` : character;
   return escaped;
 }
 
 export function renderAutolinkLabel(raw: string, owner: SourceLinkOwner, label: string): string {
-  const destination = raw.slice(owner.labelMarkupSource.from, owner.labelMarkupSource.to);
-  return `[${escapeEditableText(label)}](<${destination}>)`;
+  const angle = raw[owner.source.from] === "<";
+  const destination = angle
+    ? raw.slice(owner.labelMarkupSource.from, owner.labelMarkupSource.to)
+    : owner.href;
+  // Inside an explicit link label, dots, @ and URL separators cannot start
+  // another autolink. Escape only syntax that can change the displayed label.
+  const literalLabel = angle ? escapeEditableText(label)
+    : [...label].map(character => '\\[]*_~`&<|'.includes(character)
+      ? `\\${character}` : character).join('');
+  return `[${literalLabel}](<${destination}>)`;
 }
 
 /** Keep untouched link owners around partial selections; drop consumed owners. */

@@ -5,6 +5,7 @@ import type { Node as PMNode } from 'prosemirror-model';
 import type { Range } from "./source-document";
 import { installReferenceCapture, referenceLineRanges, referenceDefinitions, type ReferenceLineRange } from "./reference-context";
 import { annotateTaskListItems } from "./markdown-codec";
+import { gfmAutolinks, installGfmAutolinks } from "./gfm-autolinks";
 
 export type SourceRole =
   | 'text' | 'link-label' | 'image-alt' | 'autolink-text' | 'code-text'
@@ -139,6 +140,7 @@ const markdown = new MarkdownIt('commonmark', {
   linkify: false,
 }).enable(['table', 'strikethrough']);
 installReferenceCapture(markdown);
+installGfmAutolinks(markdown);
 // Capture the container prefix while markdown-it's block parser still has its
 // list/quote indentation context. Restored physical lines cannot reconstruct
 // that context by looking for the first occurrence of token.content.
@@ -215,6 +217,7 @@ const emphasisMarkdown = new MarkdownIt('commonmark', {
   html: false,
   linkify: false,
 });
+installGfmAutolinks(emphasisMarkdown);
 emphasisMarkdown.inline.ruler.before('emphasis', 'inkora_emphasis_positions', (state) => {
   const marker = state.src[state.pos];
   if (marker !== '*' && marker !== '_') return false;
@@ -414,8 +417,24 @@ function scanLinkTail(text: string, pos: number): { end: number; hrefStart: numb
 function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.text.length, role: SourceRole = 'text', owner?: string): void {
   const text = input.text;
   const emphasis = emphasisDelimiters(text, from, to);
+  const bareLinks = new Map(owner ? [] : gfmAutolinks(text).map(link => [link.from, link]));
   let i = from;
   while (i < to) {
+    const bareLink = bareLinks.get(i);
+    if (bareLink && bareLink.to <= to) {
+      const linkOwner = `inline-${++state.ownerSerial}`;
+      const href = markdown.normalizeLink(bareLink.href);
+      state.expectations.push({ owner: linkOwner, mark: 'link', kind: 'autolink', href, title: null });
+      const start = input.units[i].start;
+      const end = input.units[bareLink.to - 1].end;
+      state.spans.push({ sourceStart: start, sourceEnd: start, role: 'delimiter',
+        syntax: 'autolink-open', visible: false, owner: linkOwner });
+      scanPlain(state, input, i, bareLink.to, 'autolink-text', 'gfm-autolink', linkOwner);
+      state.spans.push({ sourceStart: end, sourceEnd: end, role: 'delimiter',
+        syntax: 'autolink-close', visible: false, owner: linkOwner });
+      i = bareLink.to;
+      continue;
+    }
     // A backslash immediately followed by a line ending is one PM hard_break
     // atom. Its PM nodeSize is 1; the backslash and complete LF/CRLF source
     // spelling are owned together and are never projected as a text leaf.
@@ -638,7 +657,7 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
     // Accumulate only until the next possible syntax character; scanPlain then
     // creates grapheme atoms and forbids surrogate/combining interior offsets.
     let end = i + 1;
-    while (end < to && !'\\&`![<*_~\n'.includes(text[end])) end++;
+    while (end < to && !'\\&`![<*_~\n'.includes(text[end]) && !bareLinks.has(end)) end++;
     let literalEnd = end;
     if (end < to && text[end] === '\n') {
       let spaces = end;

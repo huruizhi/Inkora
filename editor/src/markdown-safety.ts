@@ -1,4 +1,5 @@
 import { normalizeMarkdown } from "./markdown-codec";
+import { gfmAutolinks } from "./gfm-autolinks";
 
 export type MarkdownRiskCode =
   | "gfm_table"
@@ -161,11 +162,13 @@ function riskLevel(code: MarkdownRiskCode): MarkdownRiskLevel {
 export function analyzeMarkdownSafety(text: string): MarkdownSafetyAnalysis {
   const starts = lineStarts(text);
   const mask = protectedMask(text);
+  const bareLinks = gfmAutolinks(text);
   const risks: MarkdownRisk[] = [];
   const seen = new Set<string>();
 
   const add = (code: MarkdownRiskCode, start: number, end: number): void => {
     if (start < 0 || mask[start] || isEscaped(text, start)) return;
+    if (code !== "gfm_autolink" && bareLinks.some(link => start >= link.from && end <= link.to)) return;
     const position = location(starts, start);
     const key = `${code}:${position.line}:${position.column}`;
     if (seen.has(key)) return;

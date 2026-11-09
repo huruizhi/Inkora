@@ -1,5 +1,6 @@
 import MarkdownIt, { type Token } from "markdown-it";
 import { annotateTaskListItems } from "./markdown-codec";
+import { installGfmAutolinks } from "./gfm-autolinks";
 
 /**
  * 文档分析：基于不可变快照 `{ raw, revision }` 的大纲（标题索引）与
@@ -65,6 +66,7 @@ export class ExcludedRangeError extends RangeError {
 }
 
 const parser = new MarkdownIt("commonmark", { breaks: false, html: true, linkify: false }).enable("table");
+installGfmAutolinks(parser);
 parser.core.ruler.after("inline", "inkora_task_items", annotateTaskListItems);
 
 const graphemeSegmenter = new Intl.Segmenter("en", { granularity: "grapheme" });

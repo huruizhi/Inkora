@@ -107,7 +107,7 @@ export function parse(source: string) {
       if (protectedDoc && protectedDoc.childCount === 1 && protectedDoc.firstChild?.type.name === 'protected_block') {
         node = schema.nodes.protected_block.create({ raw, kind: protectedDoc.firstChild.attrs.kind });
       } else {
-        // Bare URLs stay plain text (tokenizer linkify is off) and reference
+        // Bare URLs/email use the shared GFM rule; reference
         // links/images resolve against the accepted global reference env into
         // link marks / image atoms — alt, href/title and delimiter forms
         // all stay separated. Unknown syntax is still a bounded source-owned
