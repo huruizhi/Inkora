@@ -47,6 +47,26 @@ private final class ScopeCounter {
         lock.unlock()
         log.emit("scope-stop", ["active": String(active), "count": String(snapshot)])
     }
+
+    func currentCount() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+}
+
+/// 读取调度接缝：只控制“何时执行读取操作”，默认在真实并发工作队列上立即执行；
+/// 确定性非 UI 接缝可注入受控执行器。读取本身始终走真实 descriptor 路径。
+protocol ReadScheduling {
+    func perform(_ operation: @escaping () -> Void)
+}
+
+private struct WorkQueueReadScheduling: ReadScheduling {
+    let queue: DispatchQueue
+
+    func perform(_ operation: @escaping () -> Void) {
+        queue.async(execute: operation)
+    }
 }
 
 final class ResourceBroker {
@@ -54,15 +74,21 @@ final class ResourceBroker {
     private let work = DispatchQueue(label: "inkora.prototype.resource-broker.read", attributes: .concurrent)
     private let log: EventLog
     private let scopes: ScopeCounter
+    private let readScheduling: ReadScheduling
     private var registry = CapabilityRegistry()
     private var rootURL: URL?
     private var expectedHashes: [String: String] = [:]
     private var generation = UUID()
 
-    init(log: EventLog) {
+    init(log: EventLog, scheduling: ReadScheduling? = nil) {
         self.log = log
         scopes = ScopeCounter(log: log)
+        readScheduling = scheduling ?? WorkQueueReadScheduling(queue: work)
     }
+
+    /// 当前活跃安全作用域读计数。非沙盒 CLI 下 startAccessing 亦返回 true，
+    /// 计数可用作 lease 对称释放的断言，但不构成任何 OS 授权证据。
+    var currentScopeCount: Int { scopes.currentCount() }
 
     var document: DocumentIdentity { state.sync { registry.current } }
 
@@ -129,7 +155,7 @@ final class ResourceBroker {
 
         let lease = SecurityScopeLease(url: prepared.0, counter: scopes)
         log.emit("native-read-start", ["token": token.uuidString])
-        work.async {
+        readScheduling.perform {
             withExtendedLifetime(lease) {
                 let deliver: (BrokerReadResult) -> Void = { output in
                     let accepted = self.state.sync { () -> Bool in

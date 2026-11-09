@@ -15,18 +15,22 @@
 
 跨文档 token、旧 epoch、撤销授权、未知 token、`..`、绝对路径、其他 scheme、SVG 和 malformed percent 的拒绝由 `model-check` 的 16 项无 UI 断言覆盖。它只报告纯模型，不冒称运行过面板、书签或 WK。
 
+`handler-check` 的 46 项断言直接驱动真实 `AssetSchemeTaskCore`（`AssetSchemeHandler` 的 start/stop 公共内部路径）与真实 `ResourceBroker`/descriptor 读取：替身只替换系统 `WKURLSchemeTask` 出口和调度时序，覆盖 stop 先于完成、完成前后两种竞争顺序、epoch/revoke 轮换、单次回调、任务 identity 清理与读取 lease 持有到读结束。它不实例化 WKWebView/App，不冒称面板或 OS 授权运行。
+
 ## 单命令入口
 
 ```sh
 make -C prototypes/local-assets/native-host build
 make -C prototypes/local-assets/native-host verify
 make -C prototypes/local-assets/native-host check
+make -C prototypes/local-assets/native-host handler-check
 make -C prototypes/local-assets/native-host run
 ```
 
-- `build`：以 `arm64-apple-macos14.0` 编译宿主/控制程序/模型检查器，复制离线资源 manifest，ad-hoc 签名；失败非零。
+- `build`：以 `arm64-apple-macos14.0` 编译宿主/控制程序/模型检查器/接缝检查器，复制离线资源 manifest，ad-hoc 签名；失败非零。
 - `verify`：无 GUI 校验严格签名、**恰好四项** entitlements、14.0 部署目标、bundle resource SHA、CSP 与禁止网络/文件导航规则。
-- `check`：运行纯模型 16 项断言并执行 `verify`；不会创建伪造的 panel/bookmark/WK 通过证据。
+- `check`：运行纯模型 16 项断言、真实 handler/broker 接缝 46 项断言并执行 `verify`；不会创建伪造的 panel/bookmark/WK 运行证据。
+- `handler-check`：单独运行 46 项真实 `AssetSchemeTaskCore`/`ResourceBroker` 非 UI 接缝断言（在 `/tmp` 建唯一 scratch fixture，结束即清理）。
 - `run`：创建新 fixture、验证后以前台 `open -W` 运行。它会占桌面，当前锁屏时禁止执行。
 
 `network.client` 仅按 ADR-0003 满足当前系统 WebKit WebContent 进程启动；页面使用非持久 data store、自定义 bundle/asset scheme、`connect-src 'none'`、导航白名单，源码没有 `URLSession`，仍完全离线。没有任意读写 entitlement。
@@ -64,7 +68,7 @@ make -C prototypes/local-assets/native-host fixture-clean
 ## 证据边界与风险
 
 - `events.jsonl` 和 `bookmarks.json` 只保存在原型自身 container；日志不含 bookmark 原始字节或凭据，只含本实验 fixture 的 token、SHA、runID、相对状态。
-- `make check` 不是 OS 授权证据。只有管理者在签名 Sandbox App 中的面板选择、真实退出重启与 WK 事件才是运行证据。
+- `make check` 不是 OS 授权证据。`handler-check` 在非沙盒 CLI 中 `startAccessingSecurityScopedResource` 返回 true 属进程外 no-op，其 scope 计数只断言 lease 对称释放；只有管理者在签名 Sandbox App 中的面板选择、真实退出重启与 WK 事件才是运行证据。
 - 当前仅 PNG/JPEG，最大 10 MiB；不支持 SVG/HTML、拖放、剪贴板、保存迁移或生产 NSDocument 集成。
 - TOCTOU 通过逐组件 descriptor 打开和 `O_NOFOLLOW` 缩小；原型不处理硬链接，也不宣称 App 全进程目录权限本身能提供文档隔离。
 - 本机如果不是 arm64 或没有完整 Xcode，构建会失败；最低系统 14.0 只由二进制 load command 验证，未在 macOS 14 真机运行前不得宣称 14 已通过。
@@ -81,3 +85,11 @@ make -C prototypes/local-assets/native-host fixture-clean
 完整原始记录和11项分层断言位于evidence/INK-PROT-037/；只读书签字节不进入证据。所有操作由管理者通过CUA完成系统面板；不是用户物理键盘或macOS14运行证据。本机macOS27.2，deployment target14.0只证明构建目标。
 
 尚未完成035发现的中间symlink ENOTDIR分类和真实handler stop/generation并发接缝；拒绝symlink本身有效，不能把分类缺陷写成已发生逃逸。仍未有拖放/粘贴、保存迁移或正式NSDocument集成，父票14保持未完成。所有自有宿主已正常退出，唯一fixture和locator已清理，bookmarks经UI撤销，生产UI锁已释放。
+
+## INK-PROT-040 接缝补正
+
+035发现的中间组件symlink误分类已修：macOS上中间组件为symlink时`openat(O_DIRECTORY|O_NOFOLLOW)`返回ENOTDIR(20)而非ELOOP，errno无法与普通非目录组件区分。现以`fstatat(AT_SYMLINK_NOFOLLOW)`目录项元数据证据分类为`symlink`并保留原errno=20；普通非目录组件仍为`io-error`，不跟随链接、不扩大权限。最终组件symlink仍为`symlink`/ELOOP(62)。红例先于修复真实复现（见docs/tasks/INK-PROT-040.md）。
+
+真实handler并发接缝已建：`AssetSchemeHandler`的start/stop公共内部路径提取为`AssetSchemeTaskCore`，WK适配器与`handler-check`的fake outlet共同调用同一实现；`ResourceBroker`的读取调度与回调交付是显式受限接缝（默认即真实工作队列/主队列）。红例先证明：任务完成后晚到的stop会把已完成的任务identity残留进canceled集合，系统task对象地址复用后无关新任务被永久误抑制；修复为只有仍active的任务才标记canceled。035担心的“回调在broker state.sync内重入死锁”经在途epoch/revoke场景实际执行未复现（completion只异步入队，不同步重入broker状态队列），保留原实现未改。
+
+未验证边界：`handler-check`是纯CLI非UI执行，不是WKWebView/面板/OS授权运行证据；037冻结的runtime证据未动。identity键仍为ObjectIdentifier，“旧回调在途+地址复用+新任务同址启动”三者同时发生时的语义歧义未消除（需token键控重设计），当前仅修复已完成任务的残留路径。父票14/M1保持未完成。

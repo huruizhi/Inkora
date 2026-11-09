@@ -49,14 +49,24 @@ func applicationSupportDirectory() throws -> URL {
 
 final class EventLog {
     private let queue = DispatchQueue(label: "inkora.prototype.event-log")
-    private let fileURL: URL
+    private let fileURL: URL?
+    private let recorder: ((String) -> Void)?
     var onLine: ((String) -> Void)?
 
     init() throws {
-        fileURL = try applicationSupportDirectory().appendingPathComponent("events.jsonl")
-        if !FileManager.default.fileExists(atPath: fileURL.path) {
-            FileManager.default.createFile(atPath: fileURL.path, contents: nil)
+        let target = try applicationSupportDirectory().appendingPathComponent("events.jsonl")
+        if !FileManager.default.fileExists(atPath: target.path) {
+            FileManager.default.createFile(atPath: target.path, contents: nil)
         }
+        fileURL = target
+        recorder = nil
+    }
+
+    /// 非 UI 接缝专用：只在内存按提交顺序记录，不触碰宿主 container 的 events.jsonl。
+    /// 断言前调用 synchronize() 即可确定性读取。
+    init(recording recorder: @escaping (String) -> Void) {
+        fileURL = nil
+        self.recorder = recorder
     }
 
     func emit(_ type: String, _ fields: [String: String] = [:]) {
@@ -66,14 +76,20 @@ final class EventLog {
         guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]),
               let text = String(data: data, encoding: .utf8) else { return }
         queue.async {
-            if let handle = try? FileHandle(forWritingTo: self.fileURL) {
+            if let fileURL = self.fileURL, let handle = try? FileHandle(forWritingTo: fileURL) {
                 defer { try? handle.close() }
                 _ = try? handle.seekToEnd()
                 try? handle.write(contentsOf: data + Data([0x0A]))
                 try? handle.synchronize()
             }
+            self.recorder?(text)
             DispatchQueue.main.async { self.onLine?(text) }
         }
+    }
+
+    /// 等待已提交事件全部落地（内存接缝的确定性读取点）。
+    func synchronize() {
+        queue.sync {}
     }
 }
 
@@ -113,7 +129,21 @@ func readRelativeNoFollow(root: URL, components: [String], maximumBytes: Int = 1
 
     for component in components.dropLast() {
         let nextFD = openat(directoryFD, component, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
-        guard nextFD >= 0 else { return readFailure(errno, context: "open-component") }
+        guard nextFD >= 0 else {
+            // macOS 上中间组件为 symlink 时，O_DIRECTORY|O_NOFOLLOW 的 openat 返回 ENOTDIR 而非
+            // ELOOP，与普通非目录组件不可靠 errno 区分。这里用 AT_SYMLINK_NOFOLLOW 的元数据证据
+            // 分类：只读目录项 lstat，不跟随链接、不扩大权限；errno 保留原值（ENOTDIR）。
+            if errno == ENOTDIR, isSymlinkEntry(directoryFD: directoryFD, component: component) {
+                return NativeReadResult(
+                    status: .symlink,
+                    data: nil,
+                    errnoValue: errno,
+                    detail: "open-component:symlink:\(String(cString: strerror(errno)))"
+                )
+            }
+            return readFailure(errno, context: "open-component")
+        }
+
         close(directoryFD)
         directoryFD = nextFD
     }
@@ -128,6 +158,16 @@ func readRelativeNoFollow(root: URL, components: [String], maximumBytes: Int = 1
     return readOpenedRegularFile(fd: fd, maximumBytes: maximumBytes)
 }
 
+/// 以 AT_SYMLINK_NOFOLLOW 只读目录项元数据判断组件是否 symlink；失败按非 symlink 处理，
+/// 由调用方保留原始 errno 走原分类。
+private func isSymlinkEntry(directoryFD: Int32, component: String) -> Bool {
+    var info = stat()
+    let result = component.withCString { pointer in
+        fstatat(directoryFD, pointer, &info, AT_SYMLINK_NOFOLLOW)
+    }
+    guard result == 0 else { return false }
+    return (info.st_mode & S_IFMT) == S_IFLNK
+}
 private func readOpenedRegularFile(fd: Int32, maximumBytes: Int) -> NativeReadResult {
     var info = stat()
     guard fstat(fd, &info) == 0 else { return readFailure(errno, context: "fstat") }

@@ -12,11 +12,16 @@ TARGET := arm64-apple-macos14.0
 SHARED_SOURCES := $(ROOT)/Sources/Shared/BrokerPolicy.swift
 HOST_SOURCES := $(wildcard $(ROOT)/Sources/Host/*.swift) $(SHARED_SOURCES)
 MODEL_SOURCES := $(ROOT)/Sources/ModelCheck/main.swift $(SHARED_SOURCES)
+HANDLER_SOURCES := $(ROOT)/Sources/HandlerCheck/main.swift \
+	$(ROOT)/Sources/Host/Support.swift \
+	$(ROOT)/Sources/Host/ResourceBroker.swift \
+	$(ROOT)/Sources/Host/SchemeHandlers.swift \
+	$(SHARED_SOURCES)
 FIXTURE_SOURCES := $(ROOT)/Sources/FixtureControl/main.swift
 
-.PHONY: build verify check fixture fixture-clean run clean
+build: $(MACOS)/InkoraLocalAssetHost $(BUILD)/model-check $(BUILD)/handler-check $(BUILD)/fixture-control
 
-build: $(MACOS)/InkoraLocalAssetHost $(BUILD)/model-check $(BUILD)/fixture-control
+.PHONY: build verify check handler-check fixture fixture-clean run clean
 
 $(BUILD):
 	mkdir -p $@
@@ -38,6 +43,9 @@ $(MACOS)/InkoraLocalAssetHost: $(HOST_SOURCES) $(wildcard $(ROOT)/Resources/*) |
 $(BUILD)/model-check: $(MODEL_SOURCES) | $(BUILD)
 	swiftc -swift-version 5 -target $(TARGET) -o $@ $(MODEL_SOURCES)
 
+$(BUILD)/handler-check: $(HANDLER_SOURCES) | $(BUILD)
+	swiftc -swift-version 5 -target $(TARGET) -framework WebKit -framework CryptoKit -o $@ $(HANDLER_SOURCES)
+
 $(BUILD)/fixture-control: $(FIXTURE_SOURCES) | $(BUILD)
 	swiftc -swift-version 5 -target $(TARGET) -framework CryptoKit -o $@ $(FIXTURE_SOURCES)
 
@@ -46,8 +54,12 @@ verify: build
 
 check: build
 	$(BUILD)/model-check
+	$(BUILD)/handler-check
 	$(MAKE) --no-print-directory verify
-	@echo "check ok: pure model + build/signature/static verification only; no panel/bookmark/WK runtime claim"
+	@echo "check ok: pure model + real handler/broker seam + build/signature/static verification; no panel/bookmark/WK-webview/OS-auth runtime claim"
+
+handler-check: $(BUILD)/handler-check
+	$(BUILD)/handler-check
 
 fixture: $(BUILD)/fixture-control
 	$(BUILD)/fixture-control prepare

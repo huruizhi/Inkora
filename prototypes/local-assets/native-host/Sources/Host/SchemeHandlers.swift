@@ -35,31 +35,110 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
 }
 
+// MARK: - 系统 task 出口抽象
+// 只有 WKURLSchemeTask 这个“系统出口”被抽象：WK 适配器与确定性非 UI 接缝
+// （HandlerCheck 的 fake outlet）共同调用 AssetSchemeTaskCore 的真实状态机；
+// broker、generation 轮换与 descriptor 读取全部保持真实实现。
+
+protocol AssetTaskOutlet: AnyObject {
+    var identity: ObjectIdentifier { get }
+    var request: URLRequest? { get }
+    func receive(response: URLResponse)
+    func receive(data: Data)
+    func finish()
+    func fail(_ error: Error)
+}
+
+/// 生产出口：直接转发 WKURLSchemeTask；identity 绑定底层系统 task 对象，
+/// 与 stop(urlSchemeTask) 传入的同一系统对象保持同一 identity。
+final class WKSchemeTaskOutlet: AssetTaskOutlet {
+    private let task: WKURLSchemeTask
+    let identity: ObjectIdentifier
+
+    init(_ task: WKURLSchemeTask) {
+        self.task = task
+        identity = ObjectIdentifier(task as AnyObject)
+    }
+
+    var request: URLRequest? { task.request }
+    func receive(response: URLResponse) { task.didReceive(response) }
+    func receive(data: Data) { task.didReceive(data) }
+    func finish() { task.didFinish() }
+    func fail(_ error: Error) { task.didFailWithError(error) }
+}
+
+// MARK: - 回调交付接缝
+// 默认 MainTaskDelivery 保持真实 WK 路径的主队列交付行为；
+// 确定性接缝可注入受控串行交付，复现 stop 与 completion 的先后两种顺序。
+
+protocol TaskDeliverySeam {
+    func async(_ block: @escaping () -> Void)
+    func sync(_ block: @escaping () -> Void)
+}
+
+final class MainTaskDelivery: TaskDeliverySeam {
+    func async(_ block: @escaping () -> Void) {
+        DispatchQueue.main.async(execute: block)
+    }
+
+    func sync(_ block: @escaping () -> Void) {
+        if Thread.isMainThread {
+            block()
+        } else {
+            DispatchQueue.main.sync(execute: block)
+        }
+    }
+}
+
+// MARK: - WK 适配器
+
 final class AssetSchemeHandler: NSObject, WKURLSchemeHandler {
-    private let broker: ResourceBroker
-    private let log: EventLog
-    private let state = DispatchQueue(label: "inkora.prototype.asset-scheme.state")
-    private var canceled: Set<ObjectIdentifier> = []
-    private var active: Set<ObjectIdentifier> = []
+    private let core: AssetSchemeTaskCore
 
     init(broker: ResourceBroker, log: EventLog) {
-        self.broker = broker
-        self.log = log
+        core = AssetSchemeTaskCore(broker: broker, log: log)
     }
 
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
-        let identifier = ObjectIdentifier(urlSchemeTask as AnyObject)
-        guard let url = urlSchemeTask.request.url,
+        core.start(WKSchemeTaskOutlet(urlSchemeTask))
+    }
+
+    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
+        core.stop(identity: ObjectIdentifier(urlSchemeTask as AnyObject))
+    }
+}
+
+// MARK: - 真实 start/stop 状态机
+// WK 适配器与 fake task 接缝共同调用的唯一实现；语义与原 WKURLSchemeHandler
+// 方法一致（active/canceled 集合 + 串行状态队列 + 交付队列回调）。
+
+final class AssetSchemeTaskCore {
+    private let broker: ResourceBroker
+    private let log: EventLog
+    private let state = DispatchQueue(label: "inkora.prototype.asset-scheme.state")
+    private let delivery: TaskDeliverySeam
+    private var canceled: Set<ObjectIdentifier> = []
+    private var active: Set<ObjectIdentifier> = []
+
+    init(broker: ResourceBroker, log: EventLog, delivery: TaskDeliverySeam = MainTaskDelivery()) {
+        self.broker = broker
+        self.log = log
+        self.delivery = delivery
+    }
+
+    func start(_ outlet: AssetTaskOutlet) {
+        let identifier = outlet.identity
+        guard let url = outlet.request?.url,
               url.scheme == "inkora-asset", url.host == "resource",
               url.pathComponents.count == 2,
               let token = UUID(uuidString: url.lastPathComponent) else {
-            urlSchemeTask.didFailWithError(NSError(domain: "InkoraAssetScheme", code: 400))
+            outlet.fail(NSError(domain: "InkoraAssetScheme", code: 400))
             return
         }
         _ = state.sync { active.insert(identifier) }
         log.emit("wk-request", ["token": token.uuidString])
         broker.read(token: token) { result in
-            DispatchQueue.main.async {
+            self.delivery.async {
                 let mayCallback = self.state.sync { () -> Bool in
                     let allowed = self.active.remove(identifier) != nil && !self.canceled.contains(identifier)
                     self.canceled.remove(identifier)
@@ -70,7 +149,7 @@ final class AssetSchemeHandler: NSObject, WKURLSchemeHandler {
                     return
                 }
                 guard self.broker.isCurrent(token: token) else {
-                    urlSchemeTask.didFailWithError(NSError(
+                    outlet.fail(NSError(
                         domain: "InkoraAssetScheme",
                         code: 409,
                         userInfo: [NSLocalizedDescriptionKey: "document-generation-changed"]
@@ -80,12 +159,12 @@ final class AssetSchemeHandler: NSObject, WKURLSchemeHandler {
                 }
                 if let data = result.data, let mime = result.mimeType {
                     let response = URLResponse(url: url, mimeType: mime, expectedContentLength: data.count, textEncodingName: nil)
-                    urlSchemeTask.didReceive(response)
-                    urlSchemeTask.didReceive(data)
-                    urlSchemeTask.didFinish()
+                    outlet.receive(response: response)
+                    outlet.receive(data: data)
+                    outlet.finish()
                     self.log.emit("wk-complete", ["token": token.uuidString, "sha256": result.sha256 ?? "none"])
                 } else {
-                    urlSchemeTask.didFailWithError(NSError(
+                    outlet.fail(NSError(
                         domain: "InkoraAssetScheme",
                         code: 403,
                         userInfo: [NSLocalizedDescriptionKey: result.error ?? "resource-rejected"]
@@ -96,19 +175,17 @@ final class AssetSchemeHandler: NSObject, WKURLSchemeHandler {
         }
     }
 
-    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
-        let identifier = ObjectIdentifier(urlSchemeTask as AnyObject)
+    func stop(identity identifier: ObjectIdentifier) {
         let cancel = {
             self.state.sync {
-                self.canceled.insert(identifier)
-                self.active.remove(identifier)
+                // 只有仍 active 的任务才标记 canceled：已完成任务的 identity 不残留，
+                // 防止系统 task 对象地址复用后，无关新任务被 canceled 集合误抑制。
+                if self.active.remove(identifier) != nil {
+                    self.canceled.insert(identifier)
+                }
             }
             self.log.emit("wk-cancel")
         }
-        if Thread.isMainThread {
-            cancel()
-        } else {
-            DispatchQueue.main.sync(execute: cancel)
-        }
+        delivery.sync(cancel)
     }
 }
