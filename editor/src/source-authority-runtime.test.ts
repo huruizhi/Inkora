@@ -2,7 +2,12 @@ import { JSDOM } from "jsdom";
 import { TextSelection } from "prosemirror-state";
 import { splitBlock } from "prosemirror-commands";
 import { afterEach, describe, expect, it } from "vitest";
-import { createEditorRuntime, type EditorRuntime } from "./editor-runtime";
+import {
+  createEditorRuntime,
+  type EditorRuntime,
+  type EditorRuntimeOptions,
+  type LinkEditBinding,
+} from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
 import { createPasteTransaction } from "./editor-session";
 import {
@@ -34,7 +39,7 @@ afterEach(() => {
   Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
 });
 
-function createRuntime(raw: string): {
+function createRuntime(raw: string, options: EditorRuntimeOptions = {}): {
   dom: JSDOM;
   runtime: EditorRuntime;
   session: InkoraEditorSession;
@@ -43,7 +48,7 @@ function createRuntime(raw: string): {
   Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
   Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
   const parent = dom.window.document.querySelector<HTMLElement>("#app")!;
-  const runtime = createEditorRuntime(parent, raw, () => {});
+  const runtime = createEditorRuntime(parent, raw, () => {}, options);
   const editor = parent.querySelector<HTMLElement>("#editor");
   if (!editor || editor instanceof dom.window.HTMLTextAreaElement) {
     throw new Error("Expected visual source-authoritative runtime");
@@ -64,6 +69,26 @@ describe("production source authority runtime", () => {
         handler(view, from, to, character, () => view.state.tr.insertText(character, from, to)));
       if (!handled) view.dispatch(view.state.tr.insertText(character, from, to));
     }
+  }
+
+  function requestLinkAt(
+    raw: string,
+    selection: { anchor: number; head?: number },
+  ): ReturnType<typeof createRuntime> & { binding: LinkEditBinding } {
+    let binding: LinkEditBinding | undefined;
+    const created = createRuntime(raw, { onLinkRequest: value => { binding = value; } });
+    const view = (created.runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(
+      view.state.doc,
+      selection.anchor,
+      selection.head ?? selection.anchor,
+    )));
+    const shortcut = new created.dom.window.KeyboardEvent("keydown", {
+      key: "k", metaKey: true, bubbles: true, cancelable: true,
+    });
+    expect(view.dom.dispatchEvent(shortcut)).toBe(false);
+    if (!binding) throw new Error("Expected a link edit binding");
+    return { ...created, binding };
   }
 
   it.each([
@@ -132,6 +157,113 @@ describe("production source authority runtime", () => {
     expect(execute(removed.session, unsetLink)).toBe(true);
     expect(removed.runtime.getText()).toBe("前 正文 后\r\n");
     removed.runtime.destroy();
+  });
+
+  it("edits only the source-ledger owner under a collapsed caret", () => {
+    const first = requestLinkAt("[one](./same)[two](./same)\n", { anchor: 2 });
+    expect(first.binding.attrs).toEqual({ href: "./same", title: null });
+    expect(first.runtime.applyLinkEdit(first.binding, { href: "./first", title: null })).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(first.runtime.getText()).toBe("[one](./first)[two](./same)\n");
+    expect(first.session.state.selection.anchor).toBe(2);
+    expect(first.runtime.status).toMatchObject({ canUndo: true, canRedo: false });
+    first.runtime.destroy();
+
+    const secondBlock = requestLinkAt("[one](./same)\n\n[two](./same)\n", { anchor: 7 });
+    expect(secondBlock.runtime.applyLinkEdit(secondBlock.binding, {
+      href: "./second",
+      title: null,
+    })).toEqual({ ok: true, value: { changed: true } });
+    expect(secondBlock.runtime.getText()).toBe("[one](./same)\n\n[two](./second)\n");
+    secondBlock.runtime.destroy();
+
+    const marked = requestLinkAt("[**one** two](./old)\n", { anchor: 2 });
+    expect(marked.runtime.applyLinkEdit(marked.binding, { href: "./new", title: "标题" })).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(marked.runtime.getText()).toBe('[**one** two](./new "标题")\n');
+    marked.runtime.destroy();
+
+    const removed = requestLinkAt("[one](./same)[two](./same)\n", { anchor: 2 });
+    expect(removed.runtime.applyLinkEdit(removed.binding, null)).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(removed.runtime.getText()).toBe("one[two](./same)\n");
+    expect(removed.session.state.selection.anchor).toBe(2);
+    expect(removed.runtime.undo()).toBe(true);
+    expect(removed.runtime.getText()).toBe("[one](./same)[two](./same)\n");
+    expect(removed.runtime.redo()).toBe(true);
+    expect(removed.runtime.getText()).toBe("one[two](./same)\n");
+    removed.runtime.destroy();
+  });
+
+  it("preserves backward selection and a unique reference link spelling", () => {
+    const selected = requestLinkAt("[one](./old) tail\n", { anchor: 4, head: 1 });
+    expect(selected.runtime.applyLinkEdit(selected.binding, { href: "./new", title: null })).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(selected.runtime.getText()).toBe("[one](./new) tail\n");
+    expect([selected.session.state.selection.anchor, selected.session.state.selection.head]).toEqual([4, 1]);
+    expect(selected.runtime.undo()).toBe(true);
+    expect(selected.runtime.getText()).toBe("[one](./old) tail\n");
+    expect(selected.runtime.redo()).toBe(true);
+    expect(selected.runtime.getText()).toBe("[one](./new) tail\n");
+    selected.runtime.destroy();
+
+    const reference = requestLinkAt("[one][ref]\n\n[ref]: <./old> '旧标题'\n", { anchor: 2 });
+    expect(reference.runtime.applyLinkEdit(reference.binding, { href: "./new", title: "新标题" })).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(reference.runtime.getText()).toBe("[one][ref]\n\n[ref]: <./new> '新标题'\n");
+    reference.runtime.destroy();
+  });
+
+  it("preserves inline spacing and isolates one use of a shared reference", () => {
+    const spaced = requestLinkAt("[one](  <./old>   '旧标题'  )\n", { anchor: 2 });
+    expect(spaced.runtime.applyLinkEdit(spaced.binding, {
+      href: "./new",
+      title: "新标题",
+    })).toEqual({ ok: true, value: { changed: true } });
+    expect(spaced.runtime.getText()).toBe("[one](  <./new>   '新标题'  )\n");
+    spaced.runtime.destroy();
+
+    const shared = requestLinkAt(
+      "[one][ref] [two][ref]\n\n[ref]: ./old \"旧标题\"\n",
+      { anchor: 2 },
+    );
+    expect(shared.runtime.applyLinkEdit(shared.binding, {
+      href: "./new",
+      title: "新标题",
+    })).toEqual({ ok: true, value: { changed: true } });
+    expect(shared.runtime.getText()).toBe(
+      '[one](./new "新标题") [two][ref]\n\n[ref]: ./old "旧标题"\n',
+    );
+    shared.runtime.destroy();
+  });
+
+  it("rolls back source and history when the accepted link cannot restore its owner", () => {
+    const raw = "[one](./old) tail\n";
+    const rejected = requestLinkAt(raw, { anchor: 2 });
+    const selection = rejected.session.state.selection;
+    const result = rejected.runtime.applyLinkEdit(rejected.binding, {
+      href: "./new",
+      title: "候选\n\n# 未闭合",
+    });
+    expect(result.ok).toBe(false);
+    expect(rejected.runtime.getText()).toBe(raw);
+    expect(rejected.session.state.selection.eq(selection)).toBe(true);
+    expect(rejected.runtime.status).toMatchObject({
+      dirty: false,
+      canUndo: false,
+      canRedo: false,
+    });
+    rejected.runtime.destroy();
   });
 
   it("removes an inline link through the real Mod-Shift-K keymap", () => {

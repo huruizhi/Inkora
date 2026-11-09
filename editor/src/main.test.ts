@@ -187,29 +187,40 @@ async function bootMain(): Promise<Harness> {
 // （仓库 tsconfig 较低且不在本任务允许修改范围），沿用 executor 形式。
 const settle = (ms = 60): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function rootLinkHarness(withHistory = false): Promise<Harness> {
+function openLinkEditorAtCaret(h: Harness, offset = 1): HTMLFormElement {
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const label = editor.querySelector("a")!.firstChild!;
+  const range = h.dom.window.document.createRange();
+  range.setStart(label, offset);
+  range.collapse(true);
+  h.dom.window.getSelection()!.removeAllRanges();
+  h.dom.window.getSelection()!.addRange(range);
+  h.dom.window.document.dispatchEvent(new h.dom.window.Event("selectionchange"));
+  editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }));
+  const form = h.linkEditor();
+  if (!form) throw new Error("Expected link editor");
+  return form;
+}
+
+async function rootLinkHarness(
+  withHistory = false,
+  text = "[alpha](./old)\n\nbody\n",
+): Promise<Harness> {
   const h = await bootMain();
   h.receive({ type: "loadDocument", requestID: "root-link-load", documentID: "root-link", revision: 0,
-    text: "[alpha](./old)\n\nbody\n" });
+    text });
   if (withHistory) {
     h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
-    area.value = "[alpha](./old)\n\nbody!\n";
+    area.value = text.replace(/\n$/, "!\n");
     area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
     h.sourceApply().click();
     h.visualMode().click();
   }
   await settle();
-  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
-  const label = editor.querySelector("a")!.firstChild!;
-  const range = h.dom.window.document.createRange();
-  range.setStart(label, 1);
-  range.collapse(true);
-  h.dom.window.getSelection()!.removeAllRanges();
-  h.dom.window.getSelection()!.addRange(range);
-  h.dom.window.document.dispatchEvent(new h.dom.window.Event("selectionchange"));
-  editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", { key:"k", metaKey:true, bubbles:true, cancelable:true }));
-  expect(h.linkEditor()).not.toBeNull();
+  openLinkEditorAtCaret(h);
   return h;
 }
 
@@ -239,6 +250,55 @@ it("root061: link input composition keeps the form and candidate on Cancel", asy
   expect(h.sent).toHaveLength(before);
 });
 
+it("链接输入 composition 守卫表单动作、外部导航与跨 load 候选", async () => {
+  const h = await rootLinkHarness(false, "# [alpha](./old)\n\nbody\n");
+  const form = h.linkEditor()!;
+  const title = form.querySelector<HTMLInputElement>(".link-editor-title")!;
+  title.focus();
+  title.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  title.value = "zhong";
+  title.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, isComposing: true }));
+  const revision = h.lastRevision();
+  const messages = h.stateMessages().length;
+
+  expect(form.dispatchEvent(new h.dom.window.Event("submit", {
+    bubbles: true, cancelable: true,
+  }))).toBe(true);
+  form.querySelector<HTMLButtonElement>(".link-editor-remove")!.click();
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  expect(form.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "Escape", isComposing: true, bubbles: true, cancelable: true,
+  }))).toBe(true);
+  h.sourceMode().click();
+  h.searchButton().click();
+  h.headingButtons()[0]!.click();
+
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(title);
+  expect(title.value).toBe("zhong");
+  expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+  expect(h.findBar().classList.contains("is-open")).toBe(false);
+  expect(h.stateMessages()).toHaveLength(messages);
+  expect(h.lastRevision()).toBe(revision);
+
+  h.receive({
+    type: "loadDocument", requestID: "root-link-next", documentID: "root-link-next", revision: 0,
+    text: "next\n",
+  });
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(title);
+  expect(title.value).toBe("zhong");
+  title.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  expect(form.isConnected).toBe(false);
+  form.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(form.querySelector(".link-editor-status")?.textContent).toContain("过期");
+  h.receive({
+    type: "createSnapshot", requestID: "root-link-next-snapshot",
+    documentID: "root-link-next", revision: 0,
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: "next\n" });
+});
+
 it("root061: Native document Undo is refused while a link field holds focus", async () => {
   const h = await rootLinkHarness(true);
   const revision = h.lastRevision();
@@ -247,6 +307,32 @@ it("root061: Native document Undo is refused while a link field holds focus", as
   expect(h.sent.at(-1)).toMatchObject({type:"editorError",code:"command_rejected"});
   expect(h.stateMessages()).toHaveLength(messages);
   expect(h.lastRevision()).toBe(revision);
+});
+
+it("链接取消和 no-op 不清除 future，回正文后 Native Redo 仍可用", async () => {
+  const h = await rootLinkHarness(true);
+  h.linkEditor()!.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  h.receive({
+    type: "executeCommand", requestID: "root-link-future-undo", documentID: "root-link",
+    revision: h.lastRevision(), command: "undo",
+  });
+  expect(h.stateMessages().at(-1)?.state?.canRedo).toBe(true);
+
+  let form = openLinkEditorAtCaret(h);
+  const afterUndoMessages = h.stateMessages().length;
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  expect(h.stateMessages()).toHaveLength(afterUndoMessages);
+  expect(h.stateMessages().at(-1)?.state?.canRedo).toBe(true);
+
+  form = openLinkEditorAtCaret(h);
+  form.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.stateMessages()).toHaveLength(afterUndoMessages);
+  expect(h.stateMessages().at(-1)?.state?.canRedo).toBe(true);
+  h.receive({
+    type: "executeCommand", requestID: "root-link-future-redo", documentID: "root-link",
+    revision: h.lastRevision(), command: "redo",
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { canRedo: false } });
 });
 
 it("root061: flag-only composing document Cmd-Z does not consume the key", async () => {

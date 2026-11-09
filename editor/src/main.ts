@@ -103,17 +103,20 @@ let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
 let loadEpoch = 0;
 let activeLinkEditor: HTMLFormElement | undefined;
+const composingLinkEditors = new WeakSet<HTMLFormElement>();
 
-function closeLinkEditor(form = activeLinkEditor): void {
-  if (!form) return;
+function closeLinkEditor(form = activeLinkEditor): boolean {
+  if (!form) return true;
+  if (composingLinkEditors.has(form)) return false;
   form.remove();
   if (activeLinkEditor === form) activeLinkEditor = undefined;
+  return true;
 }
 
 function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
   if (owner.composing || runtime !== owner || activeDocumentID === undefined ||
       activeRevision === undefined) return;
-  closeLinkEditor();
+  if (!closeLinkEditor()) return;
   const documentID = activeDocumentID;
   const revision = activeRevision;
   const epoch = loadEpoch;
@@ -153,7 +156,11 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
   status.className = "link-editor-status";
   status.setAttribute("role", "status");
 
-  const apply = (attrs: { href: string; title: string | null } | null): void => {
+  const apply = (
+    attrs: { href: string; title: string | null } | null,
+    eventIsComposing = false,
+  ): void => {
+    if (eventIsComposing || composingLinkEditors.has(form)) return;
     if (runtime !== owner || activeDocumentID !== documentID || activeRevision !== revision ||
         loadEpoch !== epoch) {
       status.textContent = "链接编辑请求已过期，请重新执行 Mod-K";
@@ -168,18 +175,35 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
     owner.focus();
   };
   form.addEventListener("submit", event => {
+    if ((event as Event & { isComposing?: boolean }).isComposing ||
+        composingLinkEditors.has(form)) return;
     event.preventDefault();
     apply({ href: href.value, title: title.value.length ? title.value : null });
   });
-  cancel.addEventListener("click", () => {
+  cancel.addEventListener("click", event => {
+    if ((event as PointerEvent & { isComposing?: boolean }).isComposing ||
+        composingLinkEditors.has(form)) return;
     closeLinkEditor(form);
     if (runtime === owner && loadEpoch === epoch) owner.focus();
   });
   form.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || event.isComposing) return;
+    if (event.key !== "Escape" || event.isComposing || composingLinkEditors.has(form)) return;
     event.preventDefault();
     cancel.click();
   });
+  const compositionStart = (): void => {
+    composingLinkEditors.add(form);
+  };
+  const compositionEnd = (): void => {
+    composingLinkEditors.delete(form);
+    if (runtime !== owner || activeDocumentID !== documentID || loadEpoch !== epoch) {
+      closeLinkEditor(form);
+    }
+  };
+  href.addEventListener("compositionstart", compositionStart);
+  href.addEventListener("compositionend", compositionEnd);
+  title.addEventListener("compositionstart", compositionStart);
+  title.addEventListener("compositionend", compositionEnd);
 
   const actions = document.createElement("div");
   actions.className = "link-editor-actions";
@@ -188,7 +212,10 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
     remove.type = "button";
     remove.className = "link-editor-remove";
     remove.textContent = "移除链接";
-    remove.addEventListener("click", () => apply(null));
+    remove.addEventListener("click", event => apply(
+      null,
+      (event as PointerEvent & { isComposing?: boolean }).isComposing === true,
+    ));
     actions.append(remove);
   }
   actions.append(save, cancel, status);
@@ -198,6 +225,15 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
   href.focus();
   href.select();
 }
+
+const guardLinkCompositionAction = (event: Event): void => {
+  const form = activeLinkEditor;
+  if (!form || !composingLinkEditors.has(form) || form.contains(event.target as Node | null)) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+};
+app.addEventListener("pointerdown", guardLinkCompositionAction, true);
+app.addEventListener("click", guardLinkCompositionAction, true);
 
 function updateModeControls(): void {
   const activeRuntime = runtime;
@@ -564,6 +600,8 @@ window.inkora = {
             const response = session.loadDocument(command);
             if (response.type === "stateChanged") {
               const queryWasComposing = searchPanel.isInputComposing;
+              const linkWasComposing = !!activeLinkEditor &&
+                composingLinkEditors.has(activeLinkEditor);
               cancelPendingSearch();
               // 接受新 load：立即清旧查找结果与绑定（查询/大小写回到默认，
               // 面板开关保留）。被拒 load 不走这里，查找状态原样保留。
@@ -580,7 +618,7 @@ window.inkora = {
               updateModeControls();
               // 跨 load 不夺走查询框正在进行的 IME composition；面板会在
               // compositionend 安全收口后执行已声明的新文档查询重置。
-              if (!queryWasComposing) runtime.focus();
+              if (!queryWasComposing && !linkWasComposing) runtime.focus();
             }
             postToNative(response);
           }
@@ -659,7 +697,11 @@ window.inkora = {
             // 正在 composition 时，明确拒绝文档 Undo/Redo，避免越过查询框
             // 修改正文；正文重新拥有焦点后仍走既有文档历史。
             const documentCommandBlocked =
-              searchPanel.ownsFocus || searchPanel.isInputComposing;
+              searchPanel.ownsFocus || searchPanel.isInputComposing ||
+              !!activeLinkEditor && (
+                composingLinkEditors.has(activeLinkEditor) ||
+                activeLinkEditor.contains(document.activeElement)
+              );
             postToNative(
               session.executeCommand(
                 command,

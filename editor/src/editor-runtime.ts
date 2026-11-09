@@ -28,6 +28,7 @@ import {
   unsetLink,
   type LinkAttrs,
 } from "./inline-formatting";
+import type { SourceLinkOwner } from "./source-ledger";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
@@ -52,6 +53,7 @@ export interface LinkEditBinding {
   };
   readonly visualSelection: { readonly anchor: number; readonly head: number };
   readonly attrs: LinkAttrs | null;
+  readonly target: SourceLinkOwner | null;
 }
 
 export interface EditorRuntimeOptions {
@@ -345,36 +347,37 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       return { ok: false, message: "链接编辑请求已过期，请重新执行 Mod-K" };
     }
 
-    let normalized: LinkAttrs | null = null;
+    let normalized: { href: string; title: string | null } | null = null;
     try {
-      normalized = attrs ? normalizedLinkAttrs(attrs) as LinkAttrs : null;
+      normalized = attrs
+        ? normalizedLinkAttrs(attrs) as { href: string; title: string | null }
+        : null;
     } catch (error) {
       return { ok: false, message: error instanceof Error ? error.message : "链接属性无效" };
     }
-    const current = this.linkAttrs(this.session.state);
+    const current = binding.target
+      ? { href: binding.target.href, title: binding.target.title }
+      : this.linkAttrs(this.session.state);
     if ((!normalized && !current) || (normalized && current &&
         normalized.href === current.href && (normalized.title ?? null) === (current.title ?? null))) {
       return { ok: true, value: { changed: false } };
     }
 
     const before = this.session.currentRaw;
+    if (binding.target) {
+      if (!this.session.applyLinkOwnerEdit(binding.target, normalized)) {
+        return { ok: false, message: this.session.diagnostic || "无法安全应用链接编辑" };
+      }
+      view.updateState(this.session.state);
+      this.notifyChange(before === this.session.currentRaw ? "status" : "document");
+      return { ok: true, value: { changed: before !== this.session.currentRaw } };
+    }
     const handled = (normalized ? setLink(normalized) : unsetLink)(
       view.state,
       transaction => view.dispatch(transaction),
     );
     if (!handled || this.session.unresolvedIntent) {
       return { ok: false, message: this.session.diagnostic || "无法安全应用链接编辑" };
-    }
-    if (binding.visualSelection.anchor !== binding.visualSelection.head) {
-      const delimiterDelta = normalized ? (current ? 0 : 1) : -1;
-      if (!this.session.setRawSelection(
-        binding.selection.anchor + delimiterDelta,
-        binding.selection.head + delimiterDelta,
-        binding.selection.affinity,
-      )) {
-        return { ok: false, message: this.session.diagnostic || "链接编辑后的选区无法恢复" };
-      }
-      view.updateState(this.session.state);
     }
     return { ok: true, value: { changed: before !== this.session.currentRaw } };
   }
@@ -444,6 +447,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   private requestLink(state: EditorState): boolean {
     if (!this.options.onLinkRequest || this.composing || this.mode !== "visual" ||
         state !== this.session.state) return false;
+    const target = this.session.linkOwnerAtSelection();
     this.options.onLinkRequest(Object.freeze({
       raw: this.session.currentRaw,
       revision: this.session.version,
@@ -453,7 +457,10 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
         anchor: state.selection.anchor,
         head: state.selection.head,
       }),
-      attrs: this.linkAttrs(state),
+      attrs: target
+        ? { href: target.href, title: target.title }
+        : this.linkAttrs(state),
+      target,
     }));
     return true;
   }
@@ -512,6 +519,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       decorations: codeDecorations,
       nodeViews: { code_block: codeBlockNodeView },
       handleKeyDown: (_view, event) => {
+        if (event.isComposing) return false;
         const modifier = event.metaKey || event.ctrlKey;
         if (!modifier || event.altKey) return false;
         const key = event.key.toLowerCase();
