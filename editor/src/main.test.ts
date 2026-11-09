@@ -231,6 +231,36 @@ it("可视查找按位置定位第二个同文结果，保留查询焦点与正�
   expect(h.sent).toHaveLength(messages);
 });
 
+it("可视全部替换超过显示上限仍完整提交且只需一次Undo", async () => {
+  const h = await bootMain();
+  const raw = "\uFEFF" + Array.from({length:140}, () => "alpha").join(" ") + "\r\n";
+  const expected = "\uFEFF" + Array.from({length:140}, () => "beta").join(" ") + "\r\n";
+  h.receive({type:"loadDocument",requestID:"visible-all-load",documentID:"visible-all",revision:0,text:raw});
+  h.searchButton().click();
+  h.typeSearchQuery("alpha");
+  await settle();
+  expect(h.searchMatches()).toHaveLength(100);
+  const replacement = h.replacement();
+  expect(replacement).not.toBeNull();
+  replacement.value = "beta";
+  replacement.dispatchEvent(new h.dom.window.Event("input", {bubbles:true}));
+  const before = h.stateMessages().length;
+  expect(h.replaceAll().disabled).toBe(false);
+  h.replaceAll().click();
+  expect(h.stateMessages()).toHaveLength(before+1);
+  h.receive({type:"createSnapshot",requestID:"visible-all-snapshot",documentID:"visible-all",revision:h.lastRevision()});
+  expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:expected});
+  // Document history is intentionally isolated while query/replacement has focus.
+  h.editorHost().querySelector<HTMLElement>("#editor")!.focus();
+  h.receive({type:"executeCommand",requestID:"visible-all-undo",documentID:"visible-all",revision:h.lastRevision(),command:"undo"});
+  h.receive({type:"createSnapshot",requestID:"visible-all-after-undo",documentID:"visible-all",revision:h.lastRevision()});
+  expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:raw});
+  h.editorHost().querySelector<HTMLElement>("#editor")!.focus();
+  h.receive({type:"executeCommand",requestID:"visible-all-redo",documentID:"visible-all",revision:h.lastRevision(),command:"redo"});
+  h.receive({type:"createSnapshot",requestID:"visible-all-after-redo",documentID:"visible-all",revision:h.lastRevision()});
+  expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:expected});
+});
+
 it("提供键盘可达的可视/源码切换和草稿提交取消入口", async () => {
   const h = await bootMain();
   h.receive({

@@ -28,6 +28,13 @@ export interface VisualSearchLocation {
   readonly head: number;
 }
 
+export interface VisualTextEdit {
+  readonly from: number;
+  readonly to: number;
+  readonly expected: string;
+  readonly insert: string;
+}
+
 export function sameSearchResult(left: SourceSearchResult, right: SourceSearchResult): boolean {
   return left.source.raw === right.source.raw && left.source.revision === right.source.revision &&
     left.query === right.query && left.caseSensitive === right.caseSensitive &&

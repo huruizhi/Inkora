@@ -32,7 +32,7 @@ export type SearchPanelState =
       result: SourceSearchResult;
       scope?: "content" | "source";
       navigation?: { readonly available: boolean; readonly reason?: string };
-      replacement?: { readonly available: boolean; readonly reason?: string };
+      replacement?: { readonly available: boolean; readonly reason?: string; readonly completeOnReplaceAll?: boolean };
     }
   | { kind: "error"; message: string };
 
@@ -599,7 +599,7 @@ export class SearchPanel {
       this.showStatus("请输入查询内容后再替换");
       return;
     }
-    if (kind === "replace-all" && state.result.truncated) {
+    if (kind === "replace-all" && state.result.truncated && !state.replacement.completeOnReplaceAll) {
       this.showStatus("全部替换需要完整结果；当前结果已截断");
       return;
     }
@@ -664,7 +664,7 @@ export class SearchPanel {
     if (replacementAvailable && state.kind === "document") {
       const empty = state.result.query.length === 0 || state.result.matches.length === 0;
       this.replaceSelectedButton.disabled = empty;
-      this.replaceAllButton.disabled = empty || state.result.truncated;
+      this.replaceAllButton.disabled = empty || (state.result.truncated && !state.replacement?.completeOnReplaceAll);
     }
 
     if (state.kind === "error") {
@@ -704,7 +704,9 @@ export class SearchPanel {
     if (state.replacement?.available && state.result.truncated) {
       const replaceNote = document.createElement("p");
       replaceNote.className = "search-panel-note";
-      replaceNote.textContent = "全部替换需要完整结果；当前结果已截断，操作已禁用。";
+      replaceNote.textContent = state.replacement.completeOnReplaceAll
+        ? "列表仅显示部分匹配；全部替换会重新校验完整结果并一次提交。"
+        : "全部替换需要完整结果；当前结果已截断，操作已禁用。";
       this.resultsBody.append(replaceNote);
     } else if (state.replacement && !state.replacement.available) {
       const replaceNote = document.createElement("p");

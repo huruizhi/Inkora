@@ -10,6 +10,9 @@ import {
 } from "./source-ledger";
 import { applyNativePatches, planNativeTransaction, type NativePatch, type NativePlan } from "./source-transaction";
 import { createInkoraProjectionState, type EditorStateOptions } from "./editor-session";
+import { isWellFormed } from "./source-replacement";
+import type { VisualTextEdit } from "./visual-search";
+import { rewriteLinkBoundaries } from "./visual-replacement";
 
 export type Affinity = 'left' | 'right';
 export type RawSelection = { anchor: number; head: number; affinity: Affinity };
@@ -250,7 +253,7 @@ function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, project
   return `source-authoritative local insertion: ${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`;
 }
 
-function rawBoundaryError(raw: string, offset: number): string | null {
+function rawBoundaryError(raw: string, offset: number, knownBoundaries?: ReadonlySet<number>): string | null {
   if (!Number.isInteger(offset) || offset < 0 || offset > raw.length) return `原文位置 ${offset} 越界`;
   if (raw.startsWith('\uFEFF') && offset === 0) return 'BOM 前位置不是正文边界';
   if (offset > 0 && offset < raw.length && raw[offset - 1] === '\r' && raw[offset] === '\n') return 'CRLF 内部不是合法边界';
@@ -259,10 +262,13 @@ function rawBoundaryError(raw: string, offset: number): string | null {
     const next = raw.charCodeAt(offset);
     if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) return 'surrogate pair 内部不是合法边界';
   }
-  const boundaries = new Set<number>([0, raw.length]);
-  for (const part of segmenter.segment(raw)) {
-    boundaries.add(part.index);
-    boundaries.add(part.index + part.segment.length);
+  const boundaries = knownBoundaries ?? new Set<number>([0, raw.length]);
+  if (!knownBoundaries) {
+    const writable = boundaries as Set<number>;
+    for (const part of segmenter.segment(raw)) {
+      writable.add(part.index);
+      writable.add(part.index + part.segment.length);
+    }
   }
   if (!boundaries.has(offset)) return 'grapheme 内部不是合法边界';
   return null;
@@ -424,7 +430,7 @@ export class SourceAuthoritySession {
     try { this.projectionContext(); return true; } catch { return false; }
   }
 
-  private mapVisualEndpoint(position: number, side: 'from' | 'to' | 'any' = 'any'): number {
+  private mapVisualEndpoint(position: number, side: 'from' | 'to' | 'any' = 'any', knownLedger?: SourceLedger): number {
     const exact = this.projection.anchors.filter(anchor => anchor.visual === position);
     if (exact.length) {
       const offsets = [...new Set(exact.map(anchor => anchor.raw))];
@@ -432,7 +438,7 @@ export class SourceAuthoritySession {
       const selected = side === 'to' ? Math.min(...offsets) : Math.max(...offsets);
       return selected;
     }
-    const { ledger } = this.projectionContext();
+    const ledger = knownLedger ?? this.projectionContext().ledger;
     const mapped = visualToSource(ledger, position, position, { collapsedAffinity: side === 'to' ? 'left' : 'right' });
     if (!mapped.ok) throw Error(mapped.reason);
     return mapped.anchor;
@@ -720,6 +726,96 @@ export class SourceAuthoritySession {
       this.unresolvedIntent = { description: this.diagnostic, raw: attemptedRaw };
       if (compositionId !== undefined) this.compactComposition();
       return false;
+    }
+  }
+
+  replaceVisualText(raw: string, edits: readonly VisualTextEdit[]):
+    { ok: true; value: { changed: boolean; replacedCount: number } } |
+    { ok: false; message: string } {
+    if (raw !== this.currentRaw || !this.saveEligible || this.draft) {
+      return { ok: false, message: '文档或输入状态已变化，请重新查找' };
+    }
+    const before = this.snapshot();
+    try {
+      const ordered = [...edits].sort((a, b) => b.from - a.from);
+      const patches: NativePatch[] = [];
+      let replacedCount = 0;
+      const { ledger } = this.projectionContext();
+      const boundaries = new Set<number>([0, raw.length]);
+      for (const part of segmenter.segment(raw)) {
+        boundaries.add(part.index);
+        boundaries.add(part.index + part.segment.length);
+      }
+      let transaction = this.state.tr;
+      let previousFrom = this.state.doc.content.size + 1;
+      for (const edit of ordered) {
+        if (!Number.isInteger(edit.from) || !Number.isInteger(edit.to) || edit.from < 0 ||
+            edit.to <= edit.from || edit.to > previousFrom || edit.to > this.state.doc.content.size ||
+            !isWellFormed(edit.insert) || /\r(?!\n)/.test(edit.insert)) {
+          throw Error('替换范围、顺序或Unicode无效，整批未应用');
+        }
+        previousFrom = edit.from;
+        const expected = this.state.doc.textBetween(edit.from, edit.to, '', node =>
+          node.type.name === 'hard_break' ? '\n' : node.textContent);
+        if (expected !== edit.expected) throw Error('替换目标已变化，整批未应用');
+        if (edit.insert === expected) continue;
+        replacedCount++;
+        const from = this.mapVisualEndpoint(edit.from, 'from', ledger);
+        const to = this.mapVisualEndpoint(edit.to, 'to', ledger);
+        if (from > to || rawBoundaryError(raw, from, boundaries) || rawBoundaryError(raw, to, boundaries)) {
+          throw Error('替换目标没有安全原文边界，整批未应用');
+        }
+        const start = this.state.doc.resolve(edit.from);
+        const marks = start.nodeAfter?.marks ?? start.marks();
+        const owned = rewriteLinkBoundaries(raw, ledger, edit, from, to, marks);
+        transaction = transaction.replaceWith(edit.from, edit.to,
+          edit.insert ? schema.text(edit.insert, owned.marks) : []);
+        const eol = raw.slice(from).match(/\r\n|\n/)?.[0] ?? this.preferredEol;
+        patches.push({ from: owned.from, to: owned.to, insert: owned.insert.replace(/\r\n|\n/g, eol) });
+      }
+      if (!patches.length) return { ok: true, value: { changed: false, replacedCount: 0 } };
+      // A code owner may contain several matches. Rebuild only its exact raw
+      // span once, retaining untouched body bytes while growing delimiters.
+      const codeOpens = ledger.spans.filter(span => span.syntax === 'code-open');
+      for (const open of codeOpens) {
+        const close = ledger.spans.filter(span => span.syntax === 'code-close' && span.sourceStart >= open.sourceEnd)
+          .sort((a, b) => a.sourceStart - b.sourceStart)[0];
+        if (!close) throw Error('行内代码缺少闭合原文owner');
+        const contained = patches.filter(patch => patch.from >= open.sourceEnd && patch.to <= close.sourceStart);
+        if (!contained.length) continue;
+        let inner = applyNativePatches(raw.slice(open.sourceEnd, close.sourceStart), contained.map(patch => ({
+          ...patch, from: patch.from - open.sourceEnd, to: patch.to - open.sourceEnd,
+        })));
+        const hasPadding = ledger.spans.some(span => span.syntax === 'code-padding' &&
+          span.sourceStart === open.sourceEnd && span.sourceEnd === open.sourceEnd + 1);
+        if (hasPadding && !/[^ ]/.test(inner.slice(1, -1))) inner = inner.slice(1, -1);
+        else if (!hasPadding && (inner.startsWith('`') || inner.endsWith('`') ||
+          (inner.startsWith(' ') && inner.endsWith(' ') && /[^ ]/.test(inner)))) inner = ` ${inner} `;
+        const runs = [...inner.matchAll(/`+/g)].map(match => match[0].length);
+        const delimiter = '`'.repeat(Math.max(open.sourceEnd - open.sourceStart, ...runs.map(width => width + 1)));
+        for (let i = patches.length - 1; i >= 0; i--) {
+          if (contained.includes(patches[i])) patches.splice(i, 1);
+        }
+        patches.push({ from: open.sourceStart, to: close.sourceEnd,
+          insert: inner.length ? `${delimiter}${inner}${delimiter}` : '' });
+      }
+      patches.sort((a, b) => b.from - a.from || b.to - a.to);
+      for (let index = 1; index < patches.length; index++) {
+        if (patches[index].to > patches[index - 1].from) throw Error('原文owner范围重叠，整批未应用');
+      }
+      const candidate = applyNativePatches(raw, patches);
+      const target = this.state.apply(transaction);
+      const parsed = parse(candidate);
+      if (parsed.issues.length || !parsed.doc.eq(target.doc)) {
+        throw Error('替换候选与可视意图不一致，整批未应用');
+      }
+      this.finishComposition();
+      this.accept(candidate, target, patches, before, '整批可视文字替换', undefined, transaction.mapping);
+      this.logicalRevision++;
+      return { ok: true, value: { changed: true, replacedCount } };
+    } catch (error) {
+      this.restore(before);
+      return { ok: false, message: error instanceof Error ? error.message : String(error) };
     }
   }
 

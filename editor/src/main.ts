@@ -256,7 +256,7 @@ function performSearchNavigation(request: SearchNavigationRequest): SearchNaviga
 
 function performSearchReplacement(request: SearchReplacementRequest): SearchReplacementOutcome {
   const activeRuntime = runtime;
-  if (!activeRuntime?.sourceReplacement) {
+  if (!activeRuntime || (activeRuntime.mode !== "visual" && !activeRuntime.sourceReplacement)) {
     return { ok: false, message: "当前编辑模式不支持原文替换" };
   }
   if (activeRuntime.composing || searchPanel.isInputComposing) {
@@ -272,14 +272,14 @@ function performSearchReplacement(request: SearchReplacementRequest): SearchRepl
     return { ok: false, message: "查询或替换文本已变化，请重新执行" };
   }
   const raw = activeRuntime.getText();
-  if (raw !== request.binding.raw || raw !== request.result.source.raw ||
+  if (raw !== request.binding.raw || (activeRuntime.mode !== "visual" && raw !== request.result.source.raw) ||
       request.result.source.revision !== activeRevision) {
     return { ok: false, message: "文档已变化，请等待查找刷新" };
   }
 
   let current: SourceSearchResult;
   try {
-    current = searchSource({ raw, revision: activeRevision }, searchPanel.query, {
+    current = activeRuntime.search(searchPanel.query, activeRevision, {
       caseSensitive: searchPanel.caseSensitive, maxResults: SEARCH_MAX_RESULTS,
     });
   } catch {
@@ -287,6 +287,10 @@ function performSearchReplacement(request: SearchReplacementRequest): SearchRepl
   }
   if (!sameSearchResult(current, request.result)) {
     return { ok: false, message: "查找结果已过期，请等待刷新" };
+  }
+  if (activeRuntime.mode === "visual") {
+    const applied = activeRuntime.replaceVisualSearch(raw, current, request.kind, request.replacement);
+    return applied.ok ? { ok: true, ...applied.value } : applied;
   }
   if (request.kind === "replace-all" && current.truncated) {
     return { ok: false, message: "全部替换需要完整结果；当前结果已截断" };
@@ -403,7 +407,9 @@ function scheduleSearch(documentID: string, revision: number): void {
         navigation: activeRuntime.mode === "visual" || activeRuntime.sourceNavigation
           ? { available: true }
           : { available: false, reason: "结构化编辑模式暂不支持原文范围定位" },
-        replacement: activeRuntime.sourceReplacement
+        replacement: activeRuntime.mode === "visual"
+          ? { available: true, completeOnReplaceAll: true }
+          : activeRuntime.sourceReplacement
           ? { available: true }
           : { available: false, reason: activeRuntime.sourceNavigation
               ? "当前文档只读，不能替换"

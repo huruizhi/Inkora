@@ -4,7 +4,7 @@ import { afterEach, expect, it } from "vitest";
 import { createEditorRuntime } from "./editor-runtime";
 
 const fixtures = JSON.parse(readFileSync(new URL("../../docs/acceptance/visual-search/cases.json", import.meta.url), "utf8")) as {
-  cases: Array<{ id: number; name: string; query: string; safeVisibleMatches: number; input: string }>;
+  cases: Array<{ id: number; name: string; kind: string; query: string; replacement: string; safeVisibleMatches: number; input: string; expected: string }>;
 };
 const previousDocument = globalThis.document;
 const previousWindow = globalThis.window;
@@ -50,4 +50,31 @@ it("maps a full cross-mark word to the exact original source range", () => {
   expect(runtime.enterSourceMode()).toBe(true);
   expect(runtime.getSourceSelection(raw)).toEqual({ ok: true, value: { anchor: 0, head: raw.length - 1 } });
   expect(runtime.status).toMatchObject({ dirty: false, canUndo: false, canRedo: false });
+});
+
+it.each(fixtures.cases.filter(fixture => fixture.kind === "replace-all"))(
+  "replaces frozen visible content $id: $name as one production history unit", fixture => {
+    const raw = readFileSync(new URL(`../../docs/acceptance/visual-search/${fixture.input}`, import.meta.url), "utf8");
+    const expected = readFileSync(new URL(`../../docs/acceptance/visual-search/${fixture.expected}`, import.meta.url), "utf8");
+    const { runtime } = boot(raw);
+    const result = runtime.search(fixture.query, 0, {maxResults:100});
+    const applied = runtime.replaceVisualSearch(raw, result, "replace-all", fixture.replacement);
+    expect(applied).toEqual({ok:true,value:{changed:true,replacedCount:fixture.safeVisibleMatches}});
+    expect(runtime.snapshotText()).toEqual({ok:true,value:expected});
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.status.canUndo).toBe(false);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(expected);
+  },
+);
+
+it("replaces a complete link and adjacent plain text without inheriting its target", () => {
+  const raw = '[alpha](./dest "title") omega\n';
+  const { runtime } = boot(raw);
+  const result = runtime.search("alpha omega", 0);
+  expect(runtime.replaceVisualSearch(raw, result, "replace-all", "beta")).toEqual({ok:true,value:{changed:true,replacedCount:1}});
+  expect(runtime.getText()).toBe("beta\n");
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(raw);
 });
