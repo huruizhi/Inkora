@@ -1,5 +1,6 @@
 import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorState, Transaction } from 'prosemirror-state';
+import MarkdownIt from 'markdown-it';
 import { parse } from './source-document';
 
 export type NativeRange = { start: number; end: number; pos: number; size: number; kind: string };
@@ -9,7 +10,7 @@ export type NativeAnchor = { pmPos: number; sourceOffset: number };
 export type NativePlan = {
   patches: NativePatch[];
   candidate: string;
-  kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'inline-mark' | 'block-structure' | 'projection-sync' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join';
+  kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'inline-mark' | 'block-structure' | 'table-text' | 'table-structure' | 'task-toggle' | 'projection-sync' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join';
   /** A Markdown source cannot represent a newly-created empty paragraph. */
   mayStage?: boolean;
   /** Source caret in candidate coordinates, used only while a split is staged. */
@@ -20,6 +21,7 @@ type SourcePosition = (position: number, side?: 'from' | 'to' | 'any') => number
 
 function pastePlan(
   source: string,
+  state: EditorState,
   tr: Transaction,
   position: SourcePosition,
   fallbackEol: '\r\n' | '\n',
@@ -34,7 +36,10 @@ function pastePlan(
   const from = position(step.from, 'from');
   const to = position(step.to, 'to');
   const eol = eolForLine(source, from, fallbackEol);
-  const insert = paste.source.replace(/\r\n?|\n/g, `${eol}${eol}`);
+  const visible = selectionInsideTableCell(state, step.from, step.to)
+    ? encodeTableCellText(paste.source)
+    : paste.source;
+  const insert = visible.replace(/\r\n?|\n/g, `${eol}${eol}`);
   const patches = [{ from, to, insert }];
   return { patches, candidate: applyNativePatches(source, patches), kind: 'paste' };
 }
@@ -97,6 +102,22 @@ function onlyEmptyParagraph(state: EditorState): boolean {
   return state.doc.childCount === 1
     && state.doc.firstChild?.type.name === 'paragraph'
     && state.doc.firstChild.content.size === 0;
+}
+
+function selectionInsideTableCell(state: EditorState, from: number, to: number): boolean {
+  const inside = (position: number): boolean => {
+    const resolved = state.doc.resolve(position);
+    for (let depth = resolved.depth; depth > 0; depth--) {
+      if (["table_cell", "table_header"].includes(resolved.node(depth).type.name)) return true;
+    }
+    return false;
+  };
+  return inside(from) && inside(to);
+}
+
+function encodeTableCellText(text: string): string {
+  return text.replace(/(\\*)\|/g, (_match, slashes: string) =>
+    `${"\\".repeat(slashes.length * 2 + 1)}|`);
 }
 
 function emptySourceAnchor(source: string): number {
@@ -449,6 +470,15 @@ function listContext(state: EditorState): boolean {
   return false;
 }
 
+function taskListContext(state: EditorState): boolean {
+  const $from = state.selection.$from;
+  for (let depth = $from.depth; depth > 0; depth--) {
+    const node = $from.node(depth);
+    if (node.type.name === 'list_item') return node.attrs.task === true;
+  }
+  return false;
+}
+
 function splitPlan(
   source: string,
   state: EditorState,
@@ -466,7 +496,8 @@ function splitPlan(
     const prefix = source.slice(lineStart, anchor);
     const marker = /^(\s*)([-+*]|\d+[.)])([\t ]+)/.exec(prefix);
     if (!marker) throw Error('列表项标记无法从当前源行安全定位');
-    const insertion = `${eol}${marker[1]}${marker[2]}${marker[3]}`;
+    const taskMarker = taskListContext(state) ? '[ ] ' : '';
+    const insertion = `${eol}${marker[1]}${marker[2]}${marker[3]}${taskMarker}`;
     const patches = [{ from: anchor, to: anchor, insert: insertion }];
     return { patches, candidate: applyNativePatches(source, patches), kind: 'list-split', mayStage: true, sourceCaret: anchor + insertion.length };
   }
@@ -500,7 +531,9 @@ function listJoinPlan(source: string, state: EditorState, tr: Transaction, posit
   const contentStart = position(state.selection.from, 'from');
   const lineStart = source.lastIndexOf('\n', Math.max(0, contentStart - 1)) + 1;
   const prefix = source.slice(lineStart, contentStart);
-  if (!/^(\s*)([-+*]|\d+[.)])[\t ]+$/.test(prefix)) throw Error('列表 join 的行标记无法安全定位');
+  if (!/^(\s*)([-+*]|\d+[.)])[\t ]+(?:\[[ xX]\][\t ]*)?$/.test(prefix)) {
+    throw Error('列表 join 的行标记无法安全定位');
+  }
   let separatorStart = lineStart;
   if (separatorStart > 0 && source[separatorStart - 1] === '\n') {
     separatorStart--;
@@ -508,6 +541,256 @@ function listJoinPlan(source: string, state: EditorState, tr: Transaction, posit
   }
   const patches = [{ from: separatorStart, to: contentStart, insert: '' }];
   return { patches, candidate: applyNativePatches(source, patches), kind: 'list-join' };
+}
+
+type TableCommandMeta = {
+  type: string;
+  tablePos: number;
+  rowIndex: number;
+  columnIndex: number;
+  alignment?: 'none' | 'left' | 'center' | 'right';
+};
+
+type SourceLine = { start: number; contentEnd: number; end: number; eol: string };
+const tableTokenizer = new MarkdownIt('commonmark', { html: false }).enable('table');
+
+function sourceLines(source: string, from: number, to: number): SourceLine[] {
+  const result: SourceLine[] = [];
+  let start = from;
+  while (start <= to) {
+    const lf = source.indexOf('\n', start);
+    if (lf < 0 || lf >= to) {
+      result.push({ start, contentEnd: to, end: to, eol: '' });
+      break;
+    }
+    const contentEnd = lf > start && source[lf - 1] === '\r' ? lf - 1 : lf;
+    result.push({ start, contentEnd, end: lf + 1, eol: source.slice(contentEnd, lf + 1) });
+    start = lf + 1;
+    if (start === to) break;
+  }
+  return result;
+}
+
+function structuralPipes(text: string): number[] {
+  const offsets: number[] = [];
+  let code = '';
+  for (let index = 0; index < text.length; index++) {
+    if (text[index] === '`') {
+      let end = index + 1;
+      while (text[end] === '`') end++;
+      const run = text.slice(index, end);
+      if (!code) code = run;
+      else if (code === run) code = '';
+      index = end - 1;
+      continue;
+    }
+    if (text[index] !== '|' || code) continue;
+    let slashes = 0;
+    for (let before = index - 1; before >= 0 && text[before] === '\\'; before--) slashes++;
+    if (slashes % 2 === 0) offsets.push(index);
+  }
+  return offsets;
+}
+
+function rowCellBounds(source: string, line: SourceLine, column: number): { before: number; after: number; start: number; end: number } | null {
+  const text = source.slice(line.start, line.contentEnd);
+  const pipes = structuralPipes(text);
+  const leading = pipes[0] !== undefined && /^[>\t ]*$/.test(text.slice(0, pipes[0]));
+  const beforeIndex = leading ? column : column - 1;
+  const afterIndex = leading ? column + 1 : column;
+  const before = beforeIndex < 0 ? line.start - 1 : line.start + (pipes[beforeIndex] ?? -1);
+  const afterPipe = pipes[afterIndex];
+  if (afterPipe === undefined) return null;
+  let start = before + 1;
+  let end = line.start + afterPipe;
+  while (start < end && /[\t ]/.test(source[start])) start++;
+  while (end > start && /[\t ]/.test(source[end - 1])) end--;
+  return { before, after: line.start + afterPipe, start, end };
+}
+
+function tableCommandSourceRange(
+  source: string,
+  ranges: readonly NativeRange[],
+  state: EditorState,
+  tablePos: number,
+): { start: number; end: number } | null {
+  const owner = ranges.find(range => tablePos >= range.pos && tablePos < range.pos + range.size);
+  if (!owner) return null;
+  if (owner.kind === 'table' && owner.pos === tablePos) return { start: owner.start, end: owner.end };
+  const tables: number[] = [];
+  state.doc.nodesBetween(owner.pos, owner.pos + owner.size, (node, pos) => {
+    if (node.type.name === 'table') tables.push(pos);
+  });
+  const tableIndex = tables.indexOf(tablePos);
+  if (tableIndex < 0) return null;
+  const lines = sourceLines(source, 0, source.length);
+  const tokens = tableTokenizer.parse(source.replace(/^\uFEFF/, ' '), {});
+  const candidates = tokens.filter(token => token.type === 'table_open' && token.map &&
+    lines[token.map[0]]?.start >= owner.start && lines[token.map[0]]!.start < owner.end);
+  const token = candidates[tableIndex];
+  if (!token?.map) return null;
+  return {
+    start: lines[token.map[0]].start,
+    end: lines[token.map[1] - 1]?.contentEnd ?? owner.end,
+  };
+}
+
+function tableCommandPlan(
+  source: string,
+  state: EditorState,
+  tr: Transaction,
+  ranges: readonly NativeRange[],
+  fallbackEol: '\r\n' | '\n',
+): NativePlan | null {
+  const meta = tr.getMeta('inkoraTableCommand') as TableCommandMeta | undefined;
+  if (!meta) return null;
+  const range = tableCommandSourceRange(source, ranges, state, meta.tablePos);
+  if (!range) throw Error('表格结构命令已过期或不属于当前 table 范围');
+  const lines = sourceLines(source, range.start, range.end);
+  if (lines.length < 2) throw Error('表格结构命令缺少表头或分隔行');
+  const table = tr.before.nodeAt(meta.tablePos);
+  const columns = table?.firstChild?.firstChild?.childCount ?? 0;
+  if (!columns) throw Error('表格结构命令无法确定列数');
+  const patches: NativePatch[] = [];
+
+  if (meta.type === 'add_row_before' || meta.type === 'add_row_after') {
+    const row = meta.rowIndex === 0 ? 1 : Math.min(meta.rowIndex + 1, lines.length - 1);
+    const selectedLine = lines[row];
+    const rowEol = selectedLine.eol || eolForLine(source, selectedLine.start, fallbackEol);
+    const firstPipe = structuralPipes(source.slice(selectedLine.start, selectedLine.contentEnd))[0] ?? 0;
+    const prefix = source.slice(selectedLine.start, selectedLine.start + firstPipe);
+    const empty = `${prefix}|${'  |'.repeat(columns)}`;
+    if (meta.type === 'add_row_before' && meta.rowIndex > 0) {
+      patches.push({ from: lines[row].start, to: lines[row].start, insert: empty + rowEol });
+    } else {
+      patches.push({ from: lines[row].contentEnd, to: lines[row].contentEnd, insert: rowEol + empty });
+    }
+  } else if (meta.type === 'delete_row') {
+    if (meta.rowIndex <= 0) throw Error('不能删除表头行');
+    const row = lines[meta.rowIndex + 1];
+    if (!row) throw Error('删除行目标已过期');
+    if (row.end > row.contentEnd) patches.push({ from: row.start, to: row.end, insert: '' });
+    else {
+      let from = row.start;
+      if (from > range.start && source[from - 1] === '\n') {
+        from--;
+        if (from > range.start && source[from - 1] === '\r') from--;
+      }
+      patches.push({ from, to: row.contentEnd, insert: '' });
+    }
+  } else if (meta.type === 'add_column_before' || meta.type === 'add_column_after') {
+    for (const [index, line] of lines.entries()) {
+      const bounds = rowCellBounds(source, line, meta.columnIndex);
+      if (!bounds) {
+        if (index >= 2) continue;
+        throw Error(`第 ${index + 1} 行缺少目标列边界`);
+      }
+      const at = meta.type === 'add_column_before' ? bounds.before + 1 : bounds.after + 1;
+      patches.push({ from: at, to: at, insert: index === 1 ? ' --- |' : '  |' });
+    }
+  } else if (meta.type === 'delete_column') {
+    if (columns <= 1) throw Error('不能删除表格最后一列');
+    for (const [index, line] of lines.entries()) {
+      const bounds = rowCellBounds(source, line, meta.columnIndex);
+      if (!bounds) {
+        if (index >= 2) continue;
+        throw Error(`第 ${index + 1} 行缺少目标列边界`);
+      }
+      patches.push({ from: bounds.before + 1, to: bounds.after + 1, insert: '' });
+    }
+  } else if (meta.type.startsWith('align_')) {
+    const alignment = meta.alignment ?? meta.type.slice('align_'.length) as TableCommandMeta['alignment'];
+    const bounds = rowCellBounds(source, lines[1], meta.columnIndex);
+    if (!bounds) throw Error('分隔行缺少目标列边界');
+    const marker = source.slice(bounds.start, bounds.end);
+    const hyphens = marker.replace(/:/g, '');
+    if (!/^-{3,}$/.test(hyphens)) throw Error('分隔单元不是合法 GFM marker');
+    const replacement = `${alignment === 'left' || alignment === 'center' ? ':' : ''}${hyphens}${alignment === 'right' || alignment === 'center' ? ':' : ''}`;
+    patches.push({ from: bounds.start, to: bounds.end, insert: replacement });
+  } else if (meta.type === 'delete_table') {
+    patches.push({ from: range.start, to: range.end, insert: '' });
+  } else throw Error(`未知表格命令：${meta.type}`);
+
+  const candidate = applyNativePatches(source, patches);
+  try {
+    if (!parse(candidate).doc.eq(tr.doc)) throw Error('表格结构候选与 PM 投影语义不一致');
+  } catch (error) {
+    if (error instanceof Error && error.message === '表格结构候选与 PM 投影语义不一致') throw error;
+    throw Error(`表格结构候选无法重解析：${error instanceof Error ? error.message : String(error)}`);
+  }
+  return { patches, candidate, kind: 'table-structure' };
+}
+
+function taskTogglePlan(
+  source: string,
+  state: EditorState,
+  tr: Transaction,
+  position: SourcePosition,
+): NativePlan | null {
+  const meta = tr.getMeta('inkoraTaskToggle') as { pos?: unknown; checked?: unknown } | undefined;
+  if (!meta) return null;
+  if (!Number.isInteger(meta.pos) || typeof meta.checked !== 'boolean') throw Error('任务切换元数据无效');
+  const pos = meta.pos as number;
+  const before = state.doc.nodeAt(pos);
+  const after = tr.doc.nodeAt(pos);
+  if (!before?.attrs.task || !after?.attrs.task || before.type !== after.type || before.content !== after.content && !before.content.eq(after.content)) {
+    throw Error('任务切换目标已过期');
+  }
+  const labelStart = position(pos + 2, 'from');
+  const lineStart = source.lastIndexOf('\n', Math.max(0, labelStart - 1)) + 1;
+  const prefix = source.slice(lineStart, labelStart);
+  const markers = [...prefix.matchAll(/\[([ xX])\][\t ]+/g)];
+  const marker = markers.at(-1);
+  if (!marker) throw Error('任务 checkbox 原文标记无法定位');
+  const stateOffset = lineStart + marker.index + 1;
+  const patches = [{ from: stateOffset, to: stateOffset + 1, insert: meta.checked ? 'x' : ' ' }];
+  const candidate = applyNativePatches(source, patches);
+  if (!parse(candidate).doc.eq(tr.doc)) throw Error('任务切换候选与 PM 投影语义不一致');
+  return { patches, candidate, kind: 'task-toggle' };
+}
+
+function insertTablePlan(
+  source: string,
+  state: EditorState,
+  tr: Transaction,
+  ranges: readonly NativeRange[],
+  fallbackEol: '\r\n' | '\n',
+): NativePlan | null {
+  const meta = tr.getMeta('inkoraInsertTable') as { raw?: unknown; anchorPos?: unknown } | undefined;
+  if (!meta) return null;
+  if (typeof meta.raw !== 'string' || !/^\|[^\n]+\|\n\|[^\n]+\|\n\|[^\n]*\|$/.test(meta.raw)) {
+    throw Error('新建表格命令缺少合法固定原文');
+  }
+  let at: number;
+  let insert: string;
+  if (source.slice(source.startsWith('\uFEFF') ? 1 : 0).trim().length === 0) {
+    at = emptySourceAnchor(source);
+    insert = meta.raw;
+  } else {
+    if (!Number.isInteger(meta.anchorPos)) throw Error('新建表格命令缺少当前块边界');
+    const anchorPos = meta.anchorPos as number;
+    const currentIndex = ranges.findIndex(range => range.pos + range.size === anchorPos);
+    if (currentIndex < 0 || !state.doc.nodeAt(ranges[currentIndex].pos)) {
+      throw Error('新建表格命令的当前块已过期');
+    }
+    const current = ranges[currentIndex];
+    const next = ranges[currentIndex + 1];
+    const eol = eolForLine(source, current.end, fallbackEol);
+    const tableRaw = meta.raw.replace(/\n/g, eol);
+    if (next) {
+      at = next.start;
+      insert = tableRaw + eol + eol;
+    } else {
+      at = source.length;
+      const doubleEol = eol + eol;
+      const separator = source.endsWith(doubleEol) ? '' : source.endsWith(eol) ? eol : doubleEol;
+      insert = separator + tableRaw;
+    }
+  }
+  const patches = [{ from: at, to: at, insert }];
+  const candidate = applyNativePatches(source, patches);
+  if (!parse(candidate).doc.eq(tr.doc)) throw Error('新建表格候选与 PM 投影语义不一致');
+  return { patches, candidate, kind: 'table-structure' };
 }
 
 export function planNativeTransaction(
@@ -532,10 +815,19 @@ export function planNativeTransaction(
     // the explicit local planners; none may accept by parser failure alone.
   }
 
-  const paste = pastePlan(source, tr, position, fallbackEol);
+  const paste = pastePlan(source, state, tr, position, fallbackEol);
   if (paste) return paste;
   const inputRule = inputRulePlan(source, tr, position, fallbackEol);
   if (inputRule) return inputRule;
+
+  const taskToggle = taskTogglePlan(source, state, tr, position);
+  if (taskToggle) return taskToggle;
+
+  const insertedTable = insertTablePlan(source, state, tr, ranges, fallbackEol);
+  if (insertedTable) return insertedTable;
+
+  const table = tableCommandPlan(source, state, tr, ranges, fallbackEol);
+  if (table) return table;
 
   const mark = markPlan(source, state, tr, position);
   if (mark) return mark;
@@ -557,7 +849,25 @@ export function planNativeTransaction(
       to = position(step.to, 'to');
     }
     if (from > to || (step.from === step.to && from !== to)) throw Error('选区边界无法唯一映射到原文');
-    const sourceInsert = insert.replace(/\n/g, eolForLine(source, from, fallbackEol));
+    const inTableCell = selectionInsideTableCell(state, step.from, step.to);
+    const visibleInsert = inTableCell ? encodeTableCellText(insert) : insert;
+    const sourceInsert = visibleInsert.replace(/\n/g, eolForLine(source, from, fallbackEol));
+    if (inTableCell) {
+      const spellings = [sourceInsert];
+      if (step.from === step.to && sourceInsert.length > 0) {
+        spellings.push(source[from] === '|' ? `| ${sourceInsert} ` : ` | ${sourceInsert}`);
+      }
+      const matches = spellings.map(spelling => {
+        const tablePatches = [{ from, to, insert: spelling }];
+        return { patches: tablePatches, candidate: applyNativePatches(source, tablePatches) };
+      }).filter(candidate => {
+        try { return parse(candidate.candidate).doc.eq(tr.doc); } catch { return false; }
+      });
+      const unique = matches.filter((candidate, index, all) =>
+        all.findIndex(other => other.candidate === candidate.candidate) === index);
+      if (unique.length !== 1) throw Error('表格单元格文字没有唯一的最小原文候选');
+      return { ...unique[0], kind: 'table-text' };
+    }
     const patches = [{ from, to, insert: sourceInsert }];
     return { patches, candidate: applyNativePatches(source, patches), kind: ranges.length ? 'text' : 'empty-text' };
   }
