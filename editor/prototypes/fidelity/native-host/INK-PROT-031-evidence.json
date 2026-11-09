@@ -42,19 +42,26 @@
       "exitCode": 78,
       "reason": "screen locked"
     },
-    "appLaunched": false,
-    "wkRuntime": "not executed",
-    "physicalSogou": "not executed",
+    "appLaunched": true,
+    "wkRuntime": "scoped pass: whitespace save/reopen continuation, source ordinary draft/apply/travel/savepoint",
+    "physicalSogou": "last two committed Chinese sessions plus ordinary space Undo/Redo passed; cancellation and atomic replacement not proven; source Chinese not executed",
     "nsDocumentSandboxFileFlow": "not executed",
     "macOS14Hardware": "not executed",
-    "userAvailability": "deferred by explicit user choice; preserve progress",
-    "resumeRequirement": "user confirms availability; desktop preflight and fixed artifact hashes rechecked"
+    "userAvailability": "user confirmed observed experience and asked to continue development",
+    "resumeRequirement": "user confirms availability; desktop preflight and fixed artifact hashes rechecked",
+    "activeSession": {
+      "status": "ended",
+      "ownAppPid": 31436,
+      "exitCode": 143,
+      "uiLockReleased": true
+    },
+    "evidence": "INK-PROT-031-runtime.txt and INK-PROT-031-summary.json"
   },
   "cleanup": {
     "executionAgents": "archived",
     "executionWorkspace": "wks_aa63ecfcc29de8fa archived and owned worktree removed",
     "verifiedBackupFiles": 328,
-    "archivedWorkspaceCount": 34
+    "archivedWorkspaceCount": 36
   },
-  "verdict": "automatic scoped prototype passes; runtime awaits unlocked desktop; M0 not passed"
+  "verdict": "scoped WK and committed Chinese history checks pass; cancellation and atomic selection replacement not proven; physical source Chinese/NSDocument/macOS14 unexecuted; M0 not passed"
 }

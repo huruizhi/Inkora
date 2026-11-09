@@ -1,0 +1,173 @@
+{
+  "prototypeCommit": "493e2b7cdbe982da02f4747e89a0cf52df3a770f",
+  "artifactBaseline": "1c586967039c2b03b2584a901a3afa077ee17fa7",
+  "runtimeSha256": "953c52efe3d95705b6984fa3e6a2fd876168f41d8d2baff33a7faa5a68db7a48",
+  "recordCount": 501,
+  "layer": "real WKWebView with CUA ordinary input and human physical composition; not NSDocument file save",
+  "inputMethod": "Sogou per user prior identification and requested procedure; not independently queried from OS",
+  "visualHistory": {
+    "prototypeCommit": "493e2b7cdbe982da02f4747e89a0cf52df3a770f",
+    "bundle": "7aaa2e7f7ff79104c01bf378dd79c959a084ba7a14ce480f82a978e26c23c807",
+    "inputMethod": "Sogou (requested; user previously identified; composition events recorded)",
+    "scope": "last two Chinese commits plus one ordinary space; 12 preceding trial/deletion history entries preserved",
+    "observations": [
+      {
+        "revision": 44,
+        "undo": 15,
+        "redo": 0,
+        "currentRaw": "\nBody.\n\n$$\nx^2\n$$\n\nAfter protected block.中文 测试\n\n",
+        "dirty": true,
+        "saveEligible": true,
+        "blocked": null,
+        "evidence": "actual CUA accessibility observation; intermediate snapshots may be sampled out by 1-second host timer"
+      },
+      {
+        "revision": 45,
+        "undo": 14,
+        "redo": 1,
+        "currentRaw": "\nBody.\n\n$$\nx^2\n$$\n\nAfter protected block.中文 \n\n",
+        "dirty": true,
+        "saveEligible": true,
+        "blocked": null,
+        "evidence": "actual CUA accessibility observation; intermediate snapshots may be sampled out by 1-second host timer"
+      },
+      {
+        "revision": 46,
+        "undo": 13,
+        "redo": 2,
+        "currentRaw": "\nBody.\n\n$$\nx^2\n$$\n\nAfter protected block.中文\n\n",
+        "dirty": true,
+        "saveEligible": true,
+        "blocked": null,
+        "evidence": "actual CUA accessibility observation; intermediate snapshots may be sampled out by 1-second host timer"
+      },
+      {
+        "revision": 47,
+        "undo": 12,
+        "redo": 3,
+        "currentRaw": "\nBody.\n\n$$\nx^2\n$$\n\nAfter protected block.\n\n",
+        "dirty": false,
+        "saveEligible": true,
+        "blocked": null,
+        "evidence": "actual CUA accessibility observation; intermediate snapshots may be sampled out by 1-second host timer"
+      },
+      {
+        "revision": 48,
+        "undo": 13,
+        "redo": 2,
+        "currentRaw": "\nBody.\n\n$$\nx^2\n$$\n\nAfter protected block.中文\n\n",
+        "dirty": true,
+        "saveEligible": true,
+        "blocked": null,
+        "evidence": "actual CUA accessibility observation; intermediate snapshots may be sampled out by 1-second host timer"
+      },
+      {
+        "revision": 49,
+        "undo": 14,
+        "redo": 1,
+        "currentRaw": "\nBody.\n\n$$\nx^2\n$$\n\nAfter protected block.中文 \n\n",
+        "dirty": true,
+        "saveEligible": true,
+        "blocked": null,
+        "evidence": "actual CUA accessibility observation; intermediate snapshots may be sampled out by 1-second host timer"
+      },
+      {
+        "revision": 50,
+        "undo": 15,
+        "redo": 0,
+        "currentRaw": "\nBody.\n\n$$\nx^2\n$$\n\nAfter protected block.中文 测试\n\n",
+        "dirty": true,
+        "saveEligible": true,
+        "blocked": null,
+        "evidence": "actual CUA accessibility observation; intermediate snapshots may be sampled out by 1-second host timer"
+      }
+    ]
+  },
+  "cancelAttempts": {
+    "firstCancelAttempt": "insertFromComposition committed Chinese 取消; not cancellation evidence",
+    "secondCancelAttempt": "insertFromComposition committed Chinese 取消; not cancellation evidence",
+    "classification": "awaiting user clarification on Esc; no input-method bug conclusion",
+    "replacementObservation": "visible 测试 replaced by 替换; an earlier delete state adds a separate history entry, atomic selection replacement not yet accepted",
+    "next": "source physical input requested; do not apply until human completes"
+  },
+  "userReview": "user said 测试正确的 继续推进; preserve as experience confirmation, not missing event evidence",
+  "sourcePhysicalChinese": "not executed; no source composition events in this run",
+  "sourceOrdinaryCUA": {
+    "draft": "ASCII source-check; document raw/revision/history unchanged until Apply",
+    "travelGuard": "Undo refused while draft dirty; draft and counts preserved",
+    "apply": {
+      "revision": 75,
+      "undo": 18,
+      "redo": 0
+    },
+    "undo": {
+      "revision": 76,
+      "undo": 17,
+      "redo": 1
+    },
+    "redo": {
+      "revision": 77,
+      "undo": 18,
+      "redo": 0
+    },
+    "memorySave": {
+      "revision": 77,
+      "undo": 18,
+      "redo": 0,
+      "dirty": false
+    },
+    "perStepEvidence": "CUA AX observations; 1-second host sampler may omit intermediate revisions"
+  },
+  "protectedRaw": "$$\nx^2\n$$ preserved",
+  "lastSnapshot": {
+    "activeElement": "body",
+    "blocked": null,
+    "composing": false,
+    "dirty": false,
+    "future": 0,
+    "past": 18,
+    "pending": false,
+    "revision": 77,
+    "saveDisabled": false,
+    "selection": {
+      "anchor": 49,
+      "from": 49,
+      "head": 49,
+      "to": 49
+    },
+    "sourceAuthority": {
+      "currentRaw": "\nBody.\n\n$$\nx^2\n$$\n\nAfter protected block.中文 替换 source-check\n\n",
+      "draftDirty": false,
+      "draftRaw": null,
+      "epoch": 3,
+      "rawSelection": {
+        "affinity": "right",
+        "anchor": 59,
+        "head": 59
+      },
+      "savedRaw": "\nBody.\n\n$$\nx^2\n$$\n\nAfter protected block.中文 替换 source-check\n\n",
+      "saveEligible": true,
+      "sourceAccessible": true,
+      "unresolvedIntent": null
+    },
+    "sourceComposing": false,
+    "sourceMode": false,
+    "staged": false,
+    "stagedKind": null,
+    "textarea": {
+      "readOnly": true,
+      "selectionDirection": "forward",
+      "selectionEnd": 59,
+      "selectionStart": 59
+    },
+    "version": "ink-prot-031-observer-v3"
+  },
+  "cleanup": {
+    "ownAppPid": 31436,
+    "termination": "SIGTERM after executable path verified via lsof",
+    "foregroundSession": 43410,
+    "exitCode": 143,
+    "uiLockReleased": true
+  },
+  "verdict": "scoped WK and committed Chinese history checks pass; cancellation and atomic selection replacement not proven; physical source Chinese/NSDocument/macOS14 unexecuted; M0 not passed"
+}
