@@ -20,7 +20,7 @@
 
 - `EditorRuntime` 接口只有 `getText/markSaved/undo/redo/focus/destroy/status/composing`（editor-runtime.ts:15-24）。
 - `StructuredEditorRuntime`（ProseMirror）：`getText()` 在 dirty 时整体 `serializeMarkdown` 回原文（editor-runtime.ts:72-77）。结构化模式的文档位置是 PM pos，与 raw UTF-16 偏移之间没有任何映射（见开头检索证据；`structuredInput` 还会把 CRLF 折叠成 LF，line-endings.ts:10-12，进一步保证两套坐标不可直换）。
-- `SourceEditorRuntime`（textarea）：textarea 持有逐字节原文（EOL-003 注释，editor-runtime.ts:208；kernel 保真，editor-kernel.ts:124-137），**raw 偏移可直接映射 textarea selectionStart/End**；undo 是整文快照栈，一次 `replaceText` 天然形成单个撤销步（editor-runtime.ts:146-151,201-205）。
+- `SourceEditorRuntime`（textarea）：当前原文由 currentText/kernel 保留（editor-runtime.ts:143-150,166-168；editor-kernel.ts:37-58），textarea.value 是换行归一化后的视图，**raw 偏移不能直接当作 selectionStart/End**。CRLF 折成一个 LF，bare CR 也被 textarea 归一化，必须显式映射并拒绝 CRLF 内部边界；BOM 按实际单位保留。undo 是整文快照栈，但 `replaceText` 本身不 push undo、不清 redo（editor-runtime.ts:201-205），不能直接调用它就宣称原子撤销。
 - `ReadOnlyEditorRuntime`：bare CR 文档整篇只读（editor-runtime.ts:209-229；运行时分派 editor-runtime.ts:231-268；原生侧同判 InkoraDocument.swift:137，保存被拒 InkoraDocument.swift:267,314-317）。
 - Bridge 快照通道 `createSnapshot` 只返回 `(documentID, revision, text)` 整文，无任何位置信息（bridge.ts:238-261；原生侧 EditorBridge.swift:322-363）。
 
@@ -39,7 +39,7 @@
 ### 1.5 缺失（生产没有的东西）
 
 1. **raw→PM 可视位置映射**：结构化模式无法把 raw 匹配定位到 PM 选区/滚动位置。`document-analysis.ts` 的"归一化副本+索引还原"（document-analysis.ts:3-15）只服务只读统计，解不出 PM pos。这是可视定位/替换的硬前置，不能用 `text` 首次 find 或全量 `serialize/setText` 伪造。
-2. **查找 UI**：无任何 find 面板/菜单项/快捷键。菜单验证只有 save/undo/redo（AppDelegate.swift:209-212；EditorViewController.swift:163-172）。
+2. **查找 UI**：无产品自建 find 面板/菜单项/处理器。Edit 菜单创建包含 Undo/Redo、Cut/Copy/Paste、Select All，未添加 Find（app/Sources/AppDelegate.swift:168-204）；不能单靠菜单验证函数证明所有系统默认快捷键行为。
 3. **Bridge 命令面**：`NativeCommand` 仅 5 种（bridge.ts:28-64），无打开查找/应用计划类命令；`EditorCommand` 仅 undo/redo（bridge.ts:3）。
 4. **保护区可编辑性**：`analyzeMarkdownSafety` 判定 raw_html/math/front_matter 等风险（markdown-safety.ts:3-16），结构化模式对这些片段走 source 匹配可行（raw 覆盖全文，docs/source-search.md），但**反向**（PM 内编辑这些片段）仍不可行。
 
@@ -47,7 +47,7 @@
 
 ### 2.1 行为定义
 
-- 打开：菜单 Find…（⌘F）/ 关闭：Esc 或 ⌘F 再按 / 按钮。面板常驻隐藏切换，不随文档切换重建。
+- 初版入口：Web 内可键盘到达的“查找”按钮；关闭按钮与非组合期 Esc。面板复用 DOM，不随文档切换重建。⌘F/原生菜单留后续兼容任务与真实 App 验证。编辑器或查询输入框正在 composition、或 event.isComposing 为真时，Esc/Enter 不拦截候选操作，不关闭面板或导航。
 - 输入：查询文本（字面量，无正则）；大小写开关（默认敏感，与 searchSource 默认一致）。
 - 结果：`n 处匹配`；`truncated === true` 时显式显示"结果超过上限，仅显示前 N 处"（source-search.ts:106 默认 10000，面板可用更小 `maxResults` 但必须同样提示）。`rejected` 非空时不计入 n，不显示为可定位条目。
 - 空查询：显示 0 处，不发导航。
@@ -60,7 +60,7 @@
 | 运行时 | 搜索 | 计数/列表 | 定位 | 替换 |
 |---|---|---|---|---|
 | Structured（PM） | 可（raw 快照） | 可 | **不可**（无映射，显示"当前模式无法定位"） | 不可 |
-| Source（textarea） | 可 | 可 | 可（阶段 B，raw 偏移=textarea 偏移） | 可（阶段 C） |
+| Source（textarea） | 可 | 可 | 可（阶段 B，需 raw↔textarea LF 偏移映射） | 可（阶段 C） |
 | bare_cr 只读 | 可 | 可 | 可（只读选区，阶段 B） | 不可（保存本被拒，InkoraDocument.swift:314-317） |
 
 不可定位时必须显式说明并禁用相应按钮，不渲染虚假控件；这不是可绕过的 UI 细节，而是"未找到可靠映射的结果应明确不可定位"的产品诚实性要求。若产品要求结构化模式可定位/替换，正确路径是先立项 raw↔PM 映射接口任务（阶段 D），而非宣布完成。
@@ -70,17 +70,17 @@
 1. 新增 `editor/src/search-panel.ts`：DOM 组件，仿 `document-analysis-panel.ts` 的安全 API 约束（createElement/textContent、无 HTML 注入、无焦点副作用）；状态机 `empty|results(documentID,revision,query,caseSensitive,matches,truncated)|error`。
 2. `main.ts` 增加调度：`postToNative` 中 `stateChanged` 分支同时驱动 `scheduleSearch` 与既有 `scheduleAnalysis`（main.ts:96-98）；搜索与面板分析一样完全在 Web 侧，不新增 Bridge 消息。
 3. raw 快照来源：`runtime.getText()` + `stateChanged.state.revision`，与 `scheduleAnalysis` 取 `activeRuntime.getText()` 同源（main.ts:75）。这是"用 text 做搜索快照"，不是用它做位置映射，符合禁令。
-4. 原生入口（可选，二选一，推荐 a）：
+4. 后续快捷键/原生入口候选（初版选择按钮，以下尚未批准实施）：
    a. Web 侧 keydown 监听 ⌘F（无协议改动，最小接缝；风险：与原生菜单键位冲突需在 App 层让位）。
-   b. 新增 additive `NativeCommand` 类型 `openSearch`（带 requestID 走 `claimRequest` 去重，bridge.ts:308-314），EditorViewController 菜单项经 `sendImmediately` 下发（EditorBridge.swift:637-675）。协议版本仍是 1，但旧编辑器会以 invalid_message 拒绝新命令——本仓库原生与 Web 同 bundle 发布，无版本漂移；若未来考虑混布需升版本。
+   b. 新增 additive `NativeCommand` 类型 `openSearch`，另行定义文档身份、响应、requestID 去重和能力兼容。不能因同 bundle 发布便保证无版本漂移；缓存、恢复和旧载荷仍需分析。是否升协议版本由该独立任务按仓库协议规范决定，此处不承诺仍为 1。
 5. 状态归属：查询/大小写/结果/过期标记全部归 Web 侧 search-panel 模块私有；不进 `EditorProtocolSession`（其只管 document/revision 事实）；不持久化到磁盘；`loadDocument` 接受新文档时面板整体重置为 empty（main.ts:114-129 是重置钩子点）。
 6. 错误归属：`SourceSearchError`（仅 `invalid-selection`，阶段 A 不触发）与内部异常一律落面板 error 态，不发 `editorError`、不触发 `stop_saving`（对照分析面板约定 main.ts:78-84 与 recoveryActionFor bridge.ts:159-172——查找失败不是保存安全问题）。
 
 ## 3. 契约：阶段 B —— 源码模式/只读模式的查找导航
 
 - 输入：面板当前结果的 matchIndex；操作：上一处/下一处（可回绕，语义直接复用 `findSourceMatch` 的 wrap 与越过当前匹配规则，source-search.ts:264-319）。键盘：Enter/Shift-Enter 上/下一处，回绕发生时可给轻量提示。
-- 生效范围：仅 Source（textarea）与 bare_cr 只读两种运行时。raw 偏移直接写 `selectionStart/selectionEnd`（+滚动到可见），无需映射层。
-- 前置校验（每次导航）：`documentID/revision` 仍与结果绑定一致，否则丢弃结果回到阶段 A 过期态；`runtime.composing === true` 时不改选区（组合串内移动选区会打断 IME，等同 editor-session.ts:141-149 的拒绝语义），排队到 compositionend 后执行或提示。
+- 生效范围：仅 Source（textarea）与 bare_cr 只读两种运行时。raw 范围必须经显式 raw↔textarea LF 映射，再写 selectionStart/selectionEnd 并滚动到可见。校验 CRLF、混合 EOL、bare CR、BOM、字素边界；不改原文或 kernel。
+- 前置校验（每次导航）：documentID/revision/raw 全部仍与结果绑定一致，否则丢弃结果回到阶段 A 过期态；编辑器或查询框 composition 中不改选区、不夺焦点。拒绝并提示，组合结束后重试时重新验证完整快照，不自动执行排队的旧导航。
 - 导航绝不产生 transaction/undo 步：textarea setSelection 不入 undo 栈（kernel 只在 text 变化时入栈，editor-runtime.ts:146-151）；只读模式无栈。
 - 结构化模式：按钮禁用 + 明示原因（见 2.2）。
 
@@ -88,9 +88,9 @@
 
 - 入口：单个替换 / 全部替换，仅 Source 运行时。bare_cr、结构化、编码错误视图一律无替换入口。
 - 计划：`planSourceReplacement(search, current, matchIndex, replacement)` / `planSourceReplaceAll(...)`（source-search.ts:445-536）。`current` 必须取**应用时刻**的 `(runtime.getText(), 当前 revision)`，不允许用面板缓存的 raw 直接应用。
-- 原子应用：拿到 ok 计划后一次性 `resultRaw` 写入（走 `SourceEditorRuntime` 的整文替换路径，editor-runtime.ts:201-205），单次写入=单条 undo 记录=单个历史事务；禁止逐 patch 多次写入（违反 docs/source-search.md 适配器边界）。禁止为替换自动把结构化文档整篇切源码。
+- 原子应用：必须新增原子接缝，不能把私有恢复 helper replaceText（editor-runtime.ts:201-205）当作已有编辑提交 API。写入前验证全部计划、documentID/revision/raw、边界及 composition；changed=false 不改历史、revision、dirty、future。有变更才把编辑前完整快照入 undo、清 redo，一次采纳 resultRaw/恢复映射后的选区，最后发一次真实变更通知。失败零部分应用且保留 future。现有 string[] 历史不含选区，替换前后选区恢复也是新增能力，须专项验证。不得伪造 input 或逐 patch 写入，也不得自动整篇切源码。
 - 失败处理：任一失败码（source-search.ts:86-93：`revision-mismatch`/`source-mismatch`/`missing-match`/`truncated-search`/`invalid-replacement-unicode`/`invalid-selection`/`invalid-result-caret`）→ 不应用任何内容、保留用户输入的查询与替换文本、面板显示按码解释的稳定文案；`truncated-search` 时"全部替换"按钮禁用并说明。
-- composition：替换进行前后若 `composing` 为真则拒绝并提示（textarea composition 中改 value 会破坏 IME）。
+- composition：写入前检查编辑器和查找/替换输入框组合状态，任一为真则拒绝且不改 value；不能先写入后发现 composing 再拒绝。
 - 替换成功后：结果按新 `(documentID, revision+1, raw)` 重建（revision 由 recordChange 通道自然 bump，bridge.ts:198-209），选区落在计划给出的建议选区（source-search.ts 成功结果含 selection）。
 - 保存联动：不新增保存语义；dirty/history 由既有 runtime→bridge→InkoraDocument 链路自然成立（InkoraDocument.swift:329-336），替换不是特殊保存事件。
 
@@ -157,3 +157,9 @@
 - 任务 B（依赖 A）：source/只读模式导航定位。
 - 任务 C（依赖 B）：source 模式原子替换。
 - 任务 D（依赖无，可并行 A-C）：raw↔PM 映射接口；完成前结构化模式定位/替换不出现在 UI。
+
+## 9. 管理者独立复核
+
+原稿 d71b5aa 的分层方向可保留，但 raw=textarea 偏移、replaceText 自动建历史两项与生产实现矛盾，已直接纠正文档。换行边界映射、完整快照验证、no-op 与 future 语义、选区历史和原子写入接缝都属于尚未实现的前置能力。导航或替换必须同时核对 documentID/revision/raw，纯模块没有 documentID，适配器必须补上；拒绝的 load 不清空有效查找状态。
+
+测试补充：旧结果 pointerdown/click，组合结束后晚到事件，查询框自身 composition，no-op 不清 future，全部替换单步 Undo/Redo，以及 CRLF/混合 EOL/bare CR/BOM 选区。006 的标题级定位不等同于 D 的通用 raw 范围映射，合并后需重新核查接口。A-C 仅为中间交付；结构化定位/替换仍是 M1 闭环必需，不能以计数面板宣告查找替换整体完成。
