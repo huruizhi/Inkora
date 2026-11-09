@@ -84,6 +84,17 @@ struct LocalImageInspection: Equatable {
 }
 
 final class LocalImageStore {
+  struct RecoveryCandidate: Equatable {
+    let sessionID: UUID
+    let documentID: String
+    let assets: [LocalImageAsset]
+  }
+
+  struct RecoveryDiscovery: Equatable {
+    var pending: [RecoveryCandidate] = []
+    var rejected: [URL] = []
+  }
+
   let root: URL
 
   init(root: URL) {
@@ -93,6 +104,45 @@ final class LocalImageStore {
   func begin(documentID: String, sessionID: UUID = UUID()) throws -> LocalImageSession {
     try LocalImageSession(root: root, documentID: documentID, sessionID: sessionID)
   }
+
+  func discoverRecovery() -> RecoveryDiscovery {
+    var discovery = RecoveryDiscovery()
+    let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey]
+    let directories =
+      (try? FileManager.default.contentsOfDirectory(
+        at: root, includingPropertiesForKeys: Array(keys),
+        options: [.skipsHiddenFiles])) ?? []
+    for directory in directories.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+      do {
+        let values = try directory.resourceValues(forKeys: keys)
+        guard let sessionID = UUID(uuidString: directory.lastPathComponent),
+          directory.lastPathComponent == sessionID.uuidString.lowercased()
+        else { continue }
+        guard values.isDirectory == true, values.isSymbolicLink != true else {
+          discovery.rejected.append(directory)
+          continue
+        }
+        let identity = try LocalImageSession.manifestIdentity(in: directory)
+        guard identity.sessionID == sessionID else { throw LocalImageError.corruptManifest }
+        let session = try begin(documentID: identity.documentID, sessionID: sessionID)
+        let pendingIDs = session.assets.filter {
+          $0.insertion == .pending
+            && ($0.state == .draft || $0.state == .awaitingMarkdown)
+        }.map(\.id)
+        guard !pendingIDs.isEmpty else { continue }
+        for assetID in pendingIDs {
+          try session.requireInsertionConfirmation(assetID: assetID)
+        }
+        discovery.pending.append(
+          RecoveryCandidate(
+            sessionID: sessionID, documentID: identity.documentID,
+            assets: session.assets.filter { pendingIDs.contains($0.id) }))
+      } catch {
+        discovery.rejected.append(directory)
+      }
+    }
+    return discovery
+  }
 }
 
 final class LocalImageSession {
@@ -101,6 +151,24 @@ final class LocalImageSession {
     let sessionID: UUID
     let documentID: String
     var assets: [LocalImageAsset]
+  }
+
+  fileprivate static func manifestIdentity(in directory: URL) throws -> (
+    sessionID: UUID, documentID: String
+  ) {
+    let manifestURL = directory.appendingPathComponent("manifest.json")
+    do {
+      let manifest = try JSONDecoder().decode(
+        Manifest.self, from: readRegularFile(manifestURL))
+      guard [1, 2].contains(manifest.schema), !manifest.documentID.isEmpty else {
+        throw LocalImageError.corruptManifest
+      }
+      return (manifest.sessionID, manifest.documentID)
+    } catch let error as LocalImageError {
+      throw error
+    } catch {
+      throw LocalImageError.corruptManifest
+    }
   }
 
   private static let maximumBytes = 25 * 1024 * 1024

@@ -152,6 +152,7 @@ describe("production source authority runtime", () => {
     const sourceSession = session as unknown as SourceAuthoritySession;
     expect(sourceSession.setRawSelection(sourceSession.currentRaw.length)).toBe(true);
     expect(sourceSession.insertImage({
+      assetID: "123e4567-e89b-12d3-a456-426614174000",
       uri: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174000",
       alt: "新图",
       title: null,
@@ -171,6 +172,62 @@ describe("production source authority runtime", () => {
     expect(runtime.getText()).toBe(draftRaw);
     expect(sourceSession.redo()).toBe(true);
     expect(runtime.getText()).not.toContain("inkora-draft:");
+    runtime.destroy();
+  });
+
+  it("retries a published first-save owner without undo or a phantom history step", () => {
+    const assetID = "123e4567-e89b-12d3-a456-426614174000";
+    const draft = `inkora-draft://asset/${assetID}`;
+    const { runtime, session } = createRuntime("");
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.insertImage({ assetID, uri: draft, alt: "图", title: null })).toBe(true);
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Note.assets/a.png",
+    }])).toBe(true);
+    const afterFirst = sourceSession.stateReport();
+    const revisionAfterFirst = sourceSession.status.revision;
+    const historyAfterFirst = sourceSession.past.length;
+
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Note.assets/a.png",
+    }])).toBe(true);
+    expect(sourceSession.stateReport()).toMatchObject({
+      currentRaw: afterFirst.currentRaw,
+      version: afterFirst.version,
+    });
+    expect(sourceSession.status.revision).toBe(revisionAfterFirst);
+    expect(sourceSession.past).toHaveLength(historyAfterFirst);
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Renamed.assets/a.png",
+    }])).toBe(true);
+    expect(runtime.getText()).toBe("![图](Renamed.assets/a.png)");
+    expect(sourceSession.undo()).toBe(true);
+    expect(runtime.getText()).toBe("![图](Note.assets/a.png)");
+    runtime.destroy();
+  });
+
+  it("does not retarget a managed asset after source editing removed its real image owner", () => {
+    const assetID = "123e4567-e89b-12d3-a456-426614174001";
+    const draft = `inkora-draft://asset/${assetID}`;
+    const { runtime, session } = createRuntime("");
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.insertImage({ assetID, uri: draft, alt: "图", title: null })).toBe(true);
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Note.assets/a.png",
+    }])).toBe(true);
+    expect(sourceSession.beginSource()).toBe(true);
+    expect(sourceSession.updateDraft("[普通链接](Note.assets/a.png)")).toBe(true);
+    expect(sourceSession.applySource()).toBe(true);
+    const before = sourceSession.stateReport();
+
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Other.assets/a.png",
+    }])).toBe(false);
+    expect(sourceSession.stateReport()).toMatchObject({
+      currentRaw: before.currentRaw,
+      version: before.version,
+    });
+    expect(runtime.getText()).toBe("[普通链接](Note.assets/a.png)");
     runtime.destroy();
   });
 

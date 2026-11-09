@@ -7,10 +7,18 @@ final class RecoveryCoordinator {
   func reviewDrafts() {
     guard let store = RecoveryStore.applicationStore() else { return }
     let found = store.discover()
-    if found.corruptCount > 0 {
+    if found.corruptCount > 0 || !found.rejectedImageSessions.isEmpty {
       let alert = NSAlert()
       alert.messageText = "部分恢复草稿已损坏"
       alert.informativeText = "无法验证的草稿不会被加载，原始草稿仍保留在恢复目录中。"
+      alert.runModal()
+    }
+    for session in found.pendingImageSessions {
+      let alert = NSAlert()
+      alert.messageText = "发现未完成的图片导入"
+      alert.informativeText =
+        "会话 \(session.sessionID.uuidString) 的 \(session.assets.count) 个图片资源已保留。为避免把旧选区重投到新光标，恢复后需要重新确认插入。"
+      alert.addButton(withTitle: "知道了")
       alert.runModal()
     }
     for draft in found.drafts {

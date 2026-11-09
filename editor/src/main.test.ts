@@ -637,6 +637,59 @@ it("root070: image import preserves an active link-field composition", async () 
   expect(h.editorHost().querySelector(".image-node")).not.toBeNull();
 });
 
+it("INK-M1-077: first-save retry follows the current asset owner through the bridge", async () => {
+  const h = await bootMain();
+  const documentID = "image-retry";
+  const documentEpoch = "123e4567-e89b-12d3-a456-426614174010";
+  const assetID = "123e4567-e89b-12d3-a456-426614174011";
+  const draft = `inkora-draft://asset/${assetID}`;
+  h.receive({
+    type: "loadDocument", requestID: "retry-load", documentID, revision: 0, text: "",
+  });
+  h.receive({ type: "queryState", requestID: "retry-selection" });
+  const selection = h.sent.at(-1)!.state!;
+  h.receive({
+    type: "applyImageImport", requestID: "retry-import", documentID, revision: 0,
+    documentEpoch, assetID, uri: draft, alt: "图", title: null,
+    displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174012",
+    selectionAnchor: selection.selectionAnchor, selectionHead: selection.selectionHead,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "stateChanged", state: { revision: 1, dirty: true },
+  });
+  h.receive({
+    type: "prepareImageSave", requestID: "retry-first", documentID, revision: 1,
+    documentEpoch, rewrites: [{ assetID, from: draft, to: "Note.assets/a.png" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 2 } });
+
+  h.receive({
+    type: "prepareImageSave", requestID: "retry-same", documentID, revision: 2,
+    documentEpoch, rewrites: [{ assetID, from: draft, to: "Note.assets/a.png" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 2 } });
+  h.receive({
+    type: "prepareImageSave", requestID: "retry-other", documentID, revision: 2,
+    documentEpoch, rewrites: [{ assetID, from: draft, to: "Other.assets/a.png" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 3 } });
+  h.receive({
+    type: "createSnapshot", requestID: "retry-snapshot", documentID, revision: 3,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", revision: 3, text: "![图](Other.assets/a.png)",
+  });
+  h.receive({
+    type: "executeCommand", requestID: "retry-undo", documentID, revision: 3, command: "undo",
+  });
+  h.receive({
+    type: "createSnapshot", requestID: "retry-after-undo", documentID, revision: 4,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", revision: 4, text: "![图](Note.assets/a.png)",
+  });
+});
+
 it("root062: link action pointerdown keeps an active candidate field focused", async () => {
   const h = await rootLinkHarness();
   const form = h.linkEditor()!;

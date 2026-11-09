@@ -178,6 +178,65 @@ final class LocalImageMigrationTests: XCTestCase {
     XCTAssertEqual(LocalImageMigrationCoordinator.imageURIs(in: markdown), [uri])
   }
 
+  func testInlineImageScannerKeepsBalancedAngleTitleAndEscapedDestinations() {
+    let markdown = #"""
+      ![balanced](Old.assets/a(b).png)
+      ![angle](<Old.assets/angle image.png> "title")
+      ![escaped](Old.assets/a\(b\).png 'title')
+      [ordinary](Old.assets/not-image.png)
+      `![code](Old.assets/not-code.png)`
+      """#
+    XCTAssertEqual(
+      LocalImageMigrationCoordinator.imageURIs(in: markdown),
+      ["Old.assets/a(b).png", "Old.assets/angle image.png"])
+  }
+
+  func testInlineImageScannerRejectsUnclosedOwnersAndPlainLinks() {
+    let markdown = #"""
+      ![unclosed](Old.assets/a(b.png)
+      [plain](Old.assets/real.png)
+      ![valid](Old.assets/real.png)
+      """#
+    XCTAssertEqual(
+      LocalImageMigrationCoordinator.imageURIs(in: markdown), ["Old.assets/real.png"])
+  }
+
+  func testSaveAsMigratesBalancedParenthesisWithoutChangingMarkdown() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let source = scratch.appendingPathComponent("Source")
+    let target = scratch.appendingPathComponent("Target")
+    try FileManager.default.createDirectory(
+      at: source.appendingPathComponent("Old.assets"), withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+    for name in ["a(b).png", "angle image.png", "escaped(a).png"] {
+      try png.write(to: source.appendingPathComponent("Old.assets/\(name)"))
+    }
+    let markdown = #"""
+      ![balanced](Old.assets/a(b).png)
+      ![angle](<Old.assets/angle image.png> "title")
+      ![escaped](Old.assets/escaped\(a\).png 'title')
+
+      """#
+    let migration = LocalImageMigrationCoordinator(
+      journalRoot: scratch.appendingPathComponent("Journal"))
+
+    let plan = try migration.prepare(
+      markdown: markdown,
+      sourceDocumentURL: source.appendingPathComponent("Old.md"),
+      targetDocumentURL: target.appendingPathComponent("New.md"),
+      sourceAuthorizedDirectory: source,
+      targetAuthorizedDirectory: target)
+    XCTAssertEqual(plan.markdown, markdown)
+    XCTAssertEqual(
+      plan.items.map(\.uri),
+      ["Old.assets/a(b).png", "Old.assets/angle image.png", "Old.assets/escaped(a).png"])
+    try migration.publish(plan)
+    for name in ["a(b).png", "angle image.png", "escaped(a).png"] {
+      XCTAssertEqual(try Data(contentsOf: target.appendingPathComponent("Old.assets/\(name)")), png)
+    }
+  }
+
   func testSaveAsIgnoresImageExamplesInCodeCommentsAndEscapes() throws {
     let scratch = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: scratch) }

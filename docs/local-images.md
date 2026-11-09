@@ -26,4 +26,6 @@ PNG、JPEG、GIF、WebP 使用 ImageIO 做真实解码检查，保留源字节�
 
 Save As 使用 UUID 私有 staging，并把 prepared、published-awaiting-markdown 或 failed-conservative schema 2 journal 写在 Recovery，记录 Markdown SHA、源/目标文档和授权根。启动只读枚举并分别报告历史 journal state 与当前 Markdown/资源 SHA 完整性；非法 schema/path/symlink 保留原记录并拒绝裁决。Markdown 成功后才删除 journal；失败只清本操作 staging，已发布资源保守保留。扫描覆盖行内、完整、折叠与快捷参考图，引用标签按 CommonMark escape/entity/case/whitespace 归一化，并排除普通链接、未使用定义、fenced/inline code、HTML 注释和转义图片示例。
 
+行内图片 owner 使用有界 CommonMark scanner，而非在首个 `)` 截断的正则：支持平衡括号、angle destination、title 与反斜杠转义 delimiter，返回解码后的真实资源 URI，但不改 Markdown 原字节。命名图片注册后的同步预检与异步 scheme 读取都由 broker 自己取得根目录 security-scope lease；descriptor 读取完成、取消或失败后对称单次释放，不依赖调用者残留 grant。
+
 真实 Sandbox 面板、跨启动 bookmark、WK 图片显示、拖放/系统剪贴板、IME 与正式关闭重开由管理者集中物理验收；hostless 测试只证明生产接缝与注入的授权/调度模型，不外推系统权限已授予。

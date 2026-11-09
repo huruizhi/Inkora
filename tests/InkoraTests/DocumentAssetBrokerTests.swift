@@ -114,6 +114,46 @@ final class DocumentAssetBrokerTests: XCTestCase {
         sha256: RecoveryFingerprint.hash(png), mimeType: "image/png"))
   }
 
+  func testSynchronousPreflightHoldsScopeLeaseAcrossDescriptorReadAndReleasesOnce() throws {
+    let scratch = try temporaryDirectory()
+    defer {
+      try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: scratch.path)
+      try? FileManager.default.removeItem(at: scratch)
+    }
+    try png.write(to: scratch.appendingPathComponent("a.png"))
+    let leases = PermissionAssetLeaseFactory(root: scratch)
+    let broker = DocumentAssetBroker(leaseFactory: leases)
+    let epoch = broker.beginDocument(documentID: "doc")
+    let capability = try broker.register(
+      documentID: "doc", epoch: epoch, rootURL: scratch,
+      percentEncodedRelativePath: "a.png", sha256: RecoveryFingerprint.hash(png),
+      mimeType: "image/png")
+    try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: scratch.path)
+
+    XCTAssertEqual(broker.read(token: capability.token).status, .ready)
+    XCTAssertEqual(leases.starts, 1)
+    XCTAssertEqual(leases.stops, 1)
+    XCTAssertEqual(leases.active, 0)
+  }
+
+  func testSynchronousPreflightReleasesScopeOnceOnReadFailure() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    try png.write(to: scratch.appendingPathComponent("a.png"))
+    let leases = CountingAssetLeaseFactory()
+    let broker = DocumentAssetBroker(leaseFactory: leases)
+    let epoch = broker.beginDocument(documentID: "doc")
+    let capability = try broker.register(
+      documentID: "doc", epoch: epoch, rootURL: scratch,
+      percentEncodedRelativePath: "a.png", sha256: String(repeating: "0", count: 64),
+      mimeType: "image/png")
+
+    XCTAssertEqual(broker.read(token: capability.token).status, .checksumMismatch)
+    XCTAssertEqual(leases.active, 0)
+    XCTAssertEqual(leases.starts, 1)
+    XCTAssertEqual(leases.stops, 1)
+  }
+
   private func temporaryDirectory() throws -> URL {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent("InkoraBroker-\(UUID().uuidString)", isDirectory: true)
@@ -134,9 +174,15 @@ private final class ControlledAssetScheduler: AssetReadScheduling, @unchecked Se
 
 private final class CountingAssetLeaseFactory: AssetLeaseFactory, @unchecked Sendable {
   private(set) var active = 0
+  private(set) var starts = 0
+  private(set) var stops = 0
   func lease(for url: URL) -> any AssetScopeLease {
+    starts += 1
     active += 1
-    return CountingAssetLease { self.active -= 1 }
+    return CountingAssetLease {
+      self.active -= 1
+      self.stops += 1
+    }
   }
 }
 
@@ -144,6 +190,25 @@ private final class CountingAssetLease: AssetScopeLease, @unchecked Sendable {
   private let releaseBlock: () -> Void
   init(_ release: @escaping () -> Void) { releaseBlock = release }
   func release() { releaseBlock() }
+}
+
+private final class PermissionAssetLeaseFactory: AssetLeaseFactory, @unchecked Sendable {
+  let root: URL
+  private(set) var starts = 0
+  private(set) var stops = 0
+  private(set) var active = 0
+  init(root: URL) { self.root = root }
+  func lease(for url: URL) -> any AssetScopeLease {
+    XCTAssertEqual(url.standardizedFileURL, root.standardizedFileURL)
+    starts += 1
+    active += 1
+    try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: root.path)
+    return CountingAssetLease { [self] in
+      stops += 1
+      active -= 1
+      try? FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: root.path)
+    }
+  }
 }
 
 private struct ImmediateAssetDelivery: AssetTaskDelivery {
