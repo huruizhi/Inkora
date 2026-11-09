@@ -79,3 +79,5 @@ Status: open
 当前收束：013最终0f17f22独立19控制、干净303、lint/build通过；两个Agent/workspace备份回收，累计42，当前无功能执行Agent。已形成[草稿PR#70](https://github.com/huruizhi/Inkora/pull/70)，集成head6ad325b；[默认非UI CI](https://github.com/huruizhi/Inkora/actions/runs/42568188093)实际success，UI/完整启动基准按参数skipped。main未合，真实窗口因锁屏未验，M0/阶段门槛不变。[集成与后续集中点验](execution/M1-014-integration-ci.md)为当前入口，不再以此前“执行中”历史段落覆盖本状态。
 
 用户经 ask-matt 选择后续推进路线并要求执行：先做[写作辅助双轴审查](execution/M1-015-016-pr-review.md)，仅两个只读审查 Agent（GLM Standards、Sol Spec）。本轮预检仍锁屏 exit78，未启动 App；M0 只保留 H1/H2/H3，不新增门槛。依 docs/testing.md，普通 PR 可凭最新 main 基线和默认非 UI CI 合并，真实 UI 待验须准确披露，不能将阶段真人验收误加为普通合并门禁。审查收敛后再推进 PR 收尾；架构票仍待 M0 证据，之后交 to-spec/to-tickets 形成生产迁移的纵向任务。
+
+当前已完成收尾：[写作辅助PR#70](https://github.com/huruizhi/Inkora/pull/70)经双轴审查和HTML/CRLF两项修正后，[最终默认CI](https://github.com/huruizhi/Inkora/actions/runs/42576854657) attempt3实际success，受检b294e6b；已squash合入main **48258a93b3fc4a75df21a22ac0d175e01943b744**，本地主工作区已快进且合并树与受检树一致。干净315项/独立27控制及lint/build通过，4位Agent/workspace回收，累计46；临时CI传输设置已恢复。详细证据见[集成当前状态](execution/M1-014-integration-ci.md)。此前“草稿/未合并/执行中”段落仅为历史；实际UI、M0三项物理证据和首阶段常用结构/图片等功能缺口仍保留。

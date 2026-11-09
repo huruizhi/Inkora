@@ -71,3 +71,27 @@ Spec workspace 已备份并回收，removedDirectory=true；bundle 验证和 tar
 当前仅一位执行者：GLM-5.3/low，Agent `9365bf81-1fb2-44a8-9676-d0fd8111c28c`，workspace `wks_d38a5a5ab5d19725`，路径 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-018-heading-eol`，分支 `task/INK-M1-018-heading-eol-boundaries`，基线cf71e39，host=srv_MEqRNkRW6fSx，notifyOnFinish=true。
 
 仅analysis实现/测试、分析文档及新018任务记录4文件；恢复原EOL约定，修复原文范围映射，保持HTML口径、raw和revision不变。先复现冻结2红，再单变量诊断；补ATX/Setext/BOM/混合EOL/EOF与容器范围控制。最终 editor test 必须含bridge，未执行GUI/IME/磁盘不改门槛；完成后统一独立验收与新HEAD默认CI，不扩大重构。
+
+018交付 c0e9de9b69c50d45ec54f3ff0b698bd8a221149f：CRLF 映射先记录起始 CR，再跳过 LF，原 EOL 契约已恢复。管理者复核确认生产变更仅限该映射，并将017/018快进集成至014。独立27冻结控制、干净315项（含bridge）、lint/build、最终git diff --check通过，TypeError=0。
+
+执行者323项包含临时冻结8项，清理副本后的产品套件实际315项/18文件；交付文档已纠正计数口径。管理者首次复制6条旧控制文件时放错相对import目录，产生模块解析失败；按原文件相对位置纠正后27/27，失败单独归档为harness-path-failure，不记产品错误。HTML/EOL原始冻结用例及RED日志 SHA均未改变。
+
+018 Agent及workspace已归档回收，removedDirectory=true；228文件逐SHA核对和bundle验证通过，归档ink-m1-018-heading-eol前缀。累计46完成workspace回收；本轮没有闲置执行Agent。
+
+集成最终HEAD `b294e6b5d03ea930326f2add767688873fc01a94` 已推送，包含交付计数与验证说明。新默认非UI CI [42576854657](https://github.com/huruizhi/Inkora/actions/runs/42576854657) 已触发，verify job129026403876；旧6ad CI不外推。仅该最终HEAD实际通过、main仍为固定基线且PR状态核对后才合并；等待中发现checkout抓取网络超时，action正在自行重试，不修改产品或runner配置来绕过。
+
+### CI 传输恢复
+
+前两次 attempt 都在 HTTPS checkout 抓取超时失败（curl56 / 443连接失败），lint及测试未执行，不记为产品测试失败，更不能记通过。保留两次实际失败日志。根进程和runner代理环境、Git全局代理均未设置；HTTP HEAD联通不等于Git pack传输成功，不据此判网络已恢复。
+
+管理者在runner工作副本与临时HOME条件下，用命令级URL重写验证现有SSH读取同一仓库，返回准确b294e6b，exit0。随后仅对runner单一工作副本 `/Users/rayhu/.local/share/github-actions-runner/inkora/_work/Inkora/Inkora` 增加精确仓库URL的临时 insteadOf（此前该键不存在），重跑失败job。未改系统代理、全局Git、产品、workflow、凭据或检查项；CI仍自行从GitHub获取同一提交。
+
+第三次attempt的job129030166656已经checkout/toolchain/lint通过并进入非UI测试。临时URL设置由独立watch进程finally清除并校验恢复不存在；清理结果必须以 artifacts/logs/ink-m1-018/temporary-ci-route.json 的 restoredAbsent 为准，当前仍待整轮实际结论。
+
+### 已完成合并
+
+attempt3 实际 completed/success，HEAD仍为b294e6b；lint、非UI测试层、Release离线资源检查成功，light bench步骤success但warn-only，UI及full bench按参数skipped。watch exit0，finally已清除临时URL设置，配置读回不存在，marker restoredAbsent=true、cleanupRequired=false。
+
+PR已标记ready后通过expected_head_sha=b294e6b的受检提交保护squash合并，结果merged=true，主分支commit `48258a93b3fc4a75df21a22ac0d175e01943b744`；合并前main仍36e6365。主工作区clean后安全快进，主分支Git tree与受检b294e6b完全一致。无新依赖、生产内核迁移或UI验收冒称；回收完成的4位Agent/workspace，不保留闲置执行会话。
+
+当前交付是写作辅助功能进入main。Standards维护建议作为后续改进候选，未将它们泛化成无限重构门槛。M0只保留H1/H2/H3物理证据，架构票仍未解决；下一批生产内核任务必须先形成架构结论与规格，不将原型直接合入产品。
