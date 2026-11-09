@@ -9,6 +9,7 @@ import {
   createEditorRuntime,
   type EditorRuntime,
   type EditorRuntimeStatus,
+  type RuntimeChangeKind,
 } from "./editor-runtime";
 import { analyzeDocument } from "./document-analysis";
 import { DocumentAnalysisPanel } from "./document-analysis-panel";
@@ -56,6 +57,37 @@ app.append(workspace);
 const findBar = document.createElement("div");
 findBar.className = "find-bar";
 workspace.append(findBar);
+const modeBar = document.createElement("div");
+modeBar.className = "editor-mode-bar";
+modeBar.setAttribute("role", "toolbar");
+modeBar.setAttribute("aria-label", "编辑模式");
+const visualModeButton = document.createElement("button");
+visualModeButton.type = "button";
+visualModeButton.className = "editor-mode-visual";
+visualModeButton.textContent = "可视";
+const sourceModeButton = document.createElement("button");
+sourceModeButton.type = "button";
+sourceModeButton.className = "editor-mode-source";
+sourceModeButton.textContent = "源码";
+const sourceApplyButton = document.createElement("button");
+sourceApplyButton.type = "button";
+sourceApplyButton.className = "source-draft-apply";
+sourceApplyButton.textContent = "提交源码";
+const sourceCancelButton = document.createElement("button");
+sourceCancelButton.type = "button";
+sourceCancelButton.className = "source-draft-cancel";
+sourceCancelButton.textContent = "取消草稿";
+const modeStatus = document.createElement("span");
+modeStatus.className = "editor-mode-status";
+modeStatus.setAttribute("role", "status");
+modeBar.append(
+  visualModeButton,
+  sourceModeButton,
+  sourceApplyButton,
+  sourceCancelButton,
+  modeStatus,
+);
+workspace.append(modeBar);
 const editorHost = document.createElement("div");
 editorHost.className = "editor-host";
 workspace.append(editorHost);
@@ -65,6 +97,46 @@ let executingCommand = false;
 let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
 let loadEpoch = 0;
+
+function updateModeControls(): void {
+  const activeRuntime = runtime;
+  const mode = activeRuntime?.mode;
+  visualModeButton.setAttribute("aria-pressed", String(mode === "visual"));
+  sourceModeButton.setAttribute("aria-pressed", String(mode === "source"));
+  visualModeButton.disabled = !activeRuntime || mode === "read_only" ||
+    (mode === "source" && activeRuntime.status.draftDirty);
+  sourceModeButton.disabled = !activeRuntime || mode === "read_only" || mode === "source" ||
+    activeRuntime.composing;
+  sourceApplyButton.hidden = mode !== "source";
+  sourceCancelButton.hidden = mode !== "source";
+  sourceApplyButton.disabled = !activeRuntime?.status.draftDirty || activeRuntime.composing;
+  sourceCancelButton.disabled = !activeRuntime || activeRuntime.composing;
+  modeStatus.textContent = activeRuntime?.status.unresolved
+    ? "当前原文需要源码修复，保存已阻断"
+    : activeRuntime?.status.draftDirty
+      ? "源码草稿尚未提交"
+      : "";
+}
+
+sourceModeButton.addEventListener("click", () => {
+  runtime?.enterSourceMode();
+  updateModeControls();
+});
+visualModeButton.addEventListener("click", () => {
+  if (runtime?.mode === "source" && !runtime.status.draftDirty) {
+    runtime.cancelSourceDraft();
+  }
+  updateModeControls();
+});
+sourceApplyButton.addEventListener("click", () => {
+  runtime?.applySourceDraft();
+  updateModeControls();
+});
+sourceCancelButton.addEventListener("click", () => {
+  runtime?.cancelSourceDraft();
+  updateModeControls();
+});
+updateModeControls();
 
 const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
   const activeRuntime = runtime;
@@ -363,7 +435,12 @@ function postToNative(message: Parameters<typeof encodeEditorMessage>[0]): void 
   }
 }
 
-function recordRuntimeChange(status: EditorRuntimeStatus): void {
+function recordRuntimeChange(
+  status: EditorRuntimeStatus,
+  kind: RuntimeChangeKind = "document",
+): void {
+  updateModeControls();
+  if (kind === "status") return;
   if (executingCommand) return;
   const message = session.recordChange(status);
   if (message) postToNative(message);
@@ -391,6 +468,7 @@ window.inkora = {
               loadEpoch += 1;
               runtime?.destroy();
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange);
+              updateModeControls();
               // 跨 load 不夺走查询框正在进行的 IME composition；面板会在
               // compositionend 安全收口后执行已声明的新文档查询重置。
               if (!queryWasComposing) runtime.focus();
@@ -411,11 +489,20 @@ window.inkora = {
                 });
                 return;
               }
+              const snapshot = runtime?.snapshotText();
+              if (!snapshot?.ok) {
+                postToNative({
+                  protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+                  requestID: command.requestID, code: "editor_not_ready", action: "retry",
+                  message: snapshot?.message ?? "No document is loaded",
+                });
+                return;
+              }
               postToNative(session.queryState({
                 protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "queryState",
                 requestID: `${command.requestID}-state`,
               }));
-              postToNative(session.createSnapshot(command, runtime?.getText() ?? ""));
+              postToNative(session.createSnapshot(command, snapshot.value));
             };
             if (runtime?.composing) window.setTimeout(capture, 0);
             else capture();
@@ -433,6 +520,7 @@ window.inkora = {
             );
           } finally {
             executingCommand = false;
+            updateModeControls();
           }
           break;
         case "executeCommand":
@@ -458,6 +546,7 @@ window.inkora = {
             // executingCommand 期间 runtime 回调被抑制（避免重复 Bridge 消息），
             // 但显式响应已作为 stateChanged 发出，面板据此刷新 Undo/Redo 后内容。
             executingCommand = false;
+            updateModeControls();
           }
           break;
         case "queryState":

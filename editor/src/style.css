@@ -74,6 +74,41 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
 }
 
+.editor-mode-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+}
+.editor-mode-bar button {
+  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border-radius: 6px;
+  padding: 3px 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+.editor-mode-bar button[aria-pressed="true"] {
+  background: color-mix(in srgb, AccentColor 18%, transparent);
+  border-color: AccentColor;
+}
+.editor-mode-bar button:focus-visible {
+  outline: 2px solid AccentColor;
+  outline-offset: 1px;
+}
+.editor-mode-bar button:disabled { opacity: 0.5; }
+.editor-mode-status {
+  min-width: 0;
+  color: color-mix(in srgb, CanvasText 70%, Canvas);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .editor-host {
   flex: 1 1 auto;
   min-width: 0;

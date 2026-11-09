@@ -38,6 +38,10 @@ interface Harness {
   replacement(): HTMLInputElement;
   replaceSelected(): HTMLButtonElement;
   replaceAll(): HTMLButtonElement;
+  sourceMode(): HTMLButtonElement;
+  visualMode(): HTMLButtonElement;
+  sourceApply(): HTMLButtonElement;
+  sourceCancel(): HTMLButtonElement;
  }
 
 // prosemirror-view 在 jsdom 下还需要这些全局（MutationObserver、raf、
@@ -162,6 +166,10 @@ async function bootMain(): Promise<Harness> {
     replacement: () => dom.window.document.querySelector<HTMLInputElement>(".search-panel-replacement")!,
     replaceSelected: () => dom.window.document.querySelector<HTMLButtonElement>(".search-panel-replace-selected")!,
     replaceAll: () => dom.window.document.querySelector<HTMLButtonElement>(".search-panel-replace-all")!,
+    sourceMode: () => dom.window.document.querySelector<HTMLButtonElement>(".editor-mode-source")!,
+    visualMode: () => dom.window.document.querySelector<HTMLButtonElement>(".editor-mode-visual")!,
+    sourceApply: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-apply")!,
+    sourceCancel: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-cancel")!,
   };
 }
 
@@ -170,6 +178,29 @@ async function bootMain(): Promise<Harness> {
 // 无法驱动；集成测试用有界真实等待。Promise.withResolvers 需 es2024 lib
 // （仓库 tsconfig 较低且不在本任务允许修改范围），沿用 executor 形式。
 const settle = (ms = 60): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+it("提供键盘可达的可视/源码切换和草稿提交取消入口", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-mode", documentID: "doc-mode", revision: 0,
+    text: "# 标题\n\n正文\n",
+  });
+  await settle();
+  expect(h.sourceMode().type).toBe("button");
+  expect(h.sourceMode().getAttribute("aria-pressed")).toBe("false");
+  h.sourceMode().click();
+  expect(h.editorHost().querySelector("textarea#editor")).not.toBeNull();
+  expect(h.sourceMode().getAttribute("aria-pressed")).toBe("true");
+  expect(h.sourceApply().disabled).toBe(true);
+  const draft = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  draft.value = "# 标题\n\n源码修改\n";
+  draft.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+  expect(h.sourceApply().disabled).toBe(false);
+  h.sourceCancel().click();
+  expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+  expect(h.visualMode().getAttribute("aria-pressed")).toBe("true");
+  expect(h.stateMessages()).toHaveLength(1);
+});
 
 function expectedStats(raw: string): { characters: string; writingUnits: string } {
   const analysis = analyzeDocument({ raw, revision: 0 });
@@ -192,11 +223,66 @@ afterEach(() => {
 });
 
 describe("main：真实 main/Bridge/runtime 面板集成", () => {
+  it("草稿与含混原文拒绝快照，取消或源码修复后可恢复保存", async () => {
+    const h = await bootMain();
+    const original = "# 标题\n\n正文\n";
+    h.receive({
+      type: "loadDocument", requestID: "load-draft", documentID: "draft", revision: 0,
+      text: original,
+    });
+    await settle();
+    h.sourceMode().click();
+    const draft = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    draft.value = "# 标题\n\n未提交草稿\n";
+    draft.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-draft", documentID: "draft", revision: 0,
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "editorError", requestID: "snapshot-draft", code: "editor_not_ready",
+    });
+    h.sourceCancel().click();
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-after-cancel", documentID: "draft", revision: 0,
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "snapshotReady", requestID: "snapshot-after-cancel", text: original,
+    });
+
+    const malformed = "正文\n\n$$\n未闭合\n";
+    h.receive({
+      type: "loadDocument", requestID: "load-malformed", documentID: "malformed", revision: 0,
+      text: malformed,
+    });
+    await settle();
+    expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-malformed", documentID: "malformed", revision: 0,
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "editorError", requestID: "snapshot-malformed", code: "editor_not_ready",
+    });
+    h.sourceMode().click();
+    const repair = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    const repaired = `${malformed}$$\n`;
+    repair.value = repaired;
+    repair.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.sourceApply().click();
+    expect(h.lastRevision()).toBe(1);
+    h.receive({
+      type: "createSnapshot", requestID: "snapshot-repaired", documentID: "malformed", revision: 1,
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "snapshotReady", requestID: "snapshot-repaired", revision: 1, text: repaired,
+    });
+  });
+
   it("源码模式只替换正文精确选中匹配，单次 revision 且 Undo/Redo 精确", async () => {
     const h = await bootMain();
     const raw = "<x>one one</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "load", documentID: "doc", revision: 4, text: raw });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("one");
     await settle();
@@ -225,6 +311,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "load", documentID: "source", revision: 0, text: "<x>中 中</x>\n" });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("中");
     await settle();
@@ -266,6 +353,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "\uFEFF# 第一\r\n\n## 第二 👩‍💻\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 1, text: raw });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     const target = analyzeDocument({ raw, revision: 1 }).headings[1];
     const before = h.sent.length;
@@ -280,6 +368,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "<x>正文</x>\n\n# 标题\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: raw });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     area.focus();
     area.setSelectionRange(2, 4);
@@ -415,6 +504,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 2, text: original,
     });
     await settle();
+    h.sourceMode().click();
     expect(h.panelStat("字符数")).toBe(expectedStats(original).characters);
 
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor");
@@ -423,6 +513,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     // 真实编辑：input 事件 → kernel → runtime → recordChange → stateChanged。
     area.value = "<custom-element>改后中文</custom-element>\r\n";
     area.dispatchEvent(new h.dom.window.Event("input"));
+    h.sourceApply().click();
     await settle();
     const afterEdit = h.stateMessages().length;
     expect(afterEdit).toBe(2); // load + edit，各一条
@@ -435,6 +526,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       revision: revisionBeforeUndo, command: "undo",
     });
     await settle();
+    h.sourceMode().click();
     expect(h.stateMessages()).toHaveLength(afterEdit + 1);
     expect(h.panelStat("字数")).toBe(expectedStats(original).writingUnits);
     expect(h.lastRevision()).toBe(revisionBeforeUndo + 1);
@@ -457,6 +549,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       text: original,
     });
     await settle();
+    h.sourceMode().click();
 
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor");
     if (!area) throw new Error("Expected source mode textarea");
@@ -464,6 +557,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const edited = "<custom-element>已编辑中文</custom-element>\r\n";
     area.value = edited;
     area.dispatchEvent(new h.dom.window.Event("input"));
+    h.sourceApply().click();
     await settle();
     expect(h.panelStat("字数")).toBe(expectedStats(edited).writingUnits);
 
@@ -472,6 +566,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       revision: h.lastRevision(), text: edited,
     });
     await settle();
+    h.sourceMode().click();
     // load + edit + markSaved 各一条：executingCommand 抑制了 runtime 回调重复上报。
     expect(h.stateMessages()).toHaveLength(3);
     expect(h.stateMessages().at(-1)?.state?.dirty).toBe(false);
@@ -488,6 +583,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
       text: "<x>正文</x>\n",
     });
     await settle();
+    h.sourceMode().click();
     const stable = expectedStats("<x>正文</x>\n");
     expect(h.panelStat("字数")).toBe(stable.writingUnits);
 
@@ -507,6 +603,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(area.selectionStart).toBe(4);
 
     area.dispatchEvent(new h.dom.window.Event("compositionend"));
+    h.sourceApply().click();
     await settle();
     expect(h.panelStat("字数")).toBe(expectedStats("<x>正文nihongo</x>\n").writingUnits);
     expect(h.dom.window.document.activeElement).toBe(area);
@@ -616,6 +713,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "<x>foo Foo FOO bar</x>\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: raw });
     await settle();
+    h.sourceMode().click();
 
     expect(h.searchBody().hidden).toBe(true);
     h.searchButton().click();
@@ -655,6 +753,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = `<x>${"ha ".repeat(150)}</x>\n`;
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: raw });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("ha");
     await settle(120);
@@ -669,6 +768,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "<x>one one one</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "source", revision: 4, text: raw });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("one");
     await settle();
@@ -733,6 +833,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const raw = "<x>one one</x>\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "source", revision: 0, text: raw });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("one");
     await settle();
@@ -761,6 +862,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "same", revision: 2, text: "<x>one one</x>\n" });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("one");
     await settle();
@@ -768,6 +870,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
 
     h.receive({ type: "loadDocument", requestID: "r2", documentID: "same", revision: 2, text: "<x>one one</x>\n" });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
     area.setSelectionRange(1, 3);
     oldNext.click();
@@ -781,9 +884,11 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const edited = "<x>one edited</x>\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "history", revision: 0, text: original });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
     area.value = edited;
     area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.sourceApply().click();
     await settle();
     area.focus();
     h.receive({
@@ -815,6 +920,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const original = "<x>foo foo</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 2, text: original });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("foo");
     await settle();
@@ -823,6 +929,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     area.value = "<x>foo bar</x>\r\n";
     area.dispatchEvent(new h.dom.window.Event("input"));
+    h.sourceApply().click();
     await settle();
     expect(h.searchResultsText()).toContain("1 处匹配");
 
@@ -849,9 +956,11 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const edited = "<x>edited</x>\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: original });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     area.value = edited;
     area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.sourceApply().click();
     await settle();
 
     h.searchButton().click();
@@ -1000,6 +1109,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 0, text: "<x>a</x>\n" });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("a");
     await settle();
@@ -1041,6 +1151,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>foo</x>\n" });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("foo");
     await settle();
@@ -1056,11 +1167,9 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.searchResultsText()).toContain("1 处匹配");
 
     area.dispatchEvent(new h.dom.window.Event("compositionend"));
+    h.sourceApply().click();
     await settle();
-    // 收口后的真实 stateChanged 才重算。
-    area.value = "<x>foo foo</x>\n";
-    area.dispatchEvent(new h.dom.window.Event("input"));
-    await settle();
+    // 源码草稿显式提交后的真实 stateChanged 才重算。
     expect(h.searchResultsText()).toContain("2 处匹配");
   });
 
@@ -1143,6 +1252,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const original = "<x>foo</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 3, text: original });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
 
     h.searchButton().click();
@@ -1168,6 +1278,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     // 编辑历史仍可用：编辑后 undo 回到 load 基线。
     area.value = "<x>foo edited</x>\r\n";
     area.dispatchEvent(new h.dom.window.Event("input"));
+    h.sourceApply().click();
     await settle();
     h.receive({
       type: "executeCommand", requestID: "r2", documentID: "doc-src",
@@ -1182,6 +1293,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const original = "<x>foo foo</x>\r\n";
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 1, text: original });
     await settle();
+    h.sourceMode().click();
     h.searchButton().click();
     h.typeSearchQuery("foo");
     await settle();
@@ -1205,6 +1317,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>正文</x>\n" });
     await settle();
+    h.sourceMode().click();
     const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
     area.focus();
     area.setSelectionRange(2, 4);
