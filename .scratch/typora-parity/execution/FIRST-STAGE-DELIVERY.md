@@ -150,3 +150,7 @@ main仍48258a9；M0有界门槛保持通过。V1最终IME发布未闭合，V3/V4
 已派 053 基线744c014（产品树与b80相同）独立复现/补正，Sol5.6/medium/default，无配置profile；agent e6b473a5-eba9-40ab-8265-d08cff3b093f / workspace wks_0ed404817c93ab1c / task/INK-M1-053-native-core-regressions。范围先是原生 headless WK 测试，若产品缺陷须先报告红例与最小范围；不删/skip有效断言，不开App/UI，不改050。两个执行者为050与053，完成须分别独立验收及Agent/workspace两层回收。
 
 图片实际实施安排在该原生阻断修正后接续，保持两执行者上限。物理输入暂缓；main仍48258a9，V1原生绿灯与首阶段完整功能都未闭合，不合并失败候选或提前标完。
+
+054 可视查找替换契约/独立 golden 已推送到 task/INK-SPEC-054-visual-search-acceptance（主产物88f1dee）。14 对 input/expected、132 项标准库 SHA/字节推导校验、28 个暂存 Git blob SHA 一致，含跨 marks、链接同字目标/标题排除、实体/转义、代码定界符、表格/任务、保护片段邻接、140 个全替换、Unicode/no-op/epoch。它们是实施前判据，不是已执行的产品测试；后续 V6 必须真实 SearchPanel/PM 入口和整批单历史事务通过，不许把“只计数/不可定位替换”当最终状态。
+
+050与053各确切handle在本轮核对仍running、无pending permissions/attention，没有重启或新增第3名Agent。Native的7个skips已逐项核对为5项PerformanceBaselineTests和2项PerformanceWebViewTests的按需基准，不能称121全过或最低OS/性能已验。
