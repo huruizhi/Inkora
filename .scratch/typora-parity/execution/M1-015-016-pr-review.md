@@ -39,3 +39,9 @@ M0 与 M1 不能据 PR 合并宣布完成。M0 当前只剩 [收尾清单](M0-CL
 6. 本地资源面板授权、书签跨启动、拖放/粘贴与 WK broker 可以另行独立验证；正式图片编辑依赖架构与平台证据。当前不增加第三个执行 Agent。
 
 本记录是调度与入口，不是生产迁移规格，也不代替尚未取得的架构决定或真人验收。
+
+## Standards 已返回
+
+已接收 [规范审查](reviews/INK-M1-015-standards.md)：0 项书面规则硬违规，4 项判断类维护建议（3 中、1 低）。管理者已核对实现与引用，未将重复 helper 或理论 locale 风险误记为已证实产品故障。Agent `59543e3f-a946-436d-986f-151c464adfc9` 已及时归档；独立 worktree HEAD 仍为 6ad325b，clean。Spec 审查继续等待完成通知，不轮询，不提前合并 PR。
+
+Standards workspace 已备份并回收，archive_workspace 返回 removedDirectory=true。归档根 `/Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed` 下 `ink-m1-015-standards-review` 的 bundle 校验通过，tar 的 224 个文件逐字节 SHA 核对通过，报告和独立 backup.json 已保留；累计完成受管 workspace 回收 43 个。
