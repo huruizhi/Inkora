@@ -502,6 +502,41 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testAcknowledgedImageDescriptorLoadsVerifiedPNGThroughRealSchemeHandler() async throws {
+    let scratch = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let png = Data(
+      base64Encoded:
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )!
+    let document = InkoraDocument()
+    document.configureRecovery(store: RecoveryStore(directory: scratch))
+    let asset = try document.importPastedPNG(png, authorizedDirectory: nil)
+    try document.localImages().markInsertionAccepted(assetID: asset.id)
+    let raw = "![verified](\(asset.markdownURI))\n"
+    try document.read(from: Data(raw.utf8), ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(
+      document: document, resourceBundle: Bundle(for: Self.self))
+    controller.loadViewIfNeeded()
+    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: """
+        (() => {
+          const image = document.querySelector('#editor .image-node img');
+          return !!image && image.complete && image.naturalWidth === 1 && image.naturalHeight === 1;
+        })()
+        """
+    ) { $0 as? Bool == true }
+    let snapshot = try await requestSnapshot(from: controller)
+    XCTAssertEqual(snapshot.text, raw)
+    XCTAssertEqual(try snapshot.requireImageOwnership().imageURIs, [asset.markdownURI])
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
+    withExtendedLifetime(document) {}
+  }
+
+  @MainActor
   func testStaleDescriptorProofIsRejectedBeforeBrokerProvisioning() throws {
     let bridge = EditorBridge(
       delegate: SilentBridgeDelegate(), evaluator: { _, completion in completion(nil) })
