@@ -1,5 +1,17 @@
 # 首阶段基础功能：交付总表
 
+## PR77已交付（最新状态）
+
+生产main c4fd38e2de57c8721057ed7c320ac6d3c1a10db1，PR77已在精确head545e3a94620599cedb5a35446187fbb4b05e4258默认CI42692283984 success后合并；root本地FF并整树diff为空、所有最后产品源码SHA与7305清单一致、main clean。checkout/setup/lint/non-UI/Release-offline/light基线通过，UI与full-bench明确skip。旧CI42690666114只是checkout443超时，失败记录未删除，工作流未改。
+
+103完成本轮非UI生产交付：真正块/inline原文保护、单次parser依据/ledger、U与显式source-save、保存/选区/历史/工具面板接线；原096三红、18 oracle、105三P1、107 EOF Mermaid P1均有保留的独立红绿。最终editor766/766、Native179/0/8skip、Bridge14/15、lint/Release/offline通过。104 hard0/3 judgement、106限定0/0；105/107原文与后验分别保留于PARSER-REVIEW.md，没有跨轴改写。阶段物理通过仍未宣告。
+
+本轮四位审查者和workspace均在逐文件tar/bundle/remote/clean核验后归档，managed累计92，无本轮活动Paseo助手。103根worktree已在最终629文件tar SHA63569cc644382f1b5b6b8808eb46aaf976435891017a922a51b2558c9b7d790b及Native/Bridge/WK实际产物多版本备份后回收，远端分支/commit保留。正式CI原始JSON/log另存。
+
+当前生产物理验收包已冻结准备（真实Release测试bundle、签名校验、raw/BOM/EOL/图片及逐文件manifest），未启动App或窗口。详见PHYSICAL-ACCEPTANCE.md；只在用户主动恢复后分批执行。剩余真实输入法/文件窗口/Sandbox/AX/macOS14及可见性能预算按03/07结算，不以766绿灯缩减或终止“完成首阶段基础功能”目标。
+
+以下均为过程历史；其中旧“待审/未合/当前”不能覆盖本节。
+
 ## 最新检查点：103 进入独立复核，尚未合并
 
 生产 main 仍为 acf33923081e066812603269da6a332b7c8e02e3（PR76）。103 代码固定 47c0d54735c70b9e55268ad43f9f085f08ff4dd6：真正 inline atom、footnote/Wiki/HTML/comment、nested block、同次 delimiter/raw-unit provenance、U 候选规则、D 可视删除拒绝、统计/大纲与 main/Bridge 接线已经实现。旧 source-document D/U regex 后处理和 ledger emphasis 再解析已退出生产路径。冻结 18 oracle、真实 DOM 邻接输入/snapshot/proof/search/source no-op/UndoRedo 已跑；不是只排除已知红例的控制组。

@@ -156,3 +156,7 @@ PR77首轮CI42690666114 completed/failure，仅checkout失败（GitHub443超时�
 后验结论：固定提交关闭首稿唯一 P1，有限范围内无新增 Spec finding。未运行完整 Web、Native、Bridge、Release、lint、性能或 GUI；这些不属于本次后验复核证据。临时隔离副本已移入废纸篓，未遗留 symlink。
 
 107最终eaac2be6dc9a065d67c56fe82f913be2eecd7d96已远端/clean/603文件逐项tar+bundle核验，tar SHA8e4c405e691d670d2e8231a0a134038faabe58f8a6fac2495b3831c2ae011774，Agent/workspace两层归档，managed累计92。当前无活动Paseo Agent。根7305全量766、lint/Bridge14/15/Native179/0/8/Release/offline通过；最终docs head545e3a9将执行新精确默认CI，PR77继续draft待CI，未用旧checkout失败作产品结果。
+
+## 最终交付结算
+
+以上为当时过程记录。精确 head `545e3a94620599cedb5a35446187fbb4b05e4258` 的默认 CI `42692283984` 已 success；产品检查、Release/offline/light 基线通过，UI/full-bench 明确 skip。PR77 随后合并为 main `c4fd38e2de57c8721057ed7c320ac6d3c1a10db1`，根本地 main clean，整树与 CI 受检 head 无差异。103 worktree 已在 629 文件 tar 逐项核验及 Git bundle 备份后回收。未执行延期物理验收，也未将有限 Spec 后验外推为首阶段通过。

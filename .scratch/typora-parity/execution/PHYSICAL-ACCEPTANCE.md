@@ -20,7 +20,9 @@
 
 ## C：正式文件与本地资源（约8–12分钟）
 
-仅使用此隔离bundle及fixture副本。新建/打开→编辑→Save/Save As→关闭重开，逐字节核对未编辑格式、BOM/EOL及图片SHA。用 `image 空格 %.png` 走选择文件、系统拖放和位图粘贴；确认取消保存、失败重试、首次资源发布、跨启动书签/授权撤销及缺失资源提示。PNG/JPEG/GIF/WebP的真实WK显示逐项记录，不以ImageIO或hostless PNG自动证据替代；当前包只预置PNG，其他格式使用已冻结的安全fixture补齐后再测。
+仅使用此隔离bundle及fixture副本。新建/打开→编辑→Save/Save As→关闭重开，逐字节核对未编辑格式、BOM/EOL及图片SHA。用 `image 空格 %.png` 走选择文件、系统拖放和位图粘贴；确认取消保存、失败重试、首次资源发布、跨启动书签/授权撤销及缺失资源提示。PNG/JPEG/GIF/WebP的真实WK显示逐项记录，不以ImageIO或hostless PNG自动证据替代。
+
+四种格式的隔离样本现已补齐，文件名保留中文、空格和 `%`。PNG 保持原字节，JPEG 由同 PNG 经生产测试同款 ImageIO 编码，GIF/WebP 使用 `LocalImageStoreTests.swift` 已有的精确 fixture 字节；脚本 `prepare-images.swift` 及 `image-fixture-verification.json` 与 SHA 均进入包 manifest。ImageIO 实际 decode 4/4，PNG/JPEG 为 128×128、GIF/WebP 为 1×1；这是格式与字节准备证据，不是视觉质量或真实 WK 显示验收。补充前逐项复核原有 fixture 和 App 全部文件 SHA，均未变化。
 
 恢复确认需要隔离测试文档与会话；先确认未涉及用户正式App/文档，再执行该恢复场景。验证pending恢复的“恢复/稍后/放弃”、常驻banner与当前选区确认、保存失败后的资源保留、关闭重开。不能为了方便终止用户正式App或改动其资源目录。
 
