@@ -84,6 +84,17 @@ afterEach(() => {
 });
 
 describe("SearchPanel：打开/关闭与焦点", () => {
+  it("ownsFocus 只读反映查询区域的真实 DOM 焦点", () => {
+    const { panel } = setup();
+    expect(panel.ownsFocus).toBe(false);
+    panel.open();
+    expect(panel.ownsFocus).toBe(true);
+    const foreign = document.createElement("button");
+    document.body.append(foreign);
+    foreign.focus();
+    expect(panel.ownsFocus).toBe(false);
+  });
+
   it("查找按钮打开面板并聚焦查询框，关闭按钮回焦点正文", () => {
     const { panel, handlers } = setup();
     findButton().click();

@@ -356,6 +356,12 @@ export class SearchPanel {
     return this.queryComposing;
   }
 
+  /** 查询区域是否拥有当前 DOM 焦点；只读派生，不保存第二份焦点状态。 */
+  get ownsFocus(): boolean {
+    const activeElement = document.activeElement;
+    return activeElement !== null && this.root.contains(activeElement);
+  }
+
   open(): void {
     if (this.isInteractionBlocked()) {
       this.showStatus("请先完成中文输入，再使用查找");

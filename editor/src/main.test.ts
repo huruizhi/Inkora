@@ -607,6 +607,8 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     await settle();
     expect(h.searchResultsText()).toContain("1 处匹配");
 
+    // 原生文档命令只应在正文真实拥有焦点时操作正文历史。
+    area.focus();
     h.receive({
       type: "executeCommand", requestID: "r2", documentID: "doc-src",
       revision: h.lastRevision(), command: "undo",
@@ -620,6 +622,103 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     });
     await settle();
     expect(h.searchResultsText()).toContain("1 处匹配");
+  });
+
+  it("查找输入持焦时拒绝文档 Undo/Redo，并保留正文历史与 future", async () => {
+    const h = await bootMain();
+    const original = "<x>original</x>\n";
+    const edited = "<x>edited</x>\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: original });
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    area.value = edited;
+    area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    await settle();
+
+    h.searchButton().click();
+    h.typeSearchQuery("edited");
+    await settle();
+    area.setSelectionRange(3, 8);
+    const revision = h.lastRevision();
+    const stateCount = h.stateMessages().length;
+    const stateBefore = h.stateMessages().at(-1)?.state;
+    expect(h.dom.window.document.activeElement).toBe(h.searchQuery());
+
+    h.receive({
+      type: "executeCommand", requestID: "blocked-undo", documentID: "doc-src",
+      revision, command: "undo",
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "editorError", requestID: "blocked-undo", code: "command_rejected",
+      documentID: "doc-src", revision,
+    });
+    expect(area.value).toBe(edited);
+    expect([area.selectionStart, area.selectionEnd]).toEqual([3, 8]);
+    expect(h.stateMessages()).toHaveLength(stateCount);
+    expect(h.stateMessages().at(-1)?.state).toEqual(stateBefore);
+    expect(h.dom.window.document.activeElement).toBe(h.searchQuery());
+
+    area.focus();
+    h.receive({
+      type: "executeCommand", requestID: "real-undo", documentID: "doc-src",
+      revision, command: "undo",
+    });
+    await settle();
+    expect(area.value).toBe(original);
+    const undoneRevision = h.lastRevision();
+
+    h.searchQuery().focus();
+    h.receive({
+      type: "executeCommand", requestID: "blocked-redo", documentID: "doc-src",
+      revision: undoneRevision, command: "redo",
+    });
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "editorError", requestID: "blocked-redo", code: "command_rejected",
+      documentID: "doc-src", revision: undoneRevision,
+    });
+    expect(area.value).toBe(original);
+    expect(h.lastRevision()).toBe(undoneRevision);
+
+    area.focus();
+    h.receive({
+      type: "executeCommand", requestID: "real-redo", documentID: "doc-src",
+      revision: undoneRevision, command: "redo",
+    });
+    await settle();
+    expect(area.value).toBe(edited);
+  });
+
+  it("查询 composition 中大纲导航不夺焦点，收口后仍可正常导航", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc", revision: 0, text: "# First\n\n# Second\n" });
+    await settle();
+    h.searchButton().click();
+    const input = h.searchQuery();
+    input.dispatchEvent(new h.dom.window.Event("compositionstart"));
+    input.value = "pinyin";
+    input.setSelectionRange(1, 4);
+    input.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, isComposing: true }));
+    const messages = h.sent.length;
+    const documentText = h.editorHost().textContent;
+
+    const button = h.headingButtons()[1];
+    button.dispatchEvent(new h.dom.window.MouseEvent("pointerdown", { bubbles: true, cancelable: true }));
+    button.click();
+    expect(h.dom.window.document.activeElement).toBe(input);
+    expect(input.value).toBe("pinyin");
+    expect([input.selectionStart, input.selectionEnd]).toEqual([1, 4]);
+    expect(h.editorHost().textContent).toBe(documentText);
+    expect(h.sent).toHaveLength(messages);
+    expect(h.panel().querySelector(".analysis-panel-navigation-status")?.textContent)
+      .toContain("完成查找输入");
+
+    input.dispatchEvent(new h.dom.window.Event("compositionend"));
+    button.click();
+    const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+    const headings = editor.querySelectorAll("h1");
+    expect(h.dom.window.document.activeElement).toBe(editor);
+    expect(headings[1].contains(h.dom.window.getSelection()?.anchorNode ?? null)).toBe(true);
+    expect(h.sent).toHaveLength(messages);
   });
 
   it("查找面板：接受 load 清旧结果与绑定，被拒 load 完全保留查找状态", async () => {

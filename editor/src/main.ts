@@ -56,6 +56,9 @@ const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
   const activeRuntime = runtime;
   if (!activeRuntime) return { ok: false, message: "尚未打开文档" };
   if (activeRuntime.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
+  if (searchPanel.isQueryComposing) {
+    return { ok: false, message: "请先完成查找输入，再定位标题" };
+  }
   if (snapshot.epoch !== loadEpoch) {
     return { ok: false, message: "文档已重新载入，请等待大纲刷新" };
   }
@@ -274,13 +277,19 @@ window.inkora = {
         case "executeCommand":
           executingCommand = true;
           try {
+            // 原生菜单命令没有携带 Web 端文本输入焦点。查询区域拥有焦点或
+            // 正在 composition 时，明确拒绝文档 Undo/Redo，避免越过查询框
+            // 修改正文；正文重新拥有焦点后仍走既有文档历史。
+            const documentCommandBlocked =
+              searchPanel.ownsFocus || searchPanel.isQueryComposing;
             postToNative(
               session.executeCommand(
                 command,
                 () =>
-                  command.command === "undo"
+                  !documentCommandBlocked &&
+                  (command.command === "undo"
                     ? (runtime?.undo() ?? false)
-                    : (runtime?.redo() ?? false),
+                    : (runtime?.redo() ?? false)),
                 () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
               ),
             );
