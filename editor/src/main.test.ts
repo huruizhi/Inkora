@@ -25,7 +25,16 @@ interface Harness {
   toggle(): HTMLButtonElement;
   editorHost(): HTMLElement;
   headingButtons(): HTMLButtonElement[];
-}
+  findBar(): HTMLElement;
+  searchButton(): HTMLButtonElement;
+  searchBody(): HTMLElement;
+  searchQuery(): HTMLInputElement;
+  searchCase(): HTMLInputElement;
+  searchClose(): HTMLButtonElement;
+  searchResultsText(): string;
+  searchMatches(): HTMLElement[];
+  typeSearchQuery(value: string): void;
+ }
 
 // prosemirror-view 在 jsdom 下还需要这些全局（MutationObserver、raf、
 // getComputedStyle 等）；只设 document/window 会让视图创建静默降级到 source 模式。
@@ -102,6 +111,37 @@ async function bootMain(): Promise<Harness> {
     headingButtons: () => Array.from(
       dom.window.document.querySelectorAll<HTMLButtonElement>(".analysis-panel-heading"),
     ),
+    findBar: () => {
+      const bar = dom.window.document.querySelector<HTMLElement>(".find-bar");
+      if (!bar) throw new Error("Missing find bar");
+      return bar;
+    },
+    searchButton: () => {
+      const button = dom.window.document.querySelector<HTMLButtonElement>(".search-toggle");
+      if (!button) throw new Error("Missing search toggle");
+      return button;
+    },
+    searchBody: () => {
+      const body = dom.window.document.querySelector<HTMLElement>("#search-panel-body");
+      if (!body) throw new Error("Missing search panel body");
+      return body;
+    },
+    searchQuery: () =>
+      dom.window.document.querySelector<HTMLInputElement>(".search-panel-query")!,
+    searchCase: () =>
+      dom.window.document.querySelector<HTMLInputElement>(".search-panel-case input")!,
+    searchClose: () =>
+      dom.window.document.querySelector<HTMLButtonElement>(".search-panel-close")!,
+    searchResultsText: () =>
+      dom.window.document.querySelector(".search-panel-results")?.textContent ?? "",
+    searchMatches: () =>
+      Array.from(dom.window.document.querySelectorAll<HTMLElement>(".search-panel-match")),
+    typeSearchQuery: (value: string) => {
+      const input = dom.window.document.querySelector<HTMLInputElement>(".search-panel-query");
+      if (!input) throw new Error("Missing search query input");
+      input.value = value;
+      input.dispatchEvent(new dom.window.InputEvent("input", { bubbles: true }));
+    },
   };
 }
 
@@ -256,9 +296,11 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
 
     const host = h.editorHost();
     expect(host.querySelector("#editor")).not.toBeNull();
-    // 稳定宿主在面板之前，活编辑器不因分析更新被重建/移动。
+    // 稳定工作区在面板之前：find-bar 与 editorHost 隔离，活编辑器不因
+    // 分析/查找更新被重建/移动。
     const appChildren = Array.from(h.dom.window.document.querySelector("#app")!.children);
-    expect(appChildren[0]).toBe(host);
+    expect(appChildren[0]).toBe(host.parentElement);
+    expect(host.parentElement?.contains(h.findBar())).toBe(true);
     expect(appChildren[1]).toBe(h.panel());
     expect(host.querySelector("#editor")?.isConnected).toBe(true);
 
@@ -493,5 +535,275 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.panelHeadings()).toEqual(["Original"]);
     expect(h.panelStat("字符数")).toBe(expectedStats("# Original\n").characters);
     expect(h.editorHost().textContent).toContain("Original");
+  });
+
+  it("查找面板：查询/大小写/空查询/计数，零 Bridge 副作用", async () => {
+    const h = await bootMain();
+    const raw = "<x>foo Foo FOO bar</x>\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: raw });
+    await settle();
+
+    expect(h.searchBody().hidden).toBe(true);
+    h.searchButton().click();
+    expect(h.searchBody().hidden).toBe(false);
+    expect(h.dom.window.document.activeElement).toBe(h.searchQuery());
+
+    // 空查询：清楚空态。
+    expect(h.searchResultsText()).toContain("输入查询");
+
+    h.typeSearchQuery("foo");
+    await settle();
+    expect(h.searchResultsText()).toContain("1 处匹配");
+    expect(h.searchMatches()).toHaveLength(1);
+
+    // 大小写不敏感。
+    h.searchCase().checked = false;
+    h.searchCase().dispatchEvent(new h.dom.window.Event("change", { bubbles: true }));
+    await settle();
+    expect(h.searchResultsText()).toContain("3 处匹配");
+
+    // 面板打开/查询/开关全程不产生任何协议消息。
+    expect(h.sent.filter((m) => m.type !== "stateChanged")).toHaveLength(1); // ready
+    expect(h.stateMessages()).toHaveLength(1); // 仅 load
+  });
+
+  it("查找面板：超过 100 处显式 truncated，不冒充精确总数", async () => {
+    const h = await bootMain();
+    const raw = `<x>${"ha ".repeat(150)}</x>\n`;
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: raw });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("ha");
+    await settle(120);
+    expect(h.searchResultsText()).toContain("匹配至少 100 处，仅显示前 100 处");
+    expect(h.searchMatches()).toHaveLength(100);
+    expect(h.searchResultsText()).toContain("结果基于 Markdown 原文");
+    expect(h.searchResultsText()).toContain("尚未开放");
+  });
+
+  it("查找面板：编辑/Undo/Redo 后按最新 stateChanged 重算", async () => {
+    const h = await bootMain();
+    const original = "<x>foo foo</x>\r\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 2, text: original });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("foo");
+    await settle();
+    expect(h.searchResultsText()).toContain("2 处匹配");
+
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    area.value = "<x>foo bar</x>\r\n";
+    area.dispatchEvent(new h.dom.window.Event("input"));
+    await settle();
+    expect(h.searchResultsText()).toContain("1 处匹配");
+
+    h.receive({
+      type: "executeCommand", requestID: "r2", documentID: "doc-src",
+      revision: h.lastRevision(), command: "undo",
+    });
+    await settle();
+    expect(h.searchResultsText()).toContain("2 处匹配");
+
+    h.receive({
+      type: "executeCommand", requestID: "r3", documentID: "doc-src",
+      revision: h.lastRevision(), command: "redo",
+    });
+    await settle();
+    expect(h.searchResultsText()).toContain("1 处匹配");
+  });
+
+  it("查找面板：接受 load 清旧结果与绑定，被拒 load 完全保留查找状态", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 5, text: "<x>needle needle</x>\n" });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("needle");
+    await settle();
+    expect(h.searchResultsText()).toContain("2 处匹配");
+
+    // 被拒（过期 revision）load：查询、开关与结果原样保留。
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "doc-a", revision: 4, text: "<x>other</x>\n" });
+    await settle();
+    expect(h.sent.at(-1)?.code).toBe("stale_revision");
+    expect(h.searchQuery().value).toBe("needle");
+    expect(h.searchResultsText()).toContain("2 处匹配");
+    expect(h.searchBody().hidden).toBe(false);
+
+    // 接受的新 load：结果与绑定立即清空，查询/大小写回默认，开关保留。
+    h.receive({ type: "loadDocument", requestID: "r3", documentID: "doc-b", revision: 0, text: "# 文档B\n" });
+    await settle();
+    expect(h.searchBody().hidden).toBe(false);
+    expect(h.searchQuery().value).toBe("");
+    expect(h.searchCase().checked).toBe(true);
+    expect(h.searchResultsText()).toContain("输入查询");
+    expect(h.searchResultsText()).not.toContain("needle");
+  });
+
+  it("查找面板：快速跨文档同 revision 旧查找任务作废，不覆盖新文档", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 7, text: "<x>apple apple</x>\n" });
+    h.searchButton().click();
+    h.typeSearchQuery("apple");
+    // 同 revision 异 documentID：立即 load 新文档，旧任务计时器被取消。
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "doc-b", revision: 7, text: "<x>banana</x>\n" });
+    await settle();
+    expect(h.searchQuery().value).toBe("");
+    expect(h.searchResultsText()).toContain("输入查询");
+    expect(h.searchResultsText()).not.toContain("apple");
+  });
+
+  it("查找面板：source runtime composition 期间保留旧结果，收口后重算", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>foo</x>\n" });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("foo");
+    await settle();
+    expect(h.searchResultsText()).toContain("1 处匹配");
+
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    area.focus();
+    area.dispatchEvent(new h.dom.window.Event("compositionstart"));
+    area.value = "<x>foo foo</x>\n"; // 组合中间态编辑
+    area.dispatchEvent(new h.dom.window.Event("input"));
+    await settle();
+    // composition 中：保留上一份稳定结果，不用组合中间文本重搜。
+    expect(h.searchResultsText()).toContain("1 处匹配");
+
+    area.dispatchEvent(new h.dom.window.Event("compositionend"));
+    await settle();
+    // 收口后的真实 stateChanged 才重算。
+    area.value = "<x>foo foo</x>\n";
+    area.dispatchEvent(new h.dom.window.Event("input"));
+    await settle();
+    expect(h.searchResultsText()).toContain("2 处匹配");
+  });
+
+  it("查找面板：查询框自身 composition 不用半拼音重搜", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>zhong 文</x>\n" });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("文");
+    await settle();
+    expect(h.searchResultsText()).toContain("1 处匹配");
+
+    const input = h.searchQuery();
+    input.dispatchEvent(new h.dom.window.Event("compositionstart"));
+    input.value = "zhōng";
+    input.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, isComposing: true }));
+    await settle();
+    expect(h.searchResultsText()).toContain("1 处匹配"); // 保留旧稳定结果
+
+    input.dispatchEvent(new h.dom.window.Event("compositionend"));
+    await settle();
+    expect(h.searchResultsText()).toContain("0 处匹配");
+  });
+
+  it("查找面板：Esc 关闭并回焦点正文；面板动作不改正文/历史/revision", async () => {
+    const h = await bootMain();
+    const original = "<x>foo</x>\r\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 3, text: original });
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+
+    h.searchButton().click();
+    h.typeSearchQuery("foo");
+    h.searchCase().checked = false;
+    h.searchCase().dispatchEvent(new h.dom.window.Event("change", { bubbles: true }));
+    await settle();
+
+    // 正文、dirty/revision 基线均未被面板动作触碰。
+    expect(area.value.replace(/\r\n/g, "\n")).toBe(original.replace(/\r\n/g, "\n"));
+    const revisionBefore = h.lastRevision();
+    const messages = h.stateMessages().length;
+
+    const esc = new h.dom.window.KeyboardEvent("keydown", {
+      key: "Escape", bubbles: true, cancelable: true,
+    });
+    h.searchQuery().dispatchEvent(esc);
+    expect(h.searchBody().hidden).toBe(true);
+    expect(h.dom.window.document.activeElement).toBe(area);
+    expect(h.lastRevision()).toBe(revisionBefore);
+    expect(h.stateMessages()).toHaveLength(messages);
+
+    // 编辑历史仍可用：编辑后 undo 回到 load 基线。
+    area.value = "<x>foo edited</x>\r\n";
+    area.dispatchEvent(new h.dom.window.Event("input"));
+    await settle();
+    h.receive({
+      type: "executeCommand", requestID: "r2", documentID: "doc-src",
+      revision: h.lastRevision(), command: "undo",
+    });
+    await settle();
+    expect(area.value.replace(/\r\n/g, "\n")).toBe(original.replace(/\r\n/g, "\n"));
+  });
+
+  it("查找面板：后台刷新不打断编辑器焦点与选区", async () => {
+    const h = await bootMain();
+    const original = "<x>foo foo</x>\r\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 1, text: original });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("foo");
+    await settle();
+
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    area.focus();
+    area.setSelectionRange(6, 9);
+    // markSaved 产生真实 stateChanged → 查找刷新，但不改文本。
+    h.receive({
+      type: "markSaved", requestID: "r2", documentID: "doc-src",
+      revision: h.lastRevision(), text: original,
+    });
+    await settle();
+    expect(h.dom.window.document.activeElement).toBe(area);
+    expect(area.selectionStart).toBe(6);
+    expect(area.selectionEnd).toBe(9);
+    expect(h.searchResultsText()).toContain("2 处匹配");
+  });
+
+  it("查找面板：编辑器 composition 中入口被拒且不夺焦点", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>正文</x>\n" });
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    area.focus();
+    area.setSelectionRange(2, 4);
+    area.dispatchEvent(new h.dom.window.Event("compositionstart"));
+
+    const pointer = new h.dom.window.MouseEvent("pointerdown", { bubbles: true, cancelable: true });
+    expect(h.searchButton().dispatchEvent(pointer)).toBe(false);
+    h.searchButton().click();
+    expect(h.searchBody().hidden).toBe(true);
+    expect(h.dom.window.document.activeElement).toBe(area);
+    expect(area.selectionStart).toBe(2);
+    expect(area.selectionEnd).toBe(4);
+    expect(
+      h.dom.window.document.querySelector(".search-panel-status")?.textContent,
+    ).toContain("完成中文输入");
+  });
+
+  it("查找面板：结构化（PM）文档同样可查，composition 中保留旧结果", async () => {
+    const h = await bootMain();
+    h.receive({
+      type: "loadDocument", requestID: "r1", documentID: "doc-pm", revision: 0,
+      text: "# 标题\n\n正文段落。\n",
+    });
+    await settle();
+    const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+    h.searchButton().click();
+    h.typeSearchQuery("正文");
+    await settle();
+    expect(h.searchResultsText()).toContain("1 处匹配");
+
+    // PM composition：真实 DOM 编辑 + input，session 汇报组合前文档，
+    // 查找调度在 composition 中保留旧结果。
+    editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+    const paragraph = editor.querySelector("p")!;
+    (paragraph.firstChild as Text).appendData("追加");
+    editor.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    await settle(150);
+    expect(h.searchResultsText()).toContain("1 处匹配");
   });
 });

@@ -12,6 +12,8 @@ import {
 } from "./editor-runtime";
 import { analyzeDocument } from "./document-analysis";
 import { DocumentAnalysisPanel } from "./document-analysis-panel";
+import { SEARCH_MAX_RESULTS, SearchPanel } from "./search-panel";
+import { searchSource } from "./source-search";
 import "./style.css";
 
 declare global {
@@ -32,11 +34,17 @@ if (!app) {
   throw new Error("Missing #app element");
 }
 
-// 稳定子宿主：分析更新只重绘面板，绝不重建/移动活编辑器 DOM。
-// loadDocument 时 createEditorRuntime 自行清空并重建 editorHost 内容。
+// 稳定工作区：工具条/查找区与 editorHost 隔离。loadDocument 时
+// createEditorRuntime 只 replaceChildren(editorHost)，工具条不受影响。
+const workspace = document.createElement("div");
+workspace.className = "editor-workspace";
+app.append(workspace);
+const findBar = document.createElement("div");
+findBar.className = "find-bar";
+workspace.append(findBar);
 const editorHost = document.createElement("div");
 editorHost.className = "editor-host";
-app.append(editorHost);
+workspace.append(editorHost);
 const session = new EditorProtocolSession();
 let runtime: EditorRuntime | undefined;
 let executingCommand = false;
@@ -58,6 +66,18 @@ const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
     return { ok: false, message: "文档已变化，请等待大纲刷新" };
   }
   return activeRuntime.navigateToHeading(snapshot.raw, target);
+});
+
+// 查找面板（INK-M1-009 阶段 A）：只做查询与结果列表，不做定位/替换。
+// 面板动作自身不产生任何 Bridge 消息，也不改正文/历史/保存点。
+const searchPanel = new SearchPanel(findBar, {
+  onSearchRequest: () => {
+    if (activeDocumentID !== undefined && activeRevision !== undefined) {
+      scheduleSearch(activeDocumentID, activeRevision);
+    }
+  },
+  isEditorComposing: () => runtime?.composing ?? false,
+  onFocusEditor: () => runtime?.focus(),
 });
 
 // ---------------------------------------------------------------------------
@@ -103,6 +123,54 @@ function scheduleAnalysis(documentID: string, revision: number): void {
   }, 0);
 }
 
+// 查找调度：与面板分析同一范式 —— 真实 stateChanged / 查询输入驱动，
+// generation 防竞态，composition 期间保留上一份稳定结果，异常只落面板
+// 局部错误态，不发 editorError、不触发 stop_saving。
+
+let searchGeneration = 0;
+let searchTimer: number | undefined;
+
+function cancelPendingSearch(): void {
+  searchGeneration += 1;
+  if (searchTimer !== undefined) {
+    window.clearTimeout(searchTimer);
+    searchTimer = undefined;
+  }
+}
+
+function scheduleSearch(documentID: string, revision: number): void {
+  cancelPendingSearch();
+  if (!searchPanel.shouldSearch) return;
+  if (runtime?.composing) return;
+  const generation = searchGeneration;
+  searchTimer = window.setTimeout(() => {
+    searchTimer = undefined;
+    // 跨文档/重复 load 已 bump generation，旧任务到此作废。
+    if (generation !== searchGeneration) return;
+    const activeRuntime = runtime;
+    if (!activeRuntime || activeRuntime.composing) return;
+    try {
+      const raw = activeRuntime.getText();
+      const result = searchSource(
+        { raw, revision },
+        searchPanel.query,
+        { caseSensitive: searchPanel.caseSensitive, maxResults: SEARCH_MAX_RESULTS },
+      );
+      if (generation !== searchGeneration) return;
+      searchPanel.update({
+        kind: "document",
+        binding: { documentID, revision, epoch: loadEpoch, raw },
+        result,
+      });
+    } catch (error) {
+      searchPanel.update({
+        kind: "error",
+        message: error instanceof Error ? error.message : "无法查找当前文档",
+      });
+    }
+  }, 0);
+}
+
 function postToNative(message: Parameters<typeof encodeEditorMessage>[0]): void {
   const serialized = encodeEditorMessage(message);
   const handler = window.webkit?.messageHandlers?.inkora;
@@ -115,6 +183,9 @@ function postToNative(message: Parameters<typeof encodeEditorMessage>[0]): void 
     activeDocumentID = message.state.documentID;
     activeRevision = message.state.revision;
     scheduleAnalysis(message.state.documentID, message.state.revision);
+    if (searchPanel.shouldSearch) {
+      scheduleSearch(message.state.documentID, message.state.revision);
+    }
   }
 }
 
@@ -138,7 +209,10 @@ window.inkora = {
             // 取消旧任务并进入"正在打开文档"过渡态。
             const response = session.loadDocument(command);
             if (response.type === "stateChanged") {
-              cancelPendingAnalysis();
+              cancelPendingSearch();
+              // 接受新 load：立即清旧查找结果与绑定（查询/大小写回到默认，
+              // 面板开关保留）。被拒 load 不走这里，查找状态原样保留。
+              searchPanel.resetForNewDocument();
               loadEpoch += 1;
               runtime?.destroy();
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange);
