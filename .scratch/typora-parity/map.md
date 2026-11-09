@@ -75,3 +75,5 @@ Status: open
 009最终e3fc05e通过管理者冻结9项及干净256项/lint/build非UI接收，010续验记录50584f3保留最终代码和隔离App；实际desktop预检仍锁屏exit78，未启动App。真实键盘/IME/布局未验，不合main、不宣告查找替换整体完成。009的三Agent/workspace完成备份回收，累计40。当前仅[011源码与只读查找导航](execution/M1-011-source-search-navigation.md)执行中，可视raw↔PM映射及替换继续后置，M0门槛不变。
 
 011最终ae143f5经独立冻结13项及干净276项/lint/build非UI接收，012续验记录58c5c3a保留最终代码/隔离App；desktop仍exit78锁屏，滚动/键盘/IME待验。011两个Agent/workspace已备份回收，累计41。当前仅[013源码模式原子替换](execution/M1-013-source-replacement.md)执行，结构化PM与bareCR只读不开放替换，不采纳新内核、不解除M0/006/009实际UI门槛，不合main。
+
+当前收束：013最终0f17f22独立19控制、干净303、lint/build通过；两个Agent/workspace备份回收，累计42，当前无功能执行Agent。已形成[草稿PR#70](https://github.com/huruizhi/Inkora/pull/70)，集成head6ad325b；[默认非UI CI](https://github.com/huruizhi/Inkora/actions/runs/42568188093)实际success，UI/完整启动基准按参数skipped。main未合，真实窗口因锁屏未验，M0/阶段门槛不变。[集成与后续集中点验](execution/M1-014-integration-ci.md)为当前入口，不再以此前“执行中”历史段落覆盖本状态。

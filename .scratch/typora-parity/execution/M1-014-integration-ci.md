@@ -10,3 +10,9 @@
 - GitHub连接器可建PR，但无workflow dispatch能力；使用现有已认证gh CLI执行 `gh workflow run CI --ref task/INK-M1-014-writing-tools-integration -f ui-tests=false -f full-bench=false`，成功返回运行链接。
 - 默认非UI CI：[42568188093](https://github.com/huruizhi/Inkora/actions/runs/42568188093)，当前已触发，最终结论待实际检查；不把dispatch成功当作CI通过。
 - 不在受检分支追加运行状态提交，以免改变受检SHA；后续结论写本记录及PR。CI不包含真实UI/完整启动基准，不能替代滚动、候选窗、键盘、VoiceOver或最低系统实机证据。
+
+## 最终 CI 结论
+
+实际运行 completed/success，2026-11-09 05:37:11 UTC 更新；verify job 128999252230耗时1m34s。受检head仍为6ad325b，与PR#70 head一致。lint、Test non-UI layers、Release bundle check (offline)、Performance baseline (light, warn-only)、诊断上传均success；UI acceptance、UI release launch smoke、Full performance baseline为skipped，不当作通过。完整日志/状态JSON已存本地artifacts/logs/ink-m1-014及归档root-m1-checks/INK-M1-014-native，PR正文已更新准确CI链接。
+
+PR仍draft=true、merged=false，main未改变。代码与默认CI证据已可审阅；本轮不新增功能Agent或在未实际取得证据时宣布M0/M1/真实UI通过。后续集中点验大纲长文滚动、查询/替换焦点与键盘/IME/宽窄窗；PM全文raw映射仍是后续独立任务。
