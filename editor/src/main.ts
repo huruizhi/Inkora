@@ -148,7 +148,9 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
   title.className = "link-editor-title";
   title.type = "text";
   title.autocomplete = "off";
-  title.value = binding.attrs?.title ?? "";
+  const originalTitle = binding.attrs?.title ?? null;
+  title.value = (originalTitle ?? "").replace(/\r\n|\r|\n/g, " ");
+  const initialTitleValue = title.value;
   titleLabel.append(title);
 
   const save = document.createElement("button");
@@ -186,7 +188,12 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
     event.preventDefault();
     if ((event as Event & { isComposing?: boolean }).isComposing ||
         composingLinkEditors.has(form)) return;
-    apply({ href: href.value, title: title.value.length ? title.value : null });
+    apply({
+      href: href.value,
+      title: title.value === initialTitleValue
+        ? originalTitle
+        : title.value.length ? title.value : null,
+    });
   });
   cancel.addEventListener("click", event => {
     if ((event as PointerEvent & { isComposing?: boolean }).isComposing ||

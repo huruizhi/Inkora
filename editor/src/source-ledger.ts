@@ -3,7 +3,7 @@
 import MarkdownIt, { type Token } from 'markdown-it';
 import type { Node as PMNode } from 'prosemirror-model';
 import type { Range } from "./source-document";
-import { installReferenceCapture, referenceLineRanges, type ReferenceLineRange } from "./reference-context";
+import { installReferenceCapture, referenceLineRanges, referenceDefinitions, type ReferenceLineRange } from "./reference-context";
 import { annotateTaskListItems } from "./markdown-codec";
 
 export type SourceRole =
@@ -70,6 +70,7 @@ export type SourceLinkOwner = {
   definition?: {
     source: SourceRange;
     hrefSource: SourceRange;
+    destinationSource?: SourceRange;
     titleSource?: SourceRange;
     titleSeparatorSource?: SourceRange;
   };
@@ -101,6 +102,7 @@ type ReferenceDefinition = {
   href: string;
   title: string | null;
   spans: LedgerSpan[];
+  destinationSyntax: SourceRange;
 };
 type LinkExpectation = {
   owner: string;
@@ -690,7 +692,8 @@ function containerLine(
   lines: ReturnType<typeof lineTable>, token: Token, index: number, occupied: LedgerSpan[],
 ): ReturnType<typeof lineTable>[number] {
   const line = lines[index];
-  const column = token.meta?.inkoraContainerColumns?.[index - token.map![0]] ?? 0;
+  const column = (token.meta?.inkoraContainerColumns?.[index - token.map![0]] ?? 0)
+    + (line.start === 0 && line.text.startsWith('\uFEFF') ? 1 : 0);
   if (!Number.isInteger(column) || column < 0 || column > line.text.length) {
     throw Error('容器前缀无法映射到完整原文边界');
   }
@@ -843,46 +846,41 @@ function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: 
   }
 }
 
-function parseDefinitions(source: string, lines: ReturnType<typeof lineTable>, accepted: readonly ReferenceLineRange[]): Map<string, ReferenceDefinition> {
+function parseDefinitions(source: string, accepted: readonly ReferenceLineRange[]): Map<string, ReferenceDefinition> {
   const definitions = new Map<string, ReferenceDefinition>();
-  const acceptedLines = new Set(accepted.flatMap(range => {
-    const result: number[] = [];
-    for (let line = range.startLine; line < range.endLine; line++) result.push(line);
-    return result;
-  }));
-  for (const [lineIndex, line] of lines.entries()) {
-    if (!acceptedLines.has(lineIndex)) continue;
-    const match = line.text.match(/^( {0,3})\[([^\]\n]+)\]:[ \t]*(?:<([^>\n]*)>|([^\s]+))(?:[ \t]+(?:"([^"]*)"|'([^']*)'|\(([^)]*)\)))?[ \t]*$/);
-    if (!match) continue;
-    const label = match[2];
-    const destination = match[3] ?? match[4];
-    const title = match[5] ?? match[6] ?? match[7] ?? null;
-    const href = markdown.normalizeLink(markdown.utils.unescapeAll(destination));
-    const labelStart = line.start + match[1].length + 1;
-    const labelEnd = labelStart + label.length;
-    const destinationAt = line.text.indexOf(destination, labelEnd - line.start + 2);
-    const destinationStart = line.start + destinationAt;
-    const destinationEnd = destinationStart + destination.length;
-    const titleAt = title === null ? -1 : line.text.indexOf(title, destinationEnd - line.start);
-    const titleStart = titleAt < 0 ? -1 : line.start + titleAt;
+  for (const definition of referenceDefinitions(source, accepted)) {
+    const { key, href, title } = definition;
+    const labelStart = definition.label.from;
+    const labelEnd = definition.label.to;
+    const destinationStart = definition.destination.from;
+    const destinationEnd = definition.destination.to;
+    const syntaxEnd = definition.destinationSyntax.to;
     const spans: LedgerSpan[] = [
-      { sourceStart: line.start, sourceEnd: labelStart, role: 'delimiter', syntax: 'definition-open', visible: false },
-      { sourceStart: labelStart, sourceEnd: labelEnd, role: 'definition-label', syntax: 'definition-label', visible: false, detail: normalizeReference(label) },
+      { sourceStart: definition.from, sourceEnd: labelStart, role: 'delimiter', syntax: 'definition-open', visible: false },
+      { sourceStart: labelStart, sourceEnd: labelEnd, role: 'definition-label', syntax: 'definition-label', visible: false, detail: key },
       { sourceStart: labelEnd, sourceEnd: destinationStart, role: 'delimiter', syntax: 'definition-separator', visible: false },
       { sourceStart: destinationStart, sourceEnd: destinationEnd, role: 'definition-href', syntax: 'definition-href', visible: false, detail: href },
     ];
-    if (titleStart >= 0 && title !== null) {
-      spans.push({ sourceStart: destinationEnd, sourceEnd: titleStart, role: 'delimiter', syntax: 'definition-title-separator', visible: false });
-      spans.push({ sourceStart: titleStart, sourceEnd: titleStart + title.length, role: 'definition-title', syntax: 'definition-title', visible: false, detail: title });
-      spans.push({ sourceStart: titleStart + title.length, sourceEnd: line.end, role: 'delimiter', syntax: 'definition-close', visible: false });
-    } else spans.push({ sourceStart: destinationEnd, sourceEnd: line.end, role: 'delimiter', syntax: 'definition-close', visible: false });
-    const key = normalizeReference(label);
+    if (syntaxEnd > destinationEnd) spans.push({
+      sourceStart: destinationEnd, sourceEnd: syntaxEnd,
+      role: 'delimiter', syntax: 'definition-destination-close', visible: false,
+    });
+    if (definition.titleSource) {
+      const titleStart = definition.titleSource.from;
+      const titleEnd = definition.titleSource.to;
+      spans.push({ sourceStart: syntaxEnd, sourceEnd: titleStart, role: 'delimiter', syntax: 'definition-title-separator', visible: false });
+      spans.push({ sourceStart: titleStart, sourceEnd: titleEnd, role: 'definition-title', syntax: 'definition-title', visible: false, detail: title ?? '' });
+      spans.push({ sourceStart: titleEnd, sourceEnd: definition.to, role: 'delimiter', syntax: 'definition-close', visible: false });
+    } else spans.push({ sourceStart: syntaxEnd, sourceEnd: definition.to, role: 'delimiter', syntax: 'definition-close', visible: false });
     const existing = definitions.get(key);
     // CommonMark keeps the first definition for resolution. Later duplicate
     // definitions are still audited as non-visible source, but cannot replace
     // the href/title used by PM.
     if (existing) existing.spans.push(...spans);
-    else definitions.set(key, { key, href, title, spans });
+    else definitions.set(key, {
+      key, href, title, spans,
+      destinationSyntax: { from: definition.destinationSyntax.from, to: syntaxEnd },
+    });
   }
   return definitions;
 }
@@ -1083,8 +1081,8 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
   try {
     const lines = lineTable(source);
     const env: Record<string, unknown> = {};
-    const tokens = markdown.parse(source.replace(/^\uFEFF/, ' '), env);
-    const references = parseDefinitions(source, lines, referenceLineRanges(env));
+    const tokens = markdown.parse(source.replace(/^\uFEFF/, ''), env);
+    const references = parseDefinitions(source, referenceLineRanges(env));
     const indexedTokensByRange: Array<Array<{
       token: Token;
       tokenIndex: number;
@@ -1286,6 +1284,7 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       definitionRanges.set(key, {
         source: { from, to },
         hrefSource: { from: hrefs[0].sourceStart, to: hrefs[0].sourceEnd },
+        destinationSource: definition.destinationSyntax,
         titleSource: titles.length === 1
           ? { from: titles[0].sourceStart, to: titles[0].sourceEnd }
           : undefined,

@@ -63,8 +63,10 @@ function headingToDOM(node: ProseMirrorNode): DOMOutputSpec {
 }
 
 function validateLinkHref(value: unknown): asserts value is string {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new RangeError("Link href must be a non-empty string");
+  // CommonMark accepts empty destinations, including reference definitions
+  // using <>. Creation/import commands keep their separate URL safety guards.
+  if (typeof value !== "string") {
+    throw new RangeError("Link href must be a string");
   }
 }
 
@@ -82,7 +84,7 @@ function imageAttrsFromDOM(dom: Node | string): false | {
   if (typeof dom === "string") return false;
   const element = dom as HTMLElement;
   const href = element.dataset.inkoraImage;
-  if (!href) return false;
+  if (href === undefined) return false;
   return {
     alt: element.dataset.inkoraAlt ?? "",
     href,
@@ -114,7 +116,7 @@ function linkAttrsFromDOM(dom: Node | string): false | { href: string; title: st
   if (typeof dom === "string") return false;
   const element = dom as HTMLElement;
   const href = element.getAttribute?.("href");
-  if (!href) return false;
+  if (href === null || href === undefined) return false;
   return {
     href,
     title: element.getAttribute("title"),

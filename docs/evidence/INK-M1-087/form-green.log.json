@@ -1,0 +1,5 @@
+{
+  "sourceLog": "inkora-087-form-green.log",
+  "sha256": "39dc1f89a40bb6f4238816525dfc5400b8c1035b92efa46c94a3d50bc7adc31d",
+  "utf8": "\n RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-087/editor\n\n\n Test Files  1 passed (1)\n      Tests  1 passed | 90 skipped (91)\n   Start at  01:11:59\n   Duration  517ms (import 54%, tests 44%, transform 2%)\n\n"
+}

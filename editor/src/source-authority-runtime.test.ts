@@ -101,14 +101,14 @@ describe("production source authority runtime", () => {
     expect(escapedReferenceRuntime.status.saveEligible).toBe(true);
     expect(escapedReferenceRuntime.captureImageOwnership().imageURIs).toEqual([]);
 
-    const unsupportedMultilineLabel = String.raw`![line][A\]
+    const multilineLabel = String.raw`![line][A\]
   B]
 
 [a\] b]: Old.assets/line.png
 `;
-    expect(() => createRuntime(unsupportedMultilineLabel)).toThrow(
-      "尾部存在无法归属的原文范围",
-    );
+    const multilineRuntime = createRuntime(multilineLabel).runtime;
+    expect(multilineRuntime.status.saveEligible).toBe(true);
+    expect(multilineRuntime.captureImageOwnership().imageURIs).toEqual(["Old.assets/line.png"]);
 
     const destinations = [
       "![balanced](Old.assets/a(b).png)",

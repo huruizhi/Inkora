@@ -809,6 +809,21 @@ it("root061: caret inside a link edits its existing target", async () => {
   expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:"[alpha](./new)\n\nbody\n"});
 });
 
+it("preserves a multiline reference title on form no-op and href-only edits", async () => {
+  const raw = '[go][ref]\n\n> [ref]:\n>   <docs/old.md>\n>   "line one\n>   line &amp; two"\n';
+  const h = await rootLinkHarness(false, raw);
+  h.linkEditor()!.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.lastRevision()).toBe(0);
+  h.receive({ type: "createSnapshot", requestID: "multiline-no-op", documentID: "root-link", revision: 0 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw });
+  const form = openLinkEditorAtCaret(h);
+  form.querySelector<HTMLInputElement>(".link-editor-href")!.value = "docs/new.md";
+  form.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.lastRevision()).toBe(1);
+  h.receive({ type: "createSnapshot", requestID: "multiline-href", documentID: "root-link", revision: 1 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw.replace("docs/old.md", "docs/new.md") });
+});
+
 it("root061: link input composition keeps the form and candidate on Cancel", async () => {
   const h = await rootLinkHarness();
   const form = h.linkEditor()!;

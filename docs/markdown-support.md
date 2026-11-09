@@ -14,6 +14,7 @@
 - `SYN-S009` 任务列表与 `SYN-S014` 表格已接入生产 schema、原文账本、EditorView/NodeView、main 与 Bridge snapshot 路径；冻结12例及独立非UI接缝已通过。真实 WK/物理输入法、VoiceOver 与正式 NSDocument 文件保存重开仍由管理者验收，当前仅为 V3 非UI完成候选。
 - `SYN-S010` 图片保持 S 级首阶段目标；V1 只提供逐字节占位/局部原文路径，完整直接交互由 V4 补齐，当前不得冒称已验收。
 - 图片资源 owner 以实际编辑器 accepted 语义投影为唯一权威，并与同一 snapshot 的 document/revision/逐字 raw 绑定。Native 不再独立扫描 Markdown 推断 owner；缺失 proof 与已证明空数组必须区分。
+- `SYN-S010` 引用定义复用 CommonMark block rule 实际接受的全局 first-wins 结果；支持 destination/title 跨行、容器内定义和转义 label。字段 provenance 同时用于语义解析与原文账本，未编辑的 destination 转义、title 实体、容器前缀和 EOL 不重写。CommonMark 的空 destination 是合法语义值；创建/导入命令仍使用各自的 URL 安全守卫。
 - `D` 级稳定片段可与可视正文混排并逐字节保留；块内编辑使用主动源码草稿。畸形或边界未证明的输入保留完整当前原文、可信投影和诊断，并阻断不安全快照，修复后可恢复。
 - bare CR 仍按 `EOL-003` 只读。可视查找替换仍由 V6 完成；源码导航和原子替换继续可用。
 

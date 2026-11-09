@@ -131,6 +131,8 @@ function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger
       definition: link.definition ? {
         source: translateRange(link.definition.source),
         hrefSource: translateRange(link.definition.hrefSource),
+        destinationSource: link.definition.destinationSource
+          ? translateRange(link.definition.destinationSource) : undefined,
         titleSource: link.definition.titleSource
           ? translateRange(link.definition.titleSource)
           : undefined,
@@ -357,6 +359,8 @@ function cloneLinkOwner(owner: SourceLinkOwner): SourceLinkOwner {
     definition: owner.definition ? {
       source: cloneRange(owner.definition.source),
       hrefSource: cloneRange(owner.definition.hrefSource),
+      destinationSource: owner.definition.destinationSource
+        ? cloneRange(owner.definition.destinationSource) : undefined,
       titleSource: owner.definition.titleSource
         ? cloneRange(owner.definition.titleSource)
         : undefined,
@@ -406,6 +410,7 @@ function planOwnedLinkPatches(
       { from: owner.labelMarkupSource.to, to: owner.source.to, insert: '' },
     ];
   }
+  if (attrs.href === owner.href && attrs.title === owner.title) return [];
   if (owner.kind === 'autolink') {
     const label = raw.slice(owner.labelMarkupSource.from, owner.labelMarkupSource.to);
     return [{
@@ -427,11 +432,12 @@ function planOwnedLinkPatches(
     ? owner.definition!.hrefSource
     : owner.hrefSource;
   if (!hrefSource) throw Error('链接 owner 缺少 href 原文范围');
-  const patches: NativePatch[] = [{
+  const patches: NativePatch[] = attrs.href === owner.href ? [] : [{
     from: hrefSource.from,
     to: hrefSource.to,
     insert: destinationToken(raw, hrefSource, attrs.href),
   }];
+  if (attrs.title === owner.title) return patches;
   const currentTitleSource = owner.kind === 'reference'
     ? owner.definition!.titleSource
     : owner.titleSource;
@@ -470,9 +476,12 @@ function planOwnedLinkPatches(
       });
     }
   } else if (attrs.title !== null) {
+    const destinationEnd = owner.kind === 'reference'
+      ? owner.definition!.destinationSource?.to ?? hrefSource.to
+      : hrefSource.to;
     patches.push({
-      from: hrefSource.to,
-      to: hrefSource.to,
+      from: destinationEnd,
+      to: destinationEnd,
       insert: ` ${titleToken(attrs.title)}`,
     });
   }
