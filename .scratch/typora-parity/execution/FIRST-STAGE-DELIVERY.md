@@ -85,3 +85,18 @@ M0按原04/029限定门槛通过；11/12 resolved。ADR-0004、术语、M0逐门
 上一轮041规格与独立golden已产生可复核产物，属进展。本轮以main48258a9创建独立task/INK-UI-042-writing-tools-runtime，make build（UITesting bundle ID、锁定pnpm）和严格签名校验通过，25标题/重复标题/24定位/100+查询匹配的临时长文已准备。desktop preflight实际exit78锁屏，未启动App或调用CUA，没有伪报滚动/焦点/键盘验收；自有锁自动释放。详细docs/tasks/INK-UI-042.md和artifacts/ink-ui-042/readiness.json。
 
 039与040两个确切Agent handle在2026-11-09约09:54UTC各核验一次：均running，无pending permission、无attention；保留同一任务等待完成通知，未重启。可独立开发和验收准备仍推进，锁屏不是整个目标阻塞。完成后仍须及时Agent/workspace两层回收。
+
+## 最新状态：生产候选独立反例与补正（覆盖上方执行中历史）
+
+040执行者候选7a48160已独立check；管理者补上永久PathCheck、WKSchemeTaskOutlet底层task生命周期及原errno捕获、收口等待/唯一scratch清理。最终 task/INK-PROT-040-asset-handler-review @44000811c89f6a2a71f95310a752a114188aa626：model16 + handler49 + path9、签名/静态离线校验通过，handler/path再连续三轮通过。037旧Support在同PathCheck接缝准确复现唯一中间symlink分类失败。原“在途task已释放且同址复用”风险在默认强持有适配器中未证实，未据此强加token重设计；任意外部同步callback重入也未宣称安全。父14仍缺拖放/粘贴、保存迁移、生产联动和最低OS实机。
+
+039生产候选09376154dea90b26843780630efda096722e46aa已推送。管理者完整editor独立325/325通过；随后真实EditorView.dispatch新增5/5红：strong/em/code添加格式与paragraph→heading命令均被事务层拒绝；compositionend稳定timer后同会话晚到final导致2次document回调。故V1候选暂不接受、不合main。固定报告 task/INK-M1-039-core-review @6c4f737，冻结测试/红日志在归档root-m1-checks/INK-M1-039/，不可改原件以取得通过。
+
+039执行Agent和workspace已238文件SHA及bundle校验备份后两层回收。040也已253文件同样备份回收。044规范审查02317d0无书面hard违反、6项判断类发现，报告与240文件/bundle备份后两层回收。累计完成workspace回收53个，已完成Agent不占侧栏。
+
+当前两名执行者：
+
+- INK-REV-043规格轴独立审查，固定0937615对照271922e；Sol5.6/medium/default，agent c704c947-6b6f-4c71-b3c4-ac8a2dca7f55 / workspace wks_9a5c523dfa8e6f1e，branch task/INK-REV-043-source-core-spec。只审查和有限真实反例，不修改产品。
+- INK-M1-045生产补正，基线0937615；Sol5.6/high/default，agent c3648b68-c0bf-44c0-a226-565548073ce3 / workspace wks_22cc6b61dc94c2ce，branch task/INK-M1-045-source-core-corrections。恢复原先已声明基本格式/结构命令，协调runtime/main/Bridge逻辑composition发布，不用整篇serialize或放宽保真守卫。根5红必须复现转绿并纳入真实生产回归。
+
+main仍48258a9，M0有界门槛保持通过；本轮新生产接线失败不回写旧真人材料或冒称原型无效。首阶段V1–V6范围不变，完整表格/任务/图片/高亮/视觉替换及NSDocument写作闭环继续推进。
