@@ -25,4 +25,4 @@ Hard finding：0。Judgement finding：1，见 `docs/reviews/INK-REV-088-owner-p
 ## 交付
 
 - 新增文件：`docs/reviews/INK-REV-088-owner-proof-standards.md`、`docs/tasks/INK-REV-088.md`。
-- 审查提交：待本次提交生成；提交后应确认 `git status --short` 为空、任务分支已 push 且 `git rev-parse HEAD` 等于 `git rev-parse origin/task/INK-REV-088-owner-proof-standards`。
+- 审查提交：`1cd8c3ecfd361c26287937bf9432237be179095b`；已确认任务分支已 push，且当时 `git rev-parse HEAD` 等于 `git rev-parse origin/task/INK-REV-088-owner-proof-standards`，工作树干净。
