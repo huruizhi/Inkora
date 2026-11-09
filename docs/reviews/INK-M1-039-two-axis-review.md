@@ -1,4 +1,4 @@
-# INK-M1-039 two-axis review
+# INK-M1-039 双轴审查
 
 ## Standards
 
@@ -54,4 +54,4 @@
 
 规格轴 3 项：缺失/部分 1，越界 0，看似实现但错误 2。最严重为无效保存回执改变 dirty 基线，可能把未落盘内容报告为 clean。
 
-Standards: 0 hard violations, 6 judgement findings. Spec: 3 findings, worst is invalid save receipts mutating the save point.
+规范轴：0项书面硬违规、6项判断类发现；规格轴：3项发现，最严重为无效保存回执改变保存点。
