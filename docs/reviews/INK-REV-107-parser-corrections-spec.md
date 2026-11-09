@@ -25,3 +25,11 @@
 - GATE-004 显式源码保存及 no-op 不清除未解决意图：2/2 passed。
 
 未运行完整 Web、Native、Bridge、Release、lint、性能或 GUI；按审查限定留给根结算。
+
+## Post-fix 独立复核
+
+保留以上首稿 P1 及证据以便追溯。后验固定提交为 `7305b97161ff9173fb575ebf4014036dabdcd64b`；使用 `git archive 7305b97161ff9173fb575ebf4014036dabdcd64b | tar -x -C "$review_tmp"` 导出临时隔离副本，仅 symlink 既有 `editor/node_modules`，未修改本分支受检产品或根工作区。
+
+固定补丁完整删除 Mermaid 专属 finalize hook、导入及调用，并增加 EOF Mermaid 回归。`pnpm --dir "$review_tmp/editor" exec vitest run src/protected-parser-review.test.ts`：1 file、4/4 passed；原三例保持绿，反引号 LF 与波浪线 BOM/CRLF/无尾换行的 EOF Mermaid 均保持 `code_block`，可直接编辑，不新增 closing delimiter，可保存且 Undo/Redo 精确恢复。`pnpm --dir "$review_tmp/editor" exec vitest run src/source-explicit-save.test.ts -t 'allows exact UTF-8|does not let a source receipt'`：1 file、2 passed、3 skipped；GATE-004 显式源码保存及 no-op 不清除未解决意图保持绿。
+
+后验结论：固定提交关闭首稿唯一 P1，有限范围内无新增 Spec finding。未运行完整 Web、Native、Bridge、Release、lint、性能或 GUI；这些不属于本次后验复核证据。临时隔离副本已移入废纸篓，未遗留 symlink。
