@@ -1,5 +1,9 @@
 # 首阶段基础功能：交付总表
 
+**当前生产main `acf33923081e066812603269da6a332b7c8e02e3`，PR76已合。** 精确head0b64d62经CI42678426122 completed/success，默认非UI/Release-offline/lightbench通过，UI/full-bench按参数skip；root本地main与该受检head整树diff为空。100最终521文件tar SHA `7fa0e0a1f88f1e151ad425169c7774b4b4a93f1e2d0da52e9d78f5ceba2f79cf`，CI JSON/log另存，临时symlink已清理。099源码保存切片已交付不代表V2全完成。
+
+103本轮额外公共保存检查发现水平线可解析/输入却不可保存；已在PR76受检代码0b64原样重放为红，确认预存而非新parser回归。账本按accepted hr token与PM nodeSize=1显式映射后保存转绿；NodeSelection删除又暴露缺少原生replace规划，补唯一局部删除并全doc.eq验证后单历史/dirty/UndoRedo控制绿。输入`---` EOF无换行的旧有效HR回归保留，元数据开始围栏要求已有行结束，同字节打开/输入一致；该边界明确记入任务而非入口特例。真正inline保护仍未实现，103尚未完成。
+
 最新补充：100双轴完成，101 hard0/judgement1、102 Spec三类0；两报告原文见SOURCE-SAVE-REVIEW.md。101/102均备份核验并Agent/workspace两层回收，managed累计88，已无活动Paseo Agent。root提取重复证明构造为0b64d62，定向17绿、lint/build通过，将进入精确提交CI；此前完整720、Native179/Bridge14/15/Release/test-ci仍绑定a526，不重标新SHA。
 
 103独立task/INK-M1-103-canonical-protected-parser（基线e00）正在接parser-owned token evidence：脚注规则红先转为可见opaque，公共ledger归属检查又捕获同字节仍被definition-label/href重复拥有；账本消费同次accepted tokens/reference provenance后两条脚注控制绿，原720保持。callout在首个非引用物理行结束，原红转绿。inline atom仍未完成；新工作文件尚有已知失败，不把排除该工作文件的基线控制称为完整全绿。main仍11773c6，阶段与物理门槛未完成。
