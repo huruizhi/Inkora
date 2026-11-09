@@ -19,6 +19,11 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 
 ## 最新执行状态（2026-11-10，覆盖下述历史）
 
+**本轮增量覆盖**：070已推至 `2fa3a9e88e7462e3d6929625911cd39f68ce89ad`（产品与受检086整树一致）。085 `3a29720fe681c4c4fdd120f011f3c127611e8daa` 严格复用同raw纯解析与完整字符串按需字素边界查询；当前原文/PM/投影账本证明不变，真实离屏WK large LF/CRLF输入→快照median970.91/964.83ms，CRLF p95仍1048.63ms，不冻结全分位数/可见paint/IME预算。原始before/parse-only/noisy/final分层JSON及Native/WK xcresult均已归档。
+
+086 `25370d9` 修复既有字素扩展输入被旧anchor拒绝（原基线8条7红1绿→8绿，校准Native夹具后原代码明确remote editorNotReady/grapheme错误）；只淘汰raw/visual均落入同一新字素内部、parse与PM精确相等的旧anchor，新caret和BOM/CRLF/代理对仍全校验。与085组合后完整editor **611/611**、Native **180total/172passed/0fail/8perfskip**、lint、五组模型全过；普通WK Unicode输入/Native UndoRedo/BOM编解码验证不冒充物理IME。085/086本地分支均已校验tar/bundle备份、清临时symlink；root本地worktree不计managed回收数（仍76）。083仍是唯一Paseo实施者，已收到最新SHA与局部组合说明；main仍0f93c4a。
+
+
 当前 main 仍为 `0f93c4ab52dc55da786c925c5bb135f8188e0933`。图片组合070已推至 **cb54a96f3edeea86e16f1b42db669fd776f23146**，与独立受检084整树相同。组合先后接回077、main/075内容版本、081引用目标、079性能、080恢复确认与084容器范围；图片PR尚未创建，不能把集成分支视为已发布。
 
 - **079已完成/接回/两层回收**：1e63a50508fc1a6e60b4c5e49adfd33051d38309。root在070实跑完整591/591、lint与五组模型全部通过；作者真实离屏WK medium input→snapshot由945.95降到179.05ms，1MB约1245.51ms，仍未达方向性1秒目标，非物理paint/IME预算。索引与缓存失效另有root公共行为2/2控制。全部作者原始数据/xcresult与源码tar/bundle已保留。

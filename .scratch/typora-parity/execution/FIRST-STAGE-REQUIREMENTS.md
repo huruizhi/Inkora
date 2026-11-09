@@ -33,3 +33,7 @@ root本次实际：main受检head ca797b8的完整568/568、lint/build和精确�
 ## 2026-11-10增量证据
 
 070/084当前cb54a96：容器引用代码、列表续段真实图片、BOM/CRLF/no-EOL经过公共编辑/source/history/savepoint往返10/10；原c21源码10/10红。组合Native179 total/171 passed/0fail/8perfskip；非Bridge587+Bridge14。080生产恢复确认已接回且两层回收。083仍在实现统一图片owner证明，原生扫描误读代码/公式不是已完成项。079中型响应改善已复现，1MB方向性<1s仍未达到。真实物理/最低系统门槛按用户稍后保留。上述均为集成候选，main仍0f93c4a，不据测试总数标记首阶段通过。
+
+## 2026-11-10当前组合补充
+
+070当前2fa3a9e，611完整editor/Native172通过0失败8性能skip/lint/模型五组通过。085分阶段严格解析与边界复用让固定1MB WK输入median约0.97s，但CRLF p95约1.049s；实际paint、物理IME、最低系统和正式预算仍未结算。086补正旧基线拒绝字素扩展输入，新增8项公共事务+1项真实hostless WK/BOM/Native history回归；新非法caret仍拒绝并保留原文/意图。083仍在实现统一图片owner证明，图片PR/main未因此完成。历史旧“性能超时/080实施中”段落保留作时间层证据，不代表当前状态。
