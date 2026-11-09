@@ -11,7 +11,7 @@
 | 大纲/统计/章节定位 | 已合main | 新内核兼容、真实滚动/键盘/辅助功能点验 |
 | 当前文档查找替换 | PR #73已合main；075及root内容版本补正、568/568/精确CI通过 | 真实UI、物理IME、文件闭环验收 |
 | 可编辑表格/任务列表 | PR #72 已合 main，完整 editor 485/485、精确 CI success | 真实控件/物理输入/文件生命周期与 AX 验收 |
-| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 077/080/084已组合，原生171通过；083统一owner证明，最终CI/物理验收 |
+| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 077/080/084/085/086已组合，原生172通过；083统一owner证明，最终CI/物理验收 |
 | 代码高亮/语言选择 | 已合 main；有真实 WK 语言选择、字节及正式保存重开证据 | 新组合回归与最终集中验收 |
 | 高级语法保护混排/异常安全 | 生产接线已合 main | 新组合保护块邻接、含混阻断和主动源码修复回归 |
 
@@ -19,22 +19,19 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 
 ## 最新执行状态（2026-11-10，覆盖下述历史）
 
-**本轮增量覆盖**：070已推至 `2fa3a9e88e7462e3d6929625911cd39f68ce89ad`（产品与受检086整树一致）。085 `3a29720fe681c4c4fdd120f011f3c127611e8daa` 严格复用同raw纯解析与完整字符串按需字素边界查询；当前原文/PM/投影账本证明不变，真实离屏WK large LF/CRLF输入→快照median970.91/964.83ms，CRLF p95仍1048.63ms，不冻结全分位数/可见paint/IME预算。原始before/parse-only/noisy/final分层JSON及Native/WK xcresult均已归档。
+当前 main 仍 `0f93c4ab52dc55da786c925c5bb135f8188e0933`。图片组合070当前 **2fa3a9e88e7462e3d6929625911cd39f68ce89ad**，与实际受检086整树相同；完整editor **611/611**（含Bridge）、Native **180total/172passed/0fail/8性能skip**、lint及模型五组全部通过。图片PR尚未创建，083统一owner证明尚在实施，不把集成分支当已发布。
 
-086 `25370d9` 修复既有字素扩展输入被旧anchor拒绝（原基线8条7红1绿→8绿，校准Native夹具后原代码明确remote editorNotReady/grapheme错误）；只淘汰raw/visual均落入同一新字素内部、parse与PM精确相等的旧anchor，新caret和BOM/CRLF/代理对仍全校验。与085组合后完整editor **611/611**、Native **180total/172passed/0fail/8perfskip**、lint、五组模型全过；普通WK Unicode输入/Native UndoRedo/BOM编解码验证不冒充物理IME。085/086本地分支均已校验tar/bundle备份、清临时symlink；root本地worktree不计managed回收数（仍76）。083仍是唯一Paseo实施者，已收到最新SHA与局部组合说明；main仍0f93c4a。
+- **079**：1e63a505，owner/range索引与严格raw/doc/projection上下文缓存，已接回/独立回归/两层回收。旧1MB整组超时、优化后约1.25s输入等分阶段数据原样保留。
+- **080**：3ef26139，生产恢复/稍后/放弃、fresh selection确认、snapshot→持久handoff、schema3审计与安全放弃已接回；386文件tar SHA `79312a4b6403697a1b9b423c7c42acf01c96ea8d109ee3c41dc0f3e1a92b4b54`，实际日志/xcresult备份，workspace removedDirectory=true。累计managed workspace回收 **76**。
+- **081**：3ef716f，引用定义first-wins、destination escape/entity解码，已接回。实际Native18/18及NSDocument保存控制2/2保留资源先发布、Markdown字节和SHA强断言。
+- **082**：ac2c757，root公共接缝发现Native误识别缩进代码/公式内图片字面量；另两种容器映射拒绝由084修复。Native3红1绿/Web2红2绿及PM JSON/原件冻结，不误归因079。
+- **084**：cb54a96，容器前缀provenance、嵌套code顺序映射、reference通过parser env传递而不向slice追加伪空行。原c21源码10/10红→修后10/10绿，已接回/校验备份；没有放宽PM等价。
+- **085**：3a29720，单项同raw纯解析复用与完整字符串按需字素边界查询，实际Node/WK分阶段及noisy数据均保留。最终WK medium/large/CRLF输入→精确快照median133.14/970.91/964.83ms，CRLF p95仍1048.63ms，不冻结全分位数/paint/IME预算。已接回/校验备份，414文件tar SHA `ddf8bf56eaaeeaa04a27cc2c1fb00b14c5feac6e043d8078df723ae808729490`。
+- **086**：实现25370d9，与085组合4991cb7，证据最终2fa3a9e。原基线8条7红1绿→修后8绿；仅淘汰raw/visual同属新字素内部、parse与PM精确相等的旧anchor，新caret/BOM/CRLF/代理对仍完整验证。校准Native BOM夹具后的旧代码明确返回grapheme错误，修后真实WK普通Unicode插入/Native UndoRedo通过。421文件tar SHA `76553fb18d6d477a92e12590cf021afa2a2c3661bc675c756b870e9e3ea293bc`，实际红绿xcresult/日志保留。085/086本地worktree已清临时symlink，不计managed回收数。
 
+**唯一Paseo实施者083**：Agent `3db9e649-4fc0-4725-93dc-ae894fc1aa2f` / workspace `wks_535ded871f085c1e` / branch `task/INK-M1-083-canonical-image-ownership`，固定c21，已收到084/085/086最终SHA组合说明。实时profile为空，经provider/model核实Sol5.6 high/full-access/default。目标是同版本currentRaw/投影owner证明，Native继续负责真实grant/安全路径/字节验证/发布；snapshot、descriptor、首存/SaveAs和恢复handoff同源，不继续用原生正则猜语法，也不把缺证明当空图片集。包括纯文字SaveAs无图片资源面板、删图仍保留recovery资产等实际公共接缝。禁止GUI与额外Agent，完成后独立验收/组合精确CI/两层回收。
 
-当前 main 仍为 `0f93c4ab52dc55da786c925c5bb135f8188e0933`。图片组合070已推至 **cb54a96f3edeea86e16f1b42db669fd776f23146**，与独立受检084整树相同。组合先后接回077、main/075内容版本、081引用目标、079性能、080恢复确认与084容器范围；图片PR尚未创建，不能把集成分支视为已发布。
-
-- **079已完成/接回/两层回收**：1e63a50508fc1a6e60b4c5e49adfd33051d38309。root在070实跑完整591/591、lint与五组模型全部通过；作者真实离屏WK medium input→snapshot由945.95降到179.05ms，1MB约1245.51ms，仍未达方向性1秒目标，非物理paint/IME预算。索引与缓存失效另有root公共行为2/2控制。全部作者原始数据/xcresult与源码tar/bundle已保留。
-- **080已完成/接回/两层回收**：3ef26139300bdcda3ff4fa6638533c71246fb18b。生产恢复/稍后/放弃、fresh selection确认、snapshot→持久handoff、schema3审计与安全放弃闭环；root组合实跑Native179 total/171 passed/0 failed/8性能skip。386文件tar SHA `79312a4b6403697a1b9b423c7c42acf01c96ea8d109ee3c41dc0f3e1a92b4b54`，实际日志/xcresult备份，workspace removedDirectory=true。累计managed workspace回收 **76**。
-- **081 root修正已接回**：3ef716fe622492c15f23bae5da0eb3be21f16ab3，引用定义first-wins、destination escape/entity解码；真实Native18/18及NSDocument保存控制2/2，保留首存资源先发布、Markdown原字节与SHA断言。
-- **082 root独立反例已冻结**：ac2c757bde3e15dffccec640f5e57e92a50e0db7。Native扫描把缩进代码/保护公式内图片字面量当owner（这两类Core可保存）；另有引用围栏与列表续段Core账本拒绝，已由084修复。Native3红1绿/Web2红2绿及PM JSON/日志/xcresult原件保留，不误归因为079回归。
-- **084 root限定修正已接回**：cb54a96f3edeea86e16f1b42db669fd776f23146。block parser接受时捕获容器前缀、按源码顺序映射容器code；reference通过parser env传入，删除对slice附加空行的副作用。固定c21原始字节10/10红→修后10/10绿；`make test-editor`587（不含Bridge）+Bridge14，Native171/0/8、lint、五模型全部通过。未放宽等价或新增依赖。404文件校验tar SHA `70973e88fccee15ab8da4fcaa0fa54701bda3e05ab159254a34b28020ece4089`，root worktree干净保留。
-
-**当前唯一Paseo实施者083**（实时profile为空，provider/model已核实，Sol5.6 high/full-access/default）：Agent `3db9e649-4fc0-4725-93dc-ae894fc1aa2f` / workspace `wks_535ded871f085c1e` / branch `task/INK-M1-083-canonical-image-ownership`，固定c21，已通知接回084。统一编辑器接受的raw/文档版本与图片owner证明，Native继续负责实际授权、安全路径、字节验证与发布；snapshot、descriptor、首存/SaveAs、恢复handoff同源，不用Native正则继续猜Markdown，不把无证明当空图片集。包含纯文字SaveAs不弹图片资源授权、删图但保留recovery资产等实际接缝检查。禁止GUI及额外Agent；先真red再green、严格版本与失败保留。
-
-物理验收继续遵循用户“稍后”，不启动App/窗口/系统面板、不反复询问。离屏WK、hostless Native、真实scratch文件与SIGKILL证据不替代实际Sandbox/bookmark/拖放/粘贴、物理IME、AX、正式窗口保存关闭重开和macOS14。总目标仍active；083独立验收、组合复核与精确默认CI通过后才推进图片PR。
+物理验收仍按用户“稍后”，不启动App/窗口/系统面板、不反复催问。hostless WK、普通DOM文本、synthetic composition、scratch与真实SIGKILL分别结算，不代替物理中文、当前Sandbox/bookmark/系统拖放粘贴、真实AX、窗口文件生命周期或macOS14。总目标active，main未因本轮变化。
 
 ## 最新交付（覆盖下述历史）
 
