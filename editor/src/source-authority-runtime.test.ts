@@ -217,6 +217,36 @@ describe("production source authority runtime", () => {
     removed.runtime.destroy();
   });
 
+  it("edits the existing link owner in a top-level table header", () => {
+    const raw = "| [one](./old) |\n| --- |\n| two |\n";
+    const created = requestLinkAt(raw, { anchor: 5 });
+    expect(created.binding.target?.href).toBe("./old");
+    expect(created.runtime.applyLinkEdit(created.binding, { href: "./new", title: null }))
+      .toEqual({ ok: true, value: { changed: true } });
+    const expected = "| [one](./new) |\n| --- |\n| two |\n";
+    expect(created.runtime.getText()).toBe(expected);
+    expect(created.runtime.snapshotText()).toEqual({ ok: true, value: expected });
+    expect(created.runtime.undo()).toBe(true);
+    expect(created.runtime.getText()).toBe(raw);
+    expect(created.runtime.redo()).toBe(true);
+    expect(created.runtime.getText()).toBe(expected);
+    created.runtime.destroy();
+  });
+
+  it("counts reference uses inside tables when editing an outside shared link", () => {
+    const raw = "[outside][ref]\n\n| [inside][ref] |\n| --- |\n| value |\n\n[ref]: ./old\n";
+    const created = requestLinkAt(raw, { anchor: 2 });
+    expect(created.binding.target?.referenceUsageCount).toBe(2);
+    expect(created.runtime.applyLinkEdit(created.binding, { href: "./new", title: null }))
+      .toEqual({ ok: true, value: { changed: true } });
+    const expected = "[outside](./new)\n\n| [inside][ref] |\n| --- |\n| value |\n\n[ref]: ./old\n";
+    expect(created.runtime.getText()).toBe(expected);
+    expect(created.runtime.snapshotText()).toEqual({ ok: true, value: expected });
+    expect(created.runtime.undo()).toBe(true);
+    expect(created.runtime.getText()).toBe(raw);
+    created.runtime.destroy();
+  });
+
   it("preserves backward selection and a unique reference link spelling", () => {
     const selected = requestLinkAt("[one](./old) tail\n", { anchor: 4, head: 1 });
     expect(selected.runtime.applyLinkEdit(selected.binding, { href: "./new", title: null })).toEqual({
