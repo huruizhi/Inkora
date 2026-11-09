@@ -2,7 +2,7 @@
 
 Type: prototype
 Labels: wayfinder:prototype
-Status: claimed
+Status: resolved
 Assignee: root; current Paseo executors tracked in execution/M0-dispatch.md
 Blocked by: 04
 Parent: ../map.md
@@ -54,3 +54,11 @@ INK-PROT-004 已交付新样稿 `484ee81d924efd2a1038e8421b146f4ae5d5b743`，保
 027交付7607079未被接收完整验收：管理者确认连续输入14组通过，但合法尾随空格在当前视图无法save/主动source，虽候选已可parse/reopen，仍是原写作闭环缺口。执行Agent/workspace已备份回收，部分成果保留。已交paseo-committee只读比较统一源/投影边界、安全finalize及source-primary验证路径，见execution/M0-projection-boundary-review.md；不据子集PASS解决本票或锁12架构。
 
 当前执行方向更新：028两轮共同建议隔离验证统一source-authoritative/PM投影边界，保留PM；不再在008叠加staged/save入口特例。029已冻结契约和oracle（6e6e2b8），030在新目录实现一个有界原型。合法尾随空格完整保存/源码/重开续写主链、负例与最新真实IME/用户审阅都需证据；本票claimed，12仍依赖11。共识和不适用推断边界见execution/M0-source-authority-consensus.md。
+
+## 最终裁定（2026-11-09）
+
+有界M0通过，采用029下的统一原文权威/PM投影路线进入生产化；不是宣布027增量staged方案已通过或整个Markdown实现已完成。034@90d6135闭合H1/H2/H3，031 U1此前已闭合。036初稿27213dd因softbreak被隐藏未采纳，管理者补正d3ee3f0同时通过字节/语义独立红例、11回归/10域/冻结oracle/582及case04任务单字符、case05真实PM marks/attrs累计字节，并完成新bundle真实WK源码EOF/续写/Save/UndoRedo/no-op/新epoch投影复验。
+
+五项门槛逐项证据和适用边界见架构文档分支 task/INK-ADR-038-source-authority @271922e 的 docs/decisions/M0-source-authority-verdict.md。物理IME来自031/034固定bundle；036新EOF为真实WK按钮驱动EditorView+synthetic composition，不外推为新bundle全面物理复跑。未证明项明确进入生产V1/平台/发布验收。
+
+本票作为技术验证已解决；首阶段产品没有完成。正式架构决定见12，生产实施见039，禁止整目录搬原型。

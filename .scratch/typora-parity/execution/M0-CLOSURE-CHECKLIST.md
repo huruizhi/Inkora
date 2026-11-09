@@ -33,3 +33,7 @@ H1/H2/H3/U1有明确结果且无未解决的本轮核心反例后，汇总用户
 H1通过：物理搜狗linshi→本机Esc，原生NSTextView和WK均收到keyCode53并取消marked text。WK原文/保存点/raw与PM选区恢复，past0/future1保留；管理者真实Redo重放原Space，再Undo回基线，保存资格恢复。72条日志SHA为8abe40be087da84c5c0f3f059ab876db81a57a6efb838267ff0e5d87e08b90e6；034@90d6135的H1-result-verified.json 11项均真。之前quxiao上屏原因未证明，保留历史，不宣称修了不存在的确定Bug。宿主terminate及CUA无窗口已确认，锁已释放。
 
 H1/H2/H3/U1现全部闭合。准备阶段EOF锚点拒绝经真正bundle/EditorView脚本复现：reopen(a+LF,raw2)接受位置，输入X却拒绝a+LF+X。对应029不变量6，原文和候选未丢；这不是新增功能门槛，仍须修复或在架构决策中明确裁决，不能把已接受位置当不存在。036已派Codex5.6/medium限定修正，禁止改冻结判据或无条件语义放行，无须重复上述物理键盘项。
+
+## 清单关闭
+
+034物理四项与036 EOF字节/语义反例均已取得明确结果；11/12现resolved，裁定与证据见038@271922e。后续按V1产品接线和发布清单验证，不继续将本清单循环扩张为所有功能门槛。039已启动生产迁移。

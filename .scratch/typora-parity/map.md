@@ -83,3 +83,6 @@ Status: open
 当前已完成收尾：[写作辅助PR#70](https://github.com/huruizhi/Inkora/pull/70)经双轴审查和HTML/CRLF两项修正后，[最终默认CI](https://github.com/huruizhi/Inkora/actions/runs/42576854657) attempt3实际success，受检b294e6b；已squash合入main **48258a93b3fc4a75df21a22ac0d175e01943b744**，本地主工作区已快进且合并树与受检树一致。干净315项/独立27控制及lint/build通过，4位Agent/workspace回收，累计46；临时CI传输设置已恢复。详细证据见[集成当前状态](execution/M1-014-integration-ci.md)。此前“草稿/未合并/执行中”段落仅为历史；实际UI、M0三项物理证据和首阶段常用结构/图片等功能缺口仍保留。
 
 用户目标更新为“完成首阶段基础功能”，当前统一按[交付总表](execution/FIRST-STAGE-DELIVERY.md)推进。032图片Sandbox/书签/WK宿主正在独立开发；033完整实施规格草案4534975已交付、待独立审阅，Agent/workspace回收（累计47）。用户现在可配合，034在同一固定7aaa页面补H1/H2/H3真人证据，UI锁仅管理者持有，后台禁止GUI；当前等待H1候选Esc取消结果，不预填通过或架构采纳。
+
+
+**当前状态（2026-11-09，覆盖上方历史）**：M0五门槛与物理H1/H2/H3/U1已闭合；036 EOF续写/语义反例经管理者补正d3ee3f0并真实WK验证。11/12 resolved，038@271922e记录ADR-0004与V1规格，05转claimed执行实际生产交互。039生产原文权威核心已派Sol5.6/high/default，当前只有此执行Agent；已完成035/036 Agent和workspace校验备份回收（累计50）。037图片Sandbox实际面板/书签/移动目录/WK证据已补，14仍保留明确缺口。main48258a9，首阶段表格/任务/图片/高亮/可视搜索与完整保存重开尚未交付，总目标保持active。详细看execution/FIRST-STAGE-DELIVERY.md。

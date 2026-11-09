@@ -2,8 +2,8 @@
 
 Type: prototype
 Labels: wayfinder:prototype
-Status: open
-Assignee: None
+Status: claimed
+Assignee: root
 Blocked by: 12
 Parent: ../map.md
 
@@ -16,3 +16,7 @@ Parent: ../map.md
 ## Resolution criteria
 
 用独立原型回答具体交互问题，用户实际审阅或操作后确认规则；保留原型分支和证据。原型不是生产交付，不能以静态截图替代输入与历史行为验证。
+
+## 当前推进（2026-11-09）
+
+11/12已按实际证据解决。核心交互的已确认部分（主动源码、草稿提交/取消、组合期守卫、精确选区和跨模式历史、保护片段混排/含混修复）由030/031/034/036实际原型提供，不另起重复全功能原型。生产V1规格038与039实施接回这些交互，05保持claimed，待生产控件/链接等实际交互证据完成后收束；不以此延迟已明确的生产核心实现。

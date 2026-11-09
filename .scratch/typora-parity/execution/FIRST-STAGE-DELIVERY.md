@@ -57,3 +57,17 @@ H1/H2/H3结果取得后才更新M0清单及票11/12；不能用用户“现在�
 - INK-REV-035：图片沙盒宿主独立非UI验收，固定e7930fe8；agent fad5f014-cd55-4bed-8e96-ca85f1291ab8 / workspace wks_259957138a4f7ff2，Sol5.6/medium/default。只评审/实际build-check-verify，不用桌面。
 - INK-PROT-036：EOF原文锚点续写限定修正，固定90d6135；agent 2b9aef1a-9216-445e-9c9d-901f68668c7f / workspace wks_9d9a4df07dc4108c，Sol5.6/medium/default。与035共两名执行者，完成即独立验收、归档Agent并备份回收workspace。
 - 目前没有配置的Paseo profile，使用已实时确认可用的模型/普通速度，未使用6.1处理例行实现。
+
+## 当前生产迁移起点（2026-11-09）
+
+M0按原04/029限定门槛通过；11/12 resolved。ADR-0004、术语、M0逐门槛裁定与V1可执行规格在 task/INK-ADR-038-source-authority @271922e，尚未合main。新内核并未因M0自动进入生产。
+
+036初稿27213dd被独立语义反例退回：原文a+LF+X而PM投影aX。管理者在 task/INK-PROT-036-eof-review 补正d3ee3f0，保留输入意图证明但建立真实softbreak语义，自动与真实WK复验通过。034真人/036新WK按各自bundle分层，未伪称新bundle全面物理测试。
+
+035审查894839a发现032启动缺陷、symlink诊断分类和模型替身漂移风险；Agent/workspace已243文件校验归档回收。036执行者也在360文件校验备份后两层回收，累计50个完成workspace。
+
+037原生宿主补正56b5d31已推送：显式启动delegate、只读书签、WK ready队列、stale刷新作用域；真实macOS27.2 Sandbox中取消面板、文件授权→邻接图EPERM、目录授权→SHA/WK加载、退出重启书签恢复、目录移动后stale/刷新/实际读均通过。只使用唯一临时fixture，已撤销授权/删除fixture并正常退出、释放锁。symlink分类和实际并发接缝、拖放/保存迁移/最低OS仍未完，14保持未完。
+
+**当前唯一执行Agent**：INK-M1-039，生产V1（不是新原型），基线271922e；Codex GPT-5.6-Sol/high/default（高难度内容/历史迁移），agent ad39f8d5-bff8-4ddb-8368-0abbcae9bd6a / workspace wks_b54923516c66c54d / task/INK-M1-039-source-authority-core。范围editor/src真实runtime/main/Bridge接线及对应测试文档，禁止import prototype/装依赖/GUI/新Agent。非UI交付后管理者独立复核和真实WK/NSDocument点验，完成即回收。
+
+首阶段剩余V1–V6完整范围不变，main仍48258a9。表格/任务/图片/高亮/可视替换未完成，不能结束总目标。
