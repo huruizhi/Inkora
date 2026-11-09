@@ -56,6 +56,11 @@ interface SourceHistorySnapshot {
   readonly selection?: DirectedSelection;
 }
 
+interface SourceHistoryEntry {
+  readonly before: SourceHistorySnapshot;
+  readonly after: SourceHistorySnapshot;
+}
+
 class StructuredEditorRuntime implements EditorRuntime {
   readonly sourceNavigation = false;
   readonly sourceReplacement = false;
@@ -203,8 +208,8 @@ class SourceEditorRuntime implements EditorRuntime {
   readonly sourceReplacement = true;
   private readonly textArea: HTMLTextAreaElement;
   private readonly kernel: TextAreaEditorKernel;
-  private readonly undoStack: SourceHistorySnapshot[] = [];
-  private readonly redoStack: SourceHistorySnapshot[] = [];
+  private readonly undoStack: SourceHistoryEntry[] = [];
+  private readonly redoStack: SourceHistoryEntry[] = [];
   private currentText: string;
 
   constructor(
@@ -223,7 +228,10 @@ class SourceEditorRuntime implements EditorRuntime {
     this.kernel.setText(savedText);
     this.currentText = savedText;
     this.kernel.onChange((text) => {
-      this.undoStack.push({ raw: this.currentText });
+      this.undoStack.push({
+        before: { raw: this.currentText },
+        after: { raw: text },
+      });
       this.redoStack.length = 0;
       this.currentText = text;
       this.onChange(this.status);
@@ -291,8 +299,11 @@ class SourceEditorRuntime implements EditorRuntime {
     if (!plan.changed) {
       return { ok: true, value: { changed: false, replacedCount: 0 } };
     }
-    const before = { raw: this.currentText, selection: currentSelection.value };
-    this.undoStack.push(before);
+    const entry: SourceHistoryEntry = {
+      before: { raw: this.currentText, selection: currentSelection.value },
+      after: { raw: plan.resultRaw, selection: plan.selection },
+    };
+    this.undoStack.push(entry);
     this.redoStack.length = 0;
     this.currentText = plan.resultRaw;
     this.kernel.setText(plan.resultRaw);
@@ -308,23 +319,19 @@ class SourceEditorRuntime implements EditorRuntime {
 
   undo(): boolean {
     if (this.kernel.composing) return false;
-    const previous = this.undoStack.pop();
-    if (previous === undefined) return false;
-    this.redoStack.push(previous.selection
-      ? { raw: this.currentText, selection: this.safeSelection(this.currentText) }
-      : { raw: this.currentText });
-    this.replaceSnapshot(previous);
+    const entry = this.undoStack.pop();
+    if (entry === undefined) return false;
+    this.redoStack.push(entry);
+    this.replaceSnapshot(entry.before);
     return true;
   }
 
   redo(): boolean {
     if (this.kernel.composing) return false;
-    const next = this.redoStack.pop();
-    if (next === undefined) return false;
-    this.undoStack.push(next.selection
-      ? { raw: this.currentText, selection: this.safeSelection(this.currentText) }
-      : { raw: this.currentText });
-    this.replaceSnapshot(next);
+    const entry = this.redoStack.pop();
+    if (entry === undefined) return false;
+    this.undoStack.push(entry);
+    this.replaceSnapshot(entry.after);
     return true;
   }
 
@@ -353,12 +360,6 @@ class SourceEditorRuntime implements EditorRuntime {
 
   destroy(): void {
     this.textArea.remove();
-  }
-
-  private safeSelection(raw: string): DirectedSelection {
-    const selection = readRawSelection(raw, this.textArea.value, this.textArea.selectionStart,
-      this.textArea.selectionEnd, this.textArea.selectionDirection);
-    return selection.ok ? selection.value : { anchor: 0, head: 0 };
   }
 
   private applySelection(raw: string, selection: DirectedSelection): void {

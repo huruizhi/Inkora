@@ -66,6 +66,40 @@ describe("editor runtime", () => {
     runtime.destroy();
   });
 
+  it("keeps committed selections across two replacements and later caret moves", () => {
+    const { parent } = stubBrowserEnvironment();
+    const raw = "<x>a a</x>\n";
+    const runtime = createEditorRuntime(parent, raw, () => {});
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.setSelectionRange(3, 4, "backward");
+
+    const first = planSourceReplaceAll(searchSource({ raw, revision: 0 }, "a"),
+      { raw, revision: 0 }, "B", { anchor: 4, head: 3 });
+    if (!first.ok) throw new Error(first.failure.message);
+    expect(runtime.applySourceReplacement(first.plan).ok).toBe(true);
+    const afterFirst = first.plan.resultRaw;
+
+    const second = planSourceReplaceAll(searchSource({ raw: afterFirst, revision: 1 }, "B"),
+      { raw: afterFirst, revision: 1 }, "CC", first.plan.selection);
+    if (!second.ok) throw new Error(second.failure.message);
+    expect(runtime.applySourceReplacement(second.plan).ok).toBe(true);
+    const afterSecond = second.plan.resultRaw;
+    area.setSelectionRange(0, 0);
+
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(afterFirst);
+    expect(runtime.getSourceSelection(afterFirst)).toEqual({ ok: true, value: first.plan.selection });
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.getSourceSelection(raw)).toEqual({ ok: true, value: { anchor: 4, head: 3 } });
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getSourceSelection(afterFirst)).toEqual({ ok: true, value: first.plan.selection });
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(afterSecond);
+    expect(runtime.getSourceSelection(afterSecond)).toEqual({ ok: true, value: second.plan.selection });
+    runtime.destroy();
+  });
+
   it("does not expose replacement for structured or bare-CR runtimes", () => {
     const structured = createEditorRuntime(stubBrowserEnvironment().parent, "# Heading\n", () => {});
     expect(structured.sourceReplacement).toBe(false);

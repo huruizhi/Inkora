@@ -200,13 +200,17 @@ describe("SearchPanel：查询输入与 composition", () => {
     input.dispatchEvent(new dom.window.InputEvent("input", { bubbles: true }));
     input.dispatchEvent(new dom.window.Event("compositionstart"));
     input.value = "候选草稿";
+    input.focus();
     panel.resetForNewDocument();
     expect(input.value).toBe("候选草稿");
+    expect(input.isConnected).toBe(true);
+    expect(doc().activeElement).toBe(input);
     input.dispatchEvent(new dom.window.Event("compositionend"));
     input.value = "晚到终态";
     input.dispatchEvent(new dom.window.InputEvent("input", { bubbles: true }));
     expect(input.value).toBe("");
     expect(panel.replacement).toBe("");
+    expect(input.isConnected).toBe(false);
     await new Promise((resolve) => dom.window.setTimeout(resolve, 0));
   });
   it("输入触发重算请求；半拼音（composition/isComposing）不触发", () => {

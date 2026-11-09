@@ -1,4 +1,5 @@
 import { textareaProjection } from "./source-navigation";
+import { classifyLineEndings } from "./line-endings";
 import type { DirectedSelection, SourceReplacementPlan } from "./source-search";
 
 export type SourceReplacementValidation =
@@ -11,6 +12,7 @@ function isWellFormed(value: string): boolean {
   for (let index = 0; index < value.length; index += 1) {
     const unit = value.charCodeAt(index);
     if (unit >= 0xd800 && unit <= 0xdbff) {
+      if (index + 1 >= value.length) return false;
       const next = value.charCodeAt(index + 1);
       if (next < 0xdc00 || next > 0xdfff) return false;
       index += 1;
@@ -47,7 +49,8 @@ export function validateSourceReplacementPlan(
       plan.replacedCount !== plan.patches.length) {
     return rejected("替换计划计数无效");
   }
-  if (!isWellFormed(plan.resultRaw) || !validSelection(plan.resultRaw, plan.selection)) {
+  if (!isWellFormed(plan.resultRaw) || classifyLineEndings(plan.resultRaw) === "bare_cr" ||
+      !validSelection(plan.resultRaw, plan.selection)) {
     return rejected("替换结果或选区包含无效 Unicode 边界");
   }
 
@@ -68,6 +71,8 @@ export function validateSourceReplacementPlan(
     previousFrom = patch.from;
   }
   if (result !== plan.resultRaw) return rejected("替换结果与补丁重推导不一致");
-  if (!plan.changed && plan.resultRaw !== currentRaw) return rejected("无更改计划改变了原文");
+  if (plan.changed !== (plan.resultRaw !== currentRaw)) {
+    return rejected("替换计划的实际字节变化与 changed 不一致");
+  }
   return { ok: true };
 }

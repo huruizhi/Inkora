@@ -384,6 +384,7 @@ export class SearchPanel {
           this.ignoreLateReplacementInput = false;
           this.lateReplacementInputTimer = undefined;
         }, 0);
+        this.render();
         return;
       }
       this.replacementValue = replacementInput.value.replace(/[\r\n]/g, "");
@@ -655,7 +656,8 @@ export class SearchPanel {
     const replacementAvailable = state.kind === "document" && state.replacement?.available === true;
     if (replacementAvailable && !this.replacementControls.isConnected) {
       this.panelBody.querySelector(".search-panel-controls")?.append(this.replacementControls);
-    } else if (!replacementAvailable && this.replacementControls.isConnected) {
+    } else if (!replacementAvailable && this.replacementControls.isConnected &&
+        !this.replacementComposing && !this.resetReplacementAfterComposition) {
       this.replacementControls.remove();
     }
     if (replacementAvailable && state.kind === "document") {

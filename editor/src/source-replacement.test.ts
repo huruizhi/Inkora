@@ -37,6 +37,29 @@ describe("validateSourceReplacementPlan", () => {
     ["result", plan({ resultRaw: "forged" }), "a a", "a a"],
     ["unicode", plan({ patches: [{ from: 2, to: 3, expected: "a", insert: "\uD800" }], replacedCount: 1 }), "a a", "a a"],
     ["caret", plan({ resultRaw: "👩‍💻 a", patches: [{ from: 0, to: 1, expected: "a", insert: "👩‍💻" }], replacedCount: 1, selection: { anchor: 1, head: 1 } }), "a a", "a a"],
+    ["terminal high surrogate result", plan({
+      source: { raw: "a", revision: 3 }, resultRaw: "\uD800",
+      patches: [{ from: 0, to: 1, expected: "a", insert: "\uD800" }], replacedCount: 1,
+      selection: { anchor: 1, head: 1 },
+    }), "a", "a"],
+    ["terminal high surrogate expected", plan({
+      source: { raw: "\uD800", revision: 3 }, resultRaw: "b",
+      patches: [{ from: 0, to: 1, expected: "\uD800", insert: "b" }], replacedCount: 1,
+      selection: { anchor: 1, head: 1 },
+    }), "\uD800", "\uD800"],
+    ["terminal high surrogate insert", plan({
+      resultRaw: "a \uD800",
+      patches: [{ from: 2, to: 3, expected: "a", insert: "\uD800" }], replacedCount: 1,
+    }), "a a", "a a"],
+    ["bare CR result", plan({
+      resultRaw: "a\ra",
+      patches: [{ from: 1, to: 2, expected: " ", insert: "\r" }], replacedCount: 1,
+    }), "a a", "a a"],
+    ["forged byte-identical change", plan({
+      source: { raw: "a", revision: 3 }, resultRaw: "a",
+      patches: [{ from: 0, to: 1, expected: "a", insert: "a" }], replacedCount: 1,
+      selection: { anchor: 1, head: 1 },
+    }), "a", "a"],
   ])("rejects invalid %s before mutation", (_name, candidate, raw, projection) => {
     expect(validateSourceReplacementPlan(candidate, raw, projection).ok).toBe(false);
   });

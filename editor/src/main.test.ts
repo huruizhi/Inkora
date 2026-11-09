@@ -976,6 +976,37 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.searchResultsText()).toContain("输入查询");
   });
 
+  it.each([
+    ["readonly", "a\rb"],
+    ["ProseMirror", "# New document\n"],
+  ])("查找面板：replacement 组合跨 load 到 %s 时保留活候选并在收口后清理", async (_mode, text) => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 0, text: "<x>a</x>\n" });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("a");
+    await settle();
+
+    const input = h.replacement();
+    input.focus();
+    input.dispatchEvent(new h.dom.window.Event("compositionstart"));
+    input.value = "pinyin";
+    input.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, isComposing: true }));
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "doc-b", revision: 0, text });
+    await settle();
+
+    expect(input.isConnected).toBe(true);
+    expect(h.dom.window.document.activeElement).toBe(input);
+    expect(input.value).toBe("pinyin");
+
+    input.dispatchEvent(new h.dom.window.Event("compositionend"));
+    input.value = "late final input";
+    input.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+    await settle();
+    expect(input.value).toBe("");
+    expect(input.isConnected).toBe(false);
+  });
+
   it("查找面板：快速跨文档同 revision 旧查找任务作废，不覆盖新文档", async () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 7, text: "<x>apple apple</x>\n" });
