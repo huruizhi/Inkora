@@ -1,0 +1,70 @@
+node scripts/perf/generate-samples.mjs --output "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/perf-samples"
+Samples written to /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/perf-samples (seed 114910):
+small: 12026 bytes, 321 lines, sha256 9f9cc548a855
+medium: 150510 bytes, 3778 lines, sha256 537de771ad9f
+large: 1000064 bytes, 24601 lines, sha256 6036a7aee026
+large-crlf: 1024664 bytes, 24601 lines, sha256 d0ee2ab272e0
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/.tools/node_modules/.bin/pnpm --dir editor build
+$ tsc --noEmit && vite build
+vite v8.3.6 building client environment for production...
+transforming...
+✓ 143 modules transformed.
+rendering chunks...
+computing gzip size...
+../build/editor/index.html                  0.62 kB │ gzip:   0.36 kB
+../build/editor/assets/index-C4HcyP97.js  653.81 kB │ gzip: 215.19 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 75ms
+xcodegen generate
+⚙️  Generating plists...
+⚙️  Generating project...
+⚙️  Writing project...
+Created project at /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/Inkora.xcodeproj
+mkdir -p "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/logs" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/failures" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/screenshots" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/markdown-snapshots"
+rm -rf "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/production-perf.xcresult"
+mkdir -p "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/production-perf"
+rm -f "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/production-perf/webview.json"
+node scripts/perf/env-info.mjs --output "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/production-perf/environment.json"
+{
+  "schema": 1,
+  "model": "Mac18,5",
+  "chip": "Apple M6",
+  "memoryGB": 32,
+  "macOS": "27.2",
+  "xcode": "Xcode 27.2",
+  "xcodeBuild": "Build version 27B52",
+  "node": "v26.13.0"
+}
+env INKORA_PERF=1 TEST_RUNNER_INKORA_PERF=1 \
+		TEST_RUNNER_INKORA_PRODUCTION_PERF_SIZES="small,medium,large,large-crlf" \
+		INKORA_PERF_SAMPLES_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/perf-samples" \
+		TEST_RUNNER_INKORA_PERF_SAMPLES_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/perf-samples" \
+		INKORA_PERF_OUTPUT="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/production-perf/webview.json" \
+		TEST_RUNNER_INKORA_PERF_OUTPUT="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/production-perf/webview.json" \
+		xcodebuild -quiet -project Inkora.xcodeproj -scheme Inkora \
+		-destination 'platform=macOS' -derivedDataPath /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/DerivedData \
+		-resultBundlePath "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/production-perf.xcresult" \
+		-only-testing:InkoraTests/PerformanceWebViewTests/testProductionVisualWorkflowBenchmarks test
+Writing result bundle at path:
+	/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/production-perf.xcresult
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+2026-11-10 03:52:09.102 xcodebuild[49849:12834729]  DVTAssertions: Warning in IDEFrameworks/IDEFoundation/Execution/LaunchSystem/IDELaunchSession.m:395
+Details:  setRunnablePIDWithDiagnostics:logSection:andCompletionHandler: called without a completion handler - blocking until diagnostics setup completes. Callers should migrate to using a completion handler for better performance.
+Object:   <IDELaunchSession: 0x74ddb49500>
+Method:   -setRunnablePIDWithDiagnostics:logSection:andCompletionHandler:
+Thread:   <NSThread: 0x74e008ca00>{number = 4, name = (null)}
+Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
+2026-11-10 03:52:47.895 xcodebuild[49849:12834706] [MT] IDETestOperationsObserverDebug: 38.812 elapsed -- Testing started completed.
+2026-11-10 03:52:47.895 xcodebuild[49849:12834706] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-10 03:52:47.895 xcodebuild[49849:12834706] [MT] IDETestOperationsObserverDebug: 38.812 sec, +38.812 sec -- end
+Testing started

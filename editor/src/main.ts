@@ -14,7 +14,6 @@ import {
   type LinkEditBinding,
   type RuntimeChangeKind,
 } from "./editor-runtime";
-import { analyzeDocument } from "./document-analysis";
 import { DocumentAnalysisPanel } from "./document-analysis-panel";
 import { sameSearchResult } from "./visual-search";
 import {
@@ -514,7 +513,7 @@ function scheduleAnalysis(documentID: string, revision: number): void {
     if (!activeRuntime || activeRuntime.composing) return;
     try {
       const raw = activeRuntime.getText();
-      const analysis = analyzeDocument({ raw, revision });
+      const analysis = activeRuntime.analyzeDocument(revision);
       if (generation !== analysisGeneration) return;
       panel.update({ kind: "document", documentID, revision, epoch: loadEpoch, raw, analysis });
     } catch (error) {

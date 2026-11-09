@@ -29,6 +29,7 @@ describe("Inkora ProseMirror schema", () => {
       "list_item",
       "image",
       "protected_block",
+      "protected_inline",
     ]);
     expect(Object.keys(inkoraSchema.marks)).toEqual([
       "strong",

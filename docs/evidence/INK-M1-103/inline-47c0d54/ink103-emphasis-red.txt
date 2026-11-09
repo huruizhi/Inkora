@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (12 tests | 1 failed | 11 skipped) 6ms
+   × keeps emphasis outside a wiki atom independent of its opaque delimiters 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > keeps emphasis outside a wiki atom independent of its opaque delimiters
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/protected-source-runtime.test.ts:165:52
+    163|   const session = new SourceAuthoritySession(raw);
+    164|   expect(session.state.doc.firstChild?.firstChild?.marks.map(mark => m…
+    165|   expect(session.saveEligible, session.diagnostic).toBe(true);
+       |                                                    ^
+    166|   expect(session.setRawSelection(1)).toBe(true);
+    167|   expect(session.nativeType('New '), session.diagnostic).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 skipped (12)
+   Start at  03:29:23
+   Duration  242ms (import 83%, transform 13%, tests 4%, worker 1%)
+

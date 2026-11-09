@@ -101,7 +101,11 @@ function inputRulePlan(
   const patches = [{ from, to, insert }];
   const candidate = applyNativePatches(source, patches);
   try {
-    if (parse(candidate).issues.length) return null;
+    // An input rule must retain the characters actually entered even when
+    // canonical priority makes them an unsafe candidate (BOF `---`). The
+    // session installs that parser-owned U projection and blocks structured
+    // saving; clean candidates still require the usual projection proof.
+    parse(candidate);
   } catch {
     return null;
   }
@@ -897,6 +901,18 @@ export function planNativeTransaction(
   } catch {
     // The session owns the diagnostic for malformed source. Continue through
     // the explicit local planners; none may accept by parser failure alone.
+  }
+
+  if (step.stepType === 'replace' && state.doc.nodeAt(step.from)?.type.name === 'horizontal_rule') {
+    const range = ranges.find(item => item.kind === 'horizontal_rule' &&
+      item.pos === step.from && item.pos + item.size === step.to);
+    if (range) {
+      const patches = [{ from: range.start, to: range.end, insert: '' }];
+      const candidate = applyNativePatches(source, patches);
+      if (parse(candidate).doc.eq(tr.doc)) {
+        return { patches, candidate, kind: 'block-structure', sourceCaret: range.start };
+      }
+    }
   }
 
   const paste = pastePlan(source, state, tr, position, fallbackEol);

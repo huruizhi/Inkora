@@ -1,0 +1,30 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-parser-review.test.ts (4 tests | 1 failed | 3 skipped) 4ms
+   × edits EOF Mermaid fences without adding a closing delimiter 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-parser-review.test.ts > edits EOF Mermaid fences without adding a closing delimiter
+AssertionError: expected 'protected_block' to be 'code_block' // Object.is equality
+
+Expected: "code_block"
+Received: "protected_block"
+
+ ❯ src/protected-parser-review.test.ts:45:53
+     43|   for (const raw of ['```mermaid\nflowchart TD\n', '\uFEFF~~~mermaid\r…
+     44|     const session = new SourceAuthoritySession(raw);
+     45|     expect(session.state.doc.firstChild?.type.name).toBe('code_block');
+       |                                                     ^
+     46|     expect(session.state.doc.firstChild?.attrs.closed).toBe(false);
+     47|     expect(session.issues).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 skipped (4)
+   Start at  04:16:31
+   Duration  150ms (import 60%, transform 33%, tests 6%, worker 2%)
+

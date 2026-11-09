@@ -1,0 +1,22 @@
+{
+  "codeCommit": "5cc7d68ce2379e534e9a0685bc0cdef8ea235d65",
+  "status": "WIP-not-mergeable",
+  "editor": {
+    "passed": 729,
+    "failed": 1,
+    "total": 730
+  },
+  "knownFailure": "Wiki fragment freezes adjacent ordinary text; original assertion retained",
+  "typescriptExitCode": 0,
+  "sourceSHA256": {
+    "editor/src/markdown-codec.ts": "b504fa8148c28f2d71b0dd6688f503cac7e057d333ba50ed9d0b55ab10fc2dd6",
+    "editor/src/protected-preview.ts": "1733264b1ceb38ee8cfe90494548598f184e4dd570319b3c50304301596eb83a",
+    "editor/src/source-authority.ts": "2806de94c0f49c608dbbe70f7fb1827bbaeb3512834e7661f251387d3c3d8da9",
+    "editor/src/source-document.ts": "20ef1a015b7a7903f024e198b7946d02e5e67e10c0f477032018807ff82baf7a",
+    "editor/src/source-ledger.ts": "32de30f8926096cf357c983cab1d4e42e7dd243e453e9637ef77487b794f64ef",
+    "editor/src/source-transaction.ts": "c1d3cf08aa35b5a1bf87d8baf653a89039f5e586d249f015d7c4c2847caf1889",
+    "editor/src/protected-syntax.ts": "d1a45feaa0585389a4dad327838d201f90fb8c44c4810482da38f466751ec0ab",
+    "editor/src/source-token-provenance.ts": "a508637ebcb059215e0a4c6673990c773098b9b01599859ce22491ff32608b3c",
+    "editor/src/protected-source-runtime.test.ts": "34f0a395abde43b604affa20259acd3cc5ae257072588c5300d6444410d71da3"
+  }
+}

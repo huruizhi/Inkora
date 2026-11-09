@@ -15,6 +15,7 @@ import {
 
 export type InkoraNodeName =
   | "protected_block"
+  | "protected_inline"
   | "doc"
   | "paragraph"
   | "heading"
@@ -362,6 +363,25 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
       }),
     }],
     toDOM: (node) => protectedPreview(node.attrs.raw, node.attrs.kind),
+  },
+  protected_inline: {
+    inline: true,
+    group: "inline",
+    atom: true,
+    isolating: true,
+    attrs: { raw: { validate: "string" }, kind: { validate: "string" } },
+    parseDOM: [{
+      tag: "span[data-inkora-raw][data-inkora-kind]",
+      getAttrs: dom => ({
+        raw: (dom as HTMLElement).dataset.inkoraRaw,
+        kind: (dom as HTMLElement).dataset.inkoraKind,
+      }),
+    }],
+    toDOM: node => ["span", {
+      class: "protected-inline", contenteditable: "false",
+      "data-inkora-raw": node.attrs.raw, "data-inkora-kind": node.attrs.kind,
+      title: "只读原文片段；请在源码中修改",
+    }, node.attrs.raw],
   },
 
 };

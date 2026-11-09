@@ -98,11 +98,22 @@ const tokenizer = new MarkdownIt("commonmark", {
 }).enable(["table", "strikethrough"]);
 installGfmAutolinks(tokenizer);
 
-tokenizer.core.ruler.after("block", "inkora_fence_closure", annotateFenceClosure);
-tokenizer.core.ruler.after("inline", "inkora_soft_breaks", preserveSoftBreaks);
-tokenizer.core.ruler.after("inkora_soft_breaks", "inkora_task_items", annotateTaskListItems);
+export function configureProjectionTokens(markdown: MarkdownIt): void {
+  markdown.core.ruler.after("block", "inkora_fence_closure", annotateFenceClosure);
+  markdown.core.ruler.after("inline", "inkora_soft_breaks", preserveSoftBreaks);
+  markdown.core.ruler.after("inkora_soft_breaks", "inkora_task_items", annotateTaskListItems);
+}
+configureProjectionTokens(tokenizer);
 
 const tokenSpecs: Record<string, ParseSpec> = {
+  inkora_protected_block: {
+    node: "protected_block",
+    getAttrs: token => ({ raw: token.meta.inkoraRaw, kind: token.meta.inkoraOpaque }),
+  },
+  inkora_protected_inline: {
+    node: "protected_inline",
+    getAttrs: token => ({ raw: token.meta.inkoraRaw, kind: token.meta.inkoraOpaque }),
+  },
   table: { block: "table" },
   thead: { block: "table_head" },
   tbody: { block: "table_body" },
@@ -199,6 +210,18 @@ export const inkoraMarkdownParser = new MarkdownParser(
   tokenSpecs,
 );
 
+// The production source parser has already resolved global references and
+// opaque ranges. This adapter consumes those tokens without reparsing slices.
+const acceptedTokenizer = new MarkdownIt();
+acceptedTokenizer.parse = (_source, environment) => {
+  if (!Array.isArray(environment.inkoraAcceptedTokens)) throw Error("Accepted tokens unavailable");
+  return environment.inkoraAcceptedTokens;
+};
+const acceptedParser = new MarkdownParser(inkoraSchema, acceptedTokenizer, tokenSpecs);
+export function parseAcceptedMarkdownTokens(tokens: readonly Token[]): ProseMirrorNode {
+  return acceptedParser.parse("", { inkoraAcceptedTokens: tokens });
+}
+
 function renderHeading(
   state: MarkdownSerializerState,
   node: ProseMirrorNode,
@@ -288,6 +311,7 @@ export const inkoraMarkdownSerializer = new MarkdownSerializer(
       state.write(node.attrs.raw);
       state.closeBlock(node);
     },
+    protected_inline(state, node) { state.write(node.attrs.raw); },
     heading: renderHeading,
     code_block: renderCodeBlock,
     bullet_list(state, node) {

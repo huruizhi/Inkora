@@ -1,0 +1,60 @@
+{
+  "codeCommit": "47c0d54735c70b9e55268ad43f9f085f08ff4dd6",
+  "baseCommit": "acf33923081e066812603269da6a332b7c8e02e3",
+  "sourcesSHA256": {
+    "editor/src/editor-runtime.test.ts": "7c15ad15ef633df202fe5240b02abede36c9e47be16de7274898e189ef8a37a0",
+    "editor/src/editor-runtime.ts": "5ea5ba0bbca15263f71babddf79750015a47ead2133e200cea063d6d2813059f",
+    "editor/src/main.test.ts": "8f90b793674e69c71bf1ecdfce1f915e4d9ff052496348ee96c79480b2b99f82",
+    "editor/src/main.ts": "01394b4633f6cf58e806063a936542faabf0fb8dd97c338427a0e046ce120e3e",
+    "editor/src/markdown-codec.ts": "a3c01fb9df1e65b14c1f5acd698e07034d018832cfc45075f432a724ebffc797",
+    "editor/src/protected-oracles.test.ts": "36dee2c06e52287d7e7810dab5db737ceaa938f01e1a6b91bf2d5b33e180a293",
+    "editor/src/protected-preview.ts": "1733264b1ceb38ee8cfe90494548598f184e4dd570319b3c50304301596eb83a",
+    "editor/src/protected-source-runtime.test.ts": "aa8a4e3dbad235ed5d3d5839688ef9c7999ea6db6acebe2a5027cab3ab977fca",
+    "editor/src/protected-syntax.ts": "3716475bbbd34f9f2d57f54cd1d1c25cca2bd98b5436311c4612e7a39abd05b9",
+    "editor/src/reference-definition-conformance.test.ts": "03fcb4eff94ec7ed5b0db1ff0b7897036be23c21cd4b7be9d952e111a59c8096",
+    "editor/src/schema.test.ts": "05c477d0ca70cf81054329ab51fd00de454cee0540a84fdd6c6b26d427f6d5ac",
+    "editor/src/schema.ts": "1a6042e712eb59e661073e7e76a0c95dc425a8b9db90b4a94a7ae5bb25aafa29",
+    "editor/src/source-authority.ts": "fca69a2fb24c4596079de342b80c67005444c4e0c68ea30fe0a4577d024ae15a",
+    "editor/src/source-document.ts": "120e4118738d0e937c8fa8047500ef397ca66e17f611de8c4863ceb8798aa85b",
+    "editor/src/source-ledger.ts": "760752792d0bd481f3a27b1be7d924cb8deac9e3cb37cafdf60a53494f50a275",
+    "editor/src/source-token-provenance.ts": "f14aadab8670c08cf98d75428e3e5b895b89fcf624f9507e96b3d2e2815ba759",
+    "editor/src/source-transaction.ts": "c1d3cf08aa35b5a1bf87d8baf653a89039f5e586d249f015d7c4c2847caf1889"
+  },
+  "oracleSHA256": "f411d52edea301c3a09de072fd2f8b1de1e82bba75b46a41c1eccde4c7afd636",
+  "bundleSHA256": {
+    "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "assets/index-C4HcyP97.js": "8495737396c7a78aba8f66464f96696ce7c4f8c1172aac32c8abb39461b5fd32",
+    "index.html": "e15321c01e2ebc6f63cfc67b773fdde8b7815ae99ed89f8ebc1ba6e036760215"
+  },
+  "checks": {
+    "editor": {
+      "passed": 760,
+      "failed": 0
+    },
+    "bridgeWeb": 14,
+    "bridgeNative": 15,
+    "native": {
+      "total": 187,
+      "passed": 179,
+      "failed": 0,
+      "skippedExistingPerformance": 8
+    },
+    "lint": 0,
+    "releaseOffline": 0,
+    "ciContract": 0,
+    "modelVectors": 5,
+    "hostlessWK": {
+      "passed": 1,
+      "failed": 0,
+      "requested": [
+        "small",
+        "medium",
+        "large",
+        "large-crlf"
+      ]
+    }
+  },
+  "artifactArchive": "/Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed/ink-m1-103-47c0d54-test-artifacts.tar.gz",
+  "artifactSHA256": "fdad037789210bf53e2bb9e044234202dc170477bf1c30e0bd975aed73ba067c",
+  "boundary": "WIP, awaiting independent Standards and Spec. No App/windows/physical IME/paint/Sandbox panels/macOS14. Existing actor/chunk/Xcode diagnostics retained; xcresult summaries are authoritative."
+}

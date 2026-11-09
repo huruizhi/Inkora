@@ -1,0 +1,26 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (4 tests | 1 failed | 3 skipped) 5ms
+   × retains a canonical footnote definition as visible opaque source 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > retains a canonical footnote definition as visible opaque source
+AssertionError: expected [] to include '[^note]: definition\n    continuation'
+ ❯ src/protected-source-runtime.test.ts:11:24
+      9|     if (node.type.name === "protected_block") protectedRaw.push(node.a…
+     10|   });
+     11|   expect(protectedRaw).toContain("[^note]: definition\n    continuatio…
+       |                        ^
+     12|   expect(session.currentRaw).toBe(raw);
+     13|   expect(session.saveEligible, session.diagnostic).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 skipped (4)
+   Start at  02:49:33
+   Duration  190ms (transform 66%, import 28%, tests 5%, worker 1%)
+

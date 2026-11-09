@@ -1,0 +1,55 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/main.test.ts (100 tests | 2 failed | 98 skipped) 149ms
+   × V2：真实DOM邻接输入、可视查找、图片proof和源码往返保持同一原文 77ms
+   × V2：大纲统计排除canonical保护片段中的伪标题与预览字串 71ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/main.test.ts > V2：真实DOM邻接输入、可视查找、图片proof和源码往返保持同一原文
+AssertionError: expected undefined to be 'false' // Object.is equality
+
+- Expected:
+"false"
+
++ Received:
+undefined
+
+ ❯ src/main.test.ts:202:32
+    200|   const atom = editor.querySelector<HTMLElement>('.protected-inline')!;
+    201|   expect(atom.textContent).toBe('[[![fake](fake.png)]]');
+    202|   expect(atom.contentEditable).toBe('false');
+       |                                ^
+    203|   expect(editor.querySelectorAll('.image-node')).toHaveLength(1);
+    204|   const text = editor.querySelector('p')!.firstChild as Text;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/main.test.ts > V2：大纲统计排除canonical保护片段中的伪标题与预览字串
+AssertionError: expected [ 'Hidden', 'Visible' ] to deeply equal [ 'Visible' ]
+
+- Expected
++ Received
+
+  [
++   "Hidden",
+    "Visible",
+  ]
+
+ ❯ src/main.test.ts:233:29
+    231|   h.receive({ type: 'loadDocument', requestID: 'v2-analysis-load', doc…
+    232|   await settle();
+    233|   expect(h.panelHeadings()).toEqual(['Visible']);
+       |                             ^
+    234|   expect(h.panelStat('字符数')).toBe('19');
+    235|   expect(h.panelStat('字数')).toBe('3');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 98 skipped (100)
+   Start at  03:38:38
+   Duration  389ms (tests 48%, import 40%, transform 12%)
+

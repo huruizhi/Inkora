@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (7 tests | 1 failed | 6 skipped) 31ms
+   × renders accepted footnote and callout source in a read-only EditorView atom 31ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > renders accepted footnote and callout source in a read-only EditorView atom
+AssertionError: expected undefined to be '[^n]: /definition' // Object.is equality
+
+- Expected:
+"[^n]: /definition"
+
++ Received:
+undefined
+
+ ❯ src/protected-source-runtime.test.ts:21:73
+     19|       try {
+     20|         expect(runtime.mode).toBe("visual");
+     21|         expect(host.querySelector(".protected-block pre")?.textContent…
+       |                                                                         ^
+     22|         expect((host.querySelector(".protected-block") as HTMLElement)…
+     23|         expect(runtime.getText()).toBe(raw);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  03:01:04
+   Duration  381ms (import 79%, tests 11%, transform 10%)
+

@@ -1,0 +1,23 @@
+mkdir -p "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/logs" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/failures" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/screenshots" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/markdown-snapshots"
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" tests/ci/entrypoint-smoke.sh
+success-output
+failure-output
+tests/ci/release-smoke.sh
+Release argument, missing-credential, redaction and metadata checks passed
+tests/ci/ui-lock-smoke.sh
+Acquired UI lock (pid=56025)
+Acquired UI lock (pid=56036)
+Timed out after 0s waiting for UI lock: /private/tmp/inkora-ui-lock-test.v0EOqz/lock
+Reclaiming stale UI lock (pid=56056)
+Acquired UI lock (pid=56058)
+Acquired UI lock (pid=56075)
+Waiting for UI lock: /private/tmp/inkora-ui-lock-test.v0EOqz/lock (timeout=8s)
+Acquired UI lock (pid=56084)
+Acquired UI lock (pid=56126)
+Acquired UI lock (pid=56140)
+UI lock smoke passed: acquisition, failure, default budget, manual timeout, stale owner, waiting, TERM/INT
+node scripts/perf/compare-baseline.test.mjs
+Launch memory extraction: median, unit conversion and missing metric checks passed.
+Performance comparison: threshold, warn/strict, missing, invalid and profile checks passed.

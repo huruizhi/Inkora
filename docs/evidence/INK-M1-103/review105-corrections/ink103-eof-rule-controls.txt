@@ -1,0 +1,52 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (21 tests | 1 failed | 19 skipped) 5ms
+   × maps a horizontal-rule selection and deletion as one source history unit 2ms
+ ❯ src/source-authority-runtime.test.ts (65 tests | 1 failed | 64 skipped) 40ms
+   ❯ production source authority runtime (65)
+     × keeps the horizontal rule input rule on the source projection 39ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > maps a horizontal-rule selection and deletion as one source history unit
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/protected-source-runtime.test.ts:81:32
+     79| it("maps a horizontal-rule selection and deletion as one source histor…
+     80|   const session = new SourceAuthoritySession("---");
+     81|   expect(session.saveMemory()).toBe(true);
+       |                                ^
+     82|   expect(session.dispatch(session.state.tr.setSelection(NodeSelection.…
+     83|   let accepted = false;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/source-authority-runtime.test.ts > production source authority runtime > keeps the horizontal rule input rule on the source projection
+AssertionError: 该原生事务尚未支持（replace）；可信原文与 PM 状态保持不变: expected '--' to be '---' // Object.is equality
+
+Expected: "---"
+Received: "--"
+
+ ❯ src/source-authority-runtime.test.ts:540:91
+    538|     const view = (runtime as unknown as { view: EditorView }).view;
+    539|     typeThroughInputRules(view, typed);
+    540|     expect(runtime.getText(), (session as unknown as { diagnostic?: st…
+       |                                                                                           ^
+    541|     expect(session.state.doc.firstChild?.type.name).toBe(nodeType);
+    542|     expect(runtime.status.unresolved).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  2 failed | 2 passed | 85 skipped (89)
+   Start at  04:01:41
+   Duration  312ms (import 76%, transform 12%, tests 10%, worker 1%)
+

@@ -65,8 +65,10 @@ it.each(renderedExamples)("matches CommonMark reference definition example $exam
 it("keeps raw HTML in an invalid reference definition opaque under SYN-D004", () => {
   const raw = "[foo]: <bar>(baz)\n\n[foo]\n";
   const session = new SourceAuthoritySession(raw);
-  expect(session.state.doc.firstChild?.type.name).toBe("protected_block");
-  expect(session.state.doc.firstChild?.attrs.raw).toBe("[foo]: <bar>(baz)");
+  expect(session.state.doc.firstChild?.type.name).toBe("paragraph");
+  expect(session.state.doc.firstChild?.child(1).type.name).toBe("protected_inline");
+  expect(session.state.doc.firstChild?.child(1).attrs.raw).toBe("<bar>");
+  expect(session.state.doc.firstChild?.textContent).toBe("[foo]: (baz)");
   expect(session.state.doc.lastChild?.textContent).toBe("[foo]");
   expect(session.state.doc.lastChild?.firstChild?.marks).toEqual([]);
   expect(session.saveEligible).toBe(true);

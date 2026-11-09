@@ -1,0 +1,36 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (20 tests | 1 failed | 19 skipped) 5ms
+   × does not confuse raw HTML anchor state with a complete Markdown link label 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > does not confuse raw HTML anchor state with a complete Markdown link label
+AssertionError: expected [ '<a>' ] to deeply equal [ '<a>', '[[target]]', '</a>' ]
+
+- Expected
++ Received
+
+  [
+    "<a>",
+-   "[[target]]",
+-   "</a>",
+  ]
+
+ ❯ src/protected-source-runtime.test.ts:289:17
+    287|   const atoms: string[] = [];
+    288|   session.state.doc.descendants(node => { if (node.type.name === 'prot…
+    289|   expect(atoms).toEqual(['<a>', '[[target]]', '</a>']);
+       |                 ^
+    290|   expect(session.saveEligible, session.diagnostic).toBe(true);
+    291|   expect(session.setRawSelection(0)).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 19 skipped (20)
+   Start at  03:48:43
+   Duration  248ms (import 83%, transform 13%, tests 3%, worker 1%)
+

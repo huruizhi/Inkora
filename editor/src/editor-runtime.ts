@@ -3,7 +3,7 @@ import { InkoraEditorSession } from "./editor-session";
 import { TextAreaEditorKernel } from "./editor-kernel";
 import { classifyLineEndings } from "./line-endings";
 import { TextSelection, type EditorState } from "prosemirror-state";
-import { analyzeDocument } from "./document-analysis";
+import { analyzeDocument, type DocumentAnalysis } from "./document-analysis";
 import {
   sameHeading,
   type HeadingNavigationResult,
@@ -89,6 +89,7 @@ export type RuntimeSearchResult = SourceSearchResult & {
 };
 
 export interface EditorRuntime {
+  analyzeDocument(revision: number): DocumentAnalysis;
   readonly status: EditorRuntimeStatus;
   readonly directedSelection: { selectionAnchor: number; selectionHead: number };
   readonly mode: EditorMode;
@@ -200,6 +201,11 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     return { selectionAnchor: selection.anchor, selectionHead: selection.head };
   }
 
+  analyzeDocument(revision: number): DocumentAnalysis {
+    const raw = this.getText();
+    const accepted = this.session.captureProtectedRanges(raw);
+    return analyzeDocument({ raw, revision }, { excludedRanges: accepted.ranges });
+  }
   getText(): string {
     return this.session.currentRaw;
   }
@@ -518,7 +524,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
     if (this.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
     if (this.session.currentRaw !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
-    const analyzed = analyzeDocument({ raw, revision: 0 }).headings;
+    const analyzed = this.analyzeDocument(0).headings;
     if (!sameHeading(analyzed[target.index], target)) {
       return { ok: false, message: "大纲快照已过期，无法定位标题" };
     }
@@ -967,6 +973,9 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
     parent.append(this.textArea);
   }
 
+  analyzeDocument(revision: number): DocumentAnalysis {
+    return analyzeDocument({ raw: this.text, revision });
+  }
   getText(): string { return this.text; }
   search(query: string, revision: number, options: SearchOptions = {}): RuntimeSearchResult {
     return captureRuntimeSearchResult(

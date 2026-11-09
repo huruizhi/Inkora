@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (6 tests | 1 failed | 5 skipped) 9ms
+   × requires a matching TOML closing fence and treats its contents as opaque 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > requires a matching TOML closing fence and treats its contents as opaque
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/protected-source-runtime.test.ts:21:32
+     19|   const raw = "+++\nx = 1\n...\n\nAfter.\n";
+     20|   const session = new SourceAuthoritySession(raw);
+     21|   expect(session.saveEligible).toBe(false);
+       |                                ^
+     22|   expect(session.currentRaw).toBe(raw);
+     23|   expect(session.beginSource()).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 skipped (6)
+   Start at  02:57:13
+   Duration  175ms (import 56%, transform 31%, tests 11%, worker 2%)
+

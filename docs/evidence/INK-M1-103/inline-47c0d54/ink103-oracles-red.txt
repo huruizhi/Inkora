@@ -1,0 +1,57 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-oracles.test.ts (18 tests | 2 failed) 15ms
+   × V2-008 frozen production source/opaque/edit oracle 2ms
+   × V2-016 frozen production source/opaque/edit oracle 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-oracles.test.ts > V2-008 frozen production source/opaque/edit oracle
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "Before <!-- [[bad {x} $y$ --> after.",
++ ]
+
+ ❯ src/protected-oracles.test.ts:30:67
+     28|   const session = new SourceAuthoritySession(oracle.raw);
+     29|   expect(session.currentRaw).toBe(oracle.raw);
+     30|   if (oracle.blockRaw) expect(opaque(session, 'protected_block')).toEq…
+       |                                                                   ^
+     31|   if (oracle.inlineRaw) expect(opaque(session, 'protected_inline')).to…
+     32|   expect(session.saveEligible, session.diagnostic).toBe(oracle.saveEli…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/protected-oracles.test.ts > V2-016 frozen production source/opaque/edit oracle
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "Before <span data-x=\"[[bad $x$\"> after.",
++ ]
+
+ ❯ src/protected-oracles.test.ts:30:67
+     28|   const session = new SourceAuthoritySession(oracle.raw);
+     29|   expect(session.currentRaw).toBe(oracle.raw);
+     30|   if (oracle.blockRaw) expect(opaque(session, 'protected_block')).toEq…
+       |                                                                   ^
+     31|   if (oracle.inlineRaw) expect(opaque(session, 'protected_inline')).to…
+     32|   expect(session.saveEligible, session.diagnostic).toBe(oracle.saveEli…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 16 passed (18)
+   Start at  03:32:54
+   Duration  141ms (import 49%, transform 25%, tests 25%, worker 2%)
+

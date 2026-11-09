@@ -2,10 +2,10 @@
 
 import MarkdownIt, { type Token } from 'markdown-it';
 import type { Node as PMNode } from 'prosemirror-model';
-import type { Range } from "./source-document";
-import { installReferenceCapture, referenceLineRanges, referenceDefinitions, type ReferenceLineRange } from "./reference-context";
-import { annotateTaskListItems } from "./markdown-codec";
+import { parse as parseCanonicalSource, type Range, type CanonicalTokenEvidence } from "./source-document";
+import { referenceDefinitions, type ReferenceLineRange } from "./reference-context";
 import { gfmAutolinks, installGfmAutolinks } from "./gfm-autolinks";
+import { lineTable, prefixCursor, containerLine, mapInlineToken, tableCellsForLine, tableCellInlineInput, type InlineInput, type AcceptedOpaqueInline, type AcceptedDelimiter } from "./source-token-provenance";
 
 export type SourceRole =
   | 'text' | 'link-label' | 'image-alt' | 'autolink-text' | 'code-text'
@@ -90,8 +90,7 @@ export type LedgerMapResult =
   | { ok: true; anchor: number; head: number; snapped: string[] }
   | { ok: false; reason: string; candidates?: number[] };
 
-type RawUnit = { start: number; end: number };
-type InlineInput = { text: string; units: RawUnit[] };
+
 type Atom = LedgerSpan & {
   visible: true;
   text: string;
@@ -114,6 +113,8 @@ type LinkExpectation = {
   referenceKey?: string;
 };
 type ScanState = {
+  opaque: ReadonlyMap<number, AcceptedOpaqueInline>;
+  delimiters: ReadonlyMap<number, AcceptedDelimiter>;
   spans: LedgerSpan[];
   atoms: Atom[];
   expectations: LinkExpectation[];
@@ -139,130 +140,8 @@ const markdown = new MarkdownIt('commonmark', {
   html: false,
   linkify: false,
 }).enable(['table', 'strikethrough']);
-installReferenceCapture(markdown);
 installGfmAutolinks(markdown);
-// Capture the container prefix while markdown-it's block parser still has its
-// list/quote indentation context. Restored physical lines cannot reconstruct
-// that context by looking for the first occurrence of token.content.
-type ContainerBlockState = {
-  src: string;
-  tokens: Token[];
-  bMarks: number[];
-  eMarks: number[];
-  tShift: number[];
-  bsCount: number[];
-  blkIndent: number;
-};
-type ContainerBlockRule = (state: ContainerBlockState, start: number, end: number, silent: boolean) => boolean;
-type ContainerBlockRuler = {
-  __rules__?: Array<{ name: string; fn: ContainerBlockRule; alt: string[] }>;
-  at(name: string, fn: ContainerBlockRule, options: { alt: string[] }): void;
-};
-const containerRuler = markdown.block.ruler as unknown as ContainerBlockRuler;
-for (const name of ['paragraph', 'fence', 'code']) {
-  const entry = containerRuler.__rules__?.find(rule => rule.name === name);
-  if (!entry) throw Error(`markdown-it ${name} block rule unavailable`);
-  const original = entry.fn;
-  containerRuler.at(name, (state, start, end, silent) => {
-    const before = state.tokens.length;
-    const accepted = original(state, start, end, silent);
-    if (!accepted || silent) return accepted;
-    for (const token of state.tokens.slice(before)) {
-      if (!token.map || !['inline', 'fence', 'code_block'].includes(token.type)) continue;
-      const columns: number[] = [];
-      for (let line = token.map[0]; line < token.map[1]; line++) {
-        const lineStart = state.bMarks[line];
-        let first = lineStart;
-        let indent = 0;
-        while (first < state.eMarks[line] && indent < state.blkIndent) {
-          const char = state.src[first];
-          if (char === '\t') indent += 4 - (indent + state.bsCount[line]) % 4;
-          else if (char === ' ' || first - lineStart < state.tShift[line]) indent++;
-          else break;
-          first++;
-        }
-        // A partial tab expansion has no one-to-one raw character boundary.
-        // Preserve the existing explicit refusal instead of inventing spaces.
-        if (indent > state.blkIndent) {
-          columns.push(-1);
-        } else {
-          const physicalStart = state.src.lastIndexOf('\n', Math.max(0, lineStart - 1)) + 1;
-          columns.push(first - physicalStart);
-        }
-      }
-      token.meta = { ...token.meta, inkoraContainerColumns: columns };
-    }
-    return accepted;
-  }, { alt: entry.alt });
-}
-markdown.core.ruler.after('inline', 'inkora_task_items', annotateTaskListItems);
 
-type EmphasisDelimiter = {
-  from: number;
-  to: number;
-  syntax: 'strong-open' | 'strong-close' | 'em-open' | 'em-close';
-};
-
-type EmphasisCaptureEnvironment = Record<string, unknown> & {
-  inkoraEmphasisTokenPositions?: Map<number, number>;
-  inkoraEmphasisDelimiters?: EmphasisDelimiter[];
-};
-
-// Reuse markdown-it's CommonMark delimiter decisions instead of guessing where
-// one marker ends inside adjacent runs such as `***`. This public ruler seam
-// records source positions before emphasis consumes a run, then reads the
-// resolved em/strong tokens before markdown-it joins text fragments.
-const emphasisMarkdown = new MarkdownIt('commonmark', {
-  breaks: false,
-  html: false,
-  linkify: false,
-});
-installGfmAutolinks(emphasisMarkdown);
-emphasisMarkdown.inline.ruler.before('emphasis', 'inkora_emphasis_positions', (state) => {
-  const marker = state.src[state.pos];
-  if (marker !== '*' && marker !== '_') return false;
-  let end = state.pos + 1;
-  while (state.src[end] === marker) end++;
-  const environment = state.env as EmphasisCaptureEnvironment;
-  const positions = environment.inkoraEmphasisTokenPositions ?? new Map<number, number>();
-  environment.inkoraEmphasisTokenPositions = positions;
-  const firstToken = state.tokens.length + (state.pending ? 1 : 0);
-  for (let source = state.pos; source < end; source++) {
-    positions.set(firstToken + source - state.pos, source);
-  }
-  return false;
-});
-emphasisMarkdown.inline.ruler2.after('emphasis', 'inkora_emphasis_delimiters', (state) => {
-  const environment = state.env as EmphasisCaptureEnvironment;
-  const positions = environment.inkoraEmphasisTokenPositions;
-  const delimiters: EmphasisDelimiter[] = [];
-  state.tokens.forEach((token, tokenIndex) => {
-    const position = positions?.get(tokenIndex);
-    if (position === undefined) return;
-    if (token.type === 'strong_open') {
-      delimiters.push({ from: position - 1, to: position + 1, syntax: 'strong-open' });
-    } else if (token.type === 'strong_close') {
-      delimiters.push({ from: position, to: position + 2, syntax: 'strong-close' });
-    } else if (token.type === 'em_open' || token.type === 'em_close') {
-      delimiters.push({
-        from: position,
-        to: position + 1,
-        syntax: token.type === 'em_open' ? 'em-open' : 'em-close',
-      });
-    }
-  });
-  environment.inkoraEmphasisDelimiters = delimiters;
-  return false;
-});
-
-function emphasisDelimiters(text: string, from: number, to: number): Map<number, EmphasisDelimiter> {
-  const environment: EmphasisCaptureEnvironment = {};
-  emphasisMarkdown.parseInline(text.slice(from, to), environment);
-  return new Map((environment.inkoraEmphasisDelimiters ?? []).map(delimiter => {
-    const captured = { ...delimiter, from: delimiter.from + from, to: delimiter.to + from };
-    return [captured.from, captured];
-  }));
-}
 
 const ESCAPABLE = new Set('\\!"#$%&\'()*+,./:;<=>?@[]^_`{|}~-'.split(''));
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
@@ -416,10 +295,23 @@ function scanLinkTail(text: string, pos: number): { end: number; hrefStart: numb
 
 function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.text.length, role: SourceRole = 'text', owner?: string): void {
   const text = input.text;
-  const emphasis = emphasisDelimiters(text, from, to);
   const bareLinks = new Map(owner ? [] : gfmAutolinks(text).map(link => [link.from, link]));
   let i = from;
   while (i < to) {
+    const opaque = state.opaque.get(input.units[i].start);
+    if (opaque) {
+      let end = i + 1;
+      while (end <= to && input.units[end - 1].end < opaque.sourceEnd) end++;
+      if (end > to || input.units[end - 1].end !== opaque.sourceEnd) throw Error('保护行内 token 范围不能精确投影');
+      const atom: Atom = {
+        sourceStart: opaque.sourceStart, sourceEnd: opaque.sourceEnd,
+        role: 'protected', syntax: 'protected-inline', visible: true, text: '',
+        projection: 'atom', expectedNode: { type: 'protected_inline', attrs: { raw: opaque.raw, kind: opaque.kind } },
+      };
+      state.spans.push(atom); state.atoms.push(atom);
+      i = end;
+      continue;
+    }
     const bareLink = bareLinks.get(i);
     if (bareLink && bareLink.to <= to) {
       const linkOwner = `inline-${++state.ownerSerial}`;
@@ -617,19 +509,22 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
       }
     }
 
-    const emphasisDelimiter = emphasis.get(i);
+    const emphasisDelimiter = state.delimiters.get(input.units[i].start);
     if (emphasisDelimiter) {
+      let end = i + 1;
+      while (end <= to && input.units[end - 1].end < emphasisDelimiter.sourceEnd) end++;
+      if (end > to || input.units[end - 1].end !== emphasisDelimiter.sourceEnd) throw Error('emphasis delimiter range mismatch');
       addHidden(
         state,
         input,
-        emphasisDelimiter.from,
-        emphasisDelimiter.to,
+        i,
+        end,
         'delimiter',
         emphasisDelimiter.syntax,
         owner,
         '由 markdown-it CommonMark delimiter 配对确认',
       );
-      i = emphasisDelimiter.to;
+      i = end;
       continue;
     }
 
@@ -677,102 +572,6 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
   }
 }
 
-function lineTable(source: string): Array<{ start: number; contentEnd: number; end: number; text: string }> {
-  const lines: Array<{ start: number; contentEnd: number; end: number; text: string }> = [];
-  let start = 0;
-  for (let i = 0; i <= source.length; i++) {
-    if (i !== source.length && source[i] !== '\n') continue;
-    const end = i < source.length ? i + 1 : i;
-    const contentEnd = i > start && source[i - 1] === '\r' ? i - 1 : i;
-    lines.push({ start, contentEnd, end, text: source.slice(start, contentEnd) });
-    start = end;
-  }
-  return lines;
-}
-
-function prefixCursor(line: string, heading: boolean): number {
-  let cursor = line.startsWith('\uFEFF') ? 1 : 0;
-  let changed = true;
-  while (changed) {
-    changed = false;
-    const quote = line.slice(cursor).match(/^ {0,3}>[ \t]?/);
-    if (quote) { cursor += quote[0].length; changed = true; continue; }
-    const list = line.slice(cursor).match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/);
-    if (list) { cursor += list[0].length; changed = true; }
-  }
-  if (heading) {
-    const marker = line.slice(cursor).match(/^ {0,3}#{1,6}(?:[ \t]+|$)/);
-    if (marker) cursor += marker[0].length;
-  }
-  return cursor;
-}
-
-function containerLine(
-  lines: ReturnType<typeof lineTable>, token: Token, index: number, occupied: LedgerSpan[],
-): ReturnType<typeof lineTable>[number] {
-  const line = lines[index];
-  const column = (token.meta?.inkoraContainerColumns?.[index - token.map![0]] ?? 0)
-    + (line.start === 0 && line.text.startsWith('\uFEFF') ? 1 : 0);
-  if (!Number.isInteger(column) || column < 0 || column > line.text.length) {
-    throw Error('容器前缀无法映射到完整原文边界');
-  }
-  if (column) occupied.push({
-    sourceStart: line.start, sourceEnd: line.start + column,
-    role: 'block-prefix', syntax: 'container-prefix', visible: false,
-  });
-  return { ...line, start: line.start + column, text: line.text.slice(column) };
-}
-
-function mapInlineToken(source: string, lines: ReturnType<typeof lineTable>, token: Token, heading: boolean, occupied: LedgerSpan[]): InlineInput {
-  if (!token.map) throw Error('inline token 缺少块级行范围');
-  const desired = token.content.split('\n');
-  const physical = lines.slice(token.map[0], token.map[1]).map((_, offset) =>
-    containerLine(lines, token, token.map![0] + offset, occupied));
-  const units: RawUnit[] = [];
-  let text = '';
-  let physicalIndex = 0;
-  for (let part = 0; part < desired.length; part++) {
-    const wanted = desired[part];
-    let match: { line: (typeof physical)[number]; start: number; end: number } | undefined;
-    for (; physicalIndex < physical.length; physicalIndex++) {
-      const line = physical[physicalIndex];
-      let cursor = prefixCursor(line.text, heading && part === 0);
-      // Paragraph's asciiTrim removes the first logical line's remaining
-      // indentation after getLines has removed the proven container prefix.
-      if (part === 0 && token.meta?.inkoraContainerColumns) {
-        cursor += /^[\t ]*/.exec(line.text.slice(cursor))![0].length;
-      }
-      if (part === 0 && typeof token.meta?.inkoraTaskPrefixLength === 'number') {
-        const physicalTask = /^\[[ xX]\][\t ]+/.exec(line.text.slice(cursor));
-        cursor += physicalTask?.[0].length ?? token.meta.inkoraTaskPrefixLength;
-      }
-      let content = line.text.slice(cursor);
-      if (heading && part === 0) content = content.replace(/[ \t]+#+[ \t]*$/, '');
-      // CommonMark drops ordinary spaces at the end of the final inline line.
-      // They remain source-owned bytes (and may be a short-lived visual draft)
-      // rather than an alignment failure. Internal line endings are excluded:
-      // their spaces can change softbreak/hardbreak semantics.
-      const finalTrailingSpaces = part === desired.length - 1
-        && content.startsWith(wanted)
-        && /^ *$/.test(content.slice(wanted.length));
-      if (content !== wanted && !finalTrailingSpaces) continue;
-      match = { line, start: line.start + cursor, end: line.start + cursor + wanted.length };
-      physicalIndex++;
-      break;
-    }
-    if (!match) throw Error(`inline 原文行无法词法定位：${JSON.stringify(wanted)}`);
-    if (match.start > match.line.start) occupied.push({ sourceStart: match.line.start, sourceEnd: match.start, role: 'block-prefix', syntax: 'block-prefix', visible: false });
-    if (match.end < match.line.contentEnd) occupied.push({ sourceStart: match.end, sourceEnd: match.line.contentEnd, role: 'block-suffix', syntax: heading ? 'heading-close' : 'block-suffix', visible: false });
-    for (let j = 0; j < wanted.length; j++) units.push({ start: match.start + j, end: match.start + j + 1 });
-    text += wanted;
-    if (part < desired.length - 1) {
-      if (match.line.end === match.line.contentEnd) throw Error('inline softbreak 缺少原文行尾');
-      units.push({ start: match.line.contentEnd, end: match.line.end });
-      text += '\n';
-    }
-  }
-  return { text, units };
-}
 
 function hiddenRaw(state: ScanState, start: number, end: number, role: SourceRole, syntax: string, detail?: string): void {
   if (end > start) state.spans.push({ sourceStart: start, sourceEnd: end, role, syntax, visible: false, detail });
@@ -988,74 +787,6 @@ function fillGaps(source: string, spans: LedgerSpan[], ranges: Range[]): LedgerS
   return [...spans, ...extra].sort((a, b) => a.sourceStart - b.sourceStart || a.sourceEnd - b.sourceEnd || Number(b.visible) - Number(a.visible));
 }
 
-type TableSourceCell = { start: number; end: number; anchor: number };
-
-function tablePipeOffsets(text: string): number[] {
-  const offsets: number[] = [];
-  let codeDelimiter = "";
-  for (let index = 0; index < text.length; index++) {
-    if (text[index] === "`") {
-      let end = index + 1;
-      while (text[end] === "`") end++;
-      const run = text.slice(index, end);
-      if (!codeDelimiter) codeDelimiter = run;
-      else if (run === codeDelimiter) codeDelimiter = "";
-      index = end - 1;
-      continue;
-    }
-    if (text[index] !== "|" || codeDelimiter) continue;
-    let slashes = 0;
-    for (let before = index - 1; before >= 0 && text[before] === "\\"; before--) slashes++;
-    if (slashes % 2 === 0) offsets.push(index);
-  }
-  return offsets;
-}
-
-function tableCellsForLine(line: ReturnType<typeof lineTable>[number], columns: number): TableSourceCell[] {
-  const prefix = prefixCursor(line.text, false);
-  const tableText = line.text.slice(prefix);
-  const pipes = tablePipeOffsets(tableText);
-  const leading = pipes[0] !== undefined && tableText.slice(0, pipes[0]).trim() === "";
-  const trailing = pipes.at(-1) !== undefined && tableText.slice(pipes.at(-1)! + 1).trim() === "";
-  const boundaries = [leading ? pipes[0] + 1 : 0];
-  for (const pipe of pipes) {
-    if (leading && pipe === pipes[0]) continue;
-    if (trailing && pipe === pipes.at(-1)) break;
-    boundaries.push(pipe + 1);
-  }
-  const rowEnd = trailing ? pipes.at(-1)! : tableText.length;
-  const cells: TableSourceCell[] = [];
-  for (let column = 0; column < columns; column++) {
-    const segmentStart = boundaries[column] ?? rowEnd;
-    const segmentEnd = column + 1 < boundaries.length ? boundaries[column + 1] - 1 : rowEnd;
-    let start = segmentStart;
-    let end = Math.max(segmentStart, segmentEnd);
-    while (start < end && /[\t ]/.test(tableText[start])) start++;
-    while (end > start && /[\t ]/.test(tableText[end - 1])) end--;
-    cells.push({
-      start: line.start + prefix + start,
-      end: line.start + prefix + end,
-      anchor: line.start + prefix + segmentEnd,
-    });
-  }
-  return cells;
-}
-
-function tableCellInlineInput(source: string, start: number, end: number): InlineInput {
-  let text = '';
-  const units: RawUnit[] = [];
-  for (let offset = start; offset < end; offset++) {
-    if (source[offset] === '\\' && source[offset + 1] === '|') {
-      text += '|';
-      units.push({ start: offset, end: offset + 2 });
-      offset++;
-      continue;
-    }
-    text += source[offset];
-    units.push({ start: offset, end: offset + 1 });
-  }
-  return { text, units };
-}
 
 function mapTableNode(
   source: string,
@@ -1095,19 +826,20 @@ function mapTableNode(
   }
 }
 
-export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonly Range[]): BuildLedgerResult {
+export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonly Range[], evidence?: CanonicalTokenEvidence): BuildLedgerResult {
   const diagnostics: LedgerDiagnostic[] = [];
   try {
     const lines = lineTable(source);
-    const env: Record<string, unknown> = {};
-    const tokens = markdown.parse(source.replace(/^\uFEFF/, ''), env);
-    const references = parseDefinitions(source, referenceLineRanges(env));
+    const accepted = evidence ?? parseCanonicalSource(source).tokenEvidence;
+    if (accepted.raw !== source) throw Error('已接受 token 的原文已过期');
+    const tokens = accepted.tokens;
+    const references = parseDefinitions(source, accepted.references);
     const indexedTokensByRange: Array<Array<{
       token: Token;
       tokenIndex: number;
     }>> = Array.from({ length: ranges.length }, () => []);
     tokens.forEach((token, tokenIndex) => {
-      if (!token.map || !['inline', 'table_open', 'fence', 'code_block'].includes(token.type)) return;
+      if (!token.map || !['inline', 'table_open', 'fence', 'code_block', 'hr', 'inkora_protected_block'].includes(token.type)) return;
       const tokenStart = lines[token.map[0]]?.start;
       const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
       if (tokenStart === undefined || tokenEnd === undefined) return;
@@ -1123,6 +855,14 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         indexedTokensByRange[low].push({ token, tokenIndex });
       }
     });
+    const opaque = new Map<number, AcceptedOpaqueInline>();
+    const delimiters = new Map<number, AcceptedDelimiter>();
+    for (const token of tokens) for (const child of token.children ?? []) {
+      const accepted = child.meta?.inkoraAccepted as AcceptedOpaqueInline | undefined;
+      if (accepted) opaque.set(accepted.sourceStart, accepted);
+      const delimiter = child.meta?.inkoraAcceptedDelimiter as AcceptedDelimiter | undefined;
+      if (delimiter) delimiters.set(delimiter.sourceStart, delimiter);
+    }
     const blocks: LedgerBlock[] = [];
     const allSpans: LedgerSpan[] = [];
     const allExpectations: Array<{
@@ -1136,7 +876,21 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         allSpans.push(...blocks[blocks.length - 1].spans);
         continue;
       }
-      const state: ScanState = { spans: [], atoms: [], expectations: [], references, ownerSerial };
+      const state: ScanState = { spans: [], atoms: [], expectations: [], references, ownerSerial, opaque, delimiters };
+      if (range.kind === 'horizontal_rule') {
+        const token = indexedTokensByRange[rangeIndex].find(item => item.token.type === 'hr');
+        if (!token) throw Error('水平线没有同次解析的已接受 token');
+        const atom: Atom = {
+          sourceStart: range.start, sourceEnd: range.end,
+          role: 'delimiter', syntax: 'horizontal-rule', visible: true, text: '',
+          projection: 'atom', expectedNode: { type: 'horizontal_rule', attrs: {} },
+        };
+        const error = assignVisualPositions([atom], projectionUnitsFor(pmDoc, range), []);
+        if (error) throw Error(`水平线投影不一致：${error}`);
+        blocks.push({ range, spans: [atom], visualText: '', inlineCount: 0 });
+        allSpans.push(atom);
+        continue;
+      }
       if (range.kind === 'table') {
         const table = pmDoc.nodeAt(range.pos);
         // The token index uses overlap, so a BOF table whose model range starts
@@ -1192,9 +946,16 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       let tableIndex = 0;
       let codeIndex = 0;
       const actions = rangeTokens.filter(({ token }) =>
-        token.type === 'inline' || token.type === 'table_open' || token.type === 'fence' || token.type === 'code_block');
+        token.type === 'inline' || token.type === 'table_open' || token.type === 'fence' || token.type === 'code_block' || token.type === 'inkora_protected_block');
       for (const { token, tokenIndex } of actions) {
-        if (token.type === 'table_open') {
+        if (token.type === 'inkora_protected_block') {
+          const accepted = token.meta?.inkoraAccepted as AcceptedOpaqueInline | undefined;
+          if (!accepted) throw Error('嵌套保护块缺少已接受原文范围');
+          const atom: Atom = { sourceStart: accepted.sourceStart, sourceEnd: accepted.sourceEnd,
+            role: 'protected', syntax: 'protected-block', visible: true, text: '', projection: 'atom',
+            expectedNode: { type: 'protected_block', attrs: { raw: accepted.raw, kind: accepted.kind } } };
+          state.spans.push(atom); state.atoms.push(atom);
+        } else if (token.type === 'table_open') {
           const target = nestedTables[tableIndex++];
           if (!target || !token.map) throw Error('容器 table token 与 PM 节点数量不一致');
           mapTableNode(source, lines.slice(token.map[0], token.map[1]), target.node, target.pos, pmDoc, state);
@@ -1272,7 +1033,21 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
           : '原文有前后两个合法 gap；PM→source 必须给 collapsedAffinity，禁止静默重置到文档头',
       });
     }
-    const spans = fillGaps(source, allSpans, ranges as Range[]);
+    const opaqueIntervals = [...opaque.values()].sort((a, b) => a.sourceStart - b.sourceStart);
+    const uniqueOwnerSpans = allSpans.filter(span => {
+      if (span.role !== 'block-prefix' || !opaqueIntervals.length) return true;
+      let low = 0, high = opaqueIntervals.length;
+      while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (opaqueIntervals[mid].sourceEnd <= span.sourceStart) low = mid + 1;
+        else high = mid;
+      }
+      const owner = opaqueIntervals[low];
+      if (!owner || owner.sourceStart >= span.sourceEnd) return true;
+      if (owner.sourceStart <= span.sourceStart && owner.sourceEnd >= span.sourceEnd) return false;
+      throw Error('容器前缀与保护范围部分交叠，不能建立唯一原文归属');
+    });
+    const spans = fillGaps(source, uniqueOwnerSpans, ranges as Range[]);
     const spansByOwner = new Map<string, LedgerSpan[]>();
     for (const span of spans) {
       if (!span.owner) continue;

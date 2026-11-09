@@ -1,0 +1,92 @@
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/.tools/node_modules/.bin/pnpm --dir editor build
+$ tsc --noEmit && vite build
+vite v8.3.6 building client environment for production...
+transforming...
+✓ 143 modules transformed.
+rendering chunks...
+computing gzip size...
+../build/editor/index.html                  0.62 kB │ gzip:   0.36 kB
+../build/editor/assets/index-3bhqrzjd.js  653.86 kB │ gzip: 215.20 kB
+
+✓ built in 176ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+xcodegen generate
+⚙️  Generating plists...
+⚙️  Generating project...
+⚙️  Writing project...
+Created project at /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/Inkora.xcodeproj
+mkdir -p "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/logs" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/failures" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/screenshots" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/markdown-snapshots"
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh bridge-editor \
+		/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/bridge.test.ts
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  04:05:40
+   Duration  217ms (tests 42%, transform 29%, import 23%, worker 6%, environment 1%)
+
+rm -rf "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/bridge-native.xcresult"
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" INKORA_XCRESULT_PATH="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/bridge-native.xcresult" \
+		/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh bridge-native \
+		xcodebuild -quiet -project Inkora.xcodeproj -scheme Inkora \
+		-destination 'platform=macOS' -derivedDataPath /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/DerivedData \
+		-resultBundlePath "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/bridge-native.xcresult" \
+		-only-testing:InkoraTests/BridgeProtocolTests test
+Writing result bundle at path:
+	/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/bridge-native.xcresult
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+2026-11-10 04:05:42.938 xcodebuild[54237:12855867]  DVTAssertions: Warning in IDEFrameworks/IDEFoundation/Execution/LaunchSystem/IDELaunchSession.m:395
+Details:  setRunnablePIDWithDiagnostics:logSection:andCompletionHandler: called without a completion handler - blocking until diagnostics setup completes. Callers should migrate to using a completion handler for better performance.
+Object:   <IDELaunchSession: 0x79a9b5d500>
+Method:   -setRunnablePIDWithDiagnostics:logSection:andCompletionHandler:
+Thread:   <NSThread: 0x79ac39ddc0>{number = 6, name = (null)}
+Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
+2026-11-10 04:05:44.122 xcodebuild[54237:12855790] [MT] IDETestOperationsObserverDebug: 1.202 elapsed -- Testing started completed.
+2026-11-10 04:05:44.122 xcodebuild[54237:12855790] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-10 04:05:44.122 xcodebuild[54237:12855790] [MT] IDETestOperationsObserverDebug: 1.202 sec, +1.202 sec -- end
+Testing started
+rm -rf "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/native.xcresult"
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" INKORA_XCRESULT_PATH="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/native.xcresult" \
+		/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh native \
+		xcodebuild -quiet -project Inkora.xcodeproj -scheme Inkora \
+		-destination 'platform=macOS' -derivedDataPath /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/DerivedData \
+		-resultBundlePath "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/native.xcresult" -only-testing:InkoraTests test
+Writing result bundle at path:
+	/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/native.xcresult
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+2026-11-10 04:05:45.595 xcodebuild[54296:12856264]  DVTAssertions: Warning in IDEFrameworks/IDEFoundation/Execution/LaunchSystem/IDELaunchSession.m:395
+Details:  setRunnablePIDWithDiagnostics:logSection:andCompletionHandler: called without a completion handler - blocking until diagnostics setup completes. Callers should migrate to using a completion handler for better performance.
+Object:   <IDELaunchSession: 0x7633b2d200>
+Method:   -setRunnablePIDWithDiagnostics:logSection:andCompletionHandler:
+Thread:   <NSThread: 0x76352adc80>{number = 2, name = (null)}
+Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
+2026-11-10 04:06:10.265 xcodebuild[54296:12856263] [MT] IDETestOperationsObserverDebug: 24.686 elapsed -- Testing started completed.
+2026-11-10 04:06:10.265 xcodebuild[54296:12856263] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-10 04:06:10.265 xcodebuild[54296:12856263] [MT] IDETestOperationsObserverDebug: 24.686 sec, +24.686 sec -- end
+Testing started
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh build-release \
+		xcodebuild -quiet -project Inkora.xcodeproj -scheme Inkora \
+		INKORA_BUNDLE_IDENTIFIER=com.huruizhi.Inkora.UITesting \
+		-configuration Release -derivedDataPath /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/DerivedData build
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, name:Any Mac }
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh release-bundle \
+		tests/ci/editor-bundle-smoke.sh \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/DerivedData/Build/Products/Release/Inkora.app"
+Offline editor bundle smoke passed (assets/index-3bhqrzjd.js)

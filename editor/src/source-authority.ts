@@ -92,13 +92,13 @@ function semanticWhitespaceShadow(raw: string): {
 }
 
 function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger {
-  const direct = buildSourceLedger(raw, parsed.doc, parsed.ranges);
+  const direct = buildSourceLedger(raw, parsed.doc, parsed.ranges, parsed.tokenEvidence);
   if (direct.ok) return direct.ledger;
   const shadow = semanticWhitespaceShadow(raw);
   if (!shadow.removed.length) throw Error(`投影账本失败：${direct.reason}`);
   const shadowParsed = parse(shadow.shadow);
   if (!shadowParsed.doc.eq(parsed.doc)) throw Error(`投影账本失败：${direct.reason}`);
-  const fallback = buildSourceLedger(shadow.shadow, shadowParsed.doc, shadowParsed.ranges);
+  const fallback = buildSourceLedger(shadow.shadow, shadowParsed.doc, shadowParsed.ranges, shadowParsed.tokenEvidence);
   if (!fallback.ok) throw Error(`投影账本失败：${fallback.reason}`);
   const translated = fallback.ledger.spans.map(span => ({
     ...span,
@@ -552,8 +552,8 @@ export class SourceAuthoritySession {
   private preferredEol: '\r\n' | '\n';
   private managedImageOwners = new Map<string, string>();
   private sourceCommit: SourceCommit | null = null;
-  // Parsing is a pure function of the exact raw value. Keep one immutable
-  // result across validation/acceptance/ledger construction for that value;
+  // Parsing is a pure function of raw within this document epoch. Keep one
+  // immutable result across validation/acceptance/ledger construction;
   // projection proofs still bind raw + PM doc identity + projection identity.
   private parsedSourceCache: { raw: string; parsed: ReturnType<typeof parse> } | null = null;
   private projectionContextCache: {
@@ -609,6 +609,19 @@ export class SourceAuthoritySession {
       }
     });
     return { raw: this.currentRaw, imageURIs };
+  }
+
+  captureProtectedRanges(raw = this.currentRaw): { raw: string; ranges: Array<{ start: number; end: number }> } {
+    const parsed = this.parseSource(raw);
+    const candidates = parsed.opaqueSpans.map(span => ({ start: span.sourceStart, end: span.sourceEnd }));
+    candidates.sort((a, b) => a.start - b.start || a.end - b.end);
+    const ranges: Array<{ start: number; end: number }> = [];
+    for (const range of candidates) {
+      const previous = ranges.at(-1);
+      if (previous && range.start <= previous.end) previous.end = Math.max(previous.end, range.end);
+      else ranges.push({ ...range });
+    }
+    return { raw, ranges };
   }
 
   private parseSource(raw: string): ReturnType<typeof parse> {
@@ -1112,7 +1125,7 @@ export class SourceAuthoritySession {
   }
 
   private dispatchTransaction(transaction: Transaction): boolean {
-    if (!transaction.before.eq(this.state.doc)) {
+    if (transaction.before !== this.state.doc) {
       this.diagnostic = '过期事务：事务基线不是当前投影';
       this.unresolvedIntent = { description: this.diagnostic };
       return false;
@@ -1147,6 +1160,18 @@ export class SourceAuthoritySession {
     const before = this.snapshot();
     let attemptedRaw: string | undefined;
     try {
+      // D fragments are read-only in the visual projection, including a
+      // selection covering the whole atom. Only an explicit source commit
+      // authorizes removing/changing their raw bytes (GATE-002/GATE-004).
+      this.state.doc.descendants((node, pos) => {
+        if (!['protected_inline', 'protected_block'].includes(node.type.name)) return;
+        const mapped = transaction.mapping.mapResult(pos, 1);
+        const after = transaction.doc.nodeAt(mapped.pos);
+        if (mapped.deleted || after?.type !== node.type ||
+            after.attrs.raw !== node.attrs.raw || after.attrs.kind !== node.attrs.kind) {
+          throw Error('保护片段只读；完整删除或改写必须在源码中显式提交');
+        }
+      });
       let tr = transaction;
       const step = tr.steps[0]?.toJSON() as { stepType?: string; from?: number; to?: number; slice?: { content?: Array<{ text?: string }> } } | undefined;
       const insert = step?.stepType === 'replace' && !(step.slice?.content ?? []).some(node => node.text === undefined)
@@ -1662,6 +1687,11 @@ export class SourceAuthoritySession {
   reopen(raw: string, selection?: RawSelection): boolean {
     if (this.composing) return this.guard('reset');
     this.finishComposition();
+    // Equal bytes in a new document epoch cannot reuse the old PM identity:
+    // transactions retained by an old view must fail the baseline guard.
+    this.parsedSourceCache = null;
+    this.projectionContextCache = null;
+    this.rawBoundaryCache = null;
     const parsed = this.parseSource(raw);
     this.currentRaw = raw; this.savedRaw = raw;
     this.sourceCommit = null;
