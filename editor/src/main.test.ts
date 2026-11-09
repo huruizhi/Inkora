@@ -218,6 +218,9 @@ it("可视查找按位置定位第二个同文结果，保留查询焦点与正�
   const messages = h.sent.length;
   const buttons = h.dom.window.document.querySelectorAll<HTMLButtonElement>(".search-panel-match-button");
   expect(buttons).toHaveLength(2);
+  const pointer = new h.dom.window.MouseEvent("pointerdown", { bubbles: true, cancelable: true });
+  buttons[1].dispatchEvent(pointer);
+  expect(pointer.defaultPrevented).toBe(true);
   buttons[1].click();
   expect(h.dom.window.document.activeElement).toBe(h.searchQuery());
   expect(h.sent).toHaveLength(messages);

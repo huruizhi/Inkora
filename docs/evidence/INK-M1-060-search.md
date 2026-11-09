@@ -10,3 +10,5 @@
 | `--dir editor test` | 056为459项 | 当前477 passed/0 failed，26文件，包含Bridge |
 
 结果来自production main、SearchPanel、runtime与EditorView，不读取工具栏DOM作为可搜索内容。jsdom几何桩只让PM事务运行，不是实际滚动可见证据。fixture的原始input/expected/manifest未修改；标准库132检查只证明oracle完整。
+
+后续补查原生鼠标激活：程序化 `.click()` 本身不会证明真实 pointerdown 的默认焦点行为。新增同一真实面板用例的 pointerdown 断言先红（defaultPrevented=false），再让结果/上一处/下一处按钮阻止默认夺焦；键盘导航与composition守卫不改。补正后main/panel/runtime三文件101项通过；仍不据此冒称真实WK焦点和滚动验收。

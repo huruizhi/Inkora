@@ -734,8 +734,8 @@ export class SearchPanel {
         [next, "forward"],
       ] as const) {
         button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
           if (this.isInteractionBlocked()) {
-            event.preventDefault();
             this.showStatus("请先完成中文输入，再定位查找结果");
           }
         });
@@ -773,8 +773,8 @@ export class SearchPanel {
         button.className = "search-panel-match-button";
         button.setAttribute("aria-label", `定位到第 ${matchIndex + 1} 处匹配`);
         button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
           if (this.isInteractionBlocked()) {
-            event.preventDefault();
             this.showStatus("请先完成中文输入，再定位查找结果");
           }
         });
