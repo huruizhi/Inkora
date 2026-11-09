@@ -213,6 +213,6 @@
 
 INK-M1-103 将 parser 接受的块/行内保护范围交给 PM 与 source ledger：front matter、脚注定义、callout、数学围栏和块级 HTML 使用只读块；Wiki/embed、脚注引用、行内 HTML 与注释使用只读 inline atom，其左右正文保持直接编辑。范围绑定完整 raw、canonical rule 与原始 UTF-16/BOM/EOL 位置。预览字串不产生正文、图片或链接 owner，也不进入可视查找/大纲/内容统计。
 
-GFM 表格/任务项仍使用真实可编辑结构；闭合 Mermaid 围栏按 SYN-S005 作为可编辑代码块，不执行图表。BOF 的 `---`/`+++` 必须先服从 front matter 优先级，缺少合法关闭时归 U002，包括 EOF-only 开始围栏；其他 CommonMark 水平线写法继续由 SYN-S012 负责。
+GFM 表格/任务项仍使用真实可编辑结构；Mermaid 围栏按 SYN-S005 作为可编辑代码块，包括合法的 EOF 无 closing fence 形态，不执行图表。BOF 的 `---`/`+++` 必须先服从 front matter 优先级，缺少合法关闭时归 U002，包括 EOF-only 开始围栏；其他 CommonMark 水平线写法继续由 SYN-S012 负责。
 
 保护片段的完整可视删除也按 GATE-002 拒绝，原文、可信投影与意图保留。结构化保存由 canonical 诊断、可审计位置与会话状态共同判断；作者主动源码提交按 GATE-004 保存完整原文，组合、未提交草稿、未解决意图及编码/EOL 保护继续生效。实现与冻结18例的对应及尚未完成的物理验收见 `docs/tasks/INK-M1-103.md`，不能据非UI检查宣告首阶段通过。

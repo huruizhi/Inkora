@@ -263,16 +263,3 @@ export function installProtectedSyntax(markdown: MarkdownIt): void {
     return true;
   }, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
 }
-
-/** The same accepted fence token/closure metadata determines the Mermaid gate. */
-export function finalizeProtectedSyntax(markdown: MarkdownIt): void {
-  markdown.core.ruler.after('inkora_fence_closure', 'inkora_mermaid_boundary', state => {
-    for (const token of state.tokens) {
-      if (token.type !== 'fence' || token.info.trim() !== 'mermaid' || token.meta?.inkoraClosed !== false) continue;
-      token.type = 'inkora_protected_block';
-      token.meta = { ...token.meta, inkoraOpaque: 'mermaid',
-        inkoraRule: token.meta?.inkoraClosed === false ? 'SYN-U002' : 'SYN-S005',
-        inkoraIssue: token.meta?.inkoraClosed === false ? 'Mermaid 围栏未闭合，已保留原文' : undefined };
-    }
-  });
-}

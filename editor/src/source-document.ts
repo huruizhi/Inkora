@@ -3,7 +3,7 @@ import type { Node as PMNode } from "prosemirror-model";
 import { parseAcceptedMarkdownTokens, configureProjectionTokens } from "./markdown-codec";
 import { inkoraSchema as schema } from "./schema";
 import { installReferenceCapture, referenceLineRanges, type ReferenceLineRange } from "./reference-context";
-import { installProtectedSyntax, finalizeProtectedSyntax } from "./protected-syntax";
+import { installProtectedSyntax } from "./protected-syntax";
 import { installGfmAutolinks } from "./gfm-autolinks";
 import { installContainerProvenance, installInlineProvenance, bindOpaqueInlineSource, type AcceptedOpaqueInline } from "./source-token-provenance";
 
@@ -19,7 +19,6 @@ installContainerProvenance(tokenizer);
 installInlineProvenance(tokenizer);
 installGfmAutolinks(tokenizer);
 configureProjectionTokens(tokenizer);
-finalizeProtectedSyntax(tokenizer);
 export function parse(source: string) {
   const starts = [0];
   for (let i = 0; i < source.length; i++) if (source[i] === '\n') starts.push(i + 1);

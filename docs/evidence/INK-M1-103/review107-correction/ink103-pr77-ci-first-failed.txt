@@ -1,0 +1,81 @@
+verify	Run actions/checkout@v7	﻿2026-11-09T20:12:21.6255780Z ##[group]Run actions/checkout@v7
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6256050Z with:
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6256160Z   repository: huruizhi/Inkora
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6257260Z   token: ***
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6257360Z   ssh-strict: true
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6257450Z   ssh-user: git
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6257540Z   persist-credentials: true
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6257650Z   clean: true
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6257750Z   sparse-checkout-cone-mode: true
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6257860Z   fetch-depth: 1
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6257960Z   fetch-tags: false
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6258050Z   show-progress: true
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6258150Z   lfs: false
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6258230Z   submodules: false
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6258330Z   set-safe-directory: true
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6258430Z   allow-unsafe-pr-checkout: false
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6258580Z env:
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6258670Z   INKORA_CAPTURE_SCREEN: 1
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.6258770Z ##[endgroup]
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7066260Z Syncing repository: huruizhi/Inkora
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7066860Z ##[group]Getting Git version info
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7067190Z Working directory is '/Users/rayhu/.local/share/github-actions-runner/inkora/_work/Inkora/Inkora'
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7067560Z [command]/usr/bin/git version
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7122190Z git version 2.54.0 (Apple Git-157)
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7128010Z ##[endgroup]
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7130790Z Copying '/Users/rayhu/.gitconfig' to '/Users/rayhu/.local/share/github-actions-runner/inkora/_work/_temp/5cc5dc6a-ac0c-4373-b513-5a96f25dc7cd/.gitconfig'
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7133610Z Temporarily overriding HOME='/Users/rayhu/.local/share/github-actions-runner/inkora/_work/_temp/5cc5dc6a-ac0c-4373-b513-5a96f25dc7cd' before making global git config changes
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7134280Z Adding repository directory to the temporary git global config as a safe directory
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7134930Z [command]/usr/bin/git config --global --add safe.directory /Users/rayhu/.local/share/github-actions-runner/inkora/_work/Inkora/Inkora
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7645230Z [command]/usr/bin/git config --local --get remote.origin.url
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7699800Z https://github.com/huruizhi/Inkora
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7704390Z ##[group]Removing previously created refs, to avoid conflicts
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7705590Z [command]/usr/bin/git rev-parse --symbolic-full-name --verify --quiet HEAD
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7761160Z refs/heads/task/INK-M1-100-explicit-source-save
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.7765020Z [command]/usr/bin/git checkout --detach
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.8051200Z HEAD is now at 0b64d62 refactor(editor): centralize source commit provenance
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.8117270Z [command]/usr/bin/git branch --delete --force task/INK-M1-100-explicit-source-save
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.8175690Z Deleted branch task/INK-M1-100-explicit-source-save (was 0b64d62).
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.8256870Z ##[endgroup]
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.8257100Z [command]/usr/bin/git submodule status
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.8735880Z ##[group]Cleaning the repository
+verify	Run actions/checkout@v7	2026-11-09T20:12:21.8737140Z [command]/usr/bin/git clean -ffdx
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4431720Z Removing .tools/
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4432500Z Removing Inkora.xcodeproj/
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4432650Z Removing artifacts/
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4432760Z Removing build/
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4432860Z Removing editor/node_modules/
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4436660Z [command]/usr/bin/git reset --hard HEAD
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4578300Z HEAD is now at 0b64d62 refactor(editor): centralize source commit provenance
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4580980Z ##[endgroup]
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4581940Z ##[group]Disabling automatic garbage collection
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4583060Z [command]/usr/bin/git config --local gc.auto 0
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4642380Z ##[endgroup]
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4642580Z ##[group]Setting up auth
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4642740Z Removing SSH command configuration
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4643530Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.4697600Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.5179230Z Removing HTTP extra header
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.5180750Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.5239720Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.5709710Z Removing includeIf entries pointing to credentials config files
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.5711140Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.5769190Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.6222370Z [command]/usr/bin/git config --file /Users/rayhu/.local/share/github-actions-runner/inkora/_work/_temp/git-credentials-fb5f6394-36da-4a01-a424-419358982956.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.6285540Z [command]/usr/bin/git config --local includeIf.gitdir:/Users/rayhu/.local/share/github-actions-runner/inkora/_work/Inkora/Inkora/.git.path /Users/rayhu/.local/share/github-actions-runner/inkora/_work/_temp/git-credentials-fb5f6394-36da-4a01-a424-419358982956.config
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.6346610Z [command]/usr/bin/git config --local includeIf.gitdir:/Users/rayhu/.local/share/github-actions-runner/inkora/_work/Inkora/Inkora/.git/worktrees/*.path /Users/rayhu/.local/share/github-actions-runner/inkora/_work/_temp/git-credentials-fb5f6394-36da-4a01-a424-419358982956.config
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.6402860Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-fb5f6394-36da-4a01-a424-419358982956.config
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.6454880Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-fb5f6394-36da-4a01-a424-419358982956.config
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.6505840Z ##[endgroup]
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.6506090Z ##[group]Fetching the repository
+verify	Run actions/checkout@v7	2026-11-09T20:12:22.6508810Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +6a366f3dd41c3c4576953e5d05f486af089bf122:refs/remotes/origin/task/INK-M1-103-canonical-protected-parser
+verify	Run actions/checkout@v7	2026-11-09T20:13:45.8791530Z ##[error]fatal: unable to access 'https://github.com/huruizhi/Inkora/': Recv failure: Operation timed out
+verify	Run actions/checkout@v7	2026-11-09T20:13:45.8802400Z The process '/usr/bin/git' failed with exit code 128
+verify	Run actions/checkout@v7	2026-11-09T20:13:45.8803230Z Waiting 13 seconds before trying again
+verify	Run actions/checkout@v7	2026-11-09T20:13:58.8830920Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +6a366f3dd41c3c4576953e5d05f486af089bf122:refs/remotes/origin/task/INK-M1-103-canonical-protected-parser
+verify	Run actions/checkout@v7	2026-11-09T20:14:35.4784850Z ##[error]fatal: unable to access 'https://github.com/huruizhi/Inkora/': Failed to connect to github.com port 443 after 36541 ms: Couldn't connect to server
+verify	Run actions/checkout@v7	2026-11-09T20:14:35.4816260Z The process '/usr/bin/git' failed with exit code 128
+verify	Run actions/checkout@v7	2026-11-09T20:14:35.4816850Z Waiting 12 seconds before trying again
+verify	Run actions/checkout@v7	2026-11-09T20:14:47.4837350Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +6a366f3dd41c3c4576953e5d05f486af089bf122:refs/remotes/origin/task/INK-M1-103-canonical-protected-parser
+verify	Run actions/checkout@v7	2026-11-09T20:15:24.0816360Z ##[error]fatal: unable to access 'https://github.com/huruizhi/Inkora/': Failed to connect to github.com port 443 after 36552 ms: Couldn't connect to server
+verify	Run actions/checkout@v7	2026-11-09T20:15:24.0895640Z ##[error]The process '/usr/bin/git' failed with exit code 128

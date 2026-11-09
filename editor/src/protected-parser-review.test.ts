@@ -38,3 +38,24 @@ it('keeps an EOF metadata opener unsafe until explicit source confirmation', () 
   expect(session.saveMemory()).toBe(true);
   expect(session.savedRaw).toBe('---');
 });
+
+it('edits EOF Mermaid fences without adding a closing delimiter', () => {
+  for (const raw of ['```mermaid\nflowchart TD\n', '\uFEFF~~~mermaid\r\nflowchart TD']) {
+    const session = new SourceAuthoritySession(raw);
+    expect(session.state.doc.firstChild?.type.name).toBe('code_block');
+    expect(session.state.doc.firstChild?.attrs.closed).toBe(false);
+    expect(session.issues).toEqual([]);
+    expect(session.saveEligible, session.diagnostic).toBe(true);
+    const from = raw.indexOf('flowchart');
+    expect(session.setRawSelection(from)).toBe(true);
+    expect(session.nativeType('New '), session.diagnostic).toBe(true);
+    const changed = raw.replace('flowchart', 'New flowchart');
+    expect(session.currentRaw).toBe(changed);
+    expect(session.saveMemory()).toBe(true);
+    expect(session.savedRaw).toBe(changed);
+    expect(session.undo()).toBe(true);
+    expect(session.currentRaw).toBe(raw);
+    expect(session.redo()).toBe(true);
+    expect(session.currentRaw).toBe(changed);
+  }
+});
