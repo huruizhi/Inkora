@@ -1,0 +1,46 @@
+{
+  "codeCommit": "7305b97161ff9173fb575ebf4014036dabdcd64b",
+  "sourcesSHA256": {
+    "editor/src/editor-runtime.test.ts": "7c15ad15ef633df202fe5240b02abede36c9e47be16de7274898e189ef8a37a0",
+    "editor/src/editor-runtime.ts": "5ea5ba0bbca15263f71babddf79750015a47ead2133e200cea063d6d2813059f",
+    "editor/src/main.test.ts": "8f90b793674e69c71bf1ecdfce1f915e4d9ff052496348ee96c79480b2b99f82",
+    "editor/src/main.ts": "01394b4633f6cf58e806063a936542faabf0fb8dd97c338427a0e046ce120e3e",
+    "editor/src/markdown-codec.ts": "a3c01fb9df1e65b14c1f5acd698e07034d018832cfc45075f432a724ebffc797",
+    "editor/src/protected-oracles.test.ts": "36dee2c06e52287d7e7810dab5db737ceaa938f01e1a6b91bf2d5b33e180a293",
+    "editor/src/protected-parser-review.test.ts": "6c3911f82bb8c019fe8062cdbf3c4228c8f02aad6970d821f7c0d4f9e21992d0",
+    "editor/src/protected-preview.ts": "1733264b1ceb38ee8cfe90494548598f184e4dd570319b3c50304301596eb83a",
+    "editor/src/protected-source-runtime.test.ts": "15a2709023fc67d04b7e133b2a8aaaed3401104a22064826e4b483ebd7052214",
+    "editor/src/protected-syntax.ts": "c123517a39e7ed40ab56d1c2db1c03991f8a35718bf7d71ae8f9722b5b284341",
+    "editor/src/reference-definition-conformance.test.ts": "03fcb4eff94ec7ed5b0db1ff0b7897036be23c21cd4b7be9d952e111a59c8096",
+    "editor/src/schema.test.ts": "05c477d0ca70cf81054329ab51fd00de454cee0540a84fdd6c6b26d427f6d5ac",
+    "editor/src/schema.ts": "1a6042e712eb59e661073e7e76a0c95dc425a8b9db90b4a94a7ae5bb25aafa29",
+    "editor/src/source-authority-runtime.test.ts": "105d45258a608d24d8b40bf894743bda9e98661c57a3e9988413e4506a6c5f13",
+    "editor/src/source-authority.ts": "0cf1310731a8c1809a7f85f012c3e2f9e30c0ef4ee2195d7939ed6240cf1ab04",
+    "editor/src/source-document.ts": "97e1bd6d23b196b2a9281827756494b242138095290e4efc7a94a2bc303de3c1",
+    "editor/src/source-ledger.ts": "760752792d0bd481f3a27b1be7d924cb8deac9e3cb37cafdf60a53494f50a275",
+    "editor/src/source-token-provenance.ts": "f14aadab8670c08cf98d75428e3e5b895b89fcf624f9507e96b3d2e2815ba759",
+    "editor/src/source-transaction.ts": "4afe9f8fc2990955c0f2768f236c77778d60c1cfaa92c6dff16b5e5f575dace5"
+  },
+  "bundleSHA256": {
+    "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "assets/index-CdQHCj6g.js": "52914b7b3d8018910f180c354913529702b06a4023114e4b9b9ecd82d8bdc2cd",
+    "index.html": "dc2ec459d0c26be243d8f14a7755550feaff92e73ef893ca254ff8ee4b409887"
+  },
+  "oracleSHA256": "f411d52edea301c3a09de072fd2f8b1de1e82bba75b46a41c1eccde4c7afd636",
+  "checks": {
+    "editorPassed": 766,
+    "editorFailed": 0,
+    "bridgeWebPassed": 14,
+    "bridgeNativePassed": 15,
+    "nativePassed": 179,
+    "nativeFailed": 0,
+    "existingPerfSkips": 8,
+    "lint": 0,
+    "releaseOffline": 0
+  },
+  "artifactArchive": "/Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed/ink-m1-103-7305b97-test-artifacts.tar.gz",
+  "artifactSHA256": "c1d4f5605e077c087ea4e4077164aa940b086b059c2eeaf319c10d8ad9d3bd22",
+  "performanceReference": "Only fab0bcc model/WK measurements; not relabeled for 7305b97. Final default CI/light baseline pending.",
+  "independentSpecPostFix": "eaac2be6dc9a065d67c56fe82f913be2eecd7d96: bounded finding closed at 7305b97",
+  "boundary": "No App/window/physical IME/system panels/macOS14/paint. First-stage goal remains active."
+}
