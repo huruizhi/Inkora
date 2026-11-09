@@ -50,12 +50,25 @@ const domGlobals = [
   "ClipboardEvent", "DataTransfer",
 ] as const;
 let savedGlobals = new Map<string, unknown>();
+const openedDoms: JSDOM[] = [];
+const jsdomErrors: unknown[] = [];
 
 async function bootMain(): Promise<Harness> {
   const dom = new JSDOM("<!doctype html><main id='app'></main>", {
     pretendToBeVisual: true,
     url: "https://editor.local/",
   });
+  openedDoms.push(dom);
+  dom.virtualConsole.on("jsdomError", (error) => jsdomErrors.push(error));
+  // jsdom 无布局几何。提供中性矩形让真实 PM 事务走完；这不是滚动验收。
+  const rectangle = { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
+  Object.defineProperty(dom.window.Range.prototype, "getClientRects", {
+    configurable: true, value: () => [rectangle],
+  });
+  Object.defineProperty(dom.window.Range.prototype, "getBoundingClientRect", {
+    configurable: true, value: () => rectangle,
+  });
+  dom.window.scrollBy = () => {};
   savedGlobals = new Map();
   for (const key of domGlobals) {
     const value = (dom.window as unknown as Record<string, unknown>)[key];
@@ -167,12 +180,15 @@ function expectedStats(raw: string): { characters: string; writingUnits: string 
 }
 
 afterEach(() => {
+  for (const dom of openedDoms.splice(0)) dom.window.close();
   for (const [key, value] of savedGlobals) {
     Object.defineProperty(globalThis, key, { configurable: true, value });
   }
   Object.defineProperty(globalThis, "document", { configurable: true, value: originalDocument });
   Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
   vi.resetModules();
+  const errors = jsdomErrors.splice(0);
+  expect(errors).toEqual([]);
 });
 
 describe("main：真实 main/Bridge/runtime 面板集成", () => {

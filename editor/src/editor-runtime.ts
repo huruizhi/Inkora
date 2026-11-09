@@ -301,7 +301,7 @@ class SourceEditorRuntime implements EditorRuntime {
     }
     const entry: SourceHistoryEntry = {
       before: { raw: this.currentText, selection: currentSelection.value },
-      after: { raw: plan.resultRaw, selection: plan.selection },
+      after: { raw: plan.resultRaw, selection: { ...plan.selection } },
     };
     this.undoStack.push(entry);
     this.redoStack.length = 0;

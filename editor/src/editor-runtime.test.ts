@@ -43,6 +43,25 @@ function stubBrowserEnvironment(html = "<!doctype html><main id='app'></main>"):
 }
 
 describe("editor runtime", () => {
+  it("captures replacement history selection by value independently of the caller plan", () => {
+    const { parent } = stubBrowserEnvironment();
+    const raw = "<x>a</x>\n";
+    const runtime = createEditorRuntime(parent, raw, () => {});
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.setSelectionRange(3, 4, "backward");
+    const planned = planSourceReplaceAll(searchSource({ raw, revision: 0 }, "a"),
+      { raw, revision: 0 }, "B");
+    if (!planned.ok) throw new Error(planned.failure.message);
+    const expected = { ...planned.plan.selection };
+    expect(runtime.applySourceReplacement(planned.plan).ok).toBe(true);
+    const callerSelection = planned.plan.selection as { anchor: number; head: number };
+    callerSelection.anchor = 0;
+    callerSelection.head = 0;
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getSourceSelection(planned.plan.resultRaw)).toEqual({ ok: true, value: expected });
+    runtime.destroy();
+  });
   it("applies a source replacement atomically with one directed-selection undo/redo unit", () => {
     const { parent } = stubBrowserEnvironment();
     const raw = "<x>one one</x>\r\n";
