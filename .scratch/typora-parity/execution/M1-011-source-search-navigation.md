@@ -22,3 +22,7 @@
 真实source-search+runtime+main/DOM接缝：源码与readonly正反/回绕/重复匹配/选择条目；query连续Enter/ShiftEnter且焦点保持；范围双向回环与Unicode/CRLF/BOM/裸CR/混合边界拒绝；正文原文/保存点/history/future/revision/Bridge消息不变；有past/future时导航后正文UndoRedo；编辑后旧按钮/同revision异raw/重复load epoch拒绝；runtime/query composition及isComposing事件不扰动；truncated只在可见100内导航；PM不出现伪按钮。保留既有256项与根009九项作为控制，测试数量分列。
 
 不运行GUI/App/浏览器，不安装依赖。只读复用主仓锁定pnpm与依赖，环境自动生成node_modules如实记录，不改依赖清单/锁，清理临时自建文件/链接。实际跑新专项、干净全量editor非UI（含bridge）、lint/build/git diff --check。只读管理者档案 /Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed/root-m1-checks 中root两测试可复制本地临时运行，禁止改/追加。英文Conventional subject<=72，push本任务分支核对origin/fullSHA/clean，不PR不合main不改Issue。按AGENTS回报所有证据、未验收、风险；管理者独立复核，完成即回收Agent并在备份后回收workspace。
+
+## 调度
+
+profiles为空，provider实际GPT-5.6-Sol已核，采用medium/full-access/default。Agent f274c383-6fb0-463a-a5e3-6c80cab1c2cd，workspace wks_55aee03ddbab0389，host srv_MEqRNkRW6fSx，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-011-source-search-navigation，分支task/INK-M1-011-source-search-navigation。已取得running回执，notifyOnFinish=true，不轮询或催促。当前仅此执行Agent；009三Agent及workspace均已回收。
