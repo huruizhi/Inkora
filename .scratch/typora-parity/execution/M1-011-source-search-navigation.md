@@ -34,3 +34,11 @@ profiles为空，provider实际GPT-5.6-Sol已核，采用medium/full-access/defa
 冻结root-m1-checks/source-navigation-review.test.ts与SOURCE-NAV-REVIEW-RED.txt。限定补正复用原workspace，调整组合守卫先于消费Enter，保留普通Enter导航、Esc与焦点/选区/历史不变量，不扩功能、不改原根档案。profiles/provider重核后用GLM-5.3/low/full；先复制红例复现，再补产品回归、原009九控制和干净全量/lint/build。
 
 补正Agent 32746dee-65eb-425e-8bc1-b6b1263a57ad已取得running回执，notifyOnFinish=true；原Sol已回收，当前仅这一执行Agent，workspace不变。不轮询催促；未启动GUI。
+
+## 最终非 UI 接收与回收
+
+最终ae143f5996d30209f1d5bec1a09d389fb9746f9b；管理者独立冻结011四项+009九控制共13项全绿，移除临时测试后17文件276项、lint/build通过。组合Enter生命周期/flag-only不消费，普通Enter与BOM/mixed/Unicode第二命中正确。两Agent完成即归档。
+
+本地续验 `.worktrees/INK-M1-011-VERIFY`，task/INK-M1-012-source-navigation-runtime-review @ 58c5c3a。隔离com.huruizhi.Inkora.SourceNavigationReview App构建/codesign严格校验通过；Debug ad-hoc不冒称Hardened Runtime。真实desktop预检仍exit78锁屏，未启动App，锁释放；滚动/键盘/IME/布局待验，不合main不解除M0或006/009门槛。
+
+221常规文件tar逐字节核验、Git bundle verify、live origin同SHA后归档受管workspace，回执确认两Agent归档且owned目录移除。累计41个workspace回收。独立输出SOURCE-NAV-FINAL-*及INK-M1-012-native保留，最终代码和App保留本地续验。
