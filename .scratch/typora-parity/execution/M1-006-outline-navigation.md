@@ -27,3 +27,11 @@
 ## 调度指针
 
 Agent 9ffcff58-b404-49c2-b741-f8e11bfa75d0，workspace wks_c7660dc7053626f9，host srv_MEqRNkRW6fSx，分支task/INK-M1-006-outline-navigation，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-006-outline-navigation。profiles为空，provider核实GPT-5.6-Sol，medium/full-access/default速度。已取得running回执，notifyOnFinish=true，不轮询催促。
+
+## 首稿独立复核
+
+首稿778d580只改允许11文件，管理者独立重跑干净15文件213项全过且无TypeError/jsdomError。执行Agent已立即归档，尚未接受功能。管理者独立main/Bridge/PM+DOM反例稳定2红1绿：同docID/revision/raw合法重载后旧按钮仍把新视图选区从First移到Second；rawOffsetToTextareaOffset在CRLF中间错误返回可用偏移；结构化composition拒绝为绿色控制。冻结root-m1-checks/outline-navigation-review-v2.test.ts和OUTLINE-REVIEW-RED.txt，前版v1缺Range几何产生测试环境日志，v2补齐后两条语义失败依旧且无环境错误，不混作产品Bug。
+
+限定补正复用同workspace，GLM-5.3/low/full（profiles仍为空、provider已核），只处理加载epoch失效、映射内部边界及原范围回归/文档，不改原始独立档案。先红后绿，产品干净套件和临时根反例数量分列；source/readOnly长文滚动仍待真实UI，不把setSelectionRange假定为滚动验收。
+
+接续Agent ffcc1e1a-ffc8-49fa-bedc-c65f2572bbc7 已取得running回执，notifyOnFinish=true；不保留已完成Sol窗口，不新增workspace，不轮询催促。007设计最终10a6e33已接收并备份回收（累计38），当前只此一项执行Agent。
