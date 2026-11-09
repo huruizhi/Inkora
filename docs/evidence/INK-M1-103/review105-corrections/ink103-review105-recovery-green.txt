@@ -1,0 +1,26 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/source-explicit-save.test.ts (5 tests | 1 failed) 9ms
+   × does not let a source receipt authorize an unresolved stale visual transaction 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/source-explicit-save.test.ts > does not let a source receipt authorize an unresolved stale visual transaction
+AssertionError: expected null not to be null
+ ❯ src/source-explicit-save.test.ts:98:40
+     96|   expect(session.beginSource()).toBe(true);
+     97|   expect(session.applySource()).toBe(true);
+     98|   expect(session.unresolvedIntent).not.toBeNull();
+       |                                        ^
+     99|   expect(session.saveEligible).toBe(false);
+    100|   expect(session.undo()).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 7 passed (8)
+   Start at  04:03:06
+   Duration  164ms (transform 45%, import 43%, tests 10%, worker 2%)
+

@@ -527,19 +527,20 @@ describe("production source authority runtime", () => {
   }
 
   it.each([
-    ["heading", "## ", "heading"],
-    ["blockquote", "> ", "blockquote"],
-    ["bullet list", "- ", "bullet_list"],
-    ["ordered list", "3. ", "ordered_list"],
-    ["code fence", "```ts ", "code_block"],
-    ["horizontal rule", "---", "horizontal_rule"],
-  ] as const)("keeps the %s input rule on the source projection", (_name, typed, nodeType) => {
+    ["heading", "## ", "heading", false],
+    ["blockquote", "> ", "blockquote", false],
+    ["bullet list", "- ", "bullet_list", false],
+    ["ordered list", "3. ", "ordered_list", false],
+    ["code fence", "```ts ", "code_block", false],
+    ["horizontal rule", "***", "horizontal_rule", false],
+    ["metadata opener", "---", "protected_block", true],
+  ] as const)("keeps the %s input rule on the source projection", (_name, typed, nodeType, unresolved) => {
     const { runtime, session } = createRuntime("");
     const view = (runtime as unknown as { view: EditorView }).view;
     typeThroughInputRules(view, typed);
     expect(runtime.getText(), (session as unknown as { diagnostic?: string }).diagnostic).toBe(typed);
     expect(session.state.doc.firstChild?.type.name).toBe(nodeType);
-    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.status.unresolved).toBe(unresolved);
     runtime.destroy();
   });
 

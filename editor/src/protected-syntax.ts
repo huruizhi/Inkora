@@ -186,9 +186,6 @@ export function installProtectedSyntax(markdown: MarkdownIt): void {
     state: StateBlock, start: number, end: number, silent: boolean,
   ): boolean => {
     if (start !== 0 || state.bMarks[start] !== 0) return false;
-    // An opening metadata line needs its line ending. The EOF-only `---`
-    // remains the supported horizontal-rule spelling on both load and input.
-    if (state.eMarks[start] === state.src.length) return false;
     const marker = state.src.slice(0, state.eMarks[start]);
     if (marker !== "---" && marker !== "+++") return false;
     if (silent) return true;
@@ -271,7 +268,7 @@ export function installProtectedSyntax(markdown: MarkdownIt): void {
 export function finalizeProtectedSyntax(markdown: MarkdownIt): void {
   markdown.core.ruler.after('inkora_fence_closure', 'inkora_mermaid_boundary', state => {
     for (const token of state.tokens) {
-      if (token.type !== 'fence' || token.info.trim() !== 'mermaid') continue;
+      if (token.type !== 'fence' || token.info.trim() !== 'mermaid' || token.meta?.inkoraClosed !== false) continue;
       token.type = 'inkora_protected_block';
       token.meta = { ...token.meta, inkoraOpaque: 'mermaid',
         inkoraRule: token.meta?.inkoraClosed === false ? 'SYN-U002' : 'SYN-S005',

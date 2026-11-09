@@ -552,8 +552,8 @@ export class SourceAuthoritySession {
   private preferredEol: '\r\n' | '\n';
   private managedImageOwners = new Map<string, string>();
   private sourceCommit: SourceCommit | null = null;
-  // Parsing is a pure function of the exact raw value. Keep one immutable
-  // result across validation/acceptance/ledger construction for that value;
+  // Parsing is a pure function of raw within this document epoch. Keep one
+  // immutable result across validation/acceptance/ledger construction;
   // projection proofs still bind raw + PM doc identity + projection identity.
   private parsedSourceCache: { raw: string; parsed: ReturnType<typeof parse> } | null = null;
   private projectionContextCache: {
@@ -1125,7 +1125,7 @@ export class SourceAuthoritySession {
   }
 
   private dispatchTransaction(transaction: Transaction): boolean {
-    if (!transaction.before.eq(this.state.doc)) {
+    if (transaction.before !== this.state.doc) {
       this.diagnostic = '过期事务：事务基线不是当前投影';
       this.unresolvedIntent = { description: this.diagnostic };
       return false;
@@ -1687,6 +1687,11 @@ export class SourceAuthoritySession {
   reopen(raw: string, selection?: RawSelection): boolean {
     if (this.composing) return this.guard('reset');
     this.finishComposition();
+    // Equal bytes in a new document epoch cannot reuse the old PM identity:
+    // transactions retained by an old view must fail the baseline guard.
+    this.parsedSourceCache = null;
+    this.projectionContextCache = null;
+    this.rawBoundaryCache = null;
     const parsed = this.parseSource(raw);
     this.currentRaw = raw; this.savedRaw = raw;
     this.sourceCommit = null;

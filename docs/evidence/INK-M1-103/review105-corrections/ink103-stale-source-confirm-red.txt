@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-parser-review.test.ts (3 tests | 1 failed | 2 skipped) 5ms
+   × rejects transactions captured before a same-raw reopen epoch 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-parser-review.test.ts > rejects transactions captured before a same-raw reopen epoch
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/protected-parser-review.test.ts:19:32
+     17|   expect(session.beginSource()).toBe(true);
+     18|   expect(session.applySource()).toBe(true);
+     19|   expect(session.saveEligible).toBe(true);
+       |                                ^
+     20|   expect(session.past).toHaveLength(0);
+     21| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 skipped (3)
+   Start at  04:02:55
+   Duration  130ms (import 58%, transform 30%, tests 10%, worker 2%)
+

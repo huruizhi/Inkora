@@ -101,7 +101,11 @@ function inputRulePlan(
   const patches = [{ from, to, insert }];
   const candidate = applyNativePatches(source, patches);
   try {
-    if (parse(candidate).issues.length) return null;
+    // An input rule must retain the characters actually entered even when
+    // canonical priority makes them an unsafe candidate (BOF `---`). The
+    // session installs that parser-owned U projection and blocks structured
+    // saving; clean candidates still require the usual projection proof.
+    parse(candidate);
   } catch {
     return null;
   }

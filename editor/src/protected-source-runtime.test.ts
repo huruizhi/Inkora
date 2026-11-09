@@ -77,7 +77,7 @@ it("keeps supported horizontal-rule source saveable through the canonical ledger
 });
 
 it("maps a horizontal-rule selection and deletion as one source history unit", () => {
-  const session = new SourceAuthoritySession("---");
+  const session = new SourceAuthoritySession("***");
   expect(session.saveMemory()).toBe(true);
   expect(session.dispatch(session.state.tr.setSelection(NodeSelection.create(session.state.doc, 0)))).toBe(true);
   let accepted = false;
@@ -88,7 +88,7 @@ it("maps a horizontal-rule selection and deletion as one source history unit", (
   expect(session.saveEligible).toBe(true);
   expect(session.past).toHaveLength(1);
   expect(session.undo()).toBe(true);
-  expect(session.currentRaw).toBe("---");
+  expect(session.currentRaw).toBe("***");
   expect(session.documentDirty).toBe(false);
   expect(session.saveEligible).toBe(true);
   expect(session.redo()).toBe(true);
