@@ -1,0 +1,22 @@
+{
+  "sourceCommit": "b4aeea5",
+  "binarySHA256": "c92b3f28bc6713f6f3644c7c2cee313e8e59c6ec930b38edb74f2927357289f6",
+  "logs": {
+    "lint.log": "6cceaa7ff891020871420effeeaa094e02839ca3bb13910174f754c6746e1855",
+    "geometry-red.log": "73fe19ae9588e1a8a8b7730ead1194acdcb9ce16d8fd749e2b5ed23811dbb5f5",
+    "editor-368.log": "28a076d19790d9daa85e9c0b6108b7e84978ea3d54cf9823bdf88601ecde378c",
+    "seams-green.log": "1631ee37eba8440d318c6fbbf49f8396d66536329c46a4a793078010619dbabb"
+  },
+  "actualWK": {
+    "readOnlyHeadingFirstAndLast": "PASS",
+    "readOnlySearchStartVisibleWithQueryFocus": "PASS",
+    "editableSourceHeadingReturnToFirst": "PASS",
+    "editableSourceSearchFinalRetest": "NOT_EXECUTED_USER_FOCUS_CHANGE",
+    "narrowWindow": "NOT_EXECUTED",
+    "VoiceOver": "NOT_EXECUTED",
+    "physicalIME": "NOT_EXECUTED",
+    "testAppExited": true,
+    "uiLockReleased": true,
+    "fixtureFilesUnchanged": true
+  }
+}
