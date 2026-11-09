@@ -8,7 +8,7 @@ export type SourceReplacementValidation =
 
 const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
-function isWellFormed(value: string): boolean {
+export function isWellFormed(value: string): boolean {
   for (let index = 0; index < value.length; index += 1) {
     const unit = value.charCodeAt(index);
     if (unit >= 0xd800 && unit <= 0xdbff) {

@@ -1,27 +1,28 @@
-# 当前文档查找与源码替换面板（search-panel，阶段 C）
+# 当前文档查找与替换面板（源码与可视内容）
 
-产品面板：Web 内自建"查找"入口，对当前文档做字面量、默认大小写敏感的原文查询，显示有限结果与计数。复用 `source-search` 纯函数（见 `source-search.md`），不改 kernel/session/Bridge/Swift、不加协议、不加 ⌘F/全局快捷键。textarea 源码模式支持原文范围定位、单个选中匹配与全部替换；bare-CR 仍只读，结构化 ProseMirror 模式仍只显示计数与列表，不自动切源码、不伪造 raw↔PM 替换。
+产品面板：Web 内自建"查找"入口，提供字面量、默认大小写敏感的查询、有限结果与计数。源码模式搜索当前原文，可视模式搜索 PM 可编辑内容，复用 `source-search` 的匹配边界规则；不搜索链接目标/标题、代码语言、保护块或控件文字。源码与可视模式均支持定位、单个选中匹配和全部替换，后者通过 production source ledger 与 owner 局部补丁接受为当前原文。bare-CR 仍只读；不自动切源码，不新增 Bridge 字段、Swift、⌘F 或全局快捷键。
 
 ## 组成
 
 - `editor/src/search-panel.ts`：`SearchPanel` DOM 组件。
   - 查找入口按钮 + 展开后的查询输入 / 大小写开关（默认敏感，与 `searchSource` 默认一致）/ 关闭按钮与结果区域；`maxResults` 固定 100。
-  - 仅当 runtime 显式声明 `sourceReplacement=true` 时挂载单行字面 replacement 输入、"替换选中匹配"与"全部替换"按钮。单个操作要求正文当前有向选区与一个完整匹配范围精确相等；全部操作在结果截断时禁用并解释原因。
+  - runtime 显式开放替换能力时挂载单行字面 replacement 输入、"替换选中匹配"与"全部替换"按钮。单个操作要求正文当前有向选区与一个完整匹配范围精确相等；可编辑源码和可视模式的全部替换即使列表截断也会在当前稳定快照重搜完整结果，达到 10,000 硬上限则整批拒绝。
   - 状态 `idle | document(documentID/revision/epoch/raw 绑定 + result) | error`；`update()` 只通过 `createElement`/`textContent` 重绘，不执行 HTML、不加载资源、不触碰焦点与选区。
-  - `truncated` 时显示"匹配至少 100 处，仅显示前 100 处"，不把截断数冒充精确总数；`rejected` 命中不计入计数、不渲染为条目。源码能力开启时只在这最多 100 个可见结果中提供上一处、下一处、回绕与结果按钮；截断提示明确未显示部分不参与循环。
+  - `truncated` 时显示"匹配至少 100 处，仅显示前 100 处"，不把截断数冒充精确总数；`rejected` 命中不计入计数、不渲染为条目。定位只在这最多 100 个可见结果中提供上一处、下一处、回绕与结果按钮；截断提示明确未显示部分不参与导航循环，全部替换另按完整稳定快照重搜。
   - 摘要对完整原文只做一次 `Intl.Segmenter` 字素分段，之后按边界索引生成有限上下文；超长命中只显示字素安全的首尾各最多 48 个 UTF-16 单元，中间省略。若单个字素本身超过预算，则整簇省略，不切入组合序列，也不无限长渲染。
 - `editor/src/main.ts`：接入调度（`scheduleSearch`，与 `scheduleAnalysis` 同范式）。
-  - 刷新信号唯一来源是既有 `stateChanged` 与面板自身查询/大小写/打开变化；文本取 `runtime.getText()`，revision/documentID 取协议字段，不伪造、不新增第二内容真值。
+  - 刷新由既有 `stateChanged`、面板自身查询/大小写/打开变化，以及 runtime 本地 `status` 驱动。后者用于模式或可操作状态变化后的搜索范围刷新，不伪造正文变更或额外 Bridge revision。当前原文取 `runtime.getText()`，可视匹配索引取 PM doc，revision/documentID 取协议字段，不新增第二内容真值。
   - `searchGeneration` 代际计数 + 已接受 `loadDocument` 时 `cancelPendingSearch`：调度时冻结 query/case/documentID/revision/epoch，计时器执行时再校验 runtime/query composition、面板开关与全部绑定；关闭、跨文档、重复 load、同 revision 异 documentID 时旧任务作废。
   - 接受新 load 立即 `resetForNewDocument()`：清旧结果与绑定，查询/大小写回默认，面板开关保留；被拒 load（`stale_revision`/`request_conflict`）完全保留有效查找状态。
-  - 查找异常只落面板局部错误态，不发 `editorError`、不触发 `stop_saving`；面板动作零正文/dirty/history/Bridge 副作用。
+  - 查找异常只落面板局部错误态，不发 `editorError`、不触发 `stop_saving`。查询、展示和导航零正文/dirty/history/Bridge 副作用；成功且有变化的替换才产生一次正文历史、revision 和 `stateChanged`，失败/no-op 不发布文档变化。
   - `SearchPanel.ownsFocus` 只从当前 DOM `activeElement` 派生，不保存第二份焦点真值。查询区域持焦或查询输入正在 composition 时，来自 Native 的文档 Undo/Redo 仍经过既有 session 请求校验，但执行回调明确拒绝并返回 `command_rejected`；不调用 runtime、不增加 revision、不发虚假 `stateChanged`，也不清正文 history/future。正文重新拥有焦点后，文档 Undo/Redo 保持原行为。
   - 导航请求携带 `documentID/revision/epoch/raw/query/case/result/target` 快照回到 `main`。执行前重新读取 runtime 原文、当前有向选区并重跑有限搜索；任一身份、查询、结果或目标不一致就局部拒绝，不部分更新选区。
-  - 替换请求额外冻结 replacement 与单个/全部意图。`main` 重验身份、epoch、revision、raw、query、case、完整结果与意图后，才调用既有纯计划函数；no-op 仅显示"未产生更改"，不发 `stateChanged`。
+  - production runtime 搜索结果自身也按值捕获 `documentID/revision/raw/load epoch`。接受 load 时 `main` 把身份显式交给新 runtime；可视导航/替换在公共 runtime 接缝先验证结果所属 load，因此同身份同文本重载后的旧结果不能绕过面板 epoch。当前 runtime 的值拷贝与稳定重复查询仍有效；纯源码 search/plan 不读取这份适配上下文。
+  - 替换请求额外冻结 replacement 与单个/全部意图。`main` 重验身份、epoch、revision、raw、query、case、显示结果与意图；全部替换再对稳定快照执行不受 100 项显示上限影响的完整搜索，之后才调用源码纯计划或 production 可视 owner 事务；no-op 仅显示"未产生更改"，不发 `stateChanged`。
 - `editor/src/source-navigation.ts`：纯 raw UTF-16 ↔ textarea LF 坐标接缝。
   - 映射以当前 `raw` 与完整 `textarea.value` 投影一致为前提，逐单元处理 LF、CRLF、bare CR 与混合换行；不使用首次文本命中或长度比例。
   - CRLF 内部、代理对内部、字素内部、越界端点全部拒绝；BOM 作为正常原文单元参与后续范围映射。
-- `editor/src/editor-runtime.ts`：显式区分 `sourceNavigation` 与 `sourceReplacement`。bare-CR 可定位但不可替换，只有可编辑 `SourceEditorRuntime` 开启替换；其原子提交接缝先验证完整计划、textarea 投影、补丁顺序/范围/expected/resultRaw/Unicode/结果选区/composition，再一次写入、一次历史登记、一次通知。
+- `editor/src/editor-runtime.ts`：显式区分原文定位/替换能力与可视内容定位/替换。bare-CR 可定位但不可替换；生产原文权威 runtime 在源码模式验证完整计划、textarea 投影、补丁顺序/范围/expected/resultRaw/Unicode/结果选区/composition，可视模式验证 PM 匹配、owner 局部补丁与候选重解析等价，再一次写入、一次历史登记、一次通知。
 - `editor/src/source-replacement.ts`：runtime 侧不信任计划验证。补丁必须降序且不重叠，`resultRaw` 必须可由当前原文精确重推导；BOM、CRLF/LF/mixed、无尾换行和无关字节均不经过 PM 序列化。
 - `editor/src/main.ts` 布局：新增稳定 `.editor-workspace`（内含 `.find-bar` 与既有 `.editor-host`），工具条与 `replaceChildren(editorHost)` 隔离，不在活编辑器上重建/移动 DOM；`.search-panel-results` 绝对定位下拉、内部滚动，页面不滚动，窄窗不遮挡控制与正文。
 
@@ -36,8 +37,10 @@
 
 ## 已知边界
 
-- UI 首批只支持单行字面替换，无正则、无多行 replacement、无 ⌘F/原生菜单/协议命令；结构化模式定位/替换仍需独立 raw↔PM 映射设计，不以 DOM 或文本猜测伪实现。
+- UI 只支持单行字面替换，无正则、无多行 replacement、无 ⌘F/原生菜单/协议命令；可视模式使用 production source ledger、PM 位置与 owner 候选事务，不读取 DOM 文本或按首次同文猜测。
 - 新增的精确有向选区历史保证覆盖替换链；普通 textarea 输入沿用既有历史行为，本任务未把普通输入历史整体重写。
 - 当前补正只隔离 Native `executeCommand` 对**文档**历史的误路由；查询框自身的原生 Cmd-Z/文字 undo 路由没有真实 WKWebView 证据，未在本任务验收，也不宣称已实现完整 query undo。
 - 查询/大小写/结果均私有于 Web 面板，不持久化到用户偏好或磁盘。
 - 真实 WKWebView 渲染、真实 IME 组合、实际布局与 VoiceOver 的最终体验验收保留给管理者阶段；自动化验证为 jsdom DOM 级。磁盘保存/重开也不属于本任务结论。
+
+- runtime查找结果同时绑定当前内容版本；编辑后Undo/Redo即便回到相同字节也使旧结果失效。单纯选区、no-op及保存回执不改变该版本。
