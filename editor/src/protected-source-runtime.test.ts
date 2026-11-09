@@ -292,3 +292,15 @@ it("does not confuse raw HTML anchor state with a complete Markdown link label",
   expect(session.nativeType('New ')).toBe(true);
   expect(session.currentRaw).toBe('New Before <a>[[target]]</a> after.\n');
 });
+
+it("locks BOM-prefixed metadata on normalized parser input while keeping exact raw offsets", () => {
+  for (const raw of ['\uFEFF---\r\ntitle: value\r\n---\r\n\r\nBody.\r\n', '\uFEFF+++\r\nx = 1\r\n+++\r\n\r\nBody.\r\n']) {
+    const session = new SourceAuthoritySession(raw);
+    expect(session.state.doc.firstChild?.type.name).toBe('protected_block');
+    expect(session.state.doc.firstChild?.attrs.kind).toBe('front_matter');
+    expect(session.state.doc.firstChild?.attrs.raw).toBe(raw.slice(1, raw.indexOf('\r\n\r\n')));
+    expect(parse(raw).opaqueSpans[0].sourceStart).toBe(1);
+    expect(session.currentRaw).toBe(raw);
+    expect(session.saveMemory(), session.diagnostic).toBe(true);
+  }
+});
