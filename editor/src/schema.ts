@@ -25,9 +25,10 @@ export type InkoraNodeName =
   | "code_block"
   | "ordered_list"
   | "bullet_list"
-  | "list_item";
+  | "list_item"
+  | "image";
 
-export type InkoraMarkName = "strong" | "em" | "strike" | "code" | "link" | "image_ref";
+export type InkoraMarkName = "strong" | "em" | "strike" | "code" | "link";
 
 export type DocumentRecoveryReason = "empty_input" | "invalid_document";
 
@@ -65,6 +66,22 @@ function validateLinkTitle(value: unknown): asserts value is string | null {
   if (value !== null && typeof value !== "string") {
     throw new RangeError("Link title must be a string or null");
   }
+}
+
+function imageAttrsFromDOM(dom: Node | string): false | {
+  alt: string;
+  href: string;
+  title: string | null;
+} {
+  if (typeof dom === "string") return false;
+  const element = dom as HTMLElement;
+  const href = element.dataset.inkoraImage;
+  if (!href) return false;
+  return {
+    alt: element.dataset.inkoraAlt ?? "",
+    href,
+    title: element.getAttribute("title"),
+  };
 }
 
 function validateListOrder(value: unknown): asserts value is number {
@@ -214,6 +231,31 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
     ...baseListItem,
     content: "paragraph block*",
   },
+  image: {
+    inline: true,
+    group: "inline",
+    atom: true,
+    selectable: true,
+    draggable: true,
+    attrs: {
+      alt: { default: "", validate: "string" },
+      href: { validate: validateLinkHref },
+      title: { default: null, validate: validateLinkTitle },
+    },
+    parseDOM: [{ tag: "span[data-inkora-image]", getAttrs: imageAttrsFromDOM }],
+    toDOM: (node): DOMOutputSpec => [
+      "span",
+      {
+        class: "image-node image-node-pending",
+        "data-inkora-image": node.attrs.href,
+        "data-inkora-alt": node.attrs.alt,
+        title: node.attrs.title ?? undefined,
+        role: "img",
+        "aria-label": node.attrs.alt || "本地图片",
+      },
+      node.attrs.alt || "图片",
+    ],
+  },
   protected_block: {
     group: "block",
     atom: true,
@@ -266,31 +308,6 @@ export const inkoraMarkSpecs: Record<InkoraMarkName, MarkSpec> = {
         0,
       ];
     },
-  },
-  image_ref: {
-    attrs: {
-      href: { validate: validateLinkHref },
-      title: { default: null, validate: validateLinkTitle },
-    },
-    inclusive: false,
-    parseDOM: [{
-      tag: "span[data-image-ref]",
-      getAttrs: (dom) => {
-        const element = dom as HTMLElement;
-        const href = element.dataset.imageRef;
-        if (!href) return false;
-        return { href, title: element.getAttribute("title") };
-      },
-    }],
-    toDOM: (mark): DOMOutputSpec => [
-      "span",
-      {
-        class: "image-ref",
-        "data-image-ref": mark.attrs.href,
-        title: mark.attrs.title ?? undefined,
-      },
-      0,
-    ],
   },
 };
 

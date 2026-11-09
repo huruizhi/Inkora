@@ -19,9 +19,15 @@ import {
 import type { DirectedSelection, SourceReplacementPlan } from "./source-search";
 import { validateSourceReplacementPlan } from "./source-replacement";
 import { SourceAuthoritySession } from "./source-authority";
+import type { ManagedImageInsertion, ManagedImageRewrite } from "./source-authority";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
 import { createCodeBlockNodeViews } from "./code-block-view";
+import {
+  createImageNodeViews,
+  ImageResourceRegistry,
+  type ImageResourceDescriptor,
+} from "./image-view";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
@@ -48,6 +54,9 @@ export interface EditorRuntime {
     readonly replacedCount: number;
   }>;
   readonly composing: boolean;
+  applyImageDescriptors(values: readonly ImageResourceDescriptor[]): void;
+  insertImage(value: ManagedImageInsertion): boolean;
+  rewriteManagedImages(values: readonly ManagedImageRewrite[]): boolean;
   enterSourceMode(): boolean;
   applySourceDraft(): boolean;
   cancelSourceDraft(): boolean;
@@ -81,11 +90,13 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }>();
   private publishedLogicalRevision = 0;
   private readonly session: SourceAuthoritySession;
+  private readonly imageResources = new ImageResourceRegistry();
 
   constructor(
     private readonly parent: HTMLElement,
     text: string,
     private readonly onChange: RuntimeChangeListener,
+    private readonly onImageAccessRequest?: (href: string) => void,
   ) {
     const ownerWindow = parent.ownerDocument.defaultView;
     if (!ownerWindow) throw new Error("Editor runtime requires an attached window");
@@ -137,6 +148,22 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       return { ok: false, message: reason };
     }
     return { ok: true, value: this.session.currentRaw };
+  }
+
+  applyImageDescriptors(values: readonly ImageResourceDescriptor[]): void {
+    this.imageResources.replace(values);
+  }
+
+  insertImage(value: ManagedImageInsertion): boolean {
+    if (this.mode !== "visual" || !this.session.insertImage(value)) return false;
+    this.view?.updateState(this.session.state);
+    return true;
+  }
+
+  rewriteManagedImages(values: readonly ManagedImageRewrite[]): boolean {
+    if (this.mode !== "visual" || !this.session.rewriteManagedImages(values)) return false;
+    this.view?.updateState(this.session.state);
+    return true;
   }
 
   whenCompositionStable(): Promise<boolean> {
@@ -392,7 +419,32 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     view = new EditorView(this.parent, {
       state: this.session.state,
       decorations: codeDecorations,
-      nodeViews: { code_block: codeBlockNodeView },
+      nodeViews: {
+        code_block: codeBlockNodeView,
+        image: createImageNodeViews(
+          this.imageResources,
+          this.onImageAccessRequest,
+          (getPos, expectedNode, attrs) => {
+            if (this.session.composing || view.composing) {
+              return { ok: false, message: "请先完成中文输入，再修改图片描述。" };
+            }
+            const pos = getPos();
+            if (pos === undefined) return { ok: false, message: "图片已变化，请重试。" };
+            const currentNode = view.state.doc.nodeAt(pos);
+            if (!currentNode || !currentNode.eq(expectedNode)) {
+              return { ok: false, message: "图片已变化，请重试。" };
+            }
+            lastDispatchAccepted = undefined;
+            view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, {
+              ...currentNode.attrs,
+              ...attrs,
+            }));
+            return lastDispatchAccepted
+              ? { ok: true }
+              : { ok: false, message: this.session.diagnostic || "无法安全修改图片描述。" };
+          },
+        ),
+      },
       dispatchTransaction: (transaction) => {
         const compositionID = transaction.getMeta("composition");
         if (transaction.docChanged && this.compositionPhase === "settling" &&
@@ -578,6 +630,10 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   };
   readonly composing = false;
 
+  applyImageDescriptors(_values: readonly ImageResourceDescriptor[]): void {}
+  insertImage(_value: ManagedImageInsertion): boolean { return false; }
+  rewriteManagedImages(_values: readonly ManagedImageRewrite[]): boolean { return false; }
+
   constructor(parent: HTMLElement, private readonly text: string) {
     this.textArea = document.createElement("textarea");
     this.textArea.id = "editor";
@@ -646,9 +702,10 @@ export function createEditorRuntime(
   parent: HTMLElement,
   text: string,
   onChange: RuntimeChangeListener,
+  onImageAccessRequest?: (href: string) => void,
 ): EditorRuntime {
   parent.replaceChildren();
   const endings = classifyLineEndings(text);
   if (endings === "bare_cr") return new ReadOnlyEditorRuntime(parent, text);
-  return new SourceAuthorityEditorRuntime(parent, text, onChange);
+  return new SourceAuthorityEditorRuntime(parent, text, onChange, onImageAccessRequest);
 }

@@ -1,9 +1,10 @@
 import { JSDOM } from "jsdom";
-import { TextSelection } from "prosemirror-state";
+import { NodeSelection, TextSelection } from "prosemirror-state";
 import { splitBlock } from "prosemirror-commands";
 import { afterEach, describe, expect, it } from "vitest";
 import { createEditorRuntime, type EditorRuntime } from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
+import type { SourceAuthoritySession } from "./source-authority";
 import { createPasteTransaction } from "./editor-session";
 import {
   setHeading,
@@ -53,6 +54,171 @@ function createRuntime(raw: string): {
 }
 
 describe("production source authority runtime", () => {
+  it("accepts one managed image import as one raw/history/revision transaction", () => {
+    const { runtime, session } = createRuntime("前后\r\n");
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.setRawSelection(1)).toBe(true);
+    const imported = sourceSession.insertImage({
+      uri: "文档.assets/%E6%9E%B6%E6%9E%84%20%E5%9B%BE%25.png",
+      alt: "架构图",
+      title: "标题",
+    });
+
+    expect(imported).toBe(true);
+    expect(runtime.getText()).toBe('前![架构图](文档.assets/%E6%9E%B6%E6%9E%84%20%E5%9B%BE%25.png "标题")后\r\n');
+    expect(sourceSession.status.revision).toBe(1);
+    expect(sourceSession.past).toHaveLength(1);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("前后\r\n");
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toContain("文档.assets/%E6%9E%B6%E6%9E%84%20%E5%9B%BE%25.png");
+    runtime.destroy();
+  });
+
+  it("refreshes image capabilities and layered placeholders without changing document state", () => {
+    const raw = "![本地](./doc.assets/a.png) ![外部](https://example.test/a.png)\n";
+    const { runtime, session, dom } = createRuntime(raw);
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    const before = sourceSession.stateReport();
+    expect(dom.window.document.querySelectorAll(".image-node img"), dom.window.document.body.innerHTML).toHaveLength(0);
+    expect(dom.window.document.body.textContent).toContain("离线外部图片");
+
+    (runtime as unknown as {
+      applyImageDescriptors(values: Array<{
+        href: string;
+        status: string;
+        displayURL?: string;
+        message?: string;
+      }>): void;
+    }).applyImageDescriptors([
+      {
+        href: "./doc.assets/a.png",
+        status: "ready",
+        displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000",
+      },
+    ]);
+
+    const image = dom.window.document.querySelector<HTMLImageElement>(".image-node img");
+    expect(image?.getAttribute("src")).toBe("inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000");
+    expect(runtime.getText()).toBe(raw);
+    expect(sourceSession.stateReport()).toMatchObject({
+      currentRaw: before.currentRaw,
+      savedRaw: before.savedRaw,
+      version: before.version,
+      documentDirty: false,
+    });
+    runtime.destroy();
+  });
+
+  it("offers a real inline alt/title editor backed by the source transaction", () => {
+    const { runtime, dom } = createRuntime('前 ![旧](./a.png "旧题") 后\n');
+    const edit = dom.window.document.querySelector<HTMLButtonElement>(".image-edit-button")!;
+    edit.click();
+    const form = dom.window.document.querySelector<HTMLFormElement>(".image-attributes-form")!;
+    const alt = form.querySelector<HTMLInputElement>('[name="alt"]')!;
+    const title = form.querySelector<HTMLInputElement>('[name="title"]')!;
+    alt.value = "新描述";
+    title.value = "新标题";
+    form.dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+
+    expect(runtime.getText()).toBe('前 ![新描述](./a.png "新标题") 后\n');
+    expect(dom.window.document.querySelector(".image-attributes-form")).toBeNull();
+    runtime.destroy();
+  });
+
+  it("rewrites only the unique draft owner as an explicit first-save history unit", () => {
+    const { runtime, session } = createRuntime("已有 ![keep](old.assets/a.png)\n");
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.setRawSelection(sourceSession.currentRaw.length)).toBe(true);
+    expect(sourceSession.insertImage({
+      uri: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174000",
+      alt: "新图",
+      title: null,
+    })).toBe(true);
+    const draftRaw = runtime.getText();
+
+    expect(sourceSession.rewriteManagedImages([{
+      assetID: "123e4567-e89b-12d3-a456-426614174000",
+      from: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174000",
+      to: "Note.assets/%E6%96%B0%20%E5%9B%BE.png",
+    }])).toBe(true);
+    expect(runtime.getText()).toContain("![keep](old.assets/a.png)");
+    expect(runtime.getText()).toContain("Note.assets/%E6%96%B0%20%E5%9B%BE.png");
+    expect(runtime.getText()).not.toContain("inkora-draft:");
+    expect(sourceSession.status.revision).toBe(2);
+    expect(sourceSession.undo()).toBe(true);
+    expect(runtime.getText()).toBe(draftRaw);
+    expect(sourceSession.redo()).toBe(true);
+    expect(runtime.getText()).not.toContain("inkora-draft:");
+    runtime.destroy();
+  });
+
+  it("refuses a managed rewrite when source editing changed the draft URI into a normal link", () => {
+    const draft = "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174000";
+    const { runtime, session } = createRuntime(`![图](${draft})\n`);
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.beginSource()).toBe(true);
+    expect(sourceSession.updateDraft(`[不是图片](${draft})\n`)).toBe(true);
+    expect(sourceSession.applySource()).toBe(true);
+    const before = sourceSession.stateReport();
+
+    expect(sourceSession.rewriteManagedImages([{
+      assetID: "123e4567-e89b-12d3-a456-426614174000",
+      from: draft,
+      to: "Note.assets/a.png",
+    }])).toBe(false);
+    expect(sourceSession.stateReport()).toMatchObject({
+      currentRaw: before.currentRaw,
+      version: before.version,
+    });
+    expect(runtime.getText()).toBe(`[不是图片](${draft})\n`);
+    runtime.destroy();
+  });
+
+  it("deletes and restores one image owner without rewriting adjacent marks", () => {
+    const raw = '**前** [![空 alt](./图%20片.png "标题")](./target) *后*\r\n';
+    const { runtime, session } = createRuntime(raw);
+    let imagePosition = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.type.name === "image") imagePosition = pos;
+    });
+    expect(imagePosition).toBeGreaterThan(0);
+    session.dispatch(session.state.tr.setSelection(NodeSelection.create(session.state.doc, imagePosition)));
+    expect(session.dispatch(session.state.tr.deleteSelection())).toBe(true);
+    expect(runtime.getText()).toBe("**前** [](./target) *后*\r\n");
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("**前** [](./target) *后*\r\n");
+    runtime.destroy();
+  });
+
+  it("edits one image alt/title as one source history unit without touching neighbours", () => {
+    const raw = '**前** [![旧描述][图]](./target) *后*\r\n\r\n[图]: ./图%20片.png "旧标题"\r\n';
+    const { runtime, session } = createRuntime(raw);
+    let imagePosition = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.type.name === "image") imagePosition = pos;
+    });
+    expect(imagePosition).toBeGreaterThan(0);
+    const image = session.state.doc.nodeAt(imagePosition)!;
+
+    expect(session.dispatch(session.state.tr.setNodeMarkup(imagePosition, undefined, {
+      ...image.attrs,
+      alt: "新描述",
+      title: "新标题",
+    }))).toBe(true);
+    expect(runtime.getText()).toBe(
+      '**前** [![新描述](./%E5%9B%BE%20%E7%89%87.png "新标题")](./target) *后*\r\n\r\n[图]: ./图%20片.png "旧标题"\r\n',
+    );
+    expect(session.status.revision).toBe(1);
+    expect(session.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(session.redo()).toBe(true);
+    expect(runtime.getText()).toContain('![新描述](./%E5%9B%BE%20%E7%89%87.png "新标题")');
+    runtime.destroy();
+  });
+
   function execute(session: InkoraEditorSession, command: Command): boolean {
     return command(session.state, transaction => session.dispatch(transaction));
   }

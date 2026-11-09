@@ -39,3 +39,9 @@
 生产编辑器由唯一当前 Markdown 原文、派生语义和带位置依据的 ProseMirror 投影组成。稳定延后片段以精确原文占位与正文混排；未知、畸形或未证明事务保留当前原文、可信投影和完整意图，阻断本次快照并开放主动源码修复，不自动把整篇切到 textarea。未提交源码草稿同样阻断快照；取消草稿或修复提交后，下一次保存可以恢复。
 
 `createSnapshot` 读取同一 turn 的安全当前原文。`markSaved` 只把命令携带的精确 snapshot 文本设为保存点；它不重建或覆盖较新的当前原文、选区和历史。未修改文档、可视/source no-op、BOM、LF/CRLF/mixed EOL 与尾部换行均返回原始字节对应字符串。
+
+## 图片资源前置屏障
+
+未命名图片首次保存时，目标目录授权不由 Save panel 文件权限替代。编辑器先以 `prepareImageSave` 完成草稿 URI 的精确 owner 重写，再采集正式 snapshot。原生按该 snapshot 重验资源来源 SHA 和目标冲突，资源全部发布并复验后才调用 `super.save`；Markdown 成功才发送 `markSaved` 和确认资源清单。
+
+资源已发布而 Markdown 失败时不回滚或删除已发布孤儿：会话保持 `awaitingMarkdown`、草稿源与 journal，正文保持 dirty。下次保存可复用同字节目标，或对新目标执行新的显式路径事务。Save As 的已有引用字节不改，关联相对资源按原 URI 迁移；任一缺失、拒权或异字节冲突会阻止 Markdown 提交。

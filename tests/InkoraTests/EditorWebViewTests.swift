@@ -340,6 +340,56 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testImageImportKeepsEnqueueRevisionAndDoesNotRetryAfterItBecomesStale() throws {
+    let delegate = RecordingBridgeDelegate()
+    var scripts: [String] = []
+    let bridge = EditorBridge(
+      delegate: delegate,
+      evaluator: { script, completion in
+        scripts.append(script)
+        completion(nil)
+      }
+    )
+    bridge.loadDocument(documentID: "image-doc", revision: 4, text: "before")
+    bridge.receiveEditorEvent(readyEvent())
+    bridge.receiveEditorEvent(
+      stateEvent(documentID: "image-doc", revision: 4, canUndo: true, canRedo: false))
+    bridge.executeEditorCommand(.undo)
+    var imageError: Error?
+    bridge.applyImageImport(
+      documentEpoch: UUID(), assetID: UUID(), uri: "inkora-draft://asset/test",
+      alt: "", title: nil,
+      displayURL: try XCTUnwrap(
+        URL(string: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000"))
+    ) { imageError = $0 }
+
+    var commands = try scripts.compactMap(decodeBridgeCommand).filter {
+      $0.type == .executeCommand || $0.type == .applyImageImport
+    }
+    XCTAssertEqual(commands.count, 1)
+    bridge.receiveEditorEvent(
+      stateEvent(
+        requestID: commands[0].requestID, documentID: "image-doc", revision: 5,
+        canUndo: false, canRedo: true))
+
+    commands = try scripts.compactMap(decodeBridgeCommand).filter {
+      $0.type == .executeCommand || $0.type == .applyImageImport
+    }
+    XCTAssertEqual(commands.count, 2)
+    XCTAssertEqual(commands[1].type, .applyImageImport)
+    XCTAssertEqual(commands[1].revision, 4, "Import must stay bound to its original raw revision")
+    bridge.receiveEditorEvent(
+      errorEvent(
+        requestID: commands[1].requestID, code: .staleRevision, action: .retry))
+
+    XCTAssertNotNil(imageError)
+    commands = try scripts.compactMap(decodeBridgeCommand).filter {
+      $0.type == .executeCommand || $0.type == .applyImageImport
+    }
+    XCTAssertEqual(commands.count, 2, "A stale import intent must not move to a newer selection")
+  }
+
+  @MainActor
   func testSnapshotBarrierTimesOutWhenTheEditorStopsReplying() async throws {
     let delegate = SilentBridgeDelegate()
     let bridge = EditorBridge(

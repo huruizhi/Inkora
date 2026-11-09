@@ -15,6 +15,24 @@ function golden(name: string): string {
 }
 
 describe("Markdown golden fixtures", () => {
+  it.each([
+    ['![alt](./图片.assets/a%20b.png "标题")', "alt", "./%E5%9B%BE%E7%89%87.assets/a%20b.png", "标题"],
+    ["![](image.png)", "", "image.png", null],
+    ["![full][asset]\n\n[asset]: ./full.png \"Full\"", "full", "./full.png", "Full"],
+    ["![collapsed][]\n\n[collapsed]: ./collapsed.png", "collapsed", "./collapsed.png", null],
+    ["![shortcut]\n\n[shortcut]: ./shortcut.png", "shortcut", "./shortcut.png", null],
+  ])("parses %s as one image atom with source attributes", (markdown, alt, href, title) => {
+    const document = parseMarkdown(markdown);
+    const images: Array<(typeof document)> = [];
+    document.descendants(node => {
+      if (node.type.name === "image") images.push(node);
+    });
+
+    expect(images).toHaveLength(1);
+    expect(images[0].attrs).toMatchObject({ alt, href, title });
+    expect(images[0].nodeSize).toBe(1);
+  });
+
   it.each(["basic", "nested", "code", "unclosed", "unicode"])(
     "normalizes %s deterministically",
     (name) => {

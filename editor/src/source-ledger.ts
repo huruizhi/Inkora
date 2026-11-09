@@ -63,7 +63,12 @@ export type LedgerMapResult =
 
 type RawUnit = { start: number; end: number };
 type InlineInput = { text: string; units: RawUnit[] };
-type Atom = LedgerSpan & { visible: true; text: string; projection?: 'text' | 'atom' };
+type Atom = LedgerSpan & {
+  visible: true;
+  text: string;
+  projection?: 'text' | 'atom';
+  expectedNode?: { type: string; attrs: Record<string, unknown> };
+};
 type ReferenceDefinition = {
   key: string;
   href: string;
@@ -72,7 +77,7 @@ type ReferenceDefinition = {
 };
 type LinkExpectation = {
   owner: string;
-  mark: 'link' | 'image_ref';
+  mark: 'link';
   href: string;
   title: string | null;
 };
@@ -89,7 +94,13 @@ type TextLeaf = {
   text: string;
   marks: readonly { type: { name: string }; attrs: Record<string, unknown> }[];
 };
-type ProjectionUnit = TextLeaf | { start: number; end: number; atom: string };
+type ProjectionUnit = TextLeaf | {
+  start: number;
+  end: number;
+  atom: string;
+  attrs: Record<string, unknown>;
+  marks: TextLeaf['marks'];
+};
 
 const markdown = new MarkdownIt('commonmark', {
   breaks: false,
@@ -134,6 +145,35 @@ function addAtom(state: ScanState, input: InlineInput, from: number, to: number,
 function addRawAtom(state: ScanState, start: number, end: number, text: string, role: SourceRole, syntax: string, projection: 'text' | 'atom' = 'text', detail?: string): void {
   if (end <= start) throw Error(`可视原文范围 ${start}..${end} 为空`);
   const atom: Atom = { sourceStart: start, sourceEnd: end, role, syntax, visible: true, text, projection, detail };
+  state.spans.push(atom);
+  state.atoms.push(atom);
+}
+
+function addImageAtom(
+  state: ScanState,
+  input: InlineInput,
+  from: number,
+  to: number,
+  alt: string,
+  href: string,
+  title: string | null,
+  owner: string,
+): void {
+  const first = input.units[from];
+  const last = input.units[to - 1];
+  if (!first || !last) throw Error(`图片原文范围 ${from}..${to} 越界`);
+  const atom: Atom = {
+    sourceStart: first.start,
+    sourceEnd: last.end,
+    role: 'image-alt',
+    syntax: 'image',
+    visible: true,
+    text: alt,
+    owner,
+    projection: 'atom',
+    expectedNode: { type: 'image', attrs: { alt, href, title } },
+    detail: '完整 Markdown 图片 owner 映射到一个可选择 PM atom',
+  };
   state.spans.push(atom);
   state.atoms.push(atom);
 }
@@ -333,10 +373,14 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
         }
         if (resolved) {
           const linkOwner = `inline-${++state.ownerSerial}`;
-          state.expectations.push({ owner: linkOwner, mark: image ? 'image_ref' : 'link', href, title });
+          if (!image) state.expectations.push({ owner: linkOwner, mark: 'link', href, title });
           if (image) addHidden(state, input, i, i + 1, 'delimiter', 'image-marker', linkOwner);
           addHidden(state, input, bracket, bracket + 1, 'delimiter', image ? 'image-alt-open' : 'link-label-open', linkOwner);
-          scanInline(state, input, bracket + 1, labelEnd, image ? 'image-alt' : 'link-label', linkOwner);
+          if (image) {
+            addHidden(state, input, bracket + 1, labelEnd, 'image-alt', 'image-alt-source', linkOwner);
+          } else {
+            scanInline(state, input, bracket + 1, labelEnd, 'link-label', linkOwner);
+          }
           addHidden(state, input, labelEnd, labelEnd + 1, 'delimiter', image ? 'image-alt-close' : 'link-label-close', linkOwner);
           if (tail) {
             addHidden(state, input, labelEnd + 1, tail.hrefStart, 'delimiter', 'inline-link-open', linkOwner);
@@ -351,6 +395,18 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
             addHidden(state, input, referenceStart, referenceStart + 1, 'delimiter', 'reference-open', linkOwner);
             addHidden(state, input, referenceStart + 1, referenceEnd - 1, 'reference-label', 'reference-label', linkOwner);
             addHidden(state, input, referenceEnd - 1, referenceEnd, 'delimiter', 'reference-close', linkOwner);
+          }
+          if (image) {
+            addImageAtom(
+              state,
+              input,
+              i,
+              end,
+              text.slice(bracket + 1, labelEnd),
+              href,
+              title,
+              linkOwner,
+            );
           }
           i = end;
           continue;
@@ -632,7 +688,13 @@ function projectionUnitsFor(doc: PMNode, range: Range): ProjectionUnit[] {
   const leaves: ProjectionUnit[] = [];
   doc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
     if (node.isText && node.text) leaves.push({ start: pos, end: pos + node.text.length, text: node.text, marks: node.marks as TextLeaf['marks'] });
-    else if (node.isAtom && !node.isText) leaves.push({ start: pos, end: pos + node.nodeSize, atom: node.type.name });
+    else if (node.isAtom && !node.isText) leaves.push({
+      start: pos,
+      end: pos + node.nodeSize,
+      atom: node.type.name,
+      attrs: node.attrs,
+      marks: node.marks as TextLeaf['marks'],
+    });
   });
   return leaves;
 }
@@ -651,7 +713,15 @@ function assignVisualPositions(atoms: Atom[], leaves: ProjectionUnit[], expectat
     const leaf = leaves[leafIndex];
     if (!leaf) return `词法 atom ${JSON.stringify(atom.text)} 没有对应 PM 单元`;
     if (atom.projection === 'atom') {
-      if (!('atom' in leaf) || leaf.atom !== 'hard_break' || leaf.end - leaf.start !== 1) return `词法 ${atom.syntax} 未命中 nodeSize=1 的 PM hard_break atom`;
+      if (!('atom' in leaf) || leaf.end - leaf.start !== 1) return `词法 ${atom.syntax} 未命中 nodeSize=1 的 PM atom`;
+      if (atom.expectedNode) {
+        if (leaf.atom !== atom.expectedNode.type) return `词法 ${atom.syntax} 未命中 PM ${atom.expectedNode.type} atom`;
+        for (const [key, value] of Object.entries(atom.expectedNode.attrs)) {
+          if ((leaf.attrs[key] ?? null) !== (value ?? null)) return `PM ${leaf.atom} 的 ${key} 与图片原文 owner 不一致`;
+        }
+      } else if (leaf.atom !== 'hard_break') {
+        return `词法 ${atom.syntax} 未命中 PM hard_break atom`;
+      }
       atom.visualStart = leaf.start;
       atom.visualEnd = leaf.end;
       leafIndex++;

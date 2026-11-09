@@ -98,6 +98,7 @@ let executingCommand = false;
 let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
 let loadEpoch = 0;
+let assetEpoch: string | undefined;
 
 function updateModeControls(): void {
   const activeRuntime = runtime;
@@ -467,8 +468,23 @@ window.inkora = {
               // 面板开关保留）。被拒 load 不走这里，查找状态原样保留。
               searchPanel.resetForNewDocument();
               loadEpoch += 1;
+              assetEpoch = undefined;
               runtime?.destroy();
-              runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange);
+              runtime = createEditorRuntime(
+                editorHost,
+                command.text,
+                recordRuntimeChange,
+                href => {
+                  if (activeDocumentID === undefined || activeRevision === undefined) return;
+                  postToNative({
+                    protocolVersion: BRIDGE_PROTOCOL_VERSION,
+                    type: "imageAccessRequested",
+                    documentID: activeDocumentID,
+                    revision: activeRevision,
+                    href,
+                  });
+                },
+              );
               updateModeControls();
               // 跨 load 不夺走查询框正在进行的 IME composition；面板会在
               // compositionend 安全收口后执行已声明的新文档查询重置。
@@ -572,6 +588,62 @@ window.inkora = {
           break;
         case "queryState":
           postToNative(session.queryState(command));
+          break;
+        case "applyImageImport":
+          executingCommand = true;
+          try {
+            const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const response = session.executeMutation(
+              command,
+              () => epochMatches && (runtime?.insertImage({
+                uri: command.uri, alt: command.alt, title: command.title,
+              }) ?? false),
+              () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+            );
+            if (response.type === "stateChanged") {
+              assetEpoch = command.documentEpoch;
+              runtime?.applyImageDescriptors([{
+                href: command.uri, status: "ready", displayURL: command.displayURL,
+              }]);
+            }
+            postToNative(response);
+          } finally {
+            executingCommand = false;
+            updateModeControls();
+          }
+          break;
+        case "prepareImageSave":
+          executingCommand = true;
+          try {
+            const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const response = session.executeMutation(
+              command,
+              () => epochMatches && (runtime?.rewriteManagedImages(command.rewrites) ?? false),
+              () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+            );
+            if (response.type === "stateChanged") assetEpoch = command.documentEpoch;
+            postToNative(response);
+          } finally {
+            executingCommand = false;
+            updateModeControls();
+          }
+          break;
+        case "setImageDescriptors":
+          {
+            const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            if (epochMatches) runtime?.applyImageDescriptors(command.descriptors);
+            const response = epochMatches
+              ? session.acknowledge(
+                command,
+                runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+              )
+              : session.executeMutation(
+                command, () => false,
+                () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+              );
+            if (response.type === "stateChanged") assetEpoch = command.documentEpoch;
+            postToNative(response);
+          }
           break;
       }
     } catch (error) {
