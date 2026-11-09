@@ -40,4 +40,3 @@
 **[b]** 未发现达到报告门槛的未要求范围扩张。
 
 实跑：Vitest `source-authority-runtime.test.ts` + `bridge.test.ts`，59/59；两次一次性 Swift scratch 反例见上。未重跑作者/根 Agent 的全套结果；未验 GUI、真实 Sandbox/bookmark/WK、系统拖放/剪贴板、IME、macOS 14、正式关闭重开，保留 V4 deferred 门槛。
-
