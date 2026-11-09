@@ -137,6 +137,60 @@ const markdown = new MarkdownIt('commonmark', {
   linkify: false,
 }).enable(['table', 'strikethrough']);
 installReferenceCapture(markdown);
+// Capture the container prefix while markdown-it's block parser still has its
+// list/quote indentation context. Restored physical lines cannot reconstruct
+// that context by looking for the first occurrence of token.content.
+type ContainerBlockState = {
+  src: string;
+  tokens: Token[];
+  bMarks: number[];
+  eMarks: number[];
+  tShift: number[];
+  bsCount: number[];
+  blkIndent: number;
+};
+type ContainerBlockRule = (state: ContainerBlockState, start: number, end: number, silent: boolean) => boolean;
+type ContainerBlockRuler = {
+  __rules__?: Array<{ name: string; fn: ContainerBlockRule; alt: string[] }>;
+  at(name: string, fn: ContainerBlockRule, options: { alt: string[] }): void;
+};
+const containerRuler = markdown.block.ruler as unknown as ContainerBlockRuler;
+for (const name of ['paragraph', 'fence', 'code']) {
+  const entry = containerRuler.__rules__?.find(rule => rule.name === name);
+  if (!entry) throw Error(`markdown-it ${name} block rule unavailable`);
+  const original = entry.fn;
+  containerRuler.at(name, (state, start, end, silent) => {
+    const before = state.tokens.length;
+    const accepted = original(state, start, end, silent);
+    if (!accepted || silent) return accepted;
+    for (const token of state.tokens.slice(before)) {
+      if (!token.map || !['inline', 'fence', 'code_block'].includes(token.type)) continue;
+      const columns: number[] = [];
+      for (let line = token.map[0]; line < token.map[1]; line++) {
+        const lineStart = state.bMarks[line];
+        let first = lineStart;
+        let indent = 0;
+        while (first < state.eMarks[line] && indent < state.blkIndent) {
+          const char = state.src[first];
+          if (char === '\t') indent += 4 - (indent + state.bsCount[line]) % 4;
+          else if (char === ' ' || first - lineStart < state.tShift[line]) indent++;
+          else break;
+          first++;
+        }
+        // A partial tab expansion has no one-to-one raw character boundary.
+        // Preserve the existing explicit refusal instead of inventing spaces.
+        if (indent > state.blkIndent) {
+          columns.push(-1);
+        } else {
+          const physicalStart = state.src.lastIndexOf('\n', Math.max(0, lineStart - 1)) + 1;
+          columns.push(first - physicalStart);
+        }
+      }
+      token.meta = { ...token.meta, inkoraContainerColumns: columns };
+    }
+    return accepted;
+  }, { alt: entry.alt });
+}
 markdown.core.ruler.after('inline', 'inkora_task_items', annotateTaskListItems);
 
 type EmphasisDelimiter = {
@@ -632,10 +686,26 @@ function prefixCursor(line: string, heading: boolean): number {
   return cursor;
 }
 
+function containerLine(
+  lines: ReturnType<typeof lineTable>, token: Token, index: number, occupied: LedgerSpan[],
+): ReturnType<typeof lineTable>[number] {
+  const line = lines[index];
+  const column = token.meta?.inkoraContainerColumns?.[index - token.map![0]] ?? 0;
+  if (!Number.isInteger(column) || column < 0 || column > line.text.length) {
+    throw Error('容器前缀无法映射到完整原文边界');
+  }
+  if (column) occupied.push({
+    sourceStart: line.start, sourceEnd: line.start + column,
+    role: 'block-prefix', syntax: 'container-prefix', visible: false,
+  });
+  return { ...line, start: line.start + column, text: line.text.slice(column) };
+}
+
 function mapInlineToken(source: string, lines: ReturnType<typeof lineTable>, token: Token, heading: boolean, occupied: LedgerSpan[]): InlineInput {
   if (!token.map) throw Error('inline token 缺少块级行范围');
   const desired = token.content.split('\n');
-  const physical = lines.slice(token.map[0], token.map[1]);
+  const physical = lines.slice(token.map[0], token.map[1]).map((_, offset) =>
+    containerLine(lines, token, token.map![0] + offset, occupied));
   const units: RawUnit[] = [];
   let text = '';
   let physicalIndex = 0;
@@ -645,6 +715,11 @@ function mapInlineToken(source: string, lines: ReturnType<typeof lineTable>, tok
     for (; physicalIndex < physical.length; physicalIndex++) {
       const line = physical[physicalIndex];
       let cursor = prefixCursor(line.text, heading && part === 0);
+      // Paragraph's asciiTrim removes the first logical line's remaining
+      // indentation after getLines has removed the proven container prefix.
+      if (part === 0 && token.meta?.inkoraContainerColumns) {
+        cursor += /^[\t ]*/.exec(line.text.slice(cursor))![0].length;
+      }
       if (part === 0 && typeof token.meta?.inkoraTaskPrefixLength === 'number') {
         const physicalTask = /^\[[ xX]\][\t ]+/.exec(line.text.slice(cursor));
         cursor += physicalTask?.[0].length ?? token.meta.inkoraTaskPrefixLength;
@@ -698,10 +773,12 @@ function codeLineContent(line: ReturnType<typeof lineTable>[number], style: 'fen
 function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: Range, state: ScanState): void {
   if (!token.map || (token.type !== 'fence' && token.type !== 'code_block')) throw Error('代码块 token 缺少可审计行范围');
   const style = token.type === 'fence' ? 'fenced' : 'indented';
-  let contentLines = lines.slice(token.map[0], token.map[1]);
+  const physical = lines.slice(token.map[0], token.map[1]).map((_, offset) =>
+    containerLine(lines, token, token.map![0] + offset, state.spans));
+  let contentLines = physical;
   let fenceIndent = 0;
   if (style === 'fenced') {
-    const opening = lines[token.map[0]];
+    const opening = physical[0];
     if (!opening) throw Error('围栏起始行不存在');
     const openingSliceStart = Math.max(range.start, opening.start);
     const openingSlice = opening.text.slice(openingSliceStart - opening.start);
@@ -714,7 +791,7 @@ function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: 
     hiddenRaw(state, markerStart + token.markup.length, opening.contentEnd, 'block-prefix', 'fence-info', '语言/info string 为非可视语法');
     hiddenRaw(state, opening.contentEnd, opening.end, 'line-ending', 'fence-open-eol');
 
-    const possibleClosing = lines[token.map[1] - 1];
+    const possibleClosing = physical[physical.length - 1];
     if (!possibleClosing) throw Error('围栏闭合行不存在');
     const marker = token.markup[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const close = possibleClosing.text.match(new RegExp(`^( {0,3})(${marker}{${token.markup.length},})([\\t ]*)$`));
@@ -723,12 +800,12 @@ function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: 
       hiddenRaw(state, possibleClosing.start, closeMarkerStart, 'block-prefix', 'fence-close-indent');
       hiddenRaw(state, closeMarkerStart, closeMarkerStart + close[2].length, 'delimiter', 'fence-close');
       hiddenRaw(state, closeMarkerStart + close[2].length, possibleClosing.contentEnd, 'block-suffix', 'fence-close-space');
-      contentLines = lines.slice(token.map[0] + 1, token.map[1] - 1);
+      contentLines = physical.slice(1, -1);
     } else {
       // CommonMark closes a fence implicitly at EOF. Keep the physical source
       // exact and map every following line as code content; no synthetic close
       // delimiter is introduced into the ledger.
-      contentLines = lines.slice(token.map[0] + 1, token.map[1]);
+      contentLines = physical.slice(1);
     }
   }
 
@@ -1088,18 +1165,30 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       const rangeTokens = indexedTokensByRange[rangeIndex];
       const inlineTokens = rangeTokens.filter(({ token }) => token.type === 'inline');
       const nestedTableTokens = rangeTokens.filter(({ token }) => token.type === 'table_open');
+      const codeTokens = rangeTokens.filter(({ token }) => token.type === 'fence' || token.type === 'code_block');
       const nestedTables: Array<{ node: PMNode; pos: number }> = [];
+      const nestedCodes: Array<{ node: PMNode; pos: number }> = [];
       pmDoc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
         if (node.type.name === 'table') nestedTables.push({ node, pos });
+        if (node.type.name === 'code_block') nestedCodes.push({ node, pos });
       });
       let tableIndex = 0;
+      let codeIndex = 0;
       const actions = rangeTokens.filter(({ token }) =>
-        token.type === 'inline' || token.type === 'table_open');
+        token.type === 'inline' || token.type === 'table_open' || token.type === 'fence' || token.type === 'code_block');
       for (const { token, tokenIndex } of actions) {
         if (token.type === 'table_open') {
           const target = nestedTables[tableIndex++];
           if (!target || !token.map) throw Error('容器 table token 与 PM 节点数量不一致');
           mapTableNode(source, lines.slice(token.map[0], token.map[1]), target.node, target.pos, pmDoc, state);
+        } else if (token.type === 'fence' || token.type === 'code_block') {
+          const target = nestedCodes[codeIndex++];
+          if (!target || !token.map) throw Error('容器 code token 与 PM 节点数量不一致');
+          mapCodeToken(lines, token, {
+            start: lines[token.map[0]].start,
+            end: lines[token.map[1] - 1].contentEnd,
+            pos: target.pos, size: target.node.nodeSize, kind: 'code_block',
+          }, state);
         } else {
           const heading = tokenIndex > 0 && tokens[tokenIndex - 1].type === 'heading_open';
           const input = mapInlineToken(source, lines, token, heading, state.spans);
@@ -1107,7 +1196,7 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         }
       }
       const projectionUnits = projectionUnitsFor(pmDoc, range);
-      if (!inlineTokens.length && !nestedTableTokens.length && projectionUnits.length) {
+      if (!inlineTokens.length && !nestedTableTokens.length && !codeTokens.length && projectionUnits.length) {
         throw Error(`范围 ${range.start}..${range.end} 有 PM 文本/atom 但没有可审计 inline token`);
       }
       const emptyTextblocks: number[] = [];

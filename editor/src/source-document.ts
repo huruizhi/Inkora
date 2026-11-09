@@ -60,6 +60,11 @@ export function parse(source: string) {
   const refs = referenceSourceSlices(source, referenceLineRanges(blockEnv))
     .filter(raw => /^ {0,3}\[[^\]\n]+\]:[^\n]*(?:\r?\n)?$/.test(raw))
     .join('\n');
+  // Resolve only the accepted definition subset through parser environment.
+  // Appending definitions/blank lines to a source slice can extend a valid EOF
+  // fence and create code characters which have no corresponding raw bytes.
+  const referenceEnvironment: Record<string, unknown> = {};
+  if (refs) inlineTokenizer.parse(refs, referenceEnvironment);
   const ranges: Range[] = [], nodes: PMNode[] = [], issues: Issue[] = [];
   let cursor = 0, pos = 0;
   if (front) {
@@ -132,8 +137,11 @@ export function parse(source: string) {
           };
           node = protect();
         } else {
-          const text = normalized + '\n\n' + refs;
-          const parsed = markdownParser.parse(text, { source: text });
+          const text = normalized;
+          const parsed = markdownParser.parse(text, {
+            source: text,
+            references: referenceEnvironment.references,
+          });
           if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
           node = parsed.firstChild!;
           // CommonMark permits a fenced code block to end at EOF without a
