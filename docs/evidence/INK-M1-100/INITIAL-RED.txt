@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-100/editor
+
+ ❯ src/source-explicit-save.test.ts (1 test | 1 failed) 5ms
+   × allows exact UTF-8 source after explicit author editing and commit of an unknown dialect 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/source-explicit-save.test.ts > allows exact UTF-8 source after explicit author editing and commit of an unknown dialect
+AssertionError: 当前投影、草稿或未解决意图不具备保存资格: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/source-explicit-save.test.ts:11:52
+      9|   expect(session.applySource()).toBe(true);
+     10|   expect(session.currentRaw).toBe("Before $y$ after.\n");
+     11|   expect(session.saveMemory(), session.diagnostic).toBe(true);
+       |                                                    ^
+     12| });
+     13|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  02:34:31
+   Duration  207ms (transform 61%, import 33%, tests 4%, worker 1%)
+

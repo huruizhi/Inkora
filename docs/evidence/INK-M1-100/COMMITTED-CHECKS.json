@@ -1,0 +1,14 @@
+{
+  "commit": "a526136ebd8cbd05ad4e20a9755c54041457b711",
+  "command": "make test-bridge test-native release-bundle-check test-ci PNPM=/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm",
+  "exitCode": 0,
+  "sourceSHA256": {
+    "editor/src/source-authority.ts": "fc4f312fab684ca386b94fd13451ae68342ccf81f7ed9cddc22408d72f63a31d",
+    "editor/src/main.ts": "888d1c33f13cffc8e4a58baa1be82ce1b1c2e2fd760e5cfaee1cd7ff7af6ae32",
+    "editor/src/main.test.ts": "773debb9b70c1edec9593cdc4f90f318e4ea25cd6916149d018ade54296fa3cf",
+    "editor/src/source-explicit-save.test.ts": "839e18e143d8f416dc81fc29587b8811ca790b37e96f965ecbd653cf9a7fbdf8"
+  },
+  "logSHA256": "f856dd5b6c481b380755064290a81c9292d72b6256c21649a50dd958f41c3ceb",
+  "logArchive": "ink-m1-100-committed-checks.log",
+  "scope": "hostless Native/WK, Bridge, Release/offline, CI scripts; no App/window/physical IME/UI/full bench"
+}

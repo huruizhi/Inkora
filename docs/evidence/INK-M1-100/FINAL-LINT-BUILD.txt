@@ -1,0 +1,19 @@
+xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests tests/InkoraUITests
+/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm --dir editor lint
+$ tsc --noEmit
+/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm --dir editor build
+$ tsc --noEmit && vite build
+vite v8.3.6 building client environment for production...
+transforming...
+✓ 143 modules transformed.
+rendering chunks...
+computing gzip size...
+../build/editor/index.html                  0.62 kB │ gzip:   0.36 kB
+../build/editor/assets/index-gbgwm9V7.js  646.12 kB │ gzip: 213.17 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 73ms

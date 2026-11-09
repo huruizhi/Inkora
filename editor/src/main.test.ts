@@ -211,6 +211,49 @@ function frozenCaseText(path: string): string {
   return readFileSync(new URL(`../../docs/acceptance/visual-search/${path}`, import.meta.url), "utf8");
 }
 
+it("显式源码提交保留未知语法诊断并按完整原文快照与撤销重做", async () => {
+  const h = await bootMain();
+  const raw = "\uFEFFBefore $x$ after.\r\n";
+  const committed = "\uFEFFBefore $y$ after.\r\n";
+  h.receive({ type: "loadDocument", requestID: "explicit-load", documentID: "explicit", revision: 0, text: raw });
+  h.sourceMode().click();
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+  area.value = area.value.replace("$x$", "$y$");
+  area.setSelectionRange(9, 10, "backward");
+  area.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+  h.sourceApply().click();
+  h.receive({ type: "createSnapshot", requestID: "explicit-snapshot", documentID: "explicit", revision: h.lastRevision() });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: committed });
+  expect(h.dom.window.document.querySelector(".editor-mode-status")?.textContent).not.toContain("保存已阻断");
+  const revision = h.lastRevision();
+  h.receive({ type: "markSaved", requestID: "explicit-saved", documentID: "explicit", revision, text: committed });
+  expect(h.stateMessages().at(-1)?.state?.dirty).toBe(false);
+  h.visualMode().click();
+  h.editorHost().querySelector<HTMLElement>("#editor")!.focus();
+  h.receive({ type: "executeCommand", requestID: "explicit-undo", documentID: "explicit", revision, command: "undo" });
+  h.receive({ type: "createSnapshot", requestID: "explicit-before", documentID: "explicit", revision: h.lastRevision() });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "editor_not_ready" });
+  h.receive({ type: "executeCommand", requestID: "explicit-redo", documentID: "explicit", revision: h.lastRevision(), command: "redo" });
+  h.receive({ type: "createSnapshot", requestID: "explicit-after", documentID: "explicit", revision: h.lastRevision() });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: committed });
+  expect(h.stateMessages().at(-1)?.state?.dirty).toBe(false);
+});
+
+it("允许明确提交未改动的未知源码且不制造文档历史", async () => {
+  const h = await bootMain();
+  const raw = "$x$\n";
+  h.receive({ type: "loadDocument", requestID: "explicit-noop-load", documentID: "explicit-noop", revision: 0, text: raw });
+  const states = h.stateMessages().length;
+  h.sourceMode().click();
+  expect(h.sourceApply().disabled).toBe(false);
+  h.sourceApply().click();
+  expect(h.stateMessages()).toHaveLength(states);
+  expect(h.lastRevision()).toBe(0);
+  h.receive({ type: "createSnapshot", requestID: "explicit-noop-snapshot", documentID: "explicit-noop", revision: 0 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw });
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ dirty: false, canUndo: false, canRedo: false });
+});
+
 it("可视查找仅计可编辑内容，不计链接目标、标题和代码语言", async () => {
   const h = await bootMain();
   const raw = '[alpha](alpha "alpha") alpha\n\n```alpha\nalpha\n```\n';

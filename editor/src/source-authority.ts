@@ -45,6 +45,15 @@ type Snapshot = {
   projection: ProjectionAudit;
   issues: Issue[];
   managedImageOwners: Map<string, string>;
+  sourceCommit: SourceCommit | null;
+};
+
+type SourceCommit = {
+  // Content-state provenance, not a mode flag. The immutable document and raw
+  // travel together in history; a new epoch cannot reuse the author's receipt.
+  readonly raw: string;
+  readonly doc: PMNode;
+  readonly epoch: number;
 };
 
 type CompositionGroup = {
@@ -542,6 +551,7 @@ export class SourceAuthoritySession {
   private readonly options: EditorStateOptions;
   private preferredEol: '\r\n' | '\n';
   private managedImageOwners = new Map<string, string>();
+  private sourceCommit: SourceCommit | null = null;
   // Parsing is a pure function of the exact raw value. Keep one immutable
   // result across validation/acceptance/ledger construction for that value;
   // projection proofs still bind raw + PM doc identity + projection identity.
@@ -583,8 +593,11 @@ export class SourceAuthoritySession {
     };
   }
   get saveEligible(): boolean {
-    return !this.composing && !this.draftDirty && !this.issues.length &&
-      !this.unresolvedIntent && this.projectionIsAuditable();
+    if (this.composing || this.draftDirty || this.unresolvedIntent) return false;
+    const source = this.sourceCommit;
+    if (source && source.raw === this.currentRaw && source.doc === this.state.doc &&
+        source.epoch === this.epoch) return true;
+    return !this.issues.length && this.projectionIsAuditable();
   }
   get sourceAccessible(): boolean { return !this.composing; }
 
@@ -613,6 +626,7 @@ export class SourceAuthoritySession {
       projection: cloneProjection(this.projection),
       issues: this.issues.map(issue => ({ ...issue })),
       managedImageOwners: new Map(this.managedImageOwners),
+      sourceCommit: this.sourceCommit,
     };
   }
 
@@ -640,6 +654,7 @@ export class SourceAuthoritySession {
     this.projection = cloneProjection(snapshot.projection);
     this.issues = snapshot.issues.map(issue => ({ ...issue }));
     this.managedImageOwners = new Map(snapshot.managedImageOwners);
+    this.sourceCommit = snapshot.sourceCommit;
     this.draft = null;
   }
 
@@ -1548,11 +1563,27 @@ export class SourceAuthoritySession {
     return true;
   }
 
+  private recordSourceCommit(): void {
+    this.sourceCommit = { raw: this.currentRaw, doc: this.state.doc, epoch: this.epoch };
+  }
+
   applySource(): boolean {
     if (this.composing) return this.guard('source_apply');
     if (!this.draft) return false;
     const draft = this.draft;
-    if (draft.raw === this.currentRaw) { this.draft = null; return true; }
+    if (!isWellFormed(draft.raw)) {
+      this.diagnostic = '源码草稿含无效 Unicode，无法无损编码为 UTF-8；草稿已保留';
+      return false;
+    }
+    if (/\r(?!\n)/.test(draft.raw)) {
+      this.diagnostic = '源码草稿含 bare CR，须先显式转换换行；草稿已保留';
+      return false;
+    }
+    if (draft.raw === this.currentRaw) {
+      this.recordSourceCommit();
+      this.draft = null;
+      return true;
+    }
     const anchorError = this.boundaryError(draft.raw, draft.selection.anchor);
     const headError = this.boundaryError(draft.raw, draft.selection.head);
     if (anchorError || headError) { this.diagnostic = anchorError ?? headError ?? '非法源码选区'; return false; }
@@ -1579,6 +1610,7 @@ export class SourceAuthoritySession {
       }
       this.past.push(before); this.future = []; this.version++;
       this.logicalRevision++;
+      this.recordSourceCommit();
       this.unresolvedIntent = null; this.diagnostic = '';
       return true;
     } catch (error) {
@@ -1632,6 +1664,7 @@ export class SourceAuthoritySession {
     this.finishComposition();
     const parsed = this.parseSource(raw);
     this.currentRaw = raw; this.savedRaw = raw;
+    this.sourceCommit = null;
     this.managedImageOwners.clear();
     this.preferredEol = raw.match(/\r\n|\n/)?.[0] === '\r\n' ? '\r\n' : '\n';
     this.state = createInkoraProjectionState(parsed.doc, this.options); this.issues = parsed.issues;

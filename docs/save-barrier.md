@@ -51,3 +51,11 @@
 Save As 的已有引用字节不改，只迁移 proof 中当前拥有的相对资源；任一缺失、拒权或异字节冲突会阻止 Markdown 提交。`imageURIs: []` 是可审计的已证明空集合，可跳过图片 source/target 目录授权而继续正常 Markdown safe-save；缺少 proof 必须失败。图片已从正文删除但恢复区仍有 accepted asset 时保留该资源供 Undo/恢复，但它不再是本次发布或 rewrite 的必要条件。
 
 Web 会话按 asset ID 记住已经接受的当前图片 owner，并把该映射纳入 Undo/Redo 快照。Markdown 提交失败后的同目标重试必须重新验证唯一真实图片 atom 后成为严格 no-op，不增加 revision/history；改目标只从当前 owner 原子改写。owner 已被源码编辑成普通链接、消失、重复或无法证明时保守拒绝，不能按字符串全局替换。
+
+## 显式源码提交的保存来源（GATE-004）
+
+结构化资格和源码提交来源分别判断。生产会话在作者显式提交完整草稿后保存绑定当前原文、同一不可变PM文档和epoch的来源证明；Bridge仍在同一捕获点绑定当前document/revision/raw。源码提交前先拒绝不可无损UTF-8编码的代理项及bare CR，草稿原样保留。语法issues继续保留作诊断，不能为了保存清空或把U冒充S。
+
+存在该证明、且原文/文档身份/epoch仍一致时，可按唯一currentRaw快照，不要求未知方言满足结构化ledger资格。composition、未提交草稿、未解决意图仍阻断；每次接受新的可视内容都因raw或doc改变而失效，重载清除证明，Undo/Redo只恢复其验证过的历史内容状态。显式源码no-op确认不改变字节/revision/history/future；单纯进入/取消源码不建立证明。markSaved只更新真实成功写入的保存点，不改变保存来源或当前内容。
+
+用户提示按实际保存资格区分：保留未知语法诊断且源码已提交时，不再误报“保存已阻断”。这没有扩大可视编辑语法范围、取消图片owner proof、资源发布、原生文件冲突或保存失败屏障，也不解除ENC-002/EOL-003只读契约。
