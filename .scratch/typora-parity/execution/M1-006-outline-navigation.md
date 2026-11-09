@@ -35,3 +35,11 @@ Agent 9ffcff58-b404-49c2-b741-f8e11bfa75d0，workspace wks_c7660dc7053626f9，ho
 限定补正复用同workspace，GLM-5.3/low/full（profiles仍为空、provider已核），只处理加载epoch失效、映射内部边界及原范围回归/文档，不改原始独立档案。先红后绿，产品干净套件和临时根反例数量分列；source/readOnly长文滚动仍待真实UI，不把setSelectionRange假定为滚动验收。
 
 接续Agent ffcc1e1a-ffc8-49fa-bedc-c65f2572bbc7 已取得running回执，notifyOnFinish=true；不保留已完成Sol窗口，不新增workspace，不轮询催促。007设计最终10a6e33已接收并备份回收（累计38），当前只此一项执行Agent。
+
+## 最终非 UI 接收与真实窗口待验
+
+最终6f1dd7717381f42daad652a96dff41dbb895a567，管理者独立冻结v2反例3/3转绿，干净完整15文件216项、lint/build通过；旧Agent立即归档。新增loadEpoch只在合法load递增，旧代际请求拒绝；CRLF/代理对内部边界拒绝。主分支未合。
+
+本地验证checkout `.worktrees/INK-M1-006-VERIFY`，分支task/INK-M1-008-navigation-runtime-review @ 1e3b509，保留最终代码。隔离bundle com.huruizhi.Inkora.NavigationReview 构建/签名校验通过；项目UI预检exit78（屏幕锁定），App未启动、锁释放。结构化/source/只读长文滚动、宽窄窗折叠、Enter/Space、真实IME/VoiceOver均未执行，不宣称006整体体验通过。三份本轮测试文档及SHA/预检日志保留本地artifacts与root-m1-checks/INK-M1-008-native。
+
+受管工作区212常规文件tar逐字节核验、Git bundle verify、live origin同SHA后归档，回执确认两Agent归档/owned目录移除；累计39个workspace回收。保留本地续验目录，不保留闲置执行窗口。发现受管checkout存在实际node_modules目录；依赖清单/锁文件未变，归档排除可重建依赖，不用“symlink已删”替代目录清理事实。
