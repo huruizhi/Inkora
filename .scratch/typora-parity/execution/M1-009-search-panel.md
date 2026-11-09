@@ -33,3 +33,11 @@ profiles为空，再核实OMP实际GLM-5.3后采用medium/full。Agent e83acc61-
 冻结root-m1-checks/search-panel-review.test.ts SHA e8bb5127d5ece2f968af6a4158da1e0311b8dd7adc37cf0370f2771c1c91cb35；SEARCH-PANEL-REVIEW-RED.txt SHA 8cef4a2aeb3198bd6439e62bc736b782cb33c134c0742b9e898f1307160a8e7c，执行者不得改写/追加。限定补正复用原workspace，不新增窗口；profiles仍空，provider核实GPT-5.6-Sol/medium/full-access/default，原7文件修正与回归，不扩大产品范围。未启动UI。
 
 接续Agent b058a3c6-3668-403a-97e8-0aac12c9652e已取得running回执，notifyOnFinish=true；当前只这一执行Agent。完成后立即归档，仍按独立反例/干净套件/实际UI分层验收。
+
+## 第二次独立复核
+
+补正033943e51d71ae056f99fd622b5a848875fe82cc，原7条独立冻结反例全部绿，干净完整16文件253项、lint/build均由管理者重跑通过，原两SHA未变。Agent已立即归档。新增跨控件安全审查发现2红：查询input有焦点时收到真实executeCommand Undo会把正文edited还原original；query composition时大纲导航夺走焦点。冻结root-m1-checks/search-focus-review.test.ts与SEARCH-FOCUS-REVIEW-RED.txt。前者结合原生EditorViewController无焦点分流的命令代码，说明正文撤销可能越过输入框；当前仅证明Bridge/DOM路径，不冒称已按真实Cmd-Z。后者是query状态与既有大纲回调缺交叉守卫。
+
+限定追加仍在原7文件：明确查询区焦点时文档Undo/Redo不能执行，query composition中大纲导航拒绝；不改原生协议、不重写查询历史或禁用整个文档撤销。正常焦点正文的Undo/Redo须继续可用，focus场景测试用真实焦点定位，不删既有有效断言。原7绿与新2红合为接收控制，不扩功能范围；真实键盘/窗口门槛保留。
+
+接续Agent ebd97cbe-fba6-414e-9ec8-42c6aa39d46a，GPT-5.6-Sol/low/full-access/default，profiles空且provider已核实，复用原workspace取得running回执，notifyOnFinish=true；不轮询或保留已完成Agent窗口。
