@@ -1,0 +1,39 @@
+# INK-M1-004：大纲与统计只读界面
+
+用户表示“测试正确的 继续推进”。031本轮已结束，日志保留实际通过与未证项；不再请求重复真人取消操作。推进与M0架构无关的只读产品界面，基于已接收两纯模块的组合验证分支，不改实验原型或自动采纳新内核。
+
+## 固定输入与范围
+
+基线 `6831c2eae005fbc841fb651399453af40c705f2d`，其中001大纲/统计、002原文查找替换已通过独立反例及组合179项非UI测试。本任务只使用大纲/统计；查找模块保留，不提前接入可视替换。
+
+允许修改/新增：
+
+- editor/src/document-analysis-panel.ts、document-analysis-panel.test.ts
+- editor/src/main.ts、main.test.ts
+- editor/src/style.css
+- docs/document-analysis-panel.md、docs/tasks/INK-M1-004.md
+
+不修改analysis/search纯模块、editor-runtime/session/kernel/codec/schema/Bridge协议或Swift，不改依赖、冻结原型/证据与已有有效测试。若无法只读接入则精确报告接口缺口，不自扩范围。
+
+## 用户行为
+
+1. 打开文档即显示大纲、内容字符数及字数，并能用有明确名称的按钮收起/展开面板；正文编辑保持既有路径。列表按层级缩进，重复标题保留，空文档说明清楚。
+2. 本轮大纲是只读章节列表，不渲染无效的跳转按钮；章节定位仍是后续集成/首阶段必需能力，不把显示列表冒称定位已完成。
+3. 字符按已接收模块的content.characters；字数按content.writingUnits。以用户能理解的提示说明“中文逐字，英文/数字连续串按词计；标点和表情不计入字数”，字符计数说明“组合表情算一个字符，不计空白”。不把raw统计或内部契约术语直接冒充正文统计，不承诺完整Typora语言计数一致。
+4. 文档加载、正常编辑、粘贴、Undo/Redo和保存点更新后，显示匹配最新文档；composition期间保持上一份稳定结果，不显示半拼音，不为更新统计调用updateState/setText或移动焦点。
+5. 切换文档/重复load时取消旧计时任务，旧文档分析结果不能覆盖新文档；同revision不同documentID同样隔离。退出/销毁无残余listener/timer。
+6. 内容和标题只通过textContent等安全DOM API显示，不执行HTML或加载资源。错误局限在面板，以明确状态显示，不使Bridge把正常文档误报非法，也不阻断保存或编辑。
+
+## 接入不变量
+
+- 主入口保留既有runtime与协议调用顺序。可增加独立编辑宿主子节点和面板，但不能在每次更新时重建/移动活编辑器DOM。loadDocument原有销毁/新建行为可保留。
+- 快照来自现有runtime.getText()，revision/documentID来自已有stateChanged消息，不增加第二套编辑内容真值，不制造协议查询/虚假revision。executingCommand期间的runtime回调不能造成重复Bridge消息；显式Undo/Redo完成后仍刷新面板。
+- 分析可以合并/延迟更新，但读取/分析不得在composition进行时打断它；取消组合后原文没变时可保留旧统计。无异步网络/Worker或新依赖。
+- 收起/展开、分析更新或错误不得改变getText结果、dirty、canUndo/Redo、保存点、revision、selection/焦点；面板不执行任何替换计划。
+- 保持INK-055滚动约束：页面不滚动，编辑区与面板各自滚动；宽/窄窗口不遮挡正文/控制；暗浅色沿用系统色，可键盘操作展开收起及合理AX名称。自动DOM检查不冒称真实WK/VoiceOver验收。
+
+## 验收
+
+先建立真实接缝测试：真实analysis模块+真实DOM组件，以及实际main/Bridge/runtime路径的集成测试，不只mock返回值。覆盖初始加载、真实编辑/粘贴、原生Undo/Redo命令、markSaved、快速跨文档、同revision异docID、source/structured模式、composition守卫、恶意标题、解析错误隔离、收起展开的文本/焦点/selection/history不变。分析失败可在单独组件seam注入，但主集成要走真实实现。
+
+运行新专项、editor lint、完整editor非UI测试和editor build；实际命令/结果及失败要记录。禁止桌面/App/UI测试、安装依赖或更改M0门槛。依赖只读复用主仓锁定工具链，临时自建链接/文件清理。完成commit/push核对远端/clean，不PR不合main不改Issue；管理者独立复核、再决定实际WK检查与回收。
