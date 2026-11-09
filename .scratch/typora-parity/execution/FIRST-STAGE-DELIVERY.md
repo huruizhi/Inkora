@@ -50,3 +50,10 @@ H1/H2/H3结果取得后才更新M0清单及票11/12；不能用用户“现在�
 033 管理者修订稿在 task/INK-SPEC-033-production-draft-review @5962e74ad4fed7890b365b942accec5b90018c74。已补 V6 可视查找替换、真实生产源码历史能力、历史UI证据适用边界，并明确 V1 实施须先通过12。仍为草案。
 
 034 H2/H3 本机物理搜狗证据通过；H3保留用户先删除后输入的真实变体及原追加断言失败。H1报告与事件不一致，确认按键来源为Mac本机实体键盘，正在增加宿主原生键码及NSTextView对照，尚未认定根因。详见M0-CLOSURE-CHECKLIST最新记录。首阶段完整功能与架构采纳状态不变。
+
+## 当前并行（034结束后）
+
+- 034@90d6135：取消/替换/源码物理项已闭合，运行时证据和独立EOF红例已提交推送；自有窗口关闭，UI锁释放。
+- INK-REV-035：图片沙盒宿主独立非UI验收，固定e7930fe8；agent fad5f014-cd55-4bed-8e96-ca85f1291ab8 / workspace wks_259957138a4f7ff2，Sol5.6/medium/default。只评审/实际build-check-verify，不用桌面。
+- INK-PROT-036：EOF原文锚点续写限定修正，固定90d6135；agent 2b9aef1a-9216-445e-9c9d-901f68668c7f / workspace wks_9d9a4df07dc4108c，Sol5.6/medium/default。与035共两名执行者，完成即独立验收、归档Agent并备份回收workspace。
+- 目前没有配置的Paseo profile，使用已实时确认可用的模型/普通速度，未使用6.1处理例行实现。

@@ -27,3 +27,9 @@ H1/H2/H3/U1有明确结果且无未解决的本轮核心反例后，汇总用户
 - 034 H2/H3 原始前缀共392条，SHA-256 b2b43edf54b420a8c15aa9b8c067d65f8a4785b72083a9687feccc844f881537；分层结果在034 native-host/artifacts/H2-*.json、H3-*.json、M0-034-progress.json。已备份至 workspace-archives/inkora-20261109-completed/root-m1-checks/INK-PROT-034-physical。
 
 当前只剩 H1 取消链诊断和准备时 EOF 输入拒绝的契约分类；不重复 H2/H3。票11/12继续保持未通过，待证据裁决。
+
+## 034 取消项最终判定
+
+H1通过：物理搜狗linshi→本机Esc，原生NSTextView和WK均收到keyCode53并取消marked text。WK原文/保存点/raw与PM选区恢复，past0/future1保留；管理者真实Redo重放原Space，再Undo回基线，保存资格恢复。72条日志SHA为8abe40be087da84c5c0f3f059ab876db81a57a6efb838267ff0e5d87e08b90e6；034@90d6135的H1-result-verified.json 11项均真。之前quxiao上屏原因未证明，保留历史，不宣称修了不存在的确定Bug。宿主terminate及CUA无窗口已确认，锁已释放。
+
+H1/H2/H3/U1现全部闭合。准备阶段EOF锚点拒绝经真正bundle/EditorView脚本复现：reopen(a+LF,raw2)接受位置，输入X却拒绝a+LF+X。对应029不变量6，原文和候选未丢；这不是新增功能门槛，仍须修复或在架构决策中明确裁决，不能把已接受位置当不存在。036已派Codex5.6/medium限定修正，禁止改冻结判据或无条件语义放行，无须重复上述物理键盘项。
