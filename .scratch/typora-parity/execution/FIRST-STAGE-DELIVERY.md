@@ -11,7 +11,7 @@
 | 大纲/统计/章节定位 | 已合main | 新内核兼容、真实滚动/键盘/辅助功能点验 |
 | 当前文档查找替换 | PR #73已合main；075及root内容版本补正、568/568/精确CI通过 | 真实UI、物理IME、文件闭环验收 |
 | 可编辑表格/任务列表 | PR #72 已合 main，完整 editor 485/485、精确 CI success | 真实控件/物理输入/文件生命周期与 AX 验收 |
-| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 077/080/084/085/086已组合，原生172通过；083统一owner证明，最终CI/物理验收 |
+| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 083统一owner已形成候选并独立回归；089两项Spec缺陷交090补正，最终CI/物理验收 |
 | 代码高亮/语言选择 | 已合 main；有真实 WK 语言选择、字节及正式保存重开证据 | 新组合回归与最终集中验收 |
 | 高级语法保护混排/异常安全 | 生产接线已合 main | 新组合保护块邻接、含混阻断和主动源码修复回归 |
 
@@ -19,7 +19,7 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 
 ## 最新执行状态（2026-11-10，覆盖下述历史）
 
-当前 main 仍 `0f93c4ab52dc55da786c925c5bb135f8188e0933`。图片组合070当前 **2fa3a9e88e7462e3d6929625911cd39f68ce89ad**，与实际受检086整树相同；完整editor **611/611**（含Bridge）、Native **180total/172passed/0fail/8性能skip**、lint及模型五组全部通过。图片PR尚未创建，083统一owner证明尚在实施，不把集成分支当已发布。
+当前 main 仍 `0f93c4ab52dc55da786c925c5bb135f8188e0933`。图片组合070本地当前 **d6c159bb2524a979c9ef95fc9cc3a5a5b2d0af14**，083已形成统一owner候选；root独立完整editor **615/615**（含Bridge）、Native **177total/169passed/0fail/8性能skip**。图片PR尚未创建，089发现两项Spec wrong，已交090修复；绿灯不替代审查通过。
 
 - **079**：1e63a505，owner/range索引与严格raw/doc/projection上下文缓存，已接回/独立回归/两层回收。旧1MB整组超时、优化后约1.25s输入等分阶段数据原样保留。
 - **080**：3ef26139，生产恢复/稍后/放弃、fresh selection确认、snapshot→持久handoff、schema3审计与安全放弃已接回；386文件tar SHA `79312a4b6403697a1b9b423c7c42acf01c96ea8d109ee3c41dc0f3e1a92b4b54`，实际日志/xcresult备份，workspace removedDirectory=true。累计managed workspace回收 **76**。
@@ -29,7 +29,11 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 - **085**：3a29720，单项同raw纯解析复用与完整字符串按需字素边界查询，实际Node/WK分阶段及noisy数据均保留。最终WK medium/large/CRLF输入→精确快照median133.14/970.91/964.83ms，CRLF p95仍1048.63ms，不冻结全分位数/paint/IME预算。已接回/校验备份，414文件tar SHA `ddf8bf56eaaeeaa04a27cc2c1fb00b14c5feac6e043d8078df723ae808729490`。
 - **086**：实现25370d9，与085组合4991cb7，证据最终2fa3a9e。原基线8条7红1绿→修后8绿；仅淘汰raw/visual同属新字素内部、parse与PM精确相等的旧anchor，新caret/BOM/CRLF/代理对仍完整验证。校准Native BOM夹具后的旧代码明确返回grapheme错误，修后真实WK普通Unicode插入/Native UndoRedo通过。421文件tar SHA `76553fb18d6d477a92e12590cf021afa2a2c3661bc675c756b870e9e3ea293bc`，实际红绿xcresult/日志保留。085/086本地worktree已清临时symlink，不计managed回收数。
 
-**唯一Paseo实施者083**：Agent `3db9e649-4fc0-4725-93dc-ae894fc1aa2f` / workspace `wks_535ded871f085c1e` / branch `task/INK-M1-083-canonical-image-ownership`，固定c21，已收到084/085/086最终SHA组合说明。实时profile为空，经provider/model核实Sol5.6 high/full-access/default。目标是同版本currentRaw/投影owner证明，Native继续负责真实grant/安全路径/字节验证/发布；snapshot、descriptor、首存/SaveAs和恢复handoff同源，不继续用原生正则猜语法，也不把缺证明当空图片集。包括纯文字SaveAs无图片资源面板、删图仍保留recovery资产等实际公共接缝。禁止GUI与额外Agent，完成后独立验收/组合精确CI/两层回收。
+**083/088/089均已备份并两层回收，managed累计79。** 083最终d6c159b，423文件tar SHA `216a2e42f85ab8593460d26eabded06dad9bdd7479983b8f56c6299dd2635e1a`；088最终56f0b24，425文件tar SHA `4a2739c96e448c83eb6be6ab010cc96d795f879fdc9c09f88672ec1a878a0eb3`；089最终17f41a3，425文件tar SHA `b26f46c9579dfdebcbb81f25ef4f66da6d414fd60b1e6b81689f57bcaa3ba036`。实际083测试产物另存。两轴原文分开保留于 [Owner proof审查](V4-OWNER-PROOF-REVIEW.md)：Standards hard0/judgement1；Spec wrong2，不跨轴重评。
+
+**唯一Paseo实施者090**：Agent `8eb608e4-1973-4175-8ad7-4624e82c5217` / workspace `wks_f242a3ab4bf54ec3` / branch `task/INK-M1-090-owner-proof-recovery-barrier`，固定d6c159b。修复stale proof在capability注册前及Web exact raw/URI消费点的验证，以及080恢复草稿未实际写入仍accepted的问题；必须真实红绿、明确持久写入结果、失败保留pending/旧草稿/资源。禁止GUI，不改root087语法范围。
+
+**root087**：独立 `task/INK-M1-087-reference-definition-coverage`，固定d6c159b。实际单变量证据依次为多行合法定义被gap拒绝、仅修gap后正文引用降为字面量、修语义后ledger保存资格失败；现已接入parser接受时的字段provenance。新增官方CommonMark 0.31.2引用定义27例（26语义比较+1按既有HTML保护策略单测）、9项字段/历史/图片owner回归及真实main表单无操作保真。多行title在单行表单未改也触发revision的新反例已红→绿；完整组合仍在执行，不提前写通过。
 
 物理验收仍按用户“稍后”，不启动App/窗口/系统面板、不反复催问。hostless WK、普通DOM文本、synthetic composition、scratch与真实SIGKILL分别结算，不代替物理中文、当前Sandbox/bookmark/系统拖放粘贴、真实AX、窗口文件生命周期或macOS14。总目标active，main未因本轮变化。
 
