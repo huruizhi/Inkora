@@ -395,7 +395,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       nodeViews: { code_block: codeBlockNodeView },
       dispatchTransaction: (transaction) => {
         const compositionID = transaction.getMeta("composition");
-        if (this.compositionPhase === "settling" &&
+        if (transaction.docChanged && this.compositionPhase === "settling" &&
             (compositionID === undefined ||
               (this.compositionID !== undefined && compositionID !== this.compositionID))) {
           this.settleComposition(true);

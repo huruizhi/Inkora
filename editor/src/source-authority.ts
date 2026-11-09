@@ -643,8 +643,11 @@ export class SourceAuthoritySession {
       return false;
     }
     const compositionId = transaction.getMeta('composition');
-    if (compositionId !== undefined) this.beginCompositionGroup(compositionId);
-    else this.finishComposition();
+    // Selection-only transactions do not start or seal an input history unit.
+    if (transaction.docChanged) {
+      if (compositionId !== undefined) this.beginCompositionGroup(compositionId);
+      else this.finishComposition();
+    }
     if (!transaction.docChanged) {
       try {
         const rawSelection = this.updateSelectionFromState(this.state.apply(transaction));

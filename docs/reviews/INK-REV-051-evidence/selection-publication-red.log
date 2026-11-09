@@ -1,0 +1,38 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REV-051/editor
+
+ ❯ src/root-composition-publication-review.test.ts (3 tests | 2 failed) 82ms
+   × does not seal a settling composition for a selection-only transaction at 2 7ms
+   × does not seal a settling composition for a selection-only transaction at 4 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/root-composition-publication-review.test.ts > does not seal a settling composition for a selection-only transaction at 2
+ FAIL  src/root-composition-publication-review.test.ts > does not seal a settling composition for a selection-only transaction at 4
+AssertionError: selection cannot publish intermediate拼音: expected [ 'azh\n' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "azh
++ ",
++ ]
+
+ ❯ src/root-composition-publication-review.test.ts:55:62
+     53|   view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubb…
+     54|   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.s…
+     55|   expect(changes, "selection cannot publish intermediate拼音").toEqual([…
+       |                                                              ^
+     56|   expect(runtime.snapshotText().ok).toBe(false);
+     57|   view.dispatch(view.state.tr.insertText("中文", 2, 4).setMeta("composit…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  19:11:27
+   Duration  572ms (import 61%, transform 21%, tests 18%)
+
