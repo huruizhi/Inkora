@@ -305,7 +305,7 @@ function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, project
   return `source-authoritative local insertion: ${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`;
 }
 
-function rawBoundaryError(raw: string, offset: number, knownBoundaries?: ReadonlySet<number>): string | null {
+function rawCodeUnitBoundaryError(raw: string, offset: number): string | null {
   if (!Number.isInteger(offset) || offset < 0 || offset > raw.length) return `原文位置 ${offset} 越界`;
   if (raw.startsWith('\uFEFF') && offset === 0) return 'BOM 前位置不是正文边界';
   if (offset > 0 && offset < raw.length && raw[offset - 1] === '\r' && raw[offset] === '\n') return 'CRLF 内部不是合法边界';
@@ -314,6 +314,12 @@ function rawBoundaryError(raw: string, offset: number, knownBoundaries?: Readonl
     const next = raw.charCodeAt(offset);
     if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) return 'surrogate pair 内部不是合法边界';
   }
+  return null;
+}
+
+function rawBoundaryError(raw: string, offset: number, knownBoundaries?: Pick<ReadonlySet<number>, 'has'>): string | null {
+  const structuralError = rawCodeUnitBoundaryError(raw, offset);
+  if (structuralError) return structuralError;
   const boundaries = knownBoundaries ?? new Set<number>([0, raw.length]);
   if (!knownBoundaries) {
     const writable = boundaries as Set<number>;
@@ -500,13 +506,17 @@ export class SourceAuthoritySession {
   private readonly options: EditorStateOptions;
   private preferredEol: '\r\n' | '\n';
   private managedImageOwners = new Map<string, string>();
+  // Parsing is a pure function of the exact raw value. Keep one immutable
+  // result across validation/acceptance/ledger construction for that value;
+  // projection proofs still bind raw + PM doc identity + projection identity.
+  private parsedSourceCache: { raw: string; parsed: ReturnType<typeof parse> } | null = null;
   private projectionContextCache: {
     raw: string;
     doc: PMNode;
     projection: ProjectionAudit;
     context: ProjectionContext;
   } | null = null;
-  private rawBoundaryCache: { raw: string; boundaries: ReadonlySet<number> } | null = null;
+  private rawBoundaryCache: { raw: string; boundaries: Pick<ReadonlySet<number>, 'has'> } | null = null;
 
   constructor(
     raw: string,
@@ -515,7 +525,7 @@ export class SourceAuthoritySession {
   ) {
     this.options = options;
     this.preferredEol = raw.match(/\r\n|\n/)?.[0] === '\r\n' ? '\r\n' : '\n';
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     this.currentRaw = raw;
     this.savedRaw = raw;
     this.state = createInkoraProjectionState(parsed.doc, this.options);
@@ -552,6 +562,13 @@ export class SourceAuthoritySession {
     return { raw: this.currentRaw, imageURIs };
   }
 
+  private parseSource(raw: string): ReturnType<typeof parse> {
+    if (this.parsedSourceCache?.raw === raw) return this.parsedSourceCache.parsed;
+    const parsed = parse(raw);
+    this.parsedSourceCache = { raw, parsed };
+    return parsed;
+  }
+
   private snapshot(): Snapshot {
     return {
       raw: this.currentRaw,
@@ -566,11 +583,14 @@ export class SourceAuthoritySession {
   private boundaryError(raw: string, offset: number): string | null {
     let cached = this.rawBoundaryCache;
     if (!cached || cached.raw !== raw) {
-      const boundaries = new Set<number>([0, raw.length]);
-      for (const part of segmenter.segment(raw)) {
-        boundaries.add(part.index);
-        boundaries.add(part.index + part.segment.length);
-      }
+      // Query ICU's boundary in the complete raw string. This is the same
+      // grapheme segmentation as enumeration, without allocating one Set entry
+      // per character for a handful of selection/anchor checks. No substring
+      // window or ASCII approximation can truncate a combining/ZWJ sequence.
+      const segments = segmenter.segment(raw);
+      const boundaries = {
+        has: (offset: number): boolean => offset === raw.length || segments.containing(offset)?.index === offset,
+      };
       cached = { raw, boundaries };
       this.rawBoundaryCache = cached;
     }
@@ -599,7 +619,7 @@ export class SourceAuthoritySession {
       }
       return context;
     };
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     const base = baseLedger(raw, parsed);
     if (parsed.doc.eq(state.doc)) {
       return remember({ ledger: base, ranges: parsed.ranges, parsedDoc: parsed.doc });
@@ -781,7 +801,7 @@ export class SourceAuthoritySession {
       affinity: selection.affinity,
     };
     try {
-      const parsed = parse(candidate);
+      const parsed = this.parseSource(candidate);
       if (parsed.issues.length) throw Error(parsed.issues[0].message);
       this.currentRaw = candidate;
       this.state = createInkoraProjectionState(parsed.doc, this.options);
@@ -925,10 +945,10 @@ export class SourceAuthoritySession {
   }
 
   private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping']): void {
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
-    const exactTargetLedger = needsAnchorReproof && !parsed.issues.length && parsed.doc.eq(target.doc)
+    let exactTargetLedger = needsAnchorReproof && !parsed.issues.length && parsed.doc.eq(target.doc)
       ? baseLedger(raw, parsed)
       : undefined;
     this.currentRaw = raw;
@@ -955,12 +975,28 @@ export class SourceAuthoritySession {
           visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
       };
     });
+    const oldAnchorCount = mappedAnchors.length;
     const step = target.selection;
     if (sourceCaret !== undefined) mappedAnchors.push({ visual: step.head, raw: sourceCaret, reason });
-    for (const anchor of mappedAnchors) {
+    const validatedAnchors: ProjectionAnchor[] = [];
+    for (const [index, anchor] of mappedAnchors.entries()) {
       if (anchor.visual < 0 || anchor.visual > target.doc.content.size) throw Error(`投影 anchor 的 PM 位置 ${anchor.visual} 越界`);
       const boundaryError = this.boundaryError(raw, anchor.raw);
-      if (boundaryError) throw Error(`投影 anchor 映射失败：${boundaryError}`);
+      if (boundaryError) {
+        // A text edit can merge two old graphemes. Retire only a former
+        // boundary proven to be inside the same new visible raw/PM unit.
+        // Never snap BOM/CRLF/surrogate boundaries or the new caret anchor.
+        if (index < oldAnchorCount && !rawCodeUnitBoundaryError(raw, anchor.raw) &&
+            !parsed.issues.length && parsed.doc.eq(target.doc)) {
+          exactTargetLedger ??= baseLedger(raw, parsed);
+          if (exactTargetLedger.spans.some(span =>
+            span.visible && span.visualStart !== undefined && span.visualEnd !== undefined &&
+            span.sourceStart < anchor.raw && anchor.raw < span.sourceEnd &&
+            span.visualStart < anchor.visual && anchor.visual < span.visualEnd)) continue;
+        }
+        throw Error(`投影 anchor 映射失败：${boundaryError}`);
+      }
+      validatedAnchors.push(anchor);
     }
 
     if (parsed.issues.length) {
@@ -969,7 +1005,7 @@ export class SourceAuthoritySession {
       this.projection = { kind: 'exact', reason: '含混原文的保守保护投影', anchors: [], provenance: parsed.issues.map(issue => issue.message) };
     } else if (parsed.doc.eq(target.doc)) {
       this.state = target;
-      this.projection = { kind: 'exact', reason: '当前原文与 PM 投影精确一致', anchors: dedupeAnchors(mappedAnchors), provenance: [reason] };
+      this.projection = { kind: 'exact', reason: '当前原文与 PM 投影精确一致', anchors: dedupeAnchors(validatedAnchors), provenance: [reason] };
       try {
         this.rawSelection = this.updateSelectionFromState(this.state);
       } catch (error) {
@@ -981,7 +1017,7 @@ export class SourceAuthoritySession {
       }
     } else {
       this.state = target;
-      this.projection = { kind: 'anchored', reason, anchors: dedupeAnchors(mappedAnchors), provenance: [reason, ...patches.map(patch => `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`)] };
+      this.projection = { kind: 'anchored', reason, anchors: dedupeAnchors(validatedAnchors), provenance: [reason, ...patches.map(patch => `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`)] };
       this.projectionContext();
       this.rawSelection = this.updateSelectionFromState(this.state);
     }
@@ -1067,7 +1103,7 @@ export class SourceAuthoritySession {
       if (sourceCaret === undefined && plan.patches.length === 1 && textReplacement) {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
-      const parsed = parse(plan.candidate);
+      const parsed = this.parseSource(plan.candidate);
       if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
         const proof = semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
@@ -1226,7 +1262,7 @@ export class SourceAuthoritySession {
         ));
       }
       const target = this.state.apply(transaction);
-      const parsed = parse(candidate);
+      const parsed = this.parseSource(candidate);
       if (parsed.issues.length || !parsed.doc.eq(target.doc)) {
         throw Error('替换候选与可视意图不一致，整批未应用');
       }
@@ -1299,7 +1335,7 @@ export class SourceAuthoritySession {
     if (part) from = part.index;
     const before = this.snapshot();
     const raw = this.currentRaw.slice(0, from) + this.currentRaw.slice(caret);
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     this.currentRaw = raw;
     this.state = createInkoraProjectionState(parsed.doc, this.options);
     this.issues = parsed.issues;
@@ -1325,7 +1361,7 @@ export class SourceAuthoritySession {
       const from = Math.min(this.rawSelection.anchor, this.rawSelection.head);
       const to = Math.max(this.rawSelection.anchor, this.rawSelection.head);
       const raw = this.currentRaw.slice(0, from) + image + this.currentRaw.slice(to);
-      const parsed = parse(raw);
+      const parsed = this.parseSource(raw);
       if (parsed.issues.length) throw Error(parsed.issues[0].message);
       this.currentRaw = raw;
       this.state = createInkoraProjectionState(parsed.doc, this.options);
@@ -1397,7 +1433,7 @@ export class SourceAuthoritySession {
         return true;
       }
       const raw = applyNativePatches(this.currentRaw, patches);
-      const parsed = parse(raw);
+      const parsed = this.parseSource(raw);
       if (parsed.issues.length) throw Error(parsed.issues[0].message);
       const mappedAnchor = mapRawOffset(this.rawSelection.anchor, patches, -1);
       const mappedHead = mapRawOffset(this.rawSelection.head, patches, 1);
@@ -1465,7 +1501,7 @@ export class SourceAuthoritySession {
     if (anchorError || headError) { this.diagnostic = anchorError ?? headError ?? '非法源码选区'; return false; }
     const before = this.snapshot();
     try {
-      const parsed = parse(draft.raw);
+      const parsed = this.parseSource(draft.raw);
       const firstEol = draft.raw.match(/\r\n|\n/)?.[0];
       if (firstEol) this.preferredEol = firstEol === '\r\n' ? '\r\n' : '\n';
       this.currentRaw = draft.raw;
@@ -1537,7 +1573,7 @@ export class SourceAuthoritySession {
   reopen(raw: string, selection?: RawSelection): boolean {
     if (this.composing) return this.guard('reset');
     this.finishComposition();
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     this.currentRaw = raw; this.savedRaw = raw;
     this.managedImageOwners.clear();
     this.preferredEol = raw.match(/\r\n|\n/)?.[0] === '\r\n' ? '\r\n' : '\n';

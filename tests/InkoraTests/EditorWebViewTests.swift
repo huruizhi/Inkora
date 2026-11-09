@@ -256,6 +256,74 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testCombiningInputPreservesRawCaretAndNativeHistory() async throws {
+    // Ordinary DOM text insertion through real WK/PM/Bridge. This is not
+    // physical keyboard or system input-method composition evidence.
+    for prefix in ["", "\u{FEFF}"] {
+      let original = "AeZ\r\n"
+      let expected = "Ae\u{301}Z\r\n"
+      // Native owns the file's BOM marker; Bridge text excludes that marker.
+      let (document, controller, webView) = try await loadedEditor(
+        initialText: prefix + original, expectedSnapshotText: original)
+      defer { withExtendedLifetime(document) {} }
+      XCTAssertEqual(
+        try document.data(ofType: "net.daringfireball.markdown"), Data((prefix + original).utf8))
+      _ = try await webView.evaluateJavaScript(
+        """
+        (() => {
+          const editor = document.querySelector('#editor');
+          editor.focus();
+          const range = document.createRange();
+          range.setStart(editor.querySelector('p').firstChild, 2);
+          range.collapse(true);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          document.dispatchEvent(new Event('selectionchange'));
+        })()
+        """)
+      let before = try await requestText(from: controller)
+      XCTAssertEqual(before, original)
+      _ = try await webView.evaluateJavaScript(
+        "document.execCommand('insertText', false, '\\u0301')")
+      let edited: String
+      do {
+        edited = try await requestText(from: controller)
+      } catch {
+        XCTFail("Combining input must remain snapshot eligible: \(error)")
+        return
+      }
+      XCTAssertEqual(Data(edited.utf8), Data(expected.utf8))
+      let caret =
+        try await webView.evaluateJavaScript(
+          """
+          (() => {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(document.querySelector('#editor p'));
+            range.setEnd(selection.anchorNode, selection.anchorOffset);
+            return range.toString().length;
+          })()
+          """) as? Int
+      XCTAssertEqual(caret, 3)
+      try await waitForEditorCommand(.undo, enabled: true, in: controller)
+      controller.inkoraUndo(nil)
+      _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+        $0 as? String == "AeZ"
+      }
+      let undone = try await requestText(from: controller)
+      XCTAssertEqual(undone, original)
+      try await waitForEditorCommand(.redo, enabled: true, in: controller)
+      controller.inkoraRedo(nil)
+      _ = try await waitForJavaScriptValue(in: webView, script: editorTextScript) {
+        $0 as? String == "Ae\u{301}Z"
+      }
+      let redone = try await requestText(from: controller)
+      XCTAssertEqual(Data(redone.utf8), Data(expected.utf8))
+    }
+  }
+
+  @MainActor
   func testNativeUndoAndRedoFollowEditorState() async throws {
     let (_, controller, webView) = try await loadedEditor(initialText: "before")
     XCTAssertFalse(controller.canPerformEditorCommand(.undo))
@@ -1144,7 +1212,8 @@ final class EditorWebViewTests: XCTestCase {
 
   @MainActor
   private func loadedEditor(
-    initialText: String
+    initialText: String,
+    expectedSnapshotText: String? = nil
   ) async throws -> (InkoraDocument, EditorViewController, WKWebView) {
     let bundle = Bundle(for: Self.self)
     let document = InkoraDocument()
@@ -1159,7 +1228,7 @@ final class EditorWebViewTests: XCTestCase {
       script: "document.querySelector('#editor') !== null"
     ) { $0 as? Bool == true }
     let initialSnapshot = try await waitForSnapshot(from: controller)
-    XCTAssertEqual(initialSnapshot.text, initialText)
+    XCTAssertEqual(initialSnapshot.text, expectedSnapshotText ?? initialText)
     return (document, controller, webView)
   }
 
