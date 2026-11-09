@@ -28,3 +28,13 @@
 ## 调度
 
 profiles为空，provider实际GPT-5.6-Sol已核，medium/full-access/default。Agent 98793f65-95a2-4b75-9f2a-58a897c2243a，workspace wks_73b6aa7f9103452d，host srv_MEqRNkRW6fSx，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-013-source-replacement，分支task/INK-M1-013-source-replacement。已取得running回执，notifyOnFinish=true，不轮询催促。当前只有这一执行Agent；011两个完成Agent及workspace已备份回收。
+
+## 首稿独立复核退回
+
+首稿fa6830c980cbb392abdbd7f514d8186f0ce7dafd，仅改允许11文件，Agent完成即归档。管理者独立干净18文件294项通过；另建实际runtime/plan与main/DOM五条独立反例全部红：runtime接受尾部孤立高代理项计划并写入；接受引入裸CR计划而保持可编辑；changed=true但resultRaw字节相同计划新增历史/通知、清future、改选区；替换后移动caret再Undo/Redo，Redo恢复移动后的0而非提交后4；replacement composition期间合法新load把候选input从DOM移除、焦点丢失。
+
+冻结root-m1-checks/source-replacement-runtime-review.test.ts、source-replacement-main-review-v2.test.ts和SOURCE-REPLACE-REVIEW-V2-RED.txt。首版main测试失败后未排空计时器产生测试环境TypeError；v2先捕获同步结果再排空既有任务，仍五红且TypeError=0，该环境日志不当作产品Bug。源测试与预期不得改/追加。
+
+限定补正仍原11文件：严格Unicode/平台EOL/实际no-op原子校验；提交时保留before/after raw与有向选区，不能Undo时用后来caret重建Redofuture；保留活replacement候选DOM直至收口再按新doc能力重置。不扩大范围/不改纯模块/不放松原验收；先五红后绿，原009/011十三控制及干净全量/lint/build保持。profiles空、provider再核实后采用GPT-5.6-Sol/medium/default。
+
+接续Agent 5175f0b1-0c31-423c-818b-249a7e4ec0ad，复用workspace wks_73b6aa7f9103452d，已取得running回执，notifyOnFinish=true；当前仅此执行Agent。原Agent已立即回收，不轮询或催促，不新增workspace。完成后仍由管理者独立复核，备份再回收工作区。
