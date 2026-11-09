@@ -1,0 +1,12 @@
+{
+  "layer" : "webview",
+  "metrics" : {
+    "bridge-snapshot-roundtrip\/large" : {
+      "cv" : 0.0385,
+      "unit" : "ms",
+      "value" : 4234.6885000000002
+    }
+  },
+  "profile" : "light",
+  "schema" : 1
+}

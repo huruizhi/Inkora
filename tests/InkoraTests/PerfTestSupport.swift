@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import XCTest
 
@@ -11,6 +12,18 @@ enum PerfEnvironment {
 
   static var profile: String {
     value("INKORA_PERF_PROFILE") ?? "light"
+  }
+
+  static var productionSamples: [String] {
+    let names =
+      value("INKORA_PRODUCTION_PERF_SIZES")?.split(separator: ",").map(String.init)
+      ?? ["small", "medium", "large", "large-crlf"]
+    precondition(
+      !names.isEmpty
+        && names.allSatisfy {
+          ["small", "medium", "large", "large-crlf"].contains($0)
+        })
+    return names
   }
 
   static var outputURL: URL? {
@@ -60,6 +73,31 @@ final class PerfRecorder: @unchecked Sendable {
   static let shared = PerfRecorder()
   private let lock = NSLock()
   private var metrics: [String: [String: Any]] = [:]
+  private var inputs: [String: [String: Any]] = [:]
+  private var resourceHashes: [String: String] = [:]
+
+  func recordInput(name: String, url: URL) throws {
+    let data = try Data(contentsOf: url)
+    let hash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    lock.withLock { inputs[name] = ["bytes": data.count, "sha256": hash] }
+  }
+
+  func recordEditorResources(in bundle: Bundle) throws {
+    guard let root = bundle.resourceURL?.appendingPathComponent("editor"),
+      let paths = FileManager.default.enumerator(
+        at: root, includingPropertiesForKeys: [.isRegularFileKey])
+    else { throw PerfEnvironmentError.missing("editor bundle resources") }
+    var hashes: [String: String] = [:]
+    for case let file as URL in paths {
+      if try file.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true {
+        let data = try Data(contentsOf: file)
+        hashes[String(file.path.dropFirst(root.path.count + 1))] =
+          SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+      }
+    }
+    guard !hashes.isEmpty else { throw PerfEnvironmentError.missing("editor bundle files") }
+    lock.withLock { resourceHashes = hashes }
+  }
   func record(name: String, unit: String, value: Double, cv: Double? = nil) {
     lock.withLock {
       metrics[name] = [
@@ -69,6 +107,21 @@ final class PerfRecorder: @unchecked Sendable {
       if let cv {
         metrics[name]?["cv"] = (cv * 10_000).rounded() / 10_000
       }
+    }
+  }
+
+  /// Raw samples are retained for current-production measurements. With only
+  /// a few samples, p95 is an order statistic, not a tail-latency guarantee.
+  func recordSamples(name: String, milliseconds: [Double]) {
+    precondition(!milliseconds.isEmpty && milliseconds.allSatisfy { $0.isFinite && $0 >= 0 })
+    let sorted = milliseconds.sorted()
+    lock.withLock {
+      metrics[name] = [
+        "unit": "ms", "value": perfMedian(milliseconds),
+        "samples": milliseconds, "cv": perfCoefficientOfVariation(milliseconds),
+        "min": sorted[0], "max": sorted[sorted.count - 1],
+        "p95": sorted[Int(ceil(Double(sorted.count) * 0.95)) - 1],
+      ]
     }
   }
 
@@ -111,6 +164,8 @@ final class PerfRecorder: @unchecked Sendable {
     existing["layer"] = layer
     existing["profile"] = PerfEnvironment.profile
     existing["metrics"] = combined
+    if !inputs.isEmpty { existing["inputs"] = inputs }
+    if !resourceHashes.isEmpty { existing["resourceHashes"] = resourceHashes }
     return existing
   }
 }
