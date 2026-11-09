@@ -7,6 +7,7 @@ export interface EditorKernel {
 
 export class TextAreaEditorKernel implements EditorKernel {
   private readonly listeners = new Set<(text: string) => void>();
+  private readonly compositionListeners = new Set<(composing: boolean) => void>();
   private lastNotifiedText: string;
   private isComposing = false;
   private originalText: string | undefined;
@@ -18,10 +19,12 @@ export class TextAreaEditorKernel implements EditorKernel {
     this.lastNotifiedText = textArea.value;
     textArea.addEventListener("compositionstart", () => {
       this.isComposing = true;
+      this.notifyCompositionChange();
     });
     textArea.addEventListener("compositionend", () => {
       this.isComposing = false;
       this.notifyIfChanged();
+      this.notifyCompositionChange();
     });
     textArea.addEventListener("input", () => {
       if (!this.isComposing) {
@@ -63,6 +66,11 @@ export class TextAreaEditorKernel implements EditorKernel {
     return () => this.listeners.delete(listener);
   }
 
+  onCompositionChange(listener: (composing: boolean) => void): () => void {
+    this.compositionListeners.add(listener);
+    return () => this.compositionListeners.delete(listener);
+  }
+
   focus(): void {
     this.textArea.focus();
   }
@@ -80,6 +88,10 @@ export class TextAreaEditorKernel implements EditorKernel {
     for (const listener of this.listeners) {
       listener(text);
     }
+  }
+
+  private notifyCompositionChange(): void {
+    for (const listener of this.compositionListeners) listener(this.isComposing);
   }
 
   private updateLineEndings(previousText: string, nextText: string): void {

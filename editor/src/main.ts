@@ -480,7 +480,16 @@ window.inkora = {
           // Native has resigned first responder. Drain compositionend (including
           // ProseMirror's final DOM transaction) before sampling text and revision.
           {
+            const captureRuntime = runtime;
             const capture = (): void => {
+              if (runtime !== captureRuntime) {
+                postToNative({
+                  protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+                  requestID: command.requestID, code: "editor_not_ready", action: "retry",
+                  message: "Document changed while draining text composition",
+                });
+                return;
+              }
               if (runtime?.composing) {
                 postToNative({
                   protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
@@ -504,8 +513,19 @@ window.inkora = {
               }));
               postToNative(session.createSnapshot(command, snapshot.value));
             };
-            if (runtime?.composing) window.setTimeout(capture, 0);
-            else capture();
+            if (captureRuntime?.composing) {
+              void captureRuntime.whenCompositionStable().then(stable => {
+                if (!stable) {
+                  postToNative({
+                    protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+                    requestID: command.requestID, code: "editor_not_ready", action: "retry",
+                    message: "Text composition did not reach a stable boundary",
+                  });
+                  return;
+                }
+                capture();
+              });
+            } else capture();
           }
           break;
         case "markSaved":

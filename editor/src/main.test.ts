@@ -269,7 +269,7 @@ it("synthetic PM composition 只发布一次 Bridge revision 且快照读取最�
   editor.dispatchEvent(new h.dom.window.Event("compositionend", { bubbles: true }));
   await settle(150);
 
-  expect(h.stateMessages()).toHaveLength(2);
+  expect(h.stateMessages().filter(message => message.requestID === undefined)).toHaveLength(1);
   expect(h.lastRevision()).toBe(1);
   h.receive({
     type: "createSnapshot", requestID: "snapshot-ime", documentID: "doc-ime",
@@ -280,6 +280,90 @@ it("synthetic PM composition 只发布一次 Bridge revision 且快照读取最�
       revision: 1,
       text: "a中文\n",
     });
+});
+
+it("compositionend 后排空 PM final 再唯一发布、快照与面板", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-late-ime", documentID: "doc-late-ime",
+    revision: 0, text: "a\n",
+  });
+  h.searchButton().click();
+  h.typeSearchQuery("中文");
+  await settle();
+  expect(h.searchResultsText()).toContain("0 处匹配");
+
+  const editor = h.editorHost().querySelector<HTMLElement>(".ProseMirror")!;
+  const text = editor.querySelector("p")!.firstChild as Text;
+  editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+  text.data = "azh";
+  editor.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+  // 最终候选先落 DOM，但交给 prosemirror-view 在 compositionend 后的
+  // observer 排空；此时发起 snapshot，不能同步读到中间拼音。
+  text.data = "a中文";
+  editor.dispatchEvent(new h.dom.window.Event("compositionend", { bubbles: true }));
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-late-ime", documentID: "doc-late-ime",
+    revision: 0,
+  });
+  expect(h.sent.some(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-late-ime")).toBe(false);
+
+  await settle(120);
+  expect(h.stateMessages().filter(message => message.requestID === undefined)).toHaveLength(1);
+  expect(h.lastRevision()).toBe(1);
+  expect(h.sent.find(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-late-ime")).toMatchObject({
+      revision: 1,
+      text: "a中文\n",
+    });
+  expect(h.panelStat("字数")).toBe(expectedStats("a中文\n").writingUnits);
+  expect(h.searchResultsText()).toContain("1 处匹配");
+
+  h.receive({
+    type: "markSaved", requestID: "old-ime-receipt", documentID: "doc-late-ime",
+    revision: 0, text: "a\n",
+  });
+  expect(h.stateMessages().at(-1)?.state?.dirty).toBe(true);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-after-old-receipt",
+    documentID: "doc-late-ime", revision: 1,
+  });
+  expect(h.sent.find(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-after-old-receipt")).toMatchObject({
+      revision: 1,
+      text: "a中文\n",
+    });
+});
+
+it("composition drain 跨 load 作废旧快照且不覆盖新文档", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-drain-a", documentID: "drain-a",
+    revision: 0, text: "A\n",
+  });
+  const editor = h.editorHost().querySelector<HTMLElement>(".ProseMirror")!;
+  editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-drain-a", documentID: "drain-a",
+    revision: 0,
+  });
+  h.receive({
+    type: "loadDocument", requestID: "load-drain-b", documentID: "drain-b",
+    revision: 0, text: "B\n",
+  });
+  await settle();
+
+  expect(h.sent.some(message => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-drain-a")).toBe(false);
+  expect(h.sent.find(message => message.type === "editorError" &&
+    message.requestID === "snapshot-drain-a")).toMatchObject({
+      code: "editor_not_ready",
+      action: "retry",
+    });
+  expect(h.stateMessages().at(-1)?.state?.documentID).toBe("drain-b");
+  expect(h.editorHost().textContent).toContain("B");
+  expect(h.editorHost().textContent).not.toContain("A");
 });
 
 function expectedStats(raw: string): { characters: string; writingUnits: string } {
