@@ -1,6 +1,44 @@
 import { expect, it } from "vitest";
 import { SourceAuthoritySession } from "./source-authority";
 
+it("requires a GFM start boundary for email and protocol-email autolinks", () => {
+  const raw = "]foo@bar.baz ]mailto:foo@bar.baz ]xmpp:foo@bar.baz\n";
+  const session = new SourceAuthoritySession(raw);
+  const links: string[] = [];
+  session.state.doc.descendants(node => {
+    const link = node.marks.find(mark => mark.type.name === "link");
+    if (link) links.push(link.attrs.href);
+  });
+  expect(links).toEqual([]);
+  expect(session.saveEligible, session.diagnostic).toBe(true);
+  expect(session.currentRaw).toBe(raw);
+});
+
+it("retains email recognition at valid GFM delimiters and line starts", () => {
+  const cases = [
+    ["foo@bar.baz\n", "mailto:foo@bar.baz"],
+    [" foo@bar.baz\n", "mailto:foo@bar.baz"],
+    ["*foo@bar.baz\n", "mailto:foo@bar.baz"],
+    ["~foo@bar.baz\n", "mailto:foo@bar.baz"],
+    ["(foo@bar.baz\n", "mailto:foo@bar.baz"],
+    ["_foo@bar.baz\n", "mailto:_foo@bar.baz"],
+    ["_mailto:foo@bar.baz\n", "mailto:foo@bar.baz"],
+    ["*xmpp:foo@bar.baz/resource\n", "xmpp:foo@bar.baz/resource"],
+    ["before\nmailto:foo@bar.baz\n", "mailto:foo@bar.baz"],
+  ];
+  for (const [raw, href] of cases) {
+    const session = new SourceAuthoritySession(raw);
+    const links: string[] = [];
+    session.state.doc.descendants(node => {
+      const link = node.marks.find(mark => mark.type.name === "link");
+      if (link) links.push(link.attrs.href);
+    });
+    expect(links, raw).toEqual([href]);
+    expect(session.saveEligible, session.diagnostic).toBe(true);
+    expect(session.currentRaw).toBe(raw);
+  }
+});
+
 it("recognizes bare HTTP URLs and email addresses without changing their source", () => {
   const raw = "Visit https://example.com/a(b) and writer@example.org.\n";
   const session = new SourceAuthoritySession(raw);

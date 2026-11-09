@@ -17,12 +17,12 @@ export function gfmAutolinks(text: string): GfmAutolink[] {
     if (candidate[0] === "@") {
       while (from > 0 && /[a-z0-9.+_-]/i.test(text[from - 1])) from--;
     }
+    if (from > 0 && !/[\s*_~(]/u.test(text[from - 1])) continue;
     const rest = text.slice(from);
     const url = /^(?:https?:\/\/|www\.)([a-z0-9_-]+(?:\.[a-z0-9_-]+)+)[^\s<]*/i.exec(rest);
     let value: string;
     let href: string;
     if (url) {
-      if (from > 0 && !/[\s*_~(]/u.test(text[from - 1])) continue;
       if (url[1].split(".").slice(-2).some(segment => segment.includes("_"))) continue;
       value = url[0];
       let end = value.length;

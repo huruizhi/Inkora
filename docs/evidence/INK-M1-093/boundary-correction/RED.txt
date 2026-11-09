@@ -1,0 +1,37 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-093/editor
+
+ ❯ src/gfm-autolink-runtime.test.ts (13 tests | 1 failed | 12 skipped) 6ms
+   × requires a GFM start boundary for email and protocol-email autolinks 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/gfm-autolink-runtime.test.ts > requires a GFM start boundary for email and protocol-email autolinks
+AssertionError: expected [ 'mailto:foo@bar.baz', …(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "mailto:foo@bar.baz",
++   "mailto:foo@bar.baz",
++   "xmpp:foo@bar.baz",
++ ]
+
+ ❯ src/gfm-autolink-runtime.test.ts:12:17
+     10|     if (link) links.push(link.attrs.href);
+     11|   });
+     12|   expect(links).toEqual([]);
+       |                 ^
+     13|   expect(session.saveEligible, session.diagnostic).toBe(true);
+     14|   expect(session.currentRaw).toBe(raw);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 skipped (13)
+   Start at  02:15:36
+   Duration  162ms (import 55%, transform 34%, tests 8%, worker 2%)
+
