@@ -38,3 +38,9 @@ profiles为空，provider实际GPT-5.6-Sol已核，medium/full-access/default。
 限定补正仍原11文件：严格Unicode/平台EOL/实际no-op原子校验；提交时保留before/after raw与有向选区，不能Undo时用后来caret重建Redofuture；保留活replacement候选DOM直至收口再按新doc能力重置。不扩大范围/不改纯模块/不放松原验收；先五红后绿，原009/011十三控制及干净全量/lint/build保持。profiles空、provider再核实后采用GPT-5.6-Sol/medium/default。
 
 接续Agent 5175f0b1-0c31-423c-818b-249a7e4ec0ad，复用workspace wks_73b6aa7f9103452d，已取得running回执，notifyOnFinish=true；当前仅此执行Agent。原Agent已立即回收，不轮询或催促，不新增workspace。完成后仍由管理者独立复核，备份再回收工作区。
+
+## 最终非 UI 接收与回收
+
+执行者补正69102ed、文档tip dd4e781后，管理者独立原18根控制和干净302/lint/build通过。再冻结一个公开runtime反例，证明history.after.selection别名引用调用方计划，调用方改对象会污染Redo。管理者在原范围按值捕获并补产品回归，同时给main测试补Range中性几何API、关闭JSDOM窗口、断言无jsdomError，不把环境TypeError静默视作通过。最终产品0f17f223b1bb35c7ef366b461c66bd83b4920627：独立六文件19项全绿、干净18文件303项、main dot 44项TypeError=0、lint/build通过。原env CSS提示不当实际布局证据。
+
+225常规文件tar逐字节核验、Git bundle verify、live origin同SHA后归档workspace，两Agent均已回收且owned目录移除；累计42个完成workspace回收。最终代码与隔离App保留本地 `.worktrees/INK-M1-014`，集成分支task/INK-M1-014-writing-tools-integration @ 6ad325b；codesign严格校验通过，Debug ad-hoc不冒称Hardened Runtime。desktop仍exit78锁屏，未启动App/未碰用户文件，真实UI/IME/磁盘验收继续保留，不宣告M0/M1通过。
