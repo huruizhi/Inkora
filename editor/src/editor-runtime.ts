@@ -22,6 +22,8 @@ import {
 import type { DirectedSelection, SourceReplacementPlan } from "./source-search";
 import { validateSourceReplacementPlan } from "./source-replacement";
 import { SourceAuthoritySession } from "./source-authority";
+import { createCodeHighlightDecorations } from "./code-highlighting";
+import { createCodeBlockNodeViews } from "./code-block-view";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
@@ -326,11 +328,38 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     this.destroySurface();
     this.parent.replaceChildren();
     let view: EditorView;
+    let lastDispatchAccepted: boolean | undefined;
+    const codeBlockNodeView = createCodeBlockNodeViews({
+      isComposing: () => this.session.composing || view?.composing === true,
+      applyLanguageChange: (getPos, expectedNode, nextLanguage) => {
+        if (this.session.composing || view.composing) {
+          return { ok: false, message: "请先完成中文输入，再选择代码语言。" };
+        }
+        const pos = getPos();
+        if (pos === undefined) return { ok: false, message: "代码块已变化，请重试。" };
+        const currentNode = view.state.doc.nodeAt(pos);
+        if (!currentNode || currentNode.type !== expectedNode.type) {
+          return { ok: false, message: "代码块已变化，请重试。" };
+        }
+        lastDispatchAccepted = undefined;
+        view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, {
+          ...currentNode.attrs,
+          language: nextLanguage,
+        }));
+        return lastDispatchAccepted
+          ? { ok: true }
+          : { ok: false, message: this.session.diagnostic || "无法安全修改代码语言。" };
+      },
+    });
+    const codeDecorations = createCodeHighlightDecorations();
     view = new EditorView(this.parent, {
       state: this.session.state,
+      decorations: codeDecorations,
+      nodeViews: { code_block: codeBlockNodeView },
       dispatchTransaction: (transaction) => {
         const before = this.session.currentRaw;
         const accepted = this.session.dispatch(transaction);
+        lastDispatchAccepted = accepted;
         view.updateState(this.session.state);
         if (!accepted || before === this.session.currentRaw || this.session.composing) return;
         this.onChange(this.status, "document");
