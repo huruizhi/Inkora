@@ -390,6 +390,55 @@ final class LocalImageMigrationTests: XCTestCase {
     XCTAssertEqual(try Data(contentsOf: target.appendingPathComponent("Old.assets/a.png")), png)
   }
 
+  func testReferenceImageDefinitionsKeepTheFirstCanonicalLabel() {
+    let markdown = "![x][ref]\n\n[ref]: Old.assets/first.png\n[REF]: Old.assets/second.png\n"
+    XCTAssertEqual(LocalImageMigrationCoordinator.imageURIs(in: markdown), ["Old.assets/first.png"])
+  }
+
+  func testReferenceImageDestinationsDecodeCommonMarkEscapes() {
+    let markdown = #"![x][ref]"# + "\n\n" + #"[ref]: Old.assets/a\(b\).png"# + "\n"
+    XCTAssertEqual(LocalImageMigrationCoordinator.imageURIs(in: markdown), ["Old.assets/a(b).png"])
+  }
+
+  func testReferenceImageDestinationsDecodeCharacterReferences() {
+    let markdown = "![x][ref]\n\n[ref]: Old.assets/a&amp;b.png\n"
+    XCTAssertEqual(LocalImageMigrationCoordinator.imageURIs(in: markdown), ["Old.assets/a&b.png"])
+  }
+
+  func testSaveAsCopiesTheCanonicalFirstReferenceOwnerAndKeepsAllMarkdownBytes() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let source = scratch.appendingPathComponent("Source")
+    let target = scratch.appendingPathComponent("Target")
+    try FileManager.default.createDirectory(
+      at: source.appendingPathComponent("Old.assets"), withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+    for name in ["first.png", "second.png", "a(b).png", "a&b.png"] {
+      try png.write(to: source.appendingPathComponent("Old.assets/\(name)"))
+    }
+    let markdown =
+      "\u{FEFF}![x][ref]\r\n![escaped][e]\r\n![entity][n]\r\n\r\n"
+      + "[ref]: Old.assets/first.png\r\n[REF]: Old.assets/second.png\r\n"
+      + #"[e]: Old.assets/a\(b\).png"# + "\r\n[n]: Old.assets/a&amp;b.png\r\n"
+    let migration = LocalImageMigrationCoordinator(
+      journalRoot: scratch.appendingPathComponent("Journal"))
+    let plan = try migration.prepare(
+      markdown: markdown, sourceDocumentURL: source.appendingPathComponent("Old.md"),
+      targetDocumentURL: target.appendingPathComponent("New.md"),
+      sourceAuthorizedDirectory: source, targetAuthorizedDirectory: target)
+    XCTAssertEqual(plan.markdown, markdown)
+    XCTAssertEqual(
+      plan.items.map(\.uri),
+      ["Old.assets/first.png", "Old.assets/a(b).png", "Old.assets/a&b.png"])
+    try migration.publish(plan)
+    for name in ["first.png", "a(b).png", "a&b.png"] {
+      XCTAssertEqual(try Data(contentsOf: target.appendingPathComponent("Old.assets/\(name)")), png)
+    }
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: target.appendingPathComponent("Old.assets/second.png").path))
+  }
+
   private func temporaryDirectory() throws -> URL {
     let url = FileManager.default.temporaryDirectory
       .appendingPathComponent("InkoraMigration-\(UUID().uuidString)", isDirectory: true)

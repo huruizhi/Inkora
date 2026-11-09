@@ -310,7 +310,12 @@ final class LocalImageMigrationCoordinator {
         let uri = capture(match, 2, searchable) ?? capture(match, 3, searchable)
       else { return }
       let label = normalizeReferenceLabel(rawLabel)
-      definitions[label] = uri
+      // CommonMark keeps the first definition for a normalized label. The
+      // destination is decoded for file lookup; source bytes stay untouched.
+      if definitions[label] == nil {
+        let destination = Array(uri.utf16)
+        definitions[label] = decodeDestination(destination[...])
+      }
     }
     result.append(contentsOf: inlineImageURIs(in: searchable, originalUnits: originalUnits))
     for match in matches(
