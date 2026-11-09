@@ -51,3 +51,11 @@ profiles为空，核实OMP provider可用且实际模型为zhipu-coding-plan/glm
 流程偏差：接续执行者曾向只读根RED输出追加green。管理者保留混合文件为PANEL-REJECTED-LOAD-WORKER-APPENDED.txt、按明确分隔符恢复红前缀，另独立运行绿色结果到PANEL-REJECTED-LOAD-GREEN.txt；详见root-m1-checks/PANEL-REJECTED-LOAD-PROVENANCE.md。原预期/断言未变，此追加不当作独立证据。
 
 本地验证目录 `/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-004-VERIFY`，分支task/INK-M1-005-panel-runtime-review，基于3047c55，不登记新Paseo侧栏。现准备使用隔离bundle ID及独立defaults suite做真实产品窗口检查；004代码尚未合main。
+
+## 真实产品 App 点验与回收（当前状态）
+
+管理者已在3047c55上构建独立bundle `com.huruizhi.Inkora.PanelReview`，持项目UI锁和desktop preflight前台运行；原生Open打开本轮临时Markdown。真实WK大纲含两级标题，字符/字数13/8；插入标点→14/8，Undo→13/8，Redo→14/8，再Undo还原，焦点保持正文。展开/收起后统计恢复。Cmd-Q正常退出，wrapper exit0；进程消失、UI锁释放、磁盘fixture SHA不变。未测磁盘保存、真实搜狗、VoiceOver、窄窗或暗色。收起目前仅隐藏面板内容、不回收侧栏宽度，明确记布局限制；大纲定位仍未实现。
+
+验收文档已提交推送：task/INK-M1-005-panel-runtime-review @ daec0f6，见本地验证目录docs/tasks/INK-M1-005.md。主分支未改变。004的208个常规文件已tar逐字节SHA核对、分支Git bundle验证并再次核对live origin3047c55；之后归档workspace wks_0c68cfedb19731f3，回执确认两Agent归档且原受管worktree移除。累计37个完成workspace已回收。保留本地验证checkout和恢复包，不留执行Agent侧栏窗口。root-m1-checks/INK-M1-005-native保留本轮日志。
+
+本任务接受为大纲/统计显示界面的有界交付；不宣称章节跳转、M1整体或M0架构门槛通过。后续可先补大纲定位接缝，再接查找替换界面；可视替换必须服从当前生产编辑器保真与安全限制，不能提前采纳030内核。
