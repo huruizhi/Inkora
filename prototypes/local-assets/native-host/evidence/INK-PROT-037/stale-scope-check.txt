@@ -1,0 +1,41 @@
+rm -rf /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app
+mkdir -p /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app/Contents/MacOS /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app/Contents/Resources
+swiftc -swift-version 5 -parse-as-library -target arm64-apple-macos14.0 \
+		-framework AppKit -framework WebKit -framework CryptoKit \
+		-o /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app/Contents/MacOS/InkoraLocalAssetHost /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Sources/Host/BookmarkStore.swift /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Sources/Host/ResourceBroker.swift /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Sources/Host/SchemeHandlers.swift /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Sources/Host/Support.swift /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Sources/Host/main.swift /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Sources/Shared/BrokerPolicy.swift
+cp /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Resources/Info.plist /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app/Contents/Info.plist
+cp /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Resources/index.html /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Resources/app.js /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Resources/app.css /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app/Contents/Resources/
+(cd /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app/Contents/Resources && shasum -a 256 index.html app.js app.css > ResourceManifest.sha256)
+codesign --force --sign - \
+		--entitlements /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Resources/InkoraLocalAssetHost.entitlements \
+		--identifier com.huruizhi.Inkora.LocalAssetHostPrototype /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app: replacing existing signature
+codesign --verify --strict /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/model-check
+PASS percent-decode-exactly-once
+PASS reject-dot-dot [path-traversal]
+PASS reject-absolute [absolute-path]
+PASS reject-other-scheme [other-scheme]
+PASS reject-svg-active-content [unsupported-extension]
+PASS reject-malformed-percent [malformed-percent-encoding]
+PASS resolve-current-document-token
+PASS reject-cross-document-token [cross-document-token]
+PASS reject-old-epoch-token [stale-epoch-token]
+PASS reject-unknown-token [unknown-token]
+PASS reject-after-revoke [authorization-revoked]
+PASS callback-task-start
+PASS cancel-prevents-completion-callback
+PASS second-callback-task-start
+PASS completion-delivered-once
+PASS duplicate-completion-rejected
+MODEL CHECK PASSED: 16 assertions; no NSOpenPanel/bookmark/WK runtime claim
+/Applications/Xcode.app/Contents/Developer/usr/bin/make --no-print-directory verify
+bash /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/scripts/verify.sh /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Resources/InkoraLocalAssetHost.entitlements
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app/Contents/Info.plist: OK
+/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/tmp.aJedFmTuoS: OK
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-037/prototypes/local-assets/native-host/Resources/InkoraLocalAssetHost.entitlements: OK
+index.html: OK
+app.js: OK
+app.css: OK
+verify ok: signature, exact entitlements, deployment target, resource manifest, offline policy
+check ok: pure model + build/signature/static verification only; no panel/bookmark/WK runtime claim

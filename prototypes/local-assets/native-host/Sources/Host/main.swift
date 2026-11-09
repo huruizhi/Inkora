@@ -6,6 +6,15 @@ import WebKit
 
 @main
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
+    // 纯代码宿主没有 nib，必须显式创建并持有 delegate。
+    static func main() {
+        let application = NSApplication.shared
+        let delegate = AppDelegate()
+        application.delegate = delegate
+        application.setActivationPolicy(.regular)
+        withExtendedLifetime(delegate) { application.run() }
+    }
+
     private var window: NSWindow!
     private var statusLabel: NSTextField!
     private var eventView: NSTextView!
@@ -15,8 +24,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     private var broker: ResourceBroker!
     private var locator: FixtureLocator?
     private var currentImagePath: String?
+    private var pageReady = false
+    private var pendingImage: ResourceCapability?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let menu = NSMenu()
+        let item = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "退出图片验收宿主", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        item.submenu = appMenu
+        menu.addItem(item)
+        NSApp.mainMenu = menu
         do {
             log = try EventLog()
             bookmarks = try BookmarkStore(log: log)
@@ -32,6 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
             NSApp.terminate(nil)
         }
     }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationWillTerminate(_ notification: Notification) {
         log?.emit("host-terminate", ["cleanup": "fixture-preserved; scopes-owned-by-active-reads"])
@@ -183,6 +203,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
     @objc private func newEpoch() {
         broker.beginNewEpoch()
+        pendingImage = nil
         currentImagePath = nil
         webView.evaluateJavaScript("window.clearImage('旧 epoch token 已失效；请重新选择目录。')")
     }
@@ -190,6 +211,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     @objc private func revokeAuthorization() {
         bookmarks.removeAll()
         broker.revoke()
+        pendingImage = nil
         currentImagePath = nil
         webView.evaluateJavaScript("window.clearImage('授权与 token 已撤销。')")
     }
@@ -263,11 +285,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         do {
             let capability = try broker.register(encodedPath: locator.imageEncodedRelativePath)
             currentImagePath = "inkora-asset://resource/\(capability.token.uuidString)"
-            let argument = currentImagePath!.replacingOccurrences(of: "'", with: "\\'")
-            webView.evaluateJavaScript("window.showImage('\(argument)', '\(capability.documentID.uuidString)', '\(capability.epoch.uuidString)')")
+            pendingImage = capability
+            presentPendingImage()
         } catch {
             log.emit("resource-token-error", ["error": String(describing: error)])
         }
+    }
+
+    private func presentPendingImage() {
+        guard pageReady, let capability = pendingImage,
+              broker.isCurrent(token: capability.token) else { return }
+        let arguments = ["inkora-asset://resource/\(capability.token.uuidString)",
+                         capability.documentID.uuidString, capability.epoch.uuidString]
+        guard let encoded = try? JSONSerialization.data(withJSONObject: arguments),
+              let json = String(data: encoded, encoding: .utf8) else { return }
+        pendingImage = nil
+        webView.evaluateJavaScript("window.showImage(...\(json))") { [weak self] _, error in
+            if let error { self?.log.emit("wk-presentation-error", ["error": String(describing: error)]) }
+        }
+    }
+
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        pageReady = false
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        pageReady = true
+        log.emit("wk-page-ready")
+        presentPendingImage()
     }
 
     private func logRead(_ kind: String, result: NativeReadResult) {

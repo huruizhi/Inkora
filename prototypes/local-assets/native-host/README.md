@@ -26,7 +26,7 @@ make -C prototypes/local-assets/native-host run
 
 - `build`：以 `arm64-apple-macos14.0` 编译宿主/控制程序/模型检查器，复制离线资源 manifest，ad-hoc 签名；失败非零。
 - `verify`：无 GUI 校验严格签名、**恰好四项** entitlements、14.0 部署目标、bundle resource SHA、CSP 与禁止网络/文件导航规则。
-- `check`：运行纯模型 15 项断言并执行 `verify`；不会创建伪造的 panel/bookmark/WK 通过证据。
+- `check`：运行纯模型 16 项断言并执行 `verify`；不会创建伪造的 panel/bookmark/WK 通过证据。
 - `run`：创建新 fixture、验证后以前台 `open -W` 运行。它会占桌面，当前锁屏时禁止执行。
 
 `network.client` 仅按 ADR-0003 满足当前系统 WebKit WebContent 进程启动；页面使用非持久 data store、自定义 bundle/asset scheme、`connect-src 'none'`、导航白名单，源码没有 `URLSession`，仍完全离线。没有任意读写 entitlement。
@@ -69,3 +69,15 @@ make -C prototypes/local-assets/native-host fixture-clean
 - TOCTOU 通过逐组件 descriptor 打开和 `O_NOFOLLOW` 缩小；原型不处理硬链接，也不宣称 App 全进程目录权限本身能提供文档隔离。
 - 本机如果不是 arm64 或没有完整 Xcode，构建会失败；最低系统 14.0 只由二进制 load command 验证，未在 macOS 14 真机运行前不得宣称 14 已通过。
 - 父票 14、M0、M1 均不会因本宿主代码可运行或纯模型检查通过而完成。
+
+## INK-PROT-037 真实运行补正
+
+032基线e7930fe的编译/模型绿不能代表可启动：无nib的默认入口未创建delegate，实际进程无窗口/事件。037显式创建NSApplication并绑定delegate后正常运行；添加标准退出菜单和最后窗口关闭退出，支持可核对的跨进程验收。
+
+真实文件面板只授权Markdown时，Markdown SHA成功，邻接PNG实读EPERM。文件书签原先只用withSecurityScope请求读写能力，在只读授权下失败；现在组合securityScopeAllowOnlyReadAccess，不扩大entitlement。官方依据：https://developer.apple.com/documentation/foundation/nsurl/bookmarkcreationoptions/securityscopeallowonlyreadaccess 。目录书签和文件书签均经真实退出后恢复实读。
+
+恢复发生在WK页面就绪之前，原本会丢失showImage调用；现在保存当前capability，didFinish后才展示，new epoch/revoke清掉待展示值并重验token。移动本轮唯一fixture目录后两个bookmark实际stale=true；刷新必须先进入恢复URL安全作用域，补正后刷新成功，Markdown/manifest/PNG SHA一致，WK完成。
+
+完整原始记录和11项分层断言位于evidence/INK-PROT-037/；只读书签字节不进入证据。所有操作由管理者通过CUA完成系统面板；不是用户物理键盘或macOS14运行证据。本机macOS27.2，deployment target14.0只证明构建目标。
+
+尚未完成035发现的中间symlink ENOTDIR分类和真实handler stop/generation并发接缝；拒绝symlink本身有效，不能把分类缺陷写成已发生逃逸。仍未有拖放/粘贴、保存迁移或正式NSDocument集成，父票14保持未完成。所有自有宿主已正常退出，唯一fixture和locator已清理，bookmarks经UI撤销，生产UI锁已释放。

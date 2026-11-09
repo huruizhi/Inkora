@@ -1,0 +1,29 @@
+{"binarySHA256":"d4315ef77cee075950e08300f8ddd4e7a062058f14c9fdd5f09facaf1c2429e9","fixtureManifestSHA256":"2e2dfcc825dc2a1d06b32e22b448f609b38d4499c460b14e6f55d1c0d0a66b80","os":"版本27.2（版号26B123）","runID":"4C67BB25-C38A-483A-9630-19F3B26BE157","sandboxActive":"true","timestamp":"2026-11-09T09:04:30Z","type":"host-start"}
+{"timestamp":"2026-11-09T09:04:30Z","type":"sandbox-active"}
+{"kind":"markdown","source":"user-action","timestamp":"2026-11-09T09:04:36Z","type":"panel-open"}
+{"kind":"markdown","source":"user-action","timestamp":"2026-11-09T09:04:45Z","type":"panel-cancel"}
+{"kind":"markdown","source":"user-action","timestamp":"2026-11-09T09:04:51Z","type":"panel-open"}
+{"kind":"markdown","source":"NSOpenPanel","timestamp":"2026-11-09T09:04:58Z","type":"panel-selected"}
+{"active":"true","count":"1","kind":"markdown","timestamp":"2026-11-09T09:04:58Z","type":"scope-start"}
+{"errno":"none","kind":"markdown-read","sha256":"0f54562b82df800d64bbd1c608e9e57368cafa6f0d1cafb9dd0e1f72febd19cd","status":"success","timestamp":"2026-11-09T09:04:58Z","type":"native-read-result"}
+{"errno":"1","kind":"adjacent-image-read-with-file-grant","sha256":"none","status":"denied","timestamp":"2026-11-09T09:04:58Z","type":"native-read-result"}
+{"action":"create","error":"Error Domain=NSCocoaErrorDomain Code=256 \"Could not open() the item\" UserInfo={NSURL=file:\/\/\/private\/tmp\/InkoraLocalAssetHostFixtures\/4C67BB25-C38A-483A-9630-19F3B26BE157\/%E4%B8%AD%E6%96%87%20%E7%9B%AE%E5%BD%95%25\/%E6%96%87%E6%A1%A3%20100%25.md, NSDebugDescription=Could not open() the item}","kind":"markdownFile","timestamp":"2026-11-09T09:04:58Z","type":"bookmark-error"}
+{"active":"true","count":"0","kind":"markdown","timestamp":"2026-11-09T09:04:58Z","type":"scope-stop"}
+{"kind":"directory","source":"user-action","timestamp":"2026-11-09T09:05:07Z","type":"panel-open"}
+{"kind":"directory","source":"NSOpenPanel","timestamp":"2026-11-09T09:05:14Z","type":"panel-selected"}
+{"active":"true","count":"1","kind":"directory-validation","timestamp":"2026-11-09T09:05:14Z","type":"scope-start"}
+{"errno":"none","kind":"manifest-read","sha256":"2e2dfcc825dc2a1d06b32e22b448f609b38d4499c460b14e6f55d1c0d0a66b80","status":"success","timestamp":"2026-11-09T09:05:14Z","type":"native-read-result"}
+{"kind":"fixtureDirectory","runID":"4C67BB25-C38A-483A-9630-19F3B26BE157","timestamp":"2026-11-09T09:05:14Z","type":"bookmark-created"}
+{"document":"5C0E29D5-E718-4F30-A555-1F59EC6FEB0D","epoch":"2A41D625-B9C9-41A3-B496-A83D98F11A73","timestamp":"2026-11-09T09:05:14Z","type":"authorization-installed"}
+{"document":"5C0E29D5-E718-4F30-A555-1F59EC6FEB0D","epoch":"2A41D625-B9C9-41A3-B496-A83D98F11A73","timestamp":"2026-11-09T09:05:14Z","token":"B85D9AAE-1CA5-46AE-9D89-54F0C6CA42F4","type":"resource-token-created"}
+{"active":"true","count":"0","kind":"directory-validation","timestamp":"2026-11-09T09:05:14Z","type":"scope-stop"}
+{"timestamp":"2026-11-09T09:05:14Z","token":"B85D9AAE-1CA5-46AE-9D89-54F0C6CA42F4","type":"wk-request"}
+{"active":"true","count":"1","timestamp":"2026-11-09T09:05:14Z","type":"scope-start"}
+{"timestamp":"2026-11-09T09:05:14Z","token":"B85D9AAE-1CA5-46AE-9D89-54F0C6CA42F4","type":"native-read-start"}
+{"sha256":"431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460","status":"success","timestamp":"2026-11-09T09:05:14Z","token":"B85D9AAE-1CA5-46AE-9D89-54F0C6CA42F4","type":"native-read-result"}
+{"active":"true","count":"0","timestamp":"2026-11-09T09:05:14Z","type":"scope-stop"}
+{"sha256":"431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460","timestamp":"2026-11-09T09:05:14Z","token":"B85D9AAE-1CA5-46AE-9D89-54F0C6CA42F4","type":"wk-complete"}
+{"document":"5C0E29D5-E718-4F30-A555-1F59EC6FEB0D","epoch":"5BAC4C61-BAB7-4DC8-8E0F-30C1D265D514","timestamp":"2026-11-09T09:05:34Z","type":"document-epoch"}
+{"timestamp":"2026-11-09T09:05:35Z","type":"bookmark-revoked"}
+{"timestamp":"2026-11-09T09:05:35Z","type":"authorization-revoked"}
+{"cleanup":"fixture-preserved; scopes-owned-by-active-reads","timestamp":"2026-11-09T09:07:56Z","type":"host-terminate"}

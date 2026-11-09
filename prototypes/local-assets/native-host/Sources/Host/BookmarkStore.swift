@@ -27,7 +27,7 @@ final class BookmarkStore {
     }
 
     func save(kind: BookmarkKind, url: URL, runID: UUID) throws {
-        let data = try url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+        let data = try url.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess], includingResourceValuesForKeys: nil, relativeTo: nil)
         var records = loadRecords().filter { $0.kind != kind }
         records.append(StoredBookmark(kind: kind, runID: runID, data: data))
         try JSONEncoder().encode(records).write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
@@ -47,6 +47,8 @@ final class BookmarkStore {
                 log.emit("bookmark-restored", ["kind": record.kind.rawValue, "stale": String(stale)])
                 if stale {
                     log.emit("bookmark-stale", ["kind": record.kind.rawValue])
+                    let active = url.startAccessingSecurityScopedResource()
+                    defer { if active { url.stopAccessingSecurityScopedResource() } }
                     do {
                         try save(kind: record.kind, url: url, runID: runID)
                     } catch {
