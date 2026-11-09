@@ -138,3 +138,5 @@ main仍48258a9；M0有界门槛保持通过。V1最终IME发布未闭合，V3/V4
 组合 047 HEAD b80a968 已包含 049/051，隔离 UITesting App 构建及严格签名通过。新窗口 IME Production 051.md 在自有 fixture 上已打开，光标在 Input here. 后，基线字符 49、字数 9；通过 async 问题请用户实体搜狗分两次输入中文/测试，尚未收到结果，绝不预填通过。UI 锁属于 root（pid59240，exec40421，FIFO /tmp/inkora-051-ui-hold），本轮配合结束后必须关闭自有应用并释放；当前不能在此物理输入期间让其他 Agent 启动 GUI。
 
 当前功能执行只有 050（V3 表格/任务列表），未轮询或重启。新 production IME、NSDocument 完整保存重开仍待集中验收；V4 图片和 V6 可视替换未实现，main 未变，总目标 active。
+
+用户选择本轮物理输入“稍后”：051 集中验收仅暂缓，整体开发继续。已实际确认自有 IME Production 051.md 正文仍为 Input here.，正常退出 UITesting 应用，CUA inventory 不再含该测试 bundle；唯一 fixture SHA 与初始一致，构建、分支、样稿保留。持锁进程已经 FIFO 正常退出，UI 锁释放；不维持等待窗口，也不误记物理输入通过。待用户明确恢复再重新预检和定位，不重复催促。
