@@ -290,11 +290,13 @@ export class SearchPanel {
         return;
       }
       if (event.key !== "Enter") return;
-      event.preventDefault();
+      // 候选确认 Enter 属于 IME，先判断组合态再决定是否消费；
+      // 组合期不 preventDefault，避免截获候选确认键。
       if (this.queryComposing || event.isComposing || this.handlers.isEditorComposing()) {
         this.showStatus("请先完成中文输入，再定位查找结果");
         return;
       }
+      event.preventDefault();
       this.navigateRelative(event.shiftKey ? "backward" : "forward");
     });
 

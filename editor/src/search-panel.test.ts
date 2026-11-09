@@ -343,9 +343,61 @@ describe("SearchPanel：结果渲染（真实 searchSource 结果）", () => {
     });
     Object.defineProperty(event, "isComposing", { value: true });
     queryInput().dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
     expect(handlers.onNavigate).not.toHaveBeenCalled();
     expect(doc().activeElement).toBe(queryInput());
   });
+
+  it("composition 生命周期内的 Enter 不被消费（候选确认键保留）", () => {
+    const { panel, handlers } = setup();
+    const raw = "one";
+    findButton().click();
+    typeQuery("one");
+    panel.update({
+      kind: "document",
+      binding: { documentID: "d", revision: 0, epoch: 0, raw },
+      result: searchSource({ raw, revision: 0 }, "one", { maxResults: SEARCH_MAX_RESULTS }),
+      navigation: { available: true },
+    });
+    queryInput().dispatchEvent(new dom.window.Event("compositionstart"));
+    // 生命周期组合期：keydown 自身不带 isComposing 标记。
+    const event = new dom.window.KeyboardEvent("keydown", {
+      key: "Enter", bubbles: true, cancelable: true,
+    });
+    queryInput().dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(handlers.onNavigate).not.toHaveBeenCalled();
+    expect(doc().activeElement).toBe(queryInput());
+  });
+
+  it("仅 isComposing 标记的 Enter 不被消费（无生命周期事件）", () => {
+    const { panel, handlers } = setup();
+    const raw = "one";
+    findButton().click();
+    typeQuery("one");
+    panel.update({
+      kind: "document",
+      binding: { documentID: "d", revision: 0, epoch: 0, raw },
+      result: searchSource({ raw, revision: 0 }, "one", { maxResults: SEARCH_MAX_RESULTS }),
+      navigation: { available: true },
+    });
+    const event = new dom.window.KeyboardEvent("keydown", {
+      key: "Enter", bubbles: true, cancelable: true,
+    });
+    Object.defineProperty(event, "isComposing", { value: true });
+    queryInput().dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(handlers.onNavigate).not.toHaveBeenCalled();
+    expect(doc().activeElement).toBe(queryInput());
+    // 组合收口后普通 Enter 仍消费并导航。
+    const normal = new dom.window.KeyboardEvent("keydown", {
+      key: "Enter", bubbles: true, cancelable: true,
+    });
+    queryInput().dispatchEvent(normal);
+    expect(normal.defaultPrevented).toBe(true);
+    expect(handlers.onNavigate).toHaveBeenCalledTimes(1);
+    expect(doc().activeElement).toBe(queryInput());
+   });
 
   it("计数与条目来自真实 searchSource；大小写一致", () => {
     const { panel } = setup();
