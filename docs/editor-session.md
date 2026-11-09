@@ -1,15 +1,23 @@
 # 编辑会话、历史与粘贴语义
 
+生产 runtime 的内容边界为 `SourceAuthoritySession`：`currentRaw` 是当前 Markdown 的唯一权威，dirty 为 `currentRaw !== savedRaw`，历史同时恢复原文、PM投影、选区和位置依据。下述 `InkoraEditorSession` 的 PM 保存点描述适用于保留的基础会话模块；生产文件保存与跨模式历史遵循原文权威及 `save-barrier.md`。
+
 `InkoraEditorSession` 是 ProseMirror `EditorState` 的状态边界，负责组合现有 schema、输入规则、快捷键、history 与粘贴插件。原生菜单和 NSDocument 只消费它的状态，不自行推断编辑器历史。
 
 `onStateChange` 同时报告文档 revision 和保存状态变化；selection-only transaction 不发布事件。
 
-## 保存点与历史
+## 基础 PM 会话的保存点与历史
 
 - `dirty` 始终通过 `currentDoc.eq(savedDoc)` 计算，不依赖递增计数；
 - `markSaved()` 保存当前文档引用，并使用 `closeHistory` 切断前后编辑分组；
 - `canUndo` / `canRedo` 来自 ProseMirror history 的真实深度；
 - Undo 精确回到保存文档时，`dirty` 自动恢复为 `false`；Redo 后重新计算，不缓存旧值。
+
+## 生产原文与保护范围
+
+parser一次完整接受产生 PM投影、tokens/reference依据、原始opaque范围及U诊断；ledger消费同次依据。块/行内atom的raw只读，完整删除或改写须主动进入源码显式提交；邻接普通正文、marks、列表/引用/表格继续按各自精确位置编辑。可视查找在atom处分隔，图片proof只收集真实image节点，分析面板从canonical范围排除保护内容。
+
+重新打开形成新epoch，parse/context/boundary缓存失效，并建立新的不可变PM文档身份。旧view保留的transaction不能因raw相等而写入新文档；拒绝后保留当前内容、选区、history与意图。源码no-op不新增文档历史，也不能清掉仍未解决的拒绝意图。
 
 ## 图片 owner proof
 
