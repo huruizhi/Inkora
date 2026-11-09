@@ -64,6 +64,21 @@ export function createInkoraEditorState(
   document: ProseMirrorNode,
   options: EditorStateOptions = {},
 ): EditorState {
+  return createEditorState(document, options, true);
+}
+
+export function createInkoraProjectionState(
+  document: ProseMirrorNode,
+  options: EditorStateOptions = {},
+): EditorState {
+  return createEditorState(document, options, false);
+}
+
+function createEditorState(
+  document: ProseMirrorNode,
+  options: EditorStateOptions,
+  includeHistory: boolean,
+): EditorState {
   if (document.type !== inkoraSchema.topNodeType) {
     throw new RangeError("Editor state requires a doc root");
   }
@@ -71,8 +86,7 @@ export function createInkoraEditorState(
   return EditorState.create({
     doc: document,
     plugins: [
-      history(),
-      historyKeymap,
+      ...(includeHistory ? [history(), historyKeymap] : []),
       createBlockInputRules(),
       createInlineInputRules(),
       createBlockKeymap(),
@@ -187,6 +201,9 @@ function textSlice(state: EditorState, text: string): Slice {
   }
 
   const marks = state.selection.$from.marks();
+  if (!normalized.includes("\n")) {
+    return new Slice(Fragment.from(inkoraSchema.text(normalized, marks)), 0, 0);
+  }
   const blocks = normalized.split("\n").map((line) =>
     inkoraSchema.nodes.paragraph.create(
       null,
@@ -227,6 +244,10 @@ export function createPasteTransaction(
   const transaction = state.tr
     .replaceSelection(slice)
     .setMeta("uiEvent", "paste")
+    .setMeta("inkoraSourcePaste", {
+      kind: payload.kind,
+      source: payload.kind === "rich_html" ? undefined : payload.text,
+    })
     .scrollIntoView();
   transaction.doc.check();
   return transaction;

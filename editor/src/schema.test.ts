@@ -29,6 +29,7 @@ describe("Inkora ProseMirror schema", () => {
       "strike",
       "code",
       "link",
+      "image_ref",
     ]);
   });
 

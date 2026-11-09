@@ -27,7 +27,7 @@ export type InkoraNodeName =
   | "bullet_list"
   | "list_item";
 
-export type InkoraMarkName = "strong" | "em" | "strike" | "code" | "link";
+export type InkoraMarkName = "strong" | "em" | "strike" | "code" | "link" | "image_ref";
 
 export type DocumentRecoveryReason = "empty_input" | "invalid_document";
 
@@ -266,6 +266,31 @@ export const inkoraMarkSpecs: Record<InkoraMarkName, MarkSpec> = {
         0,
       ];
     },
+  },
+  image_ref: {
+    attrs: {
+      href: { validate: validateLinkHref },
+      title: { default: null, validate: validateLinkTitle },
+    },
+    inclusive: false,
+    parseDOM: [{
+      tag: "span[data-image-ref]",
+      getAttrs: (dom) => {
+        const element = dom as HTMLElement;
+        const href = element.dataset.imageRef;
+        if (!href) return false;
+        return { href, title: element.getAttribute("title") };
+      },
+    }],
+    toDOM: (mark): DOMOutputSpec => [
+      "span",
+      {
+        class: "image-ref",
+        "data-image-ref": mark.attrs.href,
+        title: mark.attrs.title ?? undefined,
+      },
+      0,
+    ],
   },
 };
 

@@ -42,12 +42,19 @@ function stubBrowserEnvironment(html = "<!doctype html><main id='app'></main>"):
   return { dom, parent };
 }
 
+function enterSource(runtime: EditorRuntime, parent: HTMLElement): HTMLTextAreaElement {
+  expect(runtime.enterSourceMode()).toBe(true);
+  const area = parent.querySelector<HTMLTextAreaElement>("textarea#editor");
+  if (!area) throw new Error("Expected explicit source mode");
+  return area;
+}
+
 describe("editor runtime", () => {
   it("captures replacement history selection by value independently of the caller plan", () => {
-    const { parent } = stubBrowserEnvironment();
+    const { dom, parent } = stubBrowserEnvironment();
     const raw = "<x>a</x>\n";
     const runtime = createEditorRuntime(parent, raw, () => {});
-    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    const area = enterSource(runtime, parent);
     area.setSelectionRange(3, 4, "backward");
     const planned = planSourceReplaceAll(searchSource({ raw, revision: 0 }, "a"),
       { raw, revision: 0 }, "B");
@@ -67,7 +74,8 @@ describe("editor runtime", () => {
     const raw = "<x>one one</x>\r\n";
     const states: unknown[] = [];
     const runtime = createEditorRuntime(parent, raw, (state) => states.push(state));
-    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    const area = enterSource(runtime, parent);
+    const notifications = states.length;
     area.setSelectionRange(7, 4, "backward");
     const beforeSelection = runtime.getSourceSelection(raw);
     expect(beforeSelection.ok).toBe(true);
@@ -76,7 +84,7 @@ describe("editor runtime", () => {
     expect(runtime.sourceReplacement).toBe(true);
     expect(runtime.applySourceReplacement(planned.plan)).toEqual({ ok: true, value: { changed: true, replacedCount: 2 } });
     expect(runtime.getText()).toBe("<x>$&-$1 $&-$1</x>\r\n");
-    expect(states).toHaveLength(1);
+    expect(states).toHaveLength(notifications + 1);
     expect(runtime.undo()).toBe(true);
     expect(runtime.getText()).toBe(raw);
     expect(runtime.getSourceSelection(raw)).toEqual(beforeSelection);
@@ -89,7 +97,7 @@ describe("editor runtime", () => {
     const { parent } = stubBrowserEnvironment();
     const raw = "<x>a a</x>\n";
     const runtime = createEditorRuntime(parent, raw, () => {});
-    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    const area = enterSource(runtime, parent);
     area.setSelectionRange(3, 4, "backward");
 
     const first = planSourceReplaceAll(searchSource({ raw, revision: 0 }, "a"),
@@ -135,9 +143,10 @@ describe("editor runtime", () => {
     const edited = "<x>same edited</x>\n";
     const states: unknown[] = [];
     const runtime = createEditorRuntime(parent, original, (state) => states.push(state));
-    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    const area = enterSource(runtime, parent);
     area.value = edited;
     area.dispatchEvent(new dom.window.Event("input"));
+    expect(runtime.applySourceDraft()).toBe(true);
     expect(runtime.undo()).toBe(true);
     area.setSelectionRange(3, 7, "backward");
     const selection = runtime.getSourceSelection(original);
@@ -160,7 +169,8 @@ describe("editor runtime", () => {
     const raw = "<x>a a</x>\n";
     const states: unknown[] = [];
     const runtime = createEditorRuntime(parent, raw, (state) => states.push(state));
-    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    const area = enterSource(runtime, parent);
+    const notifications = states.length;
     area.setSelectionRange(3, 4);
     const planned = planSourceReplaceAll(searchSource({ raw, revision: 1 }, "a"),
       { raw, revision: 1 }, "b");
@@ -171,7 +181,7 @@ describe("editor runtime", () => {
     area.dispatchEvent(new dom.window.Event("compositionend"));
     expect(runtime.applySourceReplacement({ ...planned.plan, resultRaw: "forged" }).ok).toBe(false);
     expect({ value: area.value, selection: [area.selectionStart, area.selectionEnd], status: runtime.status }).toEqual(before);
-    expect(states).toHaveLength(0);
+    expect(states).toHaveLength(notifications);
     runtime.destroy();
   });
   it("explicitly exposes source navigation only for source and bare-CR runtimes", () => {
@@ -181,6 +191,7 @@ describe("editor runtime", () => {
     structured.destroy();
 
     const source = createEditorRuntime(stubBrowserEnvironment().parent, "<x>same same</x>\r\n", () => {});
+    expect(source.enterSourceMode()).toBe(true);
     expect(source.sourceNavigation).toBe(true);
     source.destroy();
 
@@ -194,7 +205,9 @@ describe("editor runtime", () => {
     (raw) => {
       const { parent } = stubBrowserEnvironment();
       const runtime = createEditorRuntime(parent, raw, () => {});
-      const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+      const area = raw.includes("\r") && !raw.includes("\r\n")
+        ? parent.querySelector<HTMLTextAreaElement>("textarea")!
+        : enterSource(runtime, parent);
       const first = area.value.indexOf("same");
       area.setSelectionRange(first, first + 4, "backward");
       const before = { text: runtime.getText(), status: runtime.status };
@@ -244,6 +257,7 @@ describe("editor runtime", () => {
   ])("navigates source/read-only heading with explicit original offset mapping: %j", (raw) => {
     const { parent } = stubBrowserEnvironment();
     const runtime = createEditorRuntime(parent, raw, () => {});
+    if (!raw.includes("\r#")) runtime.enterSourceMode();
     const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
     const headings = analyzeDocument({ raw, revision: 0 }).headings;
     const target = headings.at(-1)!;
@@ -257,7 +271,7 @@ describe("editor runtime", () => {
     const { dom, parent } = stubBrowserEnvironment();
     const raw = "<x>source</x>\n\n# Heading\n";
     const runtime = createEditorRuntime(parent, raw, () => {});
-    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    const area = enterSource(runtime, parent);
     area.focus();
     area.setSelectionRange(2, 4);
     area.dispatchEvent(new dom.window.Event("compositionstart"));
@@ -276,13 +290,18 @@ describe("editor runtime", () => {
     expect(document.querySelector("#editor")?.textContent).toContain("别名");
     const copy = document.createElement("div");
     copy.append(DOMSerializer.fromSchema(inkoraSchema).serializeFragment(session.state.doc.content));
-    expect(DOMParser.fromSchema(inkoraSchema).parse(copy).eq(session.state.doc)).toBe(true);
+    expect(DOMParser.fromSchema(inkoraSchema).parse(copy).toJSON()).toEqual(
+      session.state.doc.toJSON(),
+    );
     expect(runtime.getText()).toBe(original);
     let position = -1;
     session.state.doc.descendants((node, pos) => {
-      if (node.isText && node.text === "正文") position = pos;
+      if (node.isText && node.text?.startsWith("正文")) position = pos;
     });
-    session.dispatch(session.state.tr.insertText("修改", position));
+    expect(position).toBeGreaterThan(0);
+    const edit = session.state.tr.insertText("修改", position);
+    expect(edit.steps[0]?.toJSON()).toMatchObject({ from: position, to: position });
+    expect(session.dispatch(edit)).toBe(true);
     expect(runtime.getText()).toBe(original.replace("正文", "修改正文"));
     expect(runtime.undo()).toBe(true);
     expect(runtime.getText()).toBe(original);
@@ -299,26 +318,20 @@ describe("editor runtime", () => {
   });
 
   it("keeps unsupported Markdown in source mode with undo and redo", () => {
-    const dom = new JSDOM("<!doctype html><main id='app'></main>");
-    Object.defineProperty(globalThis, "document", {
-      configurable: true,
-      value: dom.window.document,
-    });
-    const parent = dom.window.document.querySelector<HTMLElement>("#app");
-    if (!parent) throw new Error("Missing test parent");
+    const { dom, parent } = stubBrowserEnvironment();
     const states: Array<{ dirty: boolean; canUndo: boolean; canRedo: boolean }> = [];
     const original = "<custom-element>keep exactly</custom-element>\r\n";
     const runtime = createEditorRuntime(parent, original, (status) => states.push(status));
-    const textArea = parent.querySelector<HTMLTextAreaElement>("textarea");
-    if (!textArea) throw new Error("Expected source mode");
+    const textArea = enterSource(runtime, parent);
 
     textArea.value = "<custom-element>changed</custom-element>\n";
     textArea.dispatchEvent(new dom.window.Event("input"));
-    expect(runtime.status).toEqual({ dirty: true, canUndo: true, canRedo: false });
+    expect(runtime.applySourceDraft()).toBe(true);
+    expect(runtime.status).toMatchObject({ dirty: true, canUndo: true, canRedo: false });
 
     expect(runtime.undo()).toBe(true);
     expect(runtime.getText()).toBe(original);
-    expect(runtime.status).toEqual({ dirty: false, canUndo: false, canRedo: true });
+    expect(runtime.status).toMatchObject({ dirty: false, canUndo: false, canRedo: true });
 
     expect(runtime.redo()).toBe(true);
     expect(runtime.getText()).toBe("<custom-element>changed</custom-element>\r\n");
@@ -410,18 +423,19 @@ describe("editor runtime", () => {
     textArea.dispatchEvent(new dom.window.Event("input"));
     expect(textArea.readOnly).toBe(true);
     expect(runtime.getText()).toBe(original);
-    expect(runtime.status).toEqual({ dirty: false, canUndo: false, canRedo: false });
+    expect(runtime.status).toMatchObject({ dirty: false, canUndo: false, canRedo: false });
     expect(runtime.undo()).toBe(false);
     expect(runtime.redo()).toBe(false);
     runtime.destroy();
     const expected = readFileSync(new URL(`../../tests/fixtures/${name}.expected.md`, import.meta.url), "utf8");
     const converted = createEditorRuntime(parent, expected, () => {});
-    const editable = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    const editable = enterSource(converted, parent);
     expect(editable.readOnly).toBe(false);
     expect(converted.getText()).toBe(expected);
     expect(converted.undo()).toBe(false);
     editable.value = expected + "编辑";
     editable.dispatchEvent(new dom.window.Event("input"));
+    expect(converted.applySourceDraft()).toBe(true);
     expect(converted.status.dirty).toBe(true);
     expect(converted.undo()).toBe(true);
     expect(converted.getText()).toBe(expected);
@@ -505,10 +519,10 @@ describe("editor runtime", () => {
   ])("retains unsupported raw CRLF content in source edits: %j", (original) => {
     const { dom, parent } = stubBrowserEnvironment();
     const runtime = createEditorRuntime(parent, original, () => {});
-    const editor = parent.querySelector("textarea");
-    if (!editor) throw new Error("Expected source mode");
+    const editor = enterSource(runtime, parent);
     editor.value = original.replace(/\r\n/g, "\n").replace("原文", "改后原文");
     editor.dispatchEvent(new dom.window.Event("input"));
+    expect(runtime.applySourceDraft()).toBe(true);
     expect(runtime.getText()).toBe(original.replace("原文", "改后原文"));
     runtime.destroy();
   });
@@ -525,7 +539,7 @@ describe("editor runtime", () => {
     const { parent } = stubBrowserEnvironment();
     const original = prefix + "# Heading\r\n\r\n\r\nBody  \r\n";
     const runtime = createEditorRuntime(parent, original, () => {});
-    expect(parent.querySelector("textarea")).not.toBeNull();
+    expect(parent.querySelector(".ProseMirror")).not.toBeNull();
     expect(runtime.getText()).toBe(original);
     runtime.destroy();
   });

@@ -21,15 +21,23 @@ import {
 } from "./source-navigation";
 import type { DirectedSelection, SourceReplacementPlan } from "./source-search";
 import { validateSourceReplacementPlan } from "./source-replacement";
+import { SourceAuthoritySession } from "./source-authority";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  draftDirty: boolean;
+  unresolved: boolean;
+  saveEligible: boolean;
 }
+
+export type EditorMode = "visual" | "source" | "read_only";
+export type RuntimeChangeKind = "document" | "status";
 
 export interface EditorRuntime {
   readonly status: EditorRuntimeStatus;
+  readonly mode: EditorMode;
   readonly sourceNavigation: boolean;
   readonly sourceReplacement: boolean;
   getText(): string;
@@ -40,6 +48,10 @@ export interface EditorRuntime {
     readonly replacedCount: number;
   }>;
   readonly composing: boolean;
+  enterSourceMode(): boolean;
+  applySourceDraft(): boolean;
+  cancelSourceDraft(): boolean;
+  snapshotText(): SourceNavigationResult<string>;
   markSaved(text: string): void;
   undo(): boolean;
   redo(): boolean;
@@ -48,7 +60,10 @@ export interface EditorRuntime {
   destroy(): void;
 }
 
-export type RuntimeChangeListener = (status: EditorRuntimeStatus) => void;
+export type RuntimeChangeListener = (
+  status: EditorRuntimeStatus,
+  kind?: RuntimeChangeKind,
+) => void;
 
 interface SourceHistorySnapshot {
   readonly raw: string;
@@ -61,98 +76,208 @@ interface SourceHistoryEntry {
   readonly after: SourceHistorySnapshot;
 }
 
-class StructuredEditorRuntime implements EditorRuntime {
-  readonly sourceNavigation = false;
-  readonly sourceReplacement = false;
-  private readonly session: InkoraEditorSession;
-  private readonly view: EditorView;
+class SourceAuthorityEditorRuntime implements EditorRuntime {
+  private view: EditorView | undefined;
+  private textArea: HTMLTextAreaElement | undefined;
+  private sourceKernel: TextAreaEditorKernel | undefined;
   private compositionTimer: number | undefined;
-  private readonly lineEndings: LineEndings;
+  private compositionStartRaw: string | undefined;
+  private readonly session: SourceAuthoritySession;
 
   constructor(
-    parent: HTMLElement,
-    private savedText: string,
-    onChange: RuntimeChangeListener,
-    private readonly protectedMode = false,
+    private readonly parent: HTMLElement,
+    text: string,
+    private readonly onChange: RuntimeChangeListener,
   ) {
-    this.lineEndings = classifyLineEndings(savedText);
-    this.session = new InkoraEditorSession(this.parse(savedText));
-    let view: EditorView;
-    view = new EditorView(parent, {
-      state: this.session.state,
-      dispatchTransaction: (transaction) => {
-        this.session.dispatch(transaction);
-        view.updateState(this.session.state);
-      },
-    });
-    this.view = view;
-    this.view.dom.id = "editor";
-    this.view.dom.setAttribute("aria-label", "Markdown editor");
-    this.view.dom.addEventListener("compositionstart", this.handleCompositionStart);
-    this.view.dom.addEventListener("compositionend", this.handleCompositionEnd);
-    this.session.onStateChange(() => onChange(this.status));
+    this.session = new SourceAuthoritySession(text);
+    this.renderVisual();
   }
 
-  private parse(text: string) {
-    const input = structuredInput(text);
-    return (this.protectedMode ? parseProtectedMarkdown(input) : null) ?? parseMarkdown(input);
+  get mode(): EditorMode {
+    return this.textArea ? "source" : "visual";
+  }
+
+  get sourceNavigation(): boolean {
+    return this.mode === "source";
+  }
+
+  get sourceReplacement(): boolean {
+    return this.mode === "source";
   }
 
   get composing(): boolean {
-    return this.session.status.composing;
+    return this.mode === "source"
+      ? (this.sourceKernel?.composing ?? false)
+      : this.session.composing;
   }
 
   get status(): EditorRuntimeStatus {
-    const { dirty, canUndo, canRedo } = this.session.status;
-    return { dirty, canUndo, canRedo };
+    return {
+      dirty: this.session.documentDirty,
+      canUndo: this.session.past.length > 0,
+      canRedo: this.session.future.length > 0,
+      draftDirty: this.session.draftDirty,
+      unresolved: this.session.unresolvedIntent !== null || this.session.issues.length > 0,
+      saveEligible: this.session.saveEligible,
+    };
   }
 
   getText(): string {
-    if (!this.status.dirty) {
-      return this.savedText;
+    return this.session.currentRaw;
+  }
+
+  snapshotText(): SourceNavigationResult<string> {
+    if (!this.session.saveEligible) {
+      const reason = this.session.draftDirty
+        ? "源码草稿尚未提交"
+        : this.session.issues[0]?.message ??
+          this.session.unresolvedIntent?.description ??
+          "当前输入尚未形成可安全保存的原文";
+      return { ok: false, message: reason };
     }
-    return structuredOutput(serializeMarkdown(this.session.state.doc), this.savedText, this.lineEndings);
+    return { ok: true, value: this.session.currentRaw };
   }
 
-  getSourceSelection(_raw: string): SourceNavigationResult<DirectedSelection> {
-    return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
+  enterSourceMode(): boolean {
+    if (this.composing || !this.session.beginSource()) return false;
+    this.renderSource();
+    this.onChange(this.status, "status");
+    return true;
   }
 
-  selectSourceRange(_raw: string, _selection: DirectedSelection): SourceNavigationResult {
-    return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
+  applySourceDraft(): boolean {
+    const kernel = this.sourceKernel;
+    const area = this.textArea;
+    if (!kernel || !area || kernel.composing) return false;
+    const draftRaw = kernel.getText();
+    const selection = readRawSelection(
+      draftRaw,
+      area.value,
+      area.selectionStart,
+      area.selectionEnd,
+      area.selectionDirection,
+    );
+    if (!selection.ok) return false;
+    this.session.updateDraft(draftRaw, { ...selection.value, affinity: "right" });
+    const before = this.session.currentRaw;
+    if (!this.session.applySource()) return false;
+    this.session.beginSource();
+    kernel.setText(this.session.currentRaw);
+    this.applySourceSelection(this.session.currentRaw, this.session.rawSelection);
+    this.onChange(this.status, before === this.session.currentRaw ? "status" : "document");
+    return true;
   }
 
-  applySourceReplacement(_plan: SourceReplacementPlan): SourceNavigationResult<never> {
-    return { ok: false, message: "结构化编辑模式不支持原文替换" };
+  cancelSourceDraft(): boolean {
+    if (!this.textArea || this.composing || !this.session.cancelSource()) return false;
+    this.renderVisual();
+    this.onChange(this.status, "status");
+    return true;
+  }
+
+  getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
+    const area = this.textArea;
+    if (!area || this.composing) {
+      return { ok: false, message: this.composing
+        ? "请先完成中文输入，再定位查找结果"
+        : "可视编辑模式暂不支持原文范围定位" };
+    }
+    if (this.session.draftDirty) return { ok: false, message: "请先提交或取消源码草稿" };
+    if (this.session.currentRaw !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
+    return readRawSelection(
+      raw,
+      area.value,
+      area.selectionStart,
+      area.selectionEnd,
+      area.selectionDirection,
+    );
+  }
+
+  selectSourceRange(raw: string, selection: DirectedSelection): SourceNavigationResult {
+    const area = this.textArea;
+    if (!area || this.composing) {
+      return { ok: false, message: this.composing
+        ? "请先完成中文输入，再定位查找结果"
+        : "可视编辑模式暂不支持原文范围定位" };
+    }
+    if (this.session.draftDirty) return { ok: false, message: "请先提交或取消源码草稿" };
+    if (this.session.currentRaw !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
+    const mapped = mapRawRangeToTextarea(raw, area.value, {
+      from: Math.min(selection.anchor, selection.head),
+      to: Math.max(selection.anchor, selection.head),
+    });
+    if (!mapped.ok) return mapped;
+    area.setSelectionRange(
+      mapped.value.start,
+      mapped.value.end,
+      selection.anchor > selection.head ? "backward" : "forward",
+    );
+    return { ok: true, value: undefined };
+  }
+
+  applySourceReplacement(plan: SourceReplacementPlan): SourceNavigationResult<{
+    readonly changed: boolean;
+    readonly replacedCount: number;
+  }> {
+    const area = this.textArea;
+    if (!area || this.composing) return { ok: false, message: "当前不能执行原文替换" };
+    if (this.session.draftDirty) return { ok: false, message: "请先提交或取消源码草稿" };
+    const validation = validateSourceReplacementPlan(plan, this.session.currentRaw, area.value);
+    if (!validation.ok) return validation;
+    if (!plan.changed) return { ok: true, value: { changed: false, replacedCount: 0 } };
+    const currentSelection = this.getSourceSelection(this.session.currentRaw);
+    if (!currentSelection.ok || !this.session.setSourceSelection(
+      currentSelection.value.anchor,
+      currentSelection.value.head,
+      "right",
+    )) {
+      return { ok: false, message: "当前原文选区无效" };
+    }
+    const before = this.session.currentRaw;
+    if (!this.session.updateDraft(plan.resultRaw, { ...plan.selection, affinity: "right" }) ||
+        !this.session.applySource()) {
+      return { ok: false, message: this.session.diagnostic || "无法应用原文替换" };
+    }
+    this.session.beginSource();
+    this.sourceKernel?.setText(this.session.currentRaw);
+    this.applySourceSelection(plan.resultRaw, plan.selection);
+    this.onChange(this.status, before === this.session.currentRaw ? "status" : "document");
+    return { ok: true, value: { changed: true, replacedCount: plan.replacedCount } };
   }
 
   markSaved(text: string): void {
-    this.savedText = text;
-    this.session.markSaved(this.parse(text));
-    if (!this.composing) this.view.updateState(this.session.state);
+    this.session.markSaved(text);
+    this.onChange(this.status, "status");
   }
 
   undo(): boolean {
-    const applied = this.session.undo();
-    if (applied) this.view.updateState(this.session.state);
-    return applied;
+    if (!this.session.undo()) return false;
+    this.renderCurrentMode();
+    return true;
   }
 
   redo(): boolean {
-    const applied = this.session.redo();
-    if (applied) this.view.updateState(this.session.state);
-    return applied;
+    if (!this.session.redo()) return false;
+    this.renderCurrentMode();
+    return true;
   }
 
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
     if (this.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
-    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
-
+    if (this.session.currentRaw !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
     const analyzed = analyzeDocument({ raw, revision: 0 }).headings;
     if (!sameHeading(analyzed[target.index], target)) {
       return { ok: false, message: "大纲快照已过期，无法定位标题" };
     }
-
+    if (this.mode === "source") {
+      const offset = rawOffsetToTextareaOffset(raw, target.start);
+      if (offset === undefined || !this.textArea) {
+        return { ok: false, message: "标题原文范围无效，无法定位" };
+      }
+      this.textArea.focus();
+      this.textArea.setSelectionRange(offset, offset);
+      return { ok: true };
+    }
     const headings: Array<{ level: number; text: string; position: number }> = [];
     this.session.state.doc.descendants((node, position) => {
       if (node.type.name === "heading") {
@@ -166,44 +291,141 @@ class StructuredEditorRuntime implements EditorRuntime {
     }
     const heading = headings[target.index];
     if (!heading) return { ok: false, message: "目标标题不存在" };
-    const transaction = this.session.state.tr
-      .setSelection(TextSelection.create(this.session.state.doc, heading.position + 1))
-      .setMeta("addToHistory", false)
-      .scrollIntoView();
-    this.session.dispatch(transaction);
-    this.view.updateState(this.session.state);
-    this.view.focus();
+    this.session.dispatch(
+      this.session.state.tr
+        .setSelection(TextSelection.create(this.session.state.doc, heading.position + 1))
+        .setMeta("addToHistory", false)
+        .scrollIntoView(),
+    );
+    this.view?.updateState(this.session.state);
+    this.view?.focus();
     return { ok: true };
   }
 
   focus(): void {
-    this.view.focus();
+    if (this.mode === "source") this.sourceKernel?.focus();
+    else this.view?.focus();
   }
 
   destroy(): void {
     if (this.compositionTimer !== undefined) window.clearTimeout(this.compositionTimer);
-    this.view.dom.removeEventListener("compositionstart", this.handleCompositionStart);
-    this.view.dom.removeEventListener("compositionend", this.handleCompositionEnd);
-    this.view.destroy();
+    this.destroySurface();
+  }
+
+  private renderCurrentMode(): void {
+    if (this.mode === "source") {
+      this.session.beginSource();
+      this.sourceKernel?.setText(this.session.currentRaw);
+      this.applySourceSelection(this.session.currentRaw, this.session.rawSelection);
+    } else {
+      this.renderVisual();
+    }
+  }
+
+  private renderVisual(): void {
+    this.destroySurface();
+    this.parent.replaceChildren();
+    let view: EditorView;
+    view = new EditorView(this.parent, {
+      state: this.session.state,
+      dispatchTransaction: (transaction) => {
+        const before = this.session.currentRaw;
+        const accepted = this.session.dispatch(transaction);
+        view.updateState(this.session.state);
+        if (!accepted || before === this.session.currentRaw || this.session.composing) return;
+        this.onChange(this.status, "document");
+      },
+    });
+    this.view = view;
+    view.dom.id = "editor";
+    view.dom.setAttribute("aria-label", "Markdown editor");
+    view.dom.addEventListener("compositionstart", this.handleCompositionStart);
+    view.dom.addEventListener("compositionend", this.handleCompositionEnd);
+  }
+
+  private renderSource(): void {
+    this.destroySurface();
+    this.parent.replaceChildren();
+    const area = document.createElement("textarea");
+    area.id = "editor";
+    area.autocapitalize = "off";
+    area.autocomplete = "off";
+    area.spellcheck = false;
+    area.setAttribute("aria-label", "Markdown source draft");
+    this.parent.append(area);
+    const kernel = new TextAreaEditorKernel(area);
+    kernel.setText(this.session.draft?.raw ?? this.session.currentRaw);
+    kernel.onChange((text) => {
+      const selection = readRawSelection(
+        text,
+        area.value,
+        area.selectionStart,
+        area.selectionEnd,
+        area.selectionDirection,
+      );
+      const rawSelection = selection.ok
+        ? { ...selection.value, affinity: "right" as const }
+        : { anchor: text.length, head: text.length, affinity: "right" as const };
+      this.session.updateDraft(text, rawSelection);
+      this.onChange(this.status, "status");
+    });
+    this.textArea = area;
+    this.sourceKernel = kernel;
+    const selection = this.session.draft?.selection ?? this.session.rawSelection;
+    this.applySourceSelection(this.session.draft?.raw ?? this.session.currentRaw, selection);
+  }
+
+  private applySourceSelection(raw: string, selection: DirectedSelection): void {
+    const area = this.textArea;
+    if (!area) return;
+    const mapped = mapRawRangeToTextarea(raw, area.value, {
+      from: Math.min(selection.anchor, selection.head),
+      to: Math.max(selection.anchor, selection.head),
+    });
+    if (!mapped.ok) return;
+    area.setSelectionRange(
+      mapped.value.start,
+      mapped.value.end,
+      selection.anchor > selection.head ? "backward" : "forward",
+    );
+  }
+
+  private destroySurface(): void {
+    if (this.view) {
+      this.view.dom.removeEventListener("compositionstart", this.handleCompositionStart);
+      this.view.dom.removeEventListener("compositionend", this.handleCompositionEnd);
+      this.view.destroy();
+      this.view = undefined;
+    }
+    this.textArea?.remove();
+    this.textArea = undefined;
+    this.sourceKernel = undefined;
   }
 
   private readonly handleCompositionStart = (): void => {
     if (this.compositionTimer !== undefined) window.clearTimeout(this.compositionTimer);
     this.compositionTimer = undefined;
-    this.session.beginComposition();
+    this.compositionStartRaw = this.session.currentRaw;
+    this.session.startComposition();
   };
 
   private readonly handleCompositionEnd = (): void => {
     if (this.compositionTimer !== undefined) window.clearTimeout(this.compositionTimer);
     this.compositionTimer = window.setTimeout(() => {
       this.compositionTimer = undefined;
+      const before = this.compositionStartRaw;
+      this.compositionStartRaw = undefined;
       this.session.endComposition();
-      this.view.updateState(this.session.state);
+      this.view?.updateState(this.session.state);
+      if (before !== undefined && before !== this.session.currentRaw) {
+        this.onChange(this.status, "document");
+      }
     }, 0);
   };
 }
 
 class SourceEditorRuntime implements EditorRuntime {
+  readonly mode = "source" as const;
   readonly sourceNavigation = true;
   readonly sourceReplacement = true;
   private readonly textArea: HTMLTextAreaElement;
@@ -247,11 +469,23 @@ class SourceEditorRuntime implements EditorRuntime {
       dirty: this.currentText !== this.savedText,
       canUndo: this.undoStack.length > 0,
       canRedo: this.redoStack.length > 0,
+      draftDirty: false,
+      unresolved: false,
+      saveEligible: !this.composing,
     };
   }
 
   getText(): string {
     return this.currentText;
+  }
+
+  enterSourceMode(): boolean { return !this.composing; }
+  applySourceDraft(): boolean { return false; }
+  cancelSourceDraft(): boolean { return false; }
+  snapshotText(): SourceNavigationResult<string> {
+    return this.composing
+      ? { ok: false, message: "请先完成中文输入" }
+      : { ok: true, value: this.currentText };
   }
 
   getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
@@ -382,10 +616,18 @@ class SourceEditorRuntime implements EditorRuntime {
 
 // EOL-003: keep exact bytes independent of textarea's LF normalization.
 class ReadOnlyEditorRuntime implements EditorRuntime {
+  readonly mode = "read_only" as const;
   readonly sourceNavigation = true;
   readonly sourceReplacement = false;
   private readonly textArea: HTMLTextAreaElement;
-  readonly status = { dirty: false, canUndo: false, canRedo: false };
+  readonly status = {
+    dirty: false,
+    canUndo: false,
+    canRedo: false,
+    draftDirty: false,
+    unresolved: false,
+    saveEligible: true,
+  };
   readonly composing = false;
 
   constructor(parent: HTMLElement, private readonly text: string) {
@@ -398,6 +640,10 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   }
 
   getText(): string { return this.text; }
+  enterSourceMode(): boolean { return true; }
+  applySourceDraft(): boolean { return false; }
+  cancelSourceDraft(): boolean { return false; }
+  snapshotText(): SourceNavigationResult<string> { return { ok: true, value: this.text }; }
   getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
     if (this.text !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
     return readRawSelection(
@@ -453,33 +699,10 @@ export function createEditorRuntime(
   parent.replaceChildren();
   const endings = classifyLineEndings(text);
   if (endings === "bare_cr") return new ReadOnlyEditorRuntime(parent, text);
-  const input = structuredInput(text);
-  if (endings !== "mixed" &&
-      analyzeMarkdownSafety(input).structuredSaveAllowed) {
-    try {
-      // CRLF support must not introduce unrelated codec normalization diffs.
-      if (endings === "crlf" &&
-          structuredOutput(serializeMarkdown(parseMarkdown(input)), text) !== text) {
-        return new SourceEditorRuntime(parent, text, onChange);
-      }
-      return new StructuredEditorRuntime(parent, text, onChange);
-    } catch {
-      parent.replaceChildren();
-    }
+  try {
+    return new SourceAuthorityEditorRuntime(parent, text, onChange);
+  } catch {
+    parent.replaceChildren();
+    return new SourceEditorRuntime(parent, text, onChange);
   }
-  if (endings !== "mixed") {
-    try {
-      const protectedDocument = parseProtectedMarkdown(input);
-      if (protectedDocument) {
-        if (endings === "crlf" &&
-            structuredOutput(serializeMarkdown(protectedDocument), text) !== text) {
-          return new SourceEditorRuntime(parent, text, onChange);
-        }
-        return new StructuredEditorRuntime(parent, text, onChange, true);
-      }
-    } catch {
-      parent.replaceChildren();
-    }
-  }
-  return new SourceEditorRuntime(parent, text, onChange);
 }
