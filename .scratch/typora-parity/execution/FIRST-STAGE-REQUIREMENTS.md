@@ -1,0 +1,31 @@
+# 首阶段需求到实际证据的对照
+
+本次核对生产main **0f93c4a**（PR71/72/73均已合入）与图片组合 **c451321**（尚未合main）。范围来自03、07、V1/V3/V4/V6正式契约；M0可行性已由038关闭，不把旧原型物理证据当新生产验收。
+
+root本次实际：main受检head ca797b8的完整568/568、lint/build和精确默认CI42636348772 success；c451图片组合完整589/589、Native165 total/158 passed/0 failed/7 performance skipped和lint通过。下面测试名已在固定树逐项核对，反映覆盖接缝，不宣称仅有一个测试即完整能力通过。
+
+| 用户能力 | 已执行的生产接缝依据 | 仍需闭合的证据 |
+| --- | --- | --- |
+| 新建/打开与UTF-8原文保真 | InkoraDocumentTests.testUnmodifiedMarkdownRoundTripsByteForByte、testUTF8BOMIsStrippedFromTextAndPreservedInEveryWrite；EditorWebViewTests.testUnmodifiedMarkdownSavesThroughBridgeByteForByte | 最新组合菜单/Finder/真实文件窗口、最低系统 |
+| 正文/标题/列表/引用与marks | source-authority-runtime中的ATX→paragraph、local quote lift、cross-paragraph strong、list Enter/indent/outdent真实事务 | 最新生产物理中文、组合期操作与整体体验 |
+| 链接创建/局部更新/移除 | Mod-K main真实DOM、collapsed owner、共享引用、rollback与Mod-Shift-K回归 | 实际WK字段/键盘/候选交互 |
+| 代码及离线语言高亮 | source-authority-runtime的语言后续写/局部code conversion/真实Mod-Enter；code-highlighting的13语言/字节/XSS/缓存控制 | 旧047真实WK/保存重开证据保留；当前组合再集中点验 |
+| 可编辑表格/任务 | tables-tasks-runtime完整黄金矩阵；root068/069表头/BOM/link owner及原生checkbox控制 | 最新WK控件、Tab/Space、AX与正式文件闭环 |
+| 主动源码与跨模式历史 | 真实textarea/kernel input/apply/cancel、source no-op方向、dirty draft守卫；Native CRLF/BOM/bare-CR/UndoRedo回归 | 实体输入法、窗口焦点/组合提交与正式关闭重开 |
+| 大纲/统计/章节定位 | main/panel真实DOM、load epoch/拒载保持、CRLF/Unicode边界；heading-navigation测试 | 当前组合真实滚动可见、VoiceOver/窄窗 |
+| 当前文档可视/源码查找替换 | 14例真实SearchPanel/main/runtime动作，完整owner/marks/字节；075/根内容版本旧结果拒绝，PR73已合 | 实际WK查询框原生Undo、焦点/候选、视口与文件保存 |
+| 图片导入/展示/描述/删除 | c451的真实image NodeView/alt/title/history、linked BOM CRLF table；LocalImageStore PNG/JPEG/GIF/WebP实际解码 | 真实WK各格式、目录授权/跨启动bookmark、系统拖放/剪贴板 |
+| 首存/失败/重试/Save As资源 | InkoraDocumentTests.testFirstSavePublishesVerifiedImageBeforeMarkdownAndThenConfirmsManifest、testFirstSaveRejectsSnapshotThatStillOwnsDraftImageURI；runtime published retry/no-op；LocalImageMigrationTests平衡括号与reference实际迁移 | 080补可达恢复确认；最新系统面板取消/失败/正式关闭重开 |
+| 崩溃与pending意图恢复 | LocalImageStoreTests.testIndependentProcessSIGKILLLeavesRecoverableProductionManifestAndBytes、RecoveryStore启动discovery；LocalImageMigrationTests.testSIGKILLAfterPublicationIsDiscoveredByIndependentProcessState | 仅通知不等于作者可恢复，080负责资源-only/确认闭环；真实重启恢复UI |
+| 资源授权与安全边界 | DocumentAssetBrokerTests.testSynchronousPreflightHoldsScopeLeaseAcrossDescriptorReadAndReleasesOnce/Failure、真实handler stop/generation/lease控制、非法路径/SHA/symlink拒绝 | 实际Sandbox面板、书签跨启动与当前受支持系统 |
+| 真实文件生命周期 | InkoraDocumentTests save/snapshot取消/serialized saves/删除/外改/first-save failures；EditorWebViewTests revision/replay/save barrier | DocumentOpenUITests菜单/关闭取消保存放弃/冲突/只读/最近文件/Finder集中跑；不能借旧UI结果填本次 |
+| 性能与支持范围 | 078新增公共模型+离屏WK原始分布及input/bundle SHA；原版大文档source测量按真实source/apply协议修复 | 150KB输入ack约0.975s、1MB模型整组超时；079优化并对新组合重测，15预算仍未冻结 |
+| 键盘/AX/系统/显示 | 产品控件有真实DOM及AX名称控制；既有AcceptanceUITests测试入口保留 | AcceptanceUITests.testKeyboardOnlyOpenEditSaveCloseAndRecent/testEditorAccessibilityAudit、人工VoiceOver、深浅/放大字体、macOS14+实际运行 |
+
+## 当前可以与不可以结算的事项
+
+- 原文权威核心、表格任务和可视查找替换已实际进入main，不再写“只有模块/原型”。图片仍是组合候选，不能把589绿灯叫V4整体完成。
+- 077四项代码修复已有root组合测试；但“pending已发现/标requiresConfirmation”缺真实恢复确认动作，080仍为实施项，不被通知框替代。
+- 078给出实际慢路径和失败样本；没有为make bench旧指标改绿或缩减首阶段功能。079目标是消除已定位扫描热点，预算和最低系统承诺仍需真实分层测量。
+- 物理/桌面验收按用户“稍后”暂缓，不启动App/UI、不重新催促。自动composition、jsdom、hostlessWK、scratch和真实授权/物理输入分别结算。
+- 正式DeveloperID签名、公证和直接分发另属发布门槛；无Mac App Store路线。它们不替代上述功能/数据完整性/真实用户闭环。

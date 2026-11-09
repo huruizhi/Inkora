@@ -2,8 +2,8 @@
 
 Type: prototype
 Labels: wayfinder:prototype
-Status: open
-Assignee: None
+Status: claimed
+Assignee: root
 Blocked by: None
 Parent: ../map.md
 
@@ -23,3 +23,5 @@ Parent: ../map.md
 ## 执行更新（2026-11-09）
 
 12已由038关闭并采纳ADR-0004，解除历史依赖；本票仍open。root078准备补充新生产路径的分层测量，旧Node AST/serializer指标继续保留为历史控制。真实桌面/物理IME/最低macOS证据未执行，预算尚未冻结。
+
+078已形成原始分层数据与实际热点，079基于当前组合继续优化/重测。两份1MB模型vector超时、150KB真实离屏WK输入ack接近1秒，预算仍未冻结，不把缺口改成缩减功能/支持口径。桌面/IME/最低系统项保持未执行。

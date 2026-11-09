@@ -115,3 +115,5 @@ Status: open
 最新覆盖：074 Standards无hard，076 Spec四项图片缺口已交077；两轴[原文分列](execution/V4-INTEGRATION-REVIEW.md)，不以570/Native152绿灯代替规格验收。074/076完成会话均381文件tar/bundle校验备份后两层回收，累计72。活跃实施为075(epoch/嵌套marks)与077(图片首存重试/pending发现/括号URI/scope lease)，真实handle见交付总表；root补核性能票15，旧Node bench不能代表新生产内核。main0edb13d未变、PR73仍draft，物理验收按稍后。
 
 最新覆盖：PR73 head ca797b8经568/568、lint/build与精确默认CI42636348772 success已merge，当前main **0f93c4ab52dc55da786c925c5bb135f8188e0933**，整树与受检head一致。075接回及root“编辑→Undo同字节旧结果”额外内容版本修正均保留。075完成会话备份回收，累计73；仅077继续图片四项，root078在独立分支补生产路径性能覆盖，旧WK专项真实失败仍在诊断，不填预算绿灯。物理验收继续按稍后，不启动App/UI。
+
+最新覆盖：main0f93c4a（PR73已合）不变；077四修已在070@c451321组合独立589/Native158+7skip/lint通过，381文件tar/bundle/实际xcresult备份后两层回收累计74。078分层测量4de28e9已推送并保留1MB超时与150KB离屏WK近1秒事实，性能15转claimed不填预算通过。当前两实施者079索引/响应优化、080pending资源可达恢复确认；句柄与需求级证据见交付总表和[需求对照](execution/FIRST-STAGE-REQUIREMENTS.md)。恢复通知不冒称作者已能恢复，物理验收继续稍后，目标active。
