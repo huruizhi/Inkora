@@ -37,11 +37,24 @@ if (!app) {
 const editorHost = document.createElement("div");
 editorHost.className = "editor-host";
 app.append(editorHost);
-const panel = new DocumentAnalysisPanel(app);
-
 const session = new EditorProtocolSession();
 let runtime: EditorRuntime | undefined;
 let executingCommand = false;
+let activeDocumentID: string | undefined;
+let activeRevision: number | undefined;
+
+const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
+  const activeRuntime = runtime;
+  if (!activeRuntime) return { ok: false, message: "尚未打开文档" };
+  if (activeRuntime.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
+  if (snapshot.documentID !== activeDocumentID || snapshot.revision !== activeRevision) {
+    return { ok: false, message: "大纲快照已过期，请等待刷新" };
+  }
+  if (activeRuntime.getText() !== snapshot.raw) {
+    return { ok: false, message: "文档已变化，请等待大纲刷新" };
+  }
+  return activeRuntime.navigateToHeading(snapshot.raw, target);
+});
 
 // ---------------------------------------------------------------------------
 // 面板分析调度：只由真实 stateChanged 消息驱动，documentID/revision 来自
@@ -72,9 +85,10 @@ function scheduleAnalysis(documentID: string, revision: number): void {
     const activeRuntime = runtime;
     if (!activeRuntime || activeRuntime.composing) return;
     try {
-      const analysis = analyzeDocument({ raw: activeRuntime.getText(), revision });
+      const raw = activeRuntime.getText();
+      const analysis = analyzeDocument({ raw, revision });
       if (generation !== analysisGeneration) return;
-      panel.update({ kind: "document", documentID, revision, analysis });
+      panel.update({ kind: "document", documentID, revision, raw, analysis });
     } catch (error) {
       // 分析异常只落在面板错误态，绝不冒充 Bridge 错误或打断编辑。
       panel.update({
@@ -94,6 +108,8 @@ function postToNative(message: Parameters<typeof encodeEditorMessage>[0]): void 
   // 既有的每一条 stateChanged（load/markSaved/executeCommand/runtime 变更）
   // 都携带真实 documentID/revision，是面板唯一的刷新信号源。
   if (message.type === "stateChanged") {
+    activeDocumentID = message.state.documentID;
+    activeRevision = message.state.revision;
     scheduleAnalysis(message.state.documentID, message.state.revision);
   }
 }

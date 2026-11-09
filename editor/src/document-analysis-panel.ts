@@ -1,24 +1,34 @@
 import type { DocumentAnalysis } from "./document-analysis";
+import type {
+  HeadingNavigationResult,
+  HeadingNavigationTarget,
+} from "./heading-navigation";
 
 /**
  * 大纲与统计只读面板：真实 DOM 组件，只通过 createElement/textContent 等
- * 安全 API 显示分析结果，不执行 HTML、不加载资源、不渲染跳转按钮。
+ * 安全 API 显示分析结果，不执行 HTML、不加载资源。
  *
  * 组件不拥有任何计时器与焦点逻辑：更新（update）只重绘自身内容，
  * 不会移动焦点、选区或触发编辑器副作用。标题定位（滚动/光标跳转）
- * 是后续任务能力，本面板明确不冒充。
+ * 导航由调用方执行；面板只发出绑定分析快照的请求并显示局部结果。
  */
 
 export type AnalysisPanelState =
   | { kind: "empty"; message: string }
-  | { kind: "document"; documentID: string; revision: number; analysis: DocumentAnalysis }
+  | { kind: "document"; documentID: string; revision: number; raw: string; analysis: DocumentAnalysis }
   | { kind: "error"; message: string };
 
 export class DocumentAnalysisPanel {
   private readonly body: HTMLElement;
   private collapsed = false;
 
-  constructor(parent: HTMLElement) {
+  constructor(
+    parent: HTMLElement,
+    private readonly onNavigate: (
+      snapshot: { documentID: string; revision: number; raw: string },
+      target: HeadingNavigationTarget,
+    ) => HeadingNavigationResult = () => ({ ok: false, message: "导航尚未连接" }),
+  ) {
     const root = document.createElement("aside");
     root.className = "analysis-panel";
 
@@ -66,6 +76,7 @@ export class DocumentAnalysisPanel {
     this.toggleButton.setAttribute("aria-expanded", collapsed ? "false" : "true");
     this.toggleButton.textContent = collapsed ? "展开面板" : "收起面板";
     this.body.classList.toggle("analysis-panel-collapsed", collapsed);
+    this.root.classList.toggle("analysis-panel-collapsed", collapsed);
   }
 
   /** 只重绘面板内容；不触碰焦点、选区或编辑器状态。 */
@@ -79,14 +90,15 @@ export class DocumentAnalysisPanel {
       this.body.append(note);
       return;
     }
-    this.body.append(this.renderOutline(state.analysis), this.renderStats(state.analysis));
+    this.body.append(this.renderOutline(state), this.renderStats(state.analysis));
   }
 
   destroy(): void {
     this.root.remove();
   }
 
-  private renderOutline(analysis: DocumentAnalysis): HTMLElement {
+  private renderOutline(state: Extract<AnalysisPanelState, { kind: "document" }>): HTMLElement {
+    const { analysis } = state;
     const section = document.createElement("section");
     section.className = "analysis-panel-section";
     section.setAttribute("aria-label", "大纲");
@@ -106,14 +118,30 @@ export class DocumentAnalysisPanel {
 
     const list = document.createElement("ul");
     list.className = "analysis-panel-outline";
-    for (const entry of analysis.headings) {
+    const feedback = document.createElement("p");
+    feedback.className = "analysis-panel-note analysis-panel-navigation-status";
+    feedback.setAttribute("role", "status");
+    feedback.hidden = true;
+    for (const [index, entry] of analysis.headings.entries()) {
       const item = document.createElement("li");
-      item.className = `analysis-panel-heading analysis-panel-level-${entry.level}`;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `analysis-panel-heading analysis-panel-level-${entry.level}`;
       // 只读显示：textContent 不会执行 HTML；重复标题原样保留。
-      item.textContent = entry.text;
+      button.textContent = entry.text;
+      button.addEventListener("pointerdown", (event) => event.preventDefault());
+      button.addEventListener("click", () => {
+        const result = this.onNavigate(
+          { documentID: state.documentID, revision: state.revision, raw: state.raw },
+          { ...entry, index },
+        );
+        feedback.hidden = result.ok;
+        feedback.textContent = result.ok ? "" : result.message;
+      });
+      item.append(button);
       list.append(item);
     }
-    section.append(list);
+    section.append(list, feedback);
     return section;
   }
 

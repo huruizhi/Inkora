@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createEditorRuntime } from "./editor-runtime";
 import type { EditorRuntime } from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
+import { analyzeDocument } from "./document-analysis";
 
 const originalDocument = globalThis.document;
 const originalWindow = globalThis.window;
@@ -41,6 +42,65 @@ function stubBrowserEnvironment(html = "<!doctype html><main id='app'></main>"):
 }
 
 describe("editor runtime", () => {
+  it("navigates the second duplicate structured heading without changing document state", () => {
+    const raw = "Setext *标题*\n====\n\n# **同名** &amp; 👩‍💻\n\n> ## 引用\n\n- ### 同名\n";
+    const { runtime, session } = structuredRuntimeWithSession(raw);
+    const headings = analyzeDocument({ raw, revision: 8 }).headings;
+    const before = { text: runtime.getText(), status: runtime.status, revision: session.status.revision };
+    const result = runtime.navigateToHeading(raw, { ...headings[3], index: 3 });
+    expect(result).toEqual({ ok: true });
+    expect(session.state.selection.from).toBeGreaterThan(1);
+    expect(runtime.getText()).toBe(before.text);
+    expect(runtime.status).toEqual(before.status);
+    expect(session.status.revision).toBe(before.revision);
+    expect(document.activeElement?.id).toBe("editor");
+    runtime.destroy();
+  });
+
+  it("rejects a protected-document pseudo heading when PM sequence cannot prove correspondence", () => {
+    const raw = "---\ntitle: value\n---\n\n# Real\n";
+    const { runtime, session } = structuredRuntimeWithSession(raw);
+    const headings = analyzeDocument({ raw, revision: 0 }).headings;
+    const selection = session.state.selection;
+    expect(headings.length).toBeGreaterThan(1);
+    expect(runtime.navigateToHeading(raw, { ...headings[0], index: 0 })).toEqual({
+      ok: false,
+      message: "当前编辑视图与原文大纲不一致，无法安全定位",
+    });
+    expect(session.state.selection.eq(selection)).toBe(true);
+    runtime.destroy();
+  });
+
+  it.each([
+    "\uFEFF# First\r\n\n<x>source</x>\n\n## Second 👩‍💻\r\n",
+    "# First\r# Second",
+  ])("navigates source/read-only heading with explicit original offset mapping: %j", (raw) => {
+    const { parent } = stubBrowserEnvironment();
+    const runtime = createEditorRuntime(parent, raw, () => {});
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    const headings = analyzeDocument({ raw, revision: 0 }).headings;
+    const target = headings.at(-1)!;
+    expect(runtime.navigateToHeading(raw, { ...target, index: headings.length - 1 })).toEqual({ ok: true });
+    expect(area.selectionStart).toBe(raw.slice(0, target.start).replace(/\r\n?/g, "\n").length);
+    expect(area.selectionEnd).toBe(area.selectionStart);
+    runtime.destroy();
+  });
+
+  it("refuses navigation during composition without changing focus, selection, text or history", () => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const raw = "<x>source</x>\n\n# Heading\n";
+    const runtime = createEditorRuntime(parent, raw, () => {});
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.focus();
+    area.setSelectionRange(2, 4);
+    area.dispatchEvent(new dom.window.Event("compositionstart"));
+    const before = { value: area.value, start: area.selectionStart, end: area.selectionEnd, status: runtime.status };
+    const heading = analyzeDocument({ raw, revision: 0 }).headings[0];
+    expect(runtime.navigateToHeading(raw, { ...heading, index: 0 }).ok).toBe(false);
+    expect(document.activeElement).toBe(area);
+    expect({ value: area.value, start: area.selectionStart, end: area.selectionEnd, status: runtime.status }).toEqual(before);
+    runtime.destroy();
+  });
   it.each(["\n", "\r\n"])("renders protected extensions with %j and preserves body edits and history", (eol) => {
     const original = '---\ntitle: "原样"\n---\n\n# 标题\n\n正文\n\n| A  | B |\n| :--- | ---: |\n| x | y |\n\n- 参见 [[目标|别名]]。\n'.replace(/\n/g, eol);
     const { runtime, session } = structuredRuntimeWithSession(original);

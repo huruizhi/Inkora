@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { analyzeDocument } from "./document-analysis";
 import { DocumentAnalysisPanel, type AnalysisPanelState } from "./document-analysis-panel";
@@ -25,6 +26,7 @@ function documentState(raw: string): AnalysisPanelState {
     kind: "document",
     documentID: "doc-1",
     revision: 3,
+    raw,
     analysis: analyzeDocument({ raw, revision: 3 }),
   };
 }
@@ -93,12 +95,38 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     expect(panel.element.querySelectorAll("img, script, iframe")).toHaveLength(0);
   });
 
-  it("大纲是只读列表，不渲染跳转按钮或链接", () => {
+  it("标题是键盘可达按钮，并按序发送绑定快照与原文范围", () => {
     const { parent } = stubDom();
-    const panel = new DocumentAnalysisPanel(parent);
+    const requests: unknown[] = [];
+    const panel = new DocumentAnalysisPanel(parent, (snapshot, target) => {
+      requests.push({ snapshot, target });
+      return { ok: true };
+    });
+    panel.update(documentState("# 同名\n\n# 同名\n"));
+    const buttons = panel.element.querySelectorAll<HTMLButtonElement>(".analysis-panel-heading");
+    expect(buttons).toHaveLength(2);
+    expect(buttons[1].tagName).toBe("BUTTON");
+    buttons[1].click();
+    expect(requests).toEqual([{
+      snapshot: { documentID: "doc-1", revision: 3, raw: "# 同名\n\n# 同名\n" },
+      target: { level: 1, text: "同名", start: 6, end: 10, index: 1 },
+    }]);
+  });
+
+  it("pointerdown 不提前夺走编辑器焦点，失败在面板局部可见", () => {
+    const { parent } = stubDom();
+    const panel = new DocumentAnalysisPanel(parent, () => ({ ok: false, message: "组合输入中" }));
     panel.update(documentState("# 甲\n"));
-    expect(panel.element.querySelectorAll("button, a").length).toBe(1);
-    expect(panel.element.querySelector("button")?.className).toBe("analysis-panel-toggle");
+    const editor = document.createElement("textarea");
+    parent.prepend(editor);
+    editor.focus();
+    editor.setSelectionRange(0, 0);
+    const button = panel.element.querySelector<HTMLButtonElement>(".analysis-panel-heading")!;
+    const pointer = new window.MouseEvent("pointerdown", { bubbles: true, cancelable: true });
+    expect(button.dispatchEvent(pointer)).toBe(false);
+    expect(document.activeElement).toBe(editor);
+    button.click();
+    expect(panel.element.querySelector(".analysis-panel-navigation-status")?.textContent).toBe("组合输入中");
   });
 
   it("错误态显示明确提示且不抛出", () => {
@@ -121,6 +149,7 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     expect(panel.isCollapsed).toBe(true);
     expect(toggle?.getAttribute("aria-expanded")).toBe("false");
     expect(toggle?.textContent).toBe("展开面板");
+    expect(panel.element.classList.contains("analysis-panel-collapsed")).toBe(true);
     expect(
       panel.element
         .querySelector("#analysis-panel-body")
@@ -131,6 +160,13 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     expect(panel.isCollapsed).toBe(false);
     expect(toggle?.getAttribute("aria-expanded")).toBe("true");
     expect(toggle?.textContent).toBe("收起面板");
+    expect(panel.element.classList.contains("analysis-panel-collapsed")).toBe(false);
+  });
+
+  it("收起 root 在宽窗释放宽度、窄窗释放高度的 CSS 契约存在", () => {
+    const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.analysis-panel\.analysis-panel-collapsed\s*\{[^}]*flex-basis:\s*96px/s);
+    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*\.analysis-panel\.analysis-panel-collapsed\s*\{[^}]*max-height:\s*44px/s);
   });
 
   it("更新不偷焦点、不改既有选区", () => {

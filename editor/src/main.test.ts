@@ -24,6 +24,7 @@ interface Harness {
   panelStat(term: string): string;
   toggle(): HTMLButtonElement;
   editorHost(): HTMLElement;
+  headingButtons(): HTMLButtonElement[];
 }
 
 // prosemirror-view 在 jsdom 下还需要这些全局（MutationObserver、raf、
@@ -98,6 +99,9 @@ async function bootMain(): Promise<Harness> {
       if (!host) throw new Error("Missing editor host");
       return host;
     },
+    headingButtons: () => Array.from(
+      dom.window.document.querySelectorAll<HTMLButtonElement>(".analysis-panel-heading"),
+    ),
   };
 }
 
@@ -125,6 +129,76 @@ afterEach(() => {
 });
 
 describe("main：真实 main/Bridge/runtime 面板集成", () => {
+  it("点击第二个重复标题经真实 DOM/runtime 精确定位且不发 Bridge 消息", async () => {
+    const h = await bootMain();
+    const raw = "# 同名\n\n正文\n\n# 同名\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 3, text: raw });
+    await settle();
+    const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+    const headings = editor.querySelectorAll("h1");
+    expect(headings).toHaveLength(2);
+    const before = h.sent.length;
+    h.headingButtons()[1].click();
+    expect(h.sent).toHaveLength(before);
+    expect(h.dom.window.document.activeElement).toBe(editor);
+    const selection = h.dom.window.getSelection();
+    expect(headings[1].contains(selection?.anchorNode ?? null)).toBe(true);
+    expect(h.stateMessages().at(-1)?.state).toMatchObject({
+      documentID: "doc-a", revision: 3, dirty: false,
+    });
+  });
+
+  it("source 模式按 BOM/混合 EOL 原文范围定位，不改变文本或消息", async () => {
+    const h = await bootMain();
+    const raw = "\uFEFF# 第一\r\n\n## 第二 👩‍💻\r\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 1, text: raw });
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    const target = analyzeDocument({ raw, revision: 1 }).headings[1];
+    const before = h.sent.length;
+    h.headingButtons()[1].click();
+    expect(area.selectionStart).toBe(raw.slice(0, target.start).replace(/\r\n?/g, "\n").length);
+    expect(area.value).toBe(raw.replace(/\r\n?/g, "\n"));
+    expect(h.sent).toHaveLength(before);
+  });
+
+  it("composition 中 pointerdown/click 拒绝导航并保留焦点选区内容与消息", async () => {
+    const h = await bootMain();
+    const raw = "<x>正文</x>\n\n# 标题\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: raw });
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    area.focus();
+    area.setSelectionRange(2, 4);
+    area.dispatchEvent(new h.dom.window.Event("compositionstart"));
+    const before = { value: area.value, start: area.selectionStart, end: area.selectionEnd, messages: h.sent.length };
+    const button = h.headingButtons()[0];
+    const pointer = new h.dom.window.MouseEvent("pointerdown", { bubbles: true, cancelable: true });
+    expect(button.dispatchEvent(pointer)).toBe(false);
+    button.click();
+    expect(h.dom.window.document.activeElement).toBe(area);
+    expect({ value: area.value, start: area.selectionStart, end: area.selectionEnd, messages: h.sent.length }).toEqual(before);
+    expect(h.panel().querySelector(".analysis-panel-navigation-status")?.textContent).toContain("完成中文输入");
+  });
+
+  it("跨文档旧按钮请求被拒绝，不改变新文档焦点选区或 Bridge 消息", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 4, text: "# A\n" });
+    await settle();
+    const oldButton = h.headingButtons()[0];
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "doc-b", revision: 4, text: "# B\n" });
+    await settle();
+    const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+    editor.focus();
+    const selection = h.dom.window.getSelection()?.getRangeAt(0).cloneRange();
+    const before = h.sent.length;
+    oldButton.click();
+    expect(h.sent).toHaveLength(before);
+    expect(h.dom.window.document.activeElement).toBe(editor);
+    const after = h.dom.window.getSelection()?.getRangeAt(0);
+    expect(after?.startContainer).toBe(selection?.startContainer);
+    expect(after?.startOffset).toBe(selection?.startOffset);
+  });
   it("启动即 ready，加载文档后显示真实大纲与统计，编辑器位于稳定子宿主", async () => {
     const h = await bootMain();
     expect(h.sent[0]?.type).toBe("ready");

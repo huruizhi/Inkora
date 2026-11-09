@@ -78,6 +78,13 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   background: color-mix(in srgb, Canvas 97%, CanvasText);
   overflow: hidden;
 }
+.analysis-panel.analysis-panel-collapsed {
+  flex-basis: 96px;
+  padding: 8px;
+}
+.analysis-panel.analysis-panel-collapsed .analysis-panel-title {
+  display: none;
+}
 
 .analysis-panel-header {
   display: flex;
@@ -127,10 +134,23 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   list-style: none;
 }
 .analysis-panel-heading {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
   padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
   font-size: 13px;
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+.analysis-panel-heading:hover { background: color-mix(in srgb, AccentColor 10%, transparent); }
+.analysis-panel-heading:focus-visible {
+  outline: 2px solid AccentColor;
+  outline-offset: 1px;
 }
 .analysis-panel-level-1 { font-weight: 600; }
 .analysis-panel-level-2 { padding-left: 14px; }
@@ -172,5 +192,9 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
     max-height: 34%;
     border-left: 0;
     border-top: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  }
+  .analysis-panel.analysis-panel-collapsed {
+    flex-basis: auto;
+    max-height: 44px;
   }
 }
