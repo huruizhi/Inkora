@@ -26,6 +26,7 @@ function documentState(raw: string): AnalysisPanelState {
     kind: "document",
     documentID: "doc-1",
     revision: 3,
+    epoch: 7,
     raw,
     analysis: analyzeDocument({ raw, revision: 3 }),
   };
@@ -108,7 +109,7 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     expect(buttons[1].tagName).toBe("BUTTON");
     buttons[1].click();
     expect(requests).toEqual([{
-      snapshot: { documentID: "doc-1", revision: 3, raw: "# 同名\n\n# 同名\n" },
+      snapshot: { documentID: "doc-1", revision: 3, epoch: 7, raw: "# 同名\n\n# 同名\n" },
       target: { level: 1, text: "同名", start: 6, end: 10, index: 1 },
     }]);
   });

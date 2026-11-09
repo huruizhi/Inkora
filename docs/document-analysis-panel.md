@@ -19,9 +19,9 @@
 ## 标题导航
 
 - 每个标题以真实 `button` 渲染，重复标题按分析顺序分别绑定；`textContent` 保证标题内容不作为 HTML 执行。
-- 请求绑定 `documentID/revision/raw` 与标题原文范围。main 在执行前同时核对当前文档、revision、原文和 composition；失败只在面板显示局部状态，不发送 Bridge 消息。
+- 请求绑定 `documentID/revision/epoch/raw` 与标题原文范围。`epoch` 是 main 在每次**已接受**的 `loadDocument` 上递增的加载代际：即使新文档 docID/revision/raw 与旧文档完全相同，旧面板按钮携带的旧 `epoch` 也会被拒绝（"文档已重新载入"），不会移动新视图的光标；被 Bridge 拒绝的 load 不递增 `epoch`，当前面板导航保持有效。执行前 main 同时核对当前文档、revision、原文和 composition；失败只在面板显示局部状态，不发送 Bridge 消息。
 - 结构化模式重新分析当前原文，并将完整标题序列与真实 ProseMirror heading 序列逐项核对 `level/text`。只有数量和顺序完全一致才设置无历史选区并滚动；保护块伪标题等不一致会拒绝。
-- 源码及只读裸 CR 模式先验证 textarea 的 LF 投影，再将原文 UTF-16 偏移按 CRLF/孤立 CR 显式折叠后设置光标。BOM 与代理对保留 UTF-16 计数。
+- 源码及只读裸 CR 模式先验证 textarea 的 LF 投影，再将原文 UTF-16 偏移按 CRLF/孤立 CR 显式折叠后设置光标。BOM 与代理对保留 UTF-16 计数。落在 CRLF 对内部（`\r` 与 `\n` 之间）或拆开代理对的偏移没有对应的 textarea 边界，`rawOffsetToTextareaOffset` 返回 `undefined` 并由调用方拒绝；有效标题起点/终点坐标不受影响，原文不做规范化。
 - `pointerdown` 阻止面板按钮提前夺焦点；composition 期间不会调用 focus、更新 PM state 或设置 textarea 选区。
 
 ## 折叠空间

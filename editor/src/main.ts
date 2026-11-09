@@ -42,11 +42,15 @@ let runtime: EditorRuntime | undefined;
 let executingCommand = false;
 let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
+let loadEpoch = 0;
 
 const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
   const activeRuntime = runtime;
   if (!activeRuntime) return { ok: false, message: "尚未打开文档" };
   if (activeRuntime.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
+  if (snapshot.epoch !== loadEpoch) {
+    return { ok: false, message: "文档已重新载入，请等待大纲刷新" };
+  }
   if (snapshot.documentID !== activeDocumentID || snapshot.revision !== activeRevision) {
     return { ok: false, message: "大纲快照已过期，请等待刷新" };
   }
@@ -88,7 +92,7 @@ function scheduleAnalysis(documentID: string, revision: number): void {
       const raw = activeRuntime.getText();
       const analysis = analyzeDocument({ raw, revision });
       if (generation !== analysisGeneration) return;
-      panel.update({ kind: "document", documentID, revision, raw, analysis });
+      panel.update({ kind: "document", documentID, revision, epoch: loadEpoch, raw, analysis });
     } catch (error) {
       // 分析异常只落在面板错误态，绝不冒充 Bridge 错误或打断编辑。
       panel.update({
@@ -135,7 +139,7 @@ window.inkora = {
             const response = session.loadDocument(command);
             if (response.type === "stateChanged") {
               cancelPendingAnalysis();
-              panel.update({ kind: "empty", message: "正在打开文档" });
+              loadEpoch += 1;
               runtime?.destroy();
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange);
               runtime.focus();

@@ -199,6 +199,47 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(after?.startContainer).toBe(selection?.startContainer);
     expect(after?.startOffset).toBe(selection?.startOffset);
   });
+
+  it("同身份合法重复 load 后旧按钮请求被拒绝，新按钮仍可导航", async () => {
+    const h = await bootMain();
+    const raw = "# First\n\nBody.\n\n# Second\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc", revision: 4, text: raw });
+    await settle();
+    const oldButton = h.headingButtons()[1];
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "doc", revision: 4, text: raw });
+    await settle();
+    const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+    const first = editor.querySelector("h1")!;
+    const before = h.dom.window.getSelection()?.getRangeAt(0).cloneRange();
+    expect(first.contains(before?.startContainer ?? null)).toBe(true);
+    const messages = h.sent.length;
+    oldButton.click();
+    const after = h.dom.window.getSelection()?.getRangeAt(0);
+    expect(after?.startContainer).toBe(before?.startContainer);
+    expect(after?.startOffset).toBe(before?.startOffset);
+    expect(h.sent).toHaveLength(messages);
+    // 新 epoch 的按钮在同一文档上仍可正常定位。
+    const headings = editor.querySelectorAll("h1");
+    h.headingButtons()[1].click();
+    const moved = h.dom.window.getSelection();
+    expect(headings[1].contains(moved?.anchorNode ?? null)).toBe(true);
+    expect(h.sent).toHaveLength(messages);
+  });
+
+  it("被拒 load 不失效当前 epoch 的有效导航请求", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc", revision: 5, text: "# Original\n\n# Tail\n" });
+    await settle();
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "doc", revision: 4, text: "# Stale\n" });
+    await settle();
+    expect(h.sent.at(-1)?.code).toBe("stale_revision");
+    const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+    const headings = editor.querySelectorAll("h1");
+    const messages = h.sent.length;
+    h.headingButtons()[1].click();
+    expect(headings[1].contains(h.dom.window.getSelection()?.anchorNode ?? null)).toBe(true);
+    expect(h.sent).toHaveLength(messages);
+  });
   it("启动即 ready，加载文档后显示真实大纲与统计，编辑器位于稳定子宿主", async () => {
     const h = await bootMain();
     expect(h.sent[0]?.type).toBe("ready");

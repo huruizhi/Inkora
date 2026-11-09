@@ -15,7 +15,7 @@ import type {
 
 export type AnalysisPanelState =
   | { kind: "empty"; message: string }
-  | { kind: "document"; documentID: string; revision: number; raw: string; analysis: DocumentAnalysis }
+  | { kind: "document"; documentID: string; revision: number; epoch: number; raw: string; analysis: DocumentAnalysis }
   | { kind: "error"; message: string };
 
 export class DocumentAnalysisPanel {
@@ -25,7 +25,7 @@ export class DocumentAnalysisPanel {
   constructor(
     parent: HTMLElement,
     private readonly onNavigate: (
-      snapshot: { documentID: string; revision: number; raw: string },
+      snapshot: { documentID: string; revision: number; epoch: number; raw: string },
       target: HeadingNavigationTarget,
     ) => HeadingNavigationResult = () => ({ ok: false, message: "导航尚未连接" }),
   ) {
@@ -132,7 +132,7 @@ export class DocumentAnalysisPanel {
       button.addEventListener("pointerdown", (event) => event.preventDefault());
       button.addEventListener("click", () => {
         const result = this.onNavigate(
-          { documentID: state.documentID, revision: state.revision, raw: state.raw },
+          { documentID: state.documentID, revision: state.revision, epoch: state.epoch, raw: state.raw },
           { ...entry, index },
         );
         feedback.hidden = result.ok;

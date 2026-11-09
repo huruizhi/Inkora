@@ -17,4 +17,14 @@ describe("heading navigation source mapping", () => {
     expect(rawOffsetToTextareaOffset("abc", 4)).toBeUndefined();
     expect(rawOffsetToTextareaOffset("abc", 1.5)).toBeUndefined();
   });
+
+  it("rejects boundaries inside CRLF pairs and surrogate pairs", () => {
+    const crlf = "a\r\nb";
+    expect(rawOffsetToTextareaOffset(crlf, 2)).toBeUndefined();
+    expect(rawOffsetToTextareaOffset(crlf, 1)).toBe(1);
+    expect(rawOffsetToTextareaOffset(crlf, 3)).toBe(2);
+    const emoji = "a👩b";
+    expect(rawOffsetToTextareaOffset(emoji, 2)).toBeUndefined();
+    expect(rawOffsetToTextareaOffset(emoji, 3)).toBe(3);
+  });
 });
