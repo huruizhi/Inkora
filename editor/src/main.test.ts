@@ -189,6 +189,26 @@ async function bootMain(): Promise<Harness> {
 // （仓库 tsconfig 较低且不在本任务允许修改范围），沿用 executor 形式。
 const settle = (ms = 60): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+const frozenVisualSearch = JSON.parse(readFileSync(
+  new URL("../../docs/acceptance/visual-search/cases.json", import.meta.url),
+  "utf8",
+)) as {
+  cases: Array<{
+    id: number;
+    name: string;
+    kind: "replace-all" | "no-op" | "reject-partial-grapheme" | "reject-stale-epoch";
+    query: string;
+    replacement: string;
+    safeVisibleMatches: number;
+    input: string;
+    expected: string;
+  }>;
+};
+
+function frozenCaseText(path: string): string {
+  return readFileSync(new URL(`../../docs/acceptance/visual-search/${path}`, import.meta.url), "utf8");
+}
+
 it("可视查找仅计可编辑内容，不计链接目标、标题和代码语言", async () => {
   const h = await bootMain();
   const raw = '[alpha](alpha "alpha") alpha\n\n```alpha\nalpha\n```\n';
@@ -267,6 +287,247 @@ it("可视全部替换超过显示上限仍完整提交且只需一次Undo", asy
   h.receive({type:"executeCommand",requestID:"visible-all-redo",documentID:"visible-all",revision:h.lastRevision(),command:"redo"});
   h.receive({type:"createSnapshot",requestID:"visible-all-after-redo",documentID:"visible-all",revision:h.lastRevision()});
   expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:expected});
+});
+
+it("源码全部替换超过显示上限时重新完整搜索并一次提交", async () => {
+  const h = await bootMain();
+  const raw = `<x>${Array.from({ length: 140 }, () => "alpha").join(" ")}</x>\r\n`;
+  const expected = `<x>${Array.from({ length: 140 }, () => "beta").join(" ")}</x>\r\n`;
+  h.receive({ type: "loadDocument", requestID: "source-all-load", documentID: "source-all", revision: 0, text: raw });
+  h.sourceMode().click();
+  h.searchButton().click();
+  h.typeSearchQuery("alpha");
+  await settle();
+  expect(h.searchMatches()).toHaveLength(100);
+  expect(h.searchResultsText()).toContain("重新校验完整结果");
+  h.replacement().value = "beta";
+  h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+  expect(h.replaceAll().disabled).toBe(false);
+  const before = h.stateMessages().length;
+  h.replaceAll().click();
+  expect(h.stateMessages()).toHaveLength(before + 1);
+  h.receive({ type: "createSnapshot", requestID: "source-all-snapshot", documentID: "source-all", revision: 1 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: expected });
+  h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!.focus();
+  h.receive({ type: "executeCommand", requestID: "source-all-undo", documentID: "source-all", revision: 1, command: "undo" });
+  h.receive({ type: "createSnapshot", requestID: "source-all-undo-snapshot", documentID: "source-all", revision: 2 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw });
+});
+
+it("源码完整搜索达到硬上限时整批拒绝并保留替换意图", async () => {
+  const h = await bootMain();
+  const raw = `<x>${Array.from({ length: 10_001 }, () => "alpha").join(" ")}</x>\n`;
+  h.receive({ type: "loadDocument", requestID: "source-cap-load", documentID: "source-cap", revision: 0, text: raw });
+  h.sourceMode().click();
+  h.searchButton().click();
+  h.typeSearchQuery("alpha");
+  await settle();
+  h.replacement().value = "beta";
+  h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+  const before = h.stateMessages().length;
+  h.replaceAll().click();
+  expect(h.stateMessages()).toHaveLength(before);
+  expect(h.dom.window.document.querySelector(".search-panel-status")?.textContent).toContain("安全上限");
+  expect(h.searchQuery().value).toBe("alpha");
+  expect(h.replacement().value).toBe("beta");
+  h.receive({ type: "createSnapshot", requestID: "source-cap-snapshot", documentID: "source-cap", revision: 0 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw });
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ revision: 0, dirty: false, canUndo: false });
+});
+
+it("可视单个替换经结果选择只改目标并把源码 caret 放在插入末尾", async () => {
+  const h = await bootMain();
+  const raw = "alpha alpha\n";
+  h.receive({ type: "loadDocument", requestID: "visual-one-load", documentID: "visual-one", revision: 0, text: raw });
+  h.searchButton().click();
+  h.typeSearchQuery("alpha");
+  await settle();
+  h.dom.window.document.querySelectorAll<HTMLButtonElement>(".search-panel-match-button")[1]!.click();
+  h.replacement().value = "beta";
+  h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+  h.replacement().focus();
+  const before = h.stateMessages().length;
+  h.replaceSelected().click();
+  expect(h.stateMessages()).toHaveLength(before + 1);
+  expect(h.lastRevision()).toBe(1);
+  expect(h.dom.window.document.activeElement).toBe(h.replacement());
+  h.sourceMode().click();
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+  expect(area.value).toBe("alpha beta\n");
+  expect([area.selectionStart, area.selectionEnd]).toEqual([10, 10]);
+});
+
+it("可视替换在 replacement/body composition 期间保留候选且不消费 Enter/Esc", async () => {
+  const h = await bootMain();
+  const raw = "alpha alpha\n";
+  h.receive({ type: "loadDocument", requestID: "visual-ime-load", documentID: "visual-ime", revision: 0, text: raw });
+  h.searchButton().click();
+  h.typeSearchQuery("alpha");
+  await settle();
+  const replacement = h.replacement();
+  replacement.focus();
+  replacement.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  replacement.value = "zhong";
+  replacement.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, isComposing: true }));
+  const before = h.stateMessages().length;
+  const enter = new h.dom.window.KeyboardEvent("keydown", {
+    key: "Enter", bubbles: true, cancelable: true, isComposing: true,
+  });
+  const escape = new h.dom.window.KeyboardEvent("keydown", {
+    key: "Escape", bubbles: true, cancelable: true, isComposing: true,
+  });
+  replacement.dispatchEvent(enter);
+  replacement.dispatchEvent(escape);
+  h.replaceAll().click();
+  expect(enter.defaultPrevented).toBe(false);
+  expect(escape.defaultPrevented).toBe(false);
+  expect(replacement.value).toBe("zhong");
+  expect(h.stateMessages()).toHaveLength(before);
+
+  replacement.value = "beta";
+  replacement.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  h.replaceAll().click();
+  expect(h.stateMessages()).toHaveLength(before);
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  await settle();
+  h.replaceAll().click();
+  expect(h.stateMessages()).toHaveLength(before + 1);
+  h.receive({ type: "createSnapshot", requestID: "visual-ime-snapshot", documentID: "visual-ime", revision: 1 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: "beta beta\n" });
+});
+
+it.each(frozenVisualSearch.cases.filter(item => item.kind === "replace-all"))(
+  "冻结可视替换 $id: $name 经真实面板一次发布并可 Undo/Redo",
+  async fixture => {
+    const h = await bootMain();
+    const raw = frozenCaseText(fixture.input);
+    const expected = frozenCaseText(fixture.expected);
+    const documentID = `frozen-${fixture.id}`;
+    h.receive({ type: "loadDocument", requestID: `load-${fixture.id}`, documentID, revision: 0, text: raw });
+    h.searchButton().click();
+    h.typeSearchQuery(fixture.query);
+    await settle();
+
+    expect(h.searchMatches()).toHaveLength(Math.min(fixture.safeVisibleMatches, 100));
+    expect(h.searchResultsText()).toContain("可编辑内容");
+    h.replacement().value = fixture.replacement;
+    h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+    h.replacement().focus();
+    const before = h.stateMessages().length;
+    expect(h.replaceAll().disabled).toBe(false);
+    h.replaceAll().click();
+    expect(h.stateMessages()).toHaveLength(before + 1);
+    expect(h.lastRevision()).toBe(1);
+    expect(h.dom.window.document.activeElement).toBe(h.replacement());
+
+    h.receive({
+      type: "createSnapshot", requestID: `snapshot-${fixture.id}`,
+      documentID, revision: h.lastRevision(),
+    });
+    expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: expected });
+    expect(h.stateMessages().at(-1)?.state).toMatchObject({ dirty: true, canUndo: true, canRedo: false });
+
+    h.editorHost().querySelector<HTMLElement>("#editor")!.focus();
+    h.receive({
+      type: "executeCommand", requestID: `undo-${fixture.id}`,
+      documentID, revision: h.lastRevision(), command: "undo",
+    });
+    h.receive({
+      type: "createSnapshot", requestID: `undo-snapshot-${fixture.id}`,
+      documentID, revision: h.lastRevision(),
+    });
+    expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw });
+
+    h.editorHost().querySelector<HTMLElement>("#editor")!.focus();
+    h.receive({
+      type: "executeCommand", requestID: `redo-${fixture.id}`,
+      documentID, revision: h.lastRevision(), command: "redo",
+    });
+    h.receive({
+      type: "createSnapshot", requestID: `redo-snapshot-${fixture.id}`,
+      documentID, revision: h.lastRevision(),
+    });
+    expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: expected });
+  },
+);
+
+it("冻结可视替换 12: no-op 保留 future、保存点和替换意图", async () => {
+  const fixture = frozenVisualSearch.cases.find(item => item.id === 12)!;
+  const h = await bootMain();
+  const raw = frozenCaseText(fixture.input);
+  h.receive({ type: "loadDocument", requestID: "noop-load", documentID: "noop", revision: 0, text: raw });
+  h.searchButton().click();
+  h.typeSearchQuery(fixture.query);
+  await settle();
+  h.replacement().value = "beta";
+  h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+  h.replaceAll().click();
+  await settle();
+  h.editorHost().querySelector<HTMLElement>("#editor")!.focus();
+  h.receive({ type: "executeCommand", requestID: "noop-undo", documentID: "noop", revision: 1, command: "undo" });
+  await settle();
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ revision: 2, dirty: false, canRedo: true });
+
+  h.replacement().value = fixture.replacement;
+  h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+  h.replacement().focus();
+  const before = h.stateMessages().length;
+  h.replaceAll().click();
+  expect(h.stateMessages()).toHaveLength(before);
+  expect(h.lastRevision()).toBe(2);
+  expect(h.dom.window.document.querySelector(".search-panel-status")?.textContent).toContain("未产生更改");
+  expect(h.replacement().value).toBe(fixture.replacement);
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ dirty: false, canRedo: true });
+
+  h.editorHost().querySelector<HTMLElement>("#editor")!.focus();
+  h.receive({ type: "executeCommand", requestID: "noop-redo", documentID: "noop", revision: 2, command: "redo" });
+  h.receive({ type: "createSnapshot", requestID: "noop-snapshot", documentID: "noop", revision: 3 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw.replace("alpha", "beta") });
+});
+
+it("冻结可视替换 13: 部分 ZWJ 查询在真实面板不可替换", async () => {
+  const fixture = frozenVisualSearch.cases.find(item => item.id === 13)!;
+  const h = await bootMain();
+  const raw = frozenCaseText(fixture.input);
+  h.receive({ type: "loadDocument", requestID: "zwj-load", documentID: "zwj", revision: 0, text: raw });
+  h.searchButton().click();
+  h.typeSearchQuery(fixture.query);
+  await settle();
+  expect(h.searchMatches()).toHaveLength(0);
+  expect(h.replaceAll().disabled).toBe(true);
+  expect(h.searchResultsText()).toContain("0 处匹配");
+  h.receive({ type: "createSnapshot", requestID: "zwj-snapshot", documentID: "zwj", revision: 0 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw });
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ revision: 0, dirty: false, canUndo: false });
+});
+
+it("冻结可视替换 14: 同身份新 load 后旧结果按钮按 epoch 拒绝", async () => {
+  const fixture = frozenVisualSearch.cases.find(item => item.id === 14)!;
+  const h = await bootMain();
+  const raw = frozenCaseText(fixture.input);
+  h.receive({ type: "loadDocument", requestID: "epoch-load-1", documentID: "epoch", revision: 0, text: raw });
+  h.searchButton().click();
+  h.typeSearchQuery(fixture.query);
+  await settle();
+  h.replacement().value = fixture.replacement;
+  h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+  const staleResult = h.dom.window.document.querySelector<HTMLButtonElement>(".search-panel-match-button")!;
+  const staleReplace = h.replaceAll();
+
+  h.receive({ type: "loadDocument", requestID: "epoch-load-2", documentID: "epoch", revision: 0, text: raw });
+  await settle();
+  const before = h.stateMessages().length;
+  staleReplace.click();
+  expect(h.dom.window.document.querySelector(".search-panel-status")?.textContent).toContain("尚未就绪");
+  staleResult.click();
+  expect(h.stateMessages()).toHaveLength(before);
+  expect(h.searchResultsText()).toContain("输入查询");
+  expect(h.dom.window.document.querySelector(".search-panel-replacement")).toBeNull();
+  h.receive({ type: "createSnapshot", requestID: "epoch-snapshot", documentID: "epoch", revision: 0 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw });
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ revision: 0, dirty: false, canUndo: false });
 });
 
 function openLinkEditorAtCaret(h: Harness, offset = 1): HTMLFormElement {

@@ -14,7 +14,7 @@ import { applyNativePatches, planNativeTransaction, type NativePatch, type Nativ
 import { createInkoraProjectionState, type EditorStateOptions } from "./editor-session";
 import { isWellFormed } from "./source-replacement";
 import type { VisualTextEdit } from "./visual-search";
-import { rewriteLinkBoundaries } from "./visual-replacement";
+import { planVisualReplacementPatch } from "./visual-replacement";
 
 export type Affinity = 'left' | 'right';
 export type RawSelection = { anchor: number; head: number; affinity: Affinity };
@@ -1024,6 +1024,12 @@ export class SourceAuthoritySession {
         boundaries.add(part.index + part.segment.length);
       }
       let transaction = this.state.tr;
+      let previousVisualFrom = this.state.doc.content.size + 1;
+      const selectedEdit = edits.length === 1 &&
+        Math.min(this.state.selection.anchor, this.state.selection.head) === edits[0]?.from &&
+        Math.max(this.state.selection.anchor, this.state.selection.head) === edits[0]?.to
+        ? edits[0]
+        : undefined;
       let previousFrom = this.state.doc.content.size + 1;
       for (const edit of ordered) {
         if (!Number.isInteger(edit.from) || !Number.isInteger(edit.to) || edit.from < 0 ||
@@ -1044,9 +1050,15 @@ export class SourceAuthoritySession {
         }
         const start = this.state.doc.resolve(edit.from);
         const marks = start.nodeAfter?.marks ?? start.marks();
-        const owned = rewriteLinkBoundaries(raw, ledger, edit, from, to, marks);
-        transaction = transaction.replaceWith(edit.from, edit.to,
-          edit.insert ? schema.text(edit.insert, owned.marks) : []);
+        const owned = planVisualReplacementPatch(raw, ledger, edit, from, to, marks);
+        if (owned.visualTo > previousVisualFrom ||
+            this.state.doc.textBetween(edit.to, owned.visualTo, '') !==
+              owned.visualInsert.slice(edit.insert.length)) {
+          throw Error('替换owner的可视范围重叠或与原文不一致，整批未应用');
+        }
+        previousVisualFrom = owned.visualFrom;
+        transaction = transaction.replaceWith(owned.visualFrom, owned.visualTo,
+          owned.visualInsert ? schema.text(owned.visualInsert, owned.marks) : []);
         const eol = raw.slice(from).match(/\r\n|\n/)?.[0] ?? this.preferredEol;
         patches.push({ from: owned.from, to: owned.to, insert: owned.insert.replace(/\r\n|\n/g, eol) });
       }
@@ -1081,13 +1093,32 @@ export class SourceAuthoritySession {
         if (patches[index].to > patches[index - 1].from) throw Error('原文owner范围重叠，整批未应用');
       }
       const candidate = applyNativePatches(raw, patches);
+      if (selectedEdit) {
+        transaction = transaction.setSelection(TextSelection.create(
+          transaction.doc,
+          selectedEdit.from + selectedEdit.insert.length,
+        ));
+      }
       const target = this.state.apply(transaction);
       const parsed = parse(candidate);
       if (parsed.issues.length || !parsed.doc.eq(target.doc)) {
         throw Error('替换候选与可视意图不一致，整批未应用');
       }
+      let sourceCaret: number | undefined;
+      if (selectedEdit) {
+        const acceptedSelection = visualToSource(
+          baseLedger(candidate, parsed),
+          target.selection.head,
+          target.selection.head,
+          { collapsedAffinity: 'left' },
+        );
+        if (!acceptedSelection.ok) {
+          throw Error(`替换后的光标没有安全原文位置：${acceptedSelection.reason}`);
+        }
+        sourceCaret = acceptedSelection.head;
+      }
       this.finishComposition();
-      this.accept(candidate, target, patches, before, '整批可视文字替换', undefined, transaction.mapping);
+      this.accept(candidate, target, patches, before, '整批可视文字替换', sourceCaret, transaction.mapping);
       this.logicalRevision++;
       return { ok: true, value: { changed: true, replacedCount } };
     } catch (error) {

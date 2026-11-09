@@ -436,10 +436,6 @@ function performSearchReplacement(request: SearchReplacementRequest): SearchRepl
     const applied = activeRuntime.replaceVisualSearch(raw, current, request.kind, request.replacement);
     return applied.ok ? { ok: true, ...applied.value } : applied;
   }
-  if (request.kind === "replace-all" && current.truncated) {
-    return { ok: false, message: "全部替换需要完整结果；当前结果已截断" };
-  }
-
   const selection = activeRuntime.getSourceSelection(raw);
   if (!selection.ok) return selection;
   let planned;
@@ -451,7 +447,20 @@ function performSearchReplacement(request: SearchReplacementRequest): SearchRepl
     planned = planSourceReplacement(current, { raw, revision: activeRevision }, matchIndex,
       request.replacement, selection.value);
   } else {
-    planned = planSourceReplaceAll(current, { raw, revision: activeRevision },
+    let complete = current;
+    if (current.truncated) {
+      try {
+        complete = activeRuntime.search(searchPanel.query, activeRevision, {
+          caseSensitive: searchPanel.caseSensitive,
+        });
+      } catch {
+        return { ok: false, message: "无法重新校验完整查找结果" };
+      }
+      if (complete.truncated) {
+        return { ok: false, message: "完整匹配达到安全上限，整批未应用" };
+      }
+    }
+    planned = planSourceReplaceAll(complete, { raw, revision: activeRevision },
       request.replacement, selection.value);
   }
   if (!planned.ok) return { ok: false, message: planned.failure.message };
@@ -554,7 +563,7 @@ function scheduleSearch(documentID: string, revision: number): void {
         replacement: activeRuntime.mode === "visual"
           ? { available: true, completeOnReplaceAll: true }
           : activeRuntime.sourceReplacement
-          ? { available: true }
+          ? { available: true, completeOnReplaceAll: true }
           : { available: false, reason: activeRuntime.sourceNavigation
               ? "当前文档只读，不能替换"
               : "结构化编辑模式不支持原文替换" },

@@ -17,7 +17,7 @@ import {
   type SourceNavigationResult,
 } from "./source-navigation";
 import { searchSource, type DirectedSelection, type SourceReplacementPlan, type SourceSearchResult, type SearchOptions } from "./source-search";
-import { indexVisualText, locateVisualMatch, sameSearchResult, searchVisualText, type VisualSearchNavigation, type VisualSearchLocation } from "./visual-search";
+import { indexVisualText, locateVisualMatch, mapVisualMatches, sameSearchResult, searchVisualText, type VisualSearchNavigation, type VisualSearchLocation } from "./visual-search";
 import { validateSourceReplacementPlan } from "./source-replacement";
 import { SourceAuthoritySession } from "./source-authority";
 import { revealTextareaOffset } from "./textarea-visibility";
@@ -216,9 +216,10 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     if (!sameSearchResult(displayed, result)) return { ok: false, message: "查找结果已过期" };
     const complete = searchVisualText(index, result.source.revision, result.query, { caseSensitive: result.caseSensitive });
     if (complete.truncated) return { ok: false, message: "完整匹配达到安全上限，整批未应用" };
+    const mappedTargets = mapVisualMatches(index, complete);
     const locations = complete.matches.map((match, matchIndex) => ({
       match,
-      location: locateVisualMatch(index, complete, {anchor:0,head:0}, {kind:"index",matchIndex})!,
+      location: locateVisualMatch(index, complete, {anchor:0,head:0}, {kind:"index",matchIndex}, mappedTargets)!,
     })).filter(item => kind === "replace-all" ||
       (item.location.anchor === view.state.selection.from && item.location.head === view.state.selection.to));
     if (kind === "replace-one" && locations.length !== 1) {

@@ -6,7 +6,7 @@
 
 - `editor/src/search-panel.ts`：`SearchPanel` DOM 组件。
   - 查找入口按钮 + 展开后的查询输入 / 大小写开关（默认敏感，与 `searchSource` 默认一致）/ 关闭按钮与结果区域；`maxResults` 固定 100。
-  - 仅当 runtime 显式声明 `sourceReplacement=true` 时挂载单行字面 replacement 输入、"替换选中匹配"与"全部替换"按钮。单个操作要求正文当前有向选区与一个完整匹配范围精确相等；全部操作在结果截断时禁用并解释原因。
+  - runtime 显式开放替换能力时挂载单行字面 replacement 输入、"替换选中匹配"与"全部替换"按钮。单个操作要求正文当前有向选区与一个完整匹配范围精确相等；可编辑源码和可视模式的全部替换即使列表截断也会在当前稳定快照重搜完整结果，达到 10,000 硬上限则整批拒绝。
   - 状态 `idle | document(documentID/revision/epoch/raw 绑定 + result) | error`；`update()` 只通过 `createElement`/`textContent` 重绘，不执行 HTML、不加载资源、不触碰焦点与选区。
   - `truncated` 时显示"匹配至少 100 处，仅显示前 100 处"，不把截断数冒充精确总数；`rejected` 命中不计入计数、不渲染为条目。源码能力开启时只在这最多 100 个可见结果中提供上一处、下一处、回绕与结果按钮；截断提示明确未显示部分不参与循环。
   - 摘要对完整原文只做一次 `Intl.Segmenter` 字素分段，之后按边界索引生成有限上下文；超长命中只显示字素安全的首尾各最多 48 个 UTF-16 单元，中间省略。若单个字素本身超过预算，则整簇省略，不切入组合序列，也不无限长渲染。
@@ -17,7 +17,7 @@
   - 查找异常只落面板局部错误态，不发 `editorError`、不触发 `stop_saving`；面板动作零正文/dirty/history/Bridge 副作用。
   - `SearchPanel.ownsFocus` 只从当前 DOM `activeElement` 派生，不保存第二份焦点真值。查询区域持焦或查询输入正在 composition 时，来自 Native 的文档 Undo/Redo 仍经过既有 session 请求校验，但执行回调明确拒绝并返回 `command_rejected`；不调用 runtime、不增加 revision、不发虚假 `stateChanged`，也不清正文 history/future。正文重新拥有焦点后，文档 Undo/Redo 保持原行为。
   - 导航请求携带 `documentID/revision/epoch/raw/query/case/result/target` 快照回到 `main`。执行前重新读取 runtime 原文、当前有向选区并重跑有限搜索；任一身份、查询、结果或目标不一致就局部拒绝，不部分更新选区。
-  - 替换请求额外冻结 replacement 与单个/全部意图。`main` 重验身份、epoch、revision、raw、query、case、完整结果与意图后，才调用既有纯计划函数；no-op 仅显示"未产生更改"，不发 `stateChanged`。
+  - 替换请求额外冻结 replacement 与单个/全部意图。`main` 重验身份、epoch、revision、raw、query、case、显示结果与意图；全部替换再对稳定快照执行不受 100 项显示上限影响的完整搜索，之后才调用源码纯计划或 production 可视 owner 事务；no-op 仅显示"未产生更改"，不发 `stateChanged`。
 - `editor/src/source-navigation.ts`：纯 raw UTF-16 ↔ textarea LF 坐标接缝。
   - 映射以当前 `raw` 与完整 `textarea.value` 投影一致为前提，逐单元处理 LF、CRLF、bare CR 与混合换行；不使用首次文本命中或长度比例。
   - CRLF 内部、代理对内部、字素内部、越界端点全部拒绝；BOM 作为正常原文单元参与后续范围映射。
@@ -36,7 +36,7 @@
 
 ## 已知边界
 
-- UI 首批只支持单行字面替换，无正则、无多行 replacement、无 ⌘F/原生菜单/协议命令；结构化模式定位/替换仍需独立 raw↔PM 映射设计，不以 DOM 或文本猜测伪实现。
+- UI 只支持单行字面替换，无正则、无多行 replacement、无 ⌘F/原生菜单/协议命令；可视模式使用 production source ledger、PM 位置与 owner 候选事务，不读取 DOM 文本或按首次同文猜测。
 - 新增的精确有向选区历史保证覆盖替换链；普通 textarea 输入沿用既有历史行为，本任务未把普通输入历史整体重写。
 - 当前补正只隔离 Native `executeCommand` 对**文档**历史的误路由；查询框自身的原生 Cmd-Z/文字 undo 路由没有真实 WKWebView 证据，未在本任务验收，也不宣称已实现完整 query undo。
 - 查询/大小写/结果均私有于 Web 面板，不持久化到用户偏好或磁盘。

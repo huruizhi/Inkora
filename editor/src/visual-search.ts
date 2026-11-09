@@ -28,6 +28,11 @@ export interface VisualSearchLocation {
   readonly head: number;
 }
 
+export interface VisualSearchTarget {
+  readonly from: number;
+  readonly to: number;
+}
+
 export interface VisualTextEdit {
   readonly from: number;
   readonly to: number;
@@ -48,12 +53,9 @@ export function locateVisualMatch(
   result: SourceSearchResult,
   selection: { readonly anchor: number; readonly head: number },
   request: VisualSearchNavigation,
+  mappedTargets?: readonly VisualSearchTarget[],
 ): VisualSearchLocation | null {
-  const targets = result.matches.map(match => {
-    const block = index.blocks.find(item => item.from <= match.from && item.to >= match.to);
-    if (!block) throw Error("查找结果跨越内容结构边界");
-    return { from: block.positions[match.from - block.from], to: block.positions[match.to - block.from] };
-  });
+  const targets = mappedTargets ?? mapVisualMatches(index, result);
   if (!targets.length) return null;
   let matchIndex: number;
   let wrapped = false;
@@ -75,6 +77,29 @@ export function locateVisualMatch(
     anchor: selection.anchor > selection.head ? target.to : target.from,
     head: selection.anchor > selection.head ? target.from : target.to,
   };
+}
+
+/** Map one stable result snapshot once; replacement batches reuse this table. */
+export function mapVisualMatches(
+  index: VisualTextIndex,
+  result: SourceSearchResult,
+): readonly VisualSearchTarget[] {
+  const targets: VisualSearchTarget[] = [];
+  let blockIndex = 0;
+  for (const match of result.matches) {
+    while (blockIndex < index.blocks.length && index.blocks[blockIndex]!.to < match.from) {
+      blockIndex++;
+    }
+    const block = index.blocks[blockIndex];
+    if (!block || block.from > match.from || block.to < match.to) {
+      throw Error("查找结果跨越内容结构边界");
+    }
+    const from = block.positions[match.from - block.from];
+    const to = block.positions[match.to - block.from];
+    if (from === undefined || to === undefined) throw Error("查找结果没有完整 PM 位置依据");
+    targets.push({ from, to });
+  }
+  return targets;
 }
 
 /** Index the editable PM document, never NodeView/toolbar DOM text. */
