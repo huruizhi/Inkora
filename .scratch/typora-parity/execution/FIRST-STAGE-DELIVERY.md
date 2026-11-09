@@ -79,3 +79,9 @@ M0按原04/029限定门槛通过；11/12 resolved。ADR-0004、术语、M0逐门
 040只修补既有图片平台宿主剩余实际验证：基线037@56b5d318653cf5666db63a6d372c67848849ab7d，branch task/INK-PROT-040-asset-handler-validation，agent ad78db46-cfba-4481-9314-ef4aef74bf7f / workspace wks_642d59b1cc7f4bac，GLM5.3/high/full，notifyOnFinish。范围中间symlink ENOTDIR正确分类及实际handler/broker的stop/generation/单次回调/lease接缝；禁止平行模型假通过、GUI或改037冻结实测资料。与039共两名执行者，完成分别独立验收并回收。
 
 041由管理者独立准备V3功能规格和12份前后字节oracle，branch task/INK-SPEC-041-tables-tasks @929dd60（前一规范提交710863e）。verify.py 12例100项字节/推导通过；锁定markdown-it table规则独立对照8份表格语义通过；24个Git blob SHA与manifest一致，.gitattributes -text保证BOM/CRLF/无尾换行。没有运行产品或宣称表格/任务已实现，不影响039实现范围。官方GFM只用于语法核对，交互与最小范围为项目决策；实施必须真控件/PM动作而非manifest手供patch。V3接线依赖V1公共会话/映射接口。
+
+## 042真实产品验收准备
+
+上一轮041规格与独立golden已产生可复核产物，属进展。本轮以main48258a9创建独立task/INK-UI-042-writing-tools-runtime，make build（UITesting bundle ID、锁定pnpm）和严格签名校验通过，25标题/重复标题/24定位/100+查询匹配的临时长文已准备。desktop preflight实际exit78锁屏，未启动App或调用CUA，没有伪报滚动/焦点/键盘验收；自有锁自动释放。详细docs/tasks/INK-UI-042.md和artifacts/ink-ui-042/readiness.json。
+
+039与040两个确切Agent handle在2026-11-09约09:54UTC各核验一次：均running，无pending permission、无attention；保留同一任务等待完成通知，未重启。可独立开发和验收准备仍推进，锁屏不是整个目标阻塞。完成后仍须及时Agent/workspace两层回收。
