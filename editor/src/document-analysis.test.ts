@@ -270,6 +270,69 @@ describe("excludedRanges", () => {
   });
 });
 
+
+describe("HTML token：不执行也不显示（Spec 审查 INK-M1-016）", () => {
+  it("inline HTML 包裹标题与正文：标签不进入显示文本与内容统计", () => {
+    const raw = "# <b>Title</b>\n\n<b>x</b>";
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings.map((h) => h.text)).toEqual(["Title"]);
+    expect(result.content.characters).toBe(6); // Title + x
+    expect(result.content.writingUnits).toBe(2);
+    // 原文口径不变：标签字符照常计入 raw。
+    expect(result.raw.characters).toBe(raw.replace(/\s/g, "").length);
+  });
+
+  it("HTML 注释与 raw block：标题/脚本内容不泄漏进大纲与统计", () => {
+    const raw = "# a <!-- comment <script>alert(1)</script> --> b\n\n<!-- raw\n# NotHeading\n-->";
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings.map((h) => h.text)).toEqual(["a  b"]);
+    expect(result.content).toEqual({ characters: 2, writingUnits: 2 }); // 仅 a、b
+  });
+
+  it("code_inline / 围栏内的 HTML 字面内容仍计入", () => {
+    expect(analyzeDocument(snap("`<b>x</b>` 文本")).content).toEqual({
+      characters: 10, // < b > x < / b > + 文本
+      writingUnits: 5,
+    });
+    expect(analyzeDocument(snap("```\n<b>keep</b>\n```")).content).toEqual({
+      characters: 11,
+      writingUnits: 3, // b | keep | b
+    });
+  });
+
+  it("实体 / 反斜杠转义的 HTML 显示文字不被误删", () => {
+    // &lt;b&gt; 解码为字面文本 <b>，按内容计。
+    expect(analyzeDocument(snap("a &lt;b&gt; c")).content).toEqual({
+      characters: 5, // a < b > c
+      writingUnits: 3,
+    });
+    // \< 转义后 <b> 是字面文本而非标签。
+    expect(analyzeDocument(snap("\\<b>literal")).content).toEqual({
+      characters: 10,
+      writingUnits: 2, // b | literal
+    });
+  });
+
+  it("BOM/CRLF 原文偏移不变：标题切片仍指向原文", () => {
+    const raw = "\uFEFF# <b>汉Ti</b>\r\n正文\r";
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings[0].text).toBe("汉Ti");
+    expect(result.headings[0].start).toBe(1); // BOM 之后
+    expect(raw.slice(result.headings[0].start, result.headings[0].end)).toBe("# <b>汉Ti</b>");
+  });
+
+  it("危险属性脚本仅 tokenize 不执行：img/script 内容不计统计", () => {
+    const result = analyzeDocument(snap('<img src=x onerror=alert(1)> 后文'));
+    expect(result.content).toEqual({ characters: 2, writingUnits: 2 }); // 仅 后文
+  });
+
+  it("block HTML 按锁定 CommonMark token 语义：内部 Markdown 不解析", () => {
+    const raw = "# 前\n\n<div>\n# 不是标题\n*b?*\n</div>\n\n# 后";
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings.map((h) => h.text)).toEqual(["前", "后"]);
+    expect(result.content).toEqual({ characters: 2, writingUnits: 2 }); // 前 + 后
+  });
+});
 describe("实体与文本边界（内容口径）", () => {
   it("HTML 实体按解析后文本计入内容，不执行 HTML", () => {
     const result = analyzeDocument(snap("a&amp;b\n"));

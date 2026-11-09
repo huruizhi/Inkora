@@ -63,7 +63,7 @@ export class ExcludedRangeError extends RangeError {
   }
 }
 
-const parser = new MarkdownIt("commonmark", { breaks: false, html: false, linkify: false });
+const parser = new MarkdownIt("commonmark", { breaks: false, html: true, linkify: false });
 
 const graphemeSegmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
 

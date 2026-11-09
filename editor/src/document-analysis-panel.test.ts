@@ -86,12 +86,12 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     );
   });
 
-  it("恶意标题只按字面文本显示，不执行 HTML 或加载资源", () => {
+  it("恶意标题不显示 HTML 标签，不执行 HTML 或加载资源", () => {
     const { parent } = stubDom();
     const panel = new DocumentAnalysisPanel(parent);
     panel.update(documentState('# <img src=x onerror="alert(1)"><script>alert(2)</script>\n'));
     expect(headingTexts(panel)).toEqual([
-      '<img src=x onerror="alert(1)"><script>alert(2)</script>',
+      "alert(2)",
     ]);
     expect(panel.element.querySelectorAll("img, script, iframe")).toHaveLength(0);
   });

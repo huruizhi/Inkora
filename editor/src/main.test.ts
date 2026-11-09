@@ -531,14 +531,15 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
   });
 
 
-  it("恶意标题只按字面显示，不执行 HTML", async () => {
+  it("恶意标题不显示 HTML 标签，不执行 HTML", async () => {
     const h = await bootMain();
     h.receive({
       type: "loadDocument", requestID: "r1", documentID: "doc-x", revision: 0,
       text: '# <img src=x onerror="alert(1)">\n',
     });
     await settle();
-    expect(h.panelHeadings()).toEqual(['<img src=x onerror="alert(1)">']);
+    // HTML token 不执行也不显示：纯标签标题的显示文本为空。
+    expect(h.panelHeadings()).toEqual([""]);
     expect(h.panel().querySelectorAll("img, script, iframe")).toHaveLength(0);
   });
 
