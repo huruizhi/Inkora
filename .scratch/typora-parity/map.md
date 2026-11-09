@@ -77,3 +77,5 @@ Status: open
 011最终ae143f5经独立冻结13项及干净276项/lint/build非UI接收，012续验记录58c5c3a保留最终代码/隔离App；desktop仍exit78锁屏，滚动/键盘/IME待验。011两个Agent/workspace已备份回收，累计41。当前仅[013源码模式原子替换](execution/M1-013-source-replacement.md)执行，结构化PM与bareCR只读不开放替换，不采纳新内核、不解除M0/006/009实际UI门槛，不合main。
 
 当前收束：013最终0f17f22独立19控制、干净303、lint/build通过；两个Agent/workspace备份回收，累计42，当前无功能执行Agent。已形成[草稿PR#70](https://github.com/huruizhi/Inkora/pull/70)，集成head6ad325b；[默认非UI CI](https://github.com/huruizhi/Inkora/actions/runs/42568188093)实际success，UI/完整启动基准按参数skipped。main未合，真实窗口因锁屏未验，M0/阶段门槛不变。[集成与后续集中点验](execution/M1-014-integration-ci.md)为当前入口，不再以此前“执行中”历史段落覆盖本状态。
+
+用户经 ask-matt 选择后续推进路线并要求执行：先做[写作辅助双轴审查](execution/M1-015-016-pr-review.md)，仅两个只读审查 Agent（GLM Standards、Sol Spec）。本轮预检仍锁屏 exit78，未启动 App；M0 只保留 H1/H2/H3，不新增门槛。依 docs/testing.md，普通 PR 可凭最新 main 基线和默认非 UI CI 合并，真实 UI 待验须准确披露，不能将阶段真人验收误加为普通合并门禁。审查收敛后再推进 PR 收尾；架构票仍待 M0 证据，之后交 to-spec/to-tickets 形成生产迁移的纵向任务。
