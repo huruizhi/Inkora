@@ -224,6 +224,37 @@ async function rootLinkHarness(
   return h;
 }
 
+it("root062: link action pointerdown keeps an active candidate field focused", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  href.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", {bubbles:true}));
+  href.value = "zhong";
+  const cancel = form.querySelector<HTMLButtonElement>(".link-editor-cancel")!;
+  const pointer = new h.dom.window.MouseEvent("pointerdown", {bubbles:true,cancelable:true});
+  cancel.dispatchEvent(pointer);
+  expect(pointer.defaultPrevented).toBe(true);
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(href);
+  expect(href.value).toBe("zhong");
+});
+
+it("root062: link submit blocks form navigation without consuming an IME Enter key", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  href.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", {bubbles:true}));
+  const before = h.sent.length;
+  const enter = new h.dom.window.KeyboardEvent("keydown", {key:"Enter",isComposing:true,bubbles:true,cancelable:true});
+  href.dispatchEvent(enter);
+  expect(enter.defaultPrevented).toBe(false);
+  const submit = new h.dom.window.Event("submit", {bubbles:true,cancelable:true});
+  form.dispatchEvent(submit);
+  expect(submit.defaultPrevented).toBe(true);
+  expect(form.isConnected).toBe(true);
+  expect(h.sent).toHaveLength(before);
+});
+
 it("root061: caret inside a link edits its existing target", async () => {
   const h = await rootLinkHarness();
   const form = h.linkEditor()!;
@@ -261,9 +292,10 @@ it("链接输入 composition 守卫表单动作、外部导航与跨 load 候选
   const revision = h.lastRevision();
   const messages = h.stateMessages().length;
 
+  // submit 取消的是表单导航；下方键盘 Esc 的输入法默认行为仍保留。
   expect(form.dispatchEvent(new h.dom.window.Event("submit", {
     bubbles: true, cancelable: true,
-  }))).toBe(true);
+  }))).toBe(false);
   form.querySelector<HTMLButtonElement>(".link-editor-remove")!.click();
   form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
   expect(form.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {

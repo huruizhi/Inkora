@@ -175,9 +175,10 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
     owner.focus();
   };
   form.addEventListener("submit", event => {
+    // This cancels form navigation, not the input method's key event.
+    event.preventDefault();
     if ((event as Event & { isComposing?: boolean }).isComposing ||
         composingLinkEditors.has(form)) return;
-    event.preventDefault();
     apply({ href: href.value, title: title.value.length ? title.value : null });
   });
   cancel.addEventListener("click", event => {
@@ -204,6 +205,11 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
   href.addEventListener("compositionend", compositionEnd);
   title.addEventListener("compositionstart", compositionStart);
   title.addEventListener("compositionend", compositionEnd);
+  form.addEventListener("pointerdown", event => {
+    if (composingLinkEditors.has(form) && event.target !== document.activeElement) {
+      event.preventDefault();
+    }
+  });
 
   const actions = document.createElement("div");
   actions.className = "link-editor-actions";
