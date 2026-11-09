@@ -6,6 +6,11 @@ import WebKit
 final class EditorViewController: NSViewController, EditorBridgeDelegate,
   NSUserInterfaceValidations, WKNavigationDelegate, WKUIDelegate
 {
+  private struct PreparedImageDescriptor {
+    let descriptor: BridgeImageDescriptor
+    let provisionalToken: UUID?
+  }
+
   typealias ImageSaveDirectoryAuthorizer = (
     _ documentURL: URL,
     _ role: String,
@@ -245,15 +250,14 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     ) { [weak self] directory in
       guard let self, let directory else { return }
       guard self.documentEpoch == ownershipEpoch else { return }
-      let accessed = directory.startAccessingSecurityScopedResource()
-      defer { if accessed { directory.stopAccessingSecurityScopedResource() } }
-      bridge.setImageDescriptors(
-        documentEpoch: ownershipEpoch,
-        ownership: ownership,
-        descriptors: [
+      self.sendImageDescriptors(ownership: ownership) {
+        let accessed = directory.startAccessingSecurityScopedResource()
+        defer { if accessed { directory.stopAccessingSecurityScopedResource() } }
+        return [
           self.existingImageDescriptor(
             href: href, documentURL: documentURL, authorizedDirectory: directory)
-        ])
+        ]
+      }
     }
   }
 
@@ -650,7 +654,9 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     } catch { presentImageError(error) }
   }
 
-  private func register(_ asset: LocalImageAsset) throws -> DocumentAssetCapability {
+  private func register(
+    _ asset: LocalImageAsset, provisional: Bool = false
+  ) throws -> DocumentAssetCapability {
     guard let document else { throw EditorBridgeError.editorUnavailable }
     let root: URL
     let basePath: String
@@ -672,15 +678,22 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     } else {
       throw LocalImageError.corruptManifest
     }
-    let capability = try assetBroker.register(
-      documentID: document.bridgeDocumentID,
-      epoch: documentEpoch,
-      rootURL: root,
-      percentEncodedBasePath: basePath,
-      percentEncodedRelativePath: relativePath,
-      sha256: asset.sha256,
-      mimeType: asset.mimeType)
-    guard assetBroker.read(token: capability.token).status == .ready else {
+    let capability =
+      try provisional
+      ? assetBroker.provision(
+        documentID: document.bridgeDocumentID, epoch: documentEpoch, rootURL: root,
+        percentEncodedBasePath: basePath, percentEncodedRelativePath: relativePath,
+        sha256: asset.sha256, mimeType: asset.mimeType)
+      : assetBroker.register(
+        documentID: document.bridgeDocumentID, epoch: documentEpoch, rootURL: root,
+        percentEncodedBasePath: basePath, percentEncodedRelativePath: relativePath,
+        sha256: asset.sha256, mimeType: asset.mimeType)
+    let status =
+      provisional
+      ? assetBroker.validateProvisional(token: capability.token).status
+      : assetBroker.read(token: capability.token).status
+    guard status == .ready else {
+      if provisional { assetBroker.discardProvisional(tokens: [capability.token]) }
       throw LocalImageError.unauthorizedDirectory
     }
     return capability
@@ -694,59 +707,16 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   }
 
   private func refreshImageDescriptors(using snapshot: BridgeSnapshot) {
-    guard let document, let session = try? document.localImages() else { return }
     guard let ownership = try? snapshot.requireImageOwnership() else { return }
-    let owners = Set(ownership.imageURIs)
-    var descriptors = session.assets.filter { owners.contains($0.markdownURI) }.map {
-      asset -> BridgeImageDescriptor in
-      do {
-        return BridgeImageDescriptor(
-          href: asset.markdownURI, status: .ready,
-          displayURL: try register(asset).url.absoluteString, message: nil)
-      } catch LocalImageError.unauthorizedDirectory {
-        return BridgeImageDescriptor(
-          href: asset.markdownURI, status: .denied, displayURL: nil,
-          message: LocalImageError.unauthorizedDirectory.localizedDescription)
-      } catch {
-        return BridgeImageDescriptor(
-          href: asset.markdownURI, status: .error, displayURL: nil,
-          message: error.localizedDescription)
-      }
-    }
-    var known = Set(descriptors.map(\.href))
-    if let documentURL = document.fileURL {
-      let grant =
-        document.restoredImageDirectory(role: "document-directory", for: documentURL)
-        ?? document.restoredImageDirectory(role: "document-read-directory", for: documentURL)
-      guard let grant else {
-        for href in LocalImageMigrationCoordinator.localImageURIs(in: ownership.imageURIs)
-        where known.insert(href).inserted {
-          descriptors.append(
-            BridgeImageDescriptor(
-              href: href, status: .denied, displayURL: nil,
-              message: LocalImageError.unauthorizedDirectory.localizedDescription))
-        }
-        if !descriptors.isEmpty {
-          bridge?.setImageDescriptors(
-            documentEpoch: documentEpoch, ownership: ownership, descriptors: descriptors)
-        }
-        return
-      }
-      let accessed = grant.startAccessingSecurityScopedResource()
-      defer { if accessed { grant.stopAccessingSecurityScopedResource() } }
-      for href in LocalImageMigrationCoordinator.localImageURIs(in: ownership.imageURIs)
-      where known.insert(href).inserted {
-        descriptors.append(
-          existingImageDescriptor(
-            href: href, documentURL: documentURL, authorizedDirectory: grant))
-      }
-    }
-    guard !descriptors.isEmpty else { return }
-    bridge?.setImageDescriptors(
-      documentEpoch: documentEpoch, ownership: ownership, descriptors: descriptors
-    ) {
-      [weak self] error in
-      guard error == nil, let self else { return }
+    sendImageDescriptors(ownership: ownership) { [weak self] in
+      guard let self, let document = self.document,
+        let session = try? document.localImages()
+      else { return [] }
+      return self.preparedImageDescriptors(
+        document: document, session: session, ownership: ownership)
+    } completion: { [weak self] success in
+      guard success, let self, let session = try? self.document?.localImages() else { return }
+      let owners = Set(ownership.imageURIs)
       for asset in session.assets where asset.insertion == .pending {
         if asset.recoveryDisposition != nil
           || asset.importIntent?.recoveryState == .requiresConfirmation
@@ -758,11 +728,11 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
           let intent = asset.importIntent,
           intent.documentID == session.documentID,
           intent.sessionID == session.sessionID,
-          intent.documentEpoch == documentEpoch,
-          intent.revision == editorState?.revision,
+          intent.documentEpoch == self.documentEpoch,
+          intent.revision == self.editorState?.revision,
           intent.recoveryState == .active
         {
-          presentImportedImage(asset)
+          self.presentImportedImage(asset)
         } else {
           try? session.requireInsertionConfirmation(assetID: asset.id)
         }
@@ -770,15 +740,74 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     }
   }
 
+  private func preparedImageDescriptors(
+    document: InkoraDocument,
+    session: LocalImageSession,
+    ownership: BridgeImageOwnershipProof
+  ) -> [PreparedImageDescriptor] {
+    let owners = Set(ownership.imageURIs)
+    var descriptors = session.assets.filter { owners.contains($0.markdownURI) }.map {
+      asset -> PreparedImageDescriptor in
+      do {
+        let capability = try register(asset, provisional: true)
+        return PreparedImageDescriptor(
+          descriptor: BridgeImageDescriptor(
+            href: asset.markdownURI, status: .ready,
+            displayURL: capability.url.absoluteString, message: nil),
+          provisionalToken: capability.token)
+      } catch LocalImageError.unauthorizedDirectory {
+        return PreparedImageDescriptor(
+          descriptor: BridgeImageDescriptor(
+            href: asset.markdownURI, status: .denied, displayURL: nil,
+            message: LocalImageError.unauthorizedDirectory.localizedDescription),
+          provisionalToken: nil)
+      } catch {
+        return PreparedImageDescriptor(
+          descriptor: BridgeImageDescriptor(
+            href: asset.markdownURI, status: .error, displayURL: nil,
+            message: error.localizedDescription), provisionalToken: nil)
+      }
+    }
+    var known = Set(descriptors.map(\.descriptor.href))
+    if let documentURL = document.fileURL {
+      let grant =
+        document.restoredImageDirectory(role: "document-directory", for: documentURL)
+        ?? document.restoredImageDirectory(role: "document-read-directory", for: documentURL)
+      guard let grant else {
+        for href in LocalImageMigrationCoordinator.localImageURIs(in: ownership.imageURIs)
+        where known.insert(href).inserted {
+          descriptors.append(
+            PreparedImageDescriptor(
+              descriptor: BridgeImageDescriptor(
+                href: href, status: .denied, displayURL: nil,
+                message: LocalImageError.unauthorizedDirectory.localizedDescription),
+              provisionalToken: nil))
+        }
+        return descriptors
+      }
+      let accessed = grant.startAccessingSecurityScopedResource()
+      defer { if accessed { grant.stopAccessingSecurityScopedResource() } }
+      for href in LocalImageMigrationCoordinator.localImageURIs(in: ownership.imageURIs)
+      where known.insert(href).inserted {
+        descriptors.append(
+          existingImageDescriptor(
+            href: href, documentURL: documentURL, authorizedDirectory: grant))
+      }
+    }
+    return descriptors
+  }
+
   private func existingImageDescriptor(
     href: String,
     documentURL: URL,
     authorizedDirectory: URL
-  ) -> BridgeImageDescriptor {
+  ) -> PreparedImageDescriptor {
     guard let document else {
-      return BridgeImageDescriptor(
-        href: href, status: .error, displayURL: nil,
-        message: EditorBridgeError.editorUnavailable.localizedDescription)
+      return PreparedImageDescriptor(
+        descriptor: BridgeImageDescriptor(
+          href: href, status: .error, displayURL: nil,
+          message: EditorBridgeError.editorUnavailable.localizedDescription),
+        provisionalToken: nil)
     }
     do {
       let imageURL = try LocalImageMigrationCoordinator.resolveExistingImage(
@@ -790,17 +819,19 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       else { throw LocalImageError.unsafePath }
       let basePath = try Self.relativeEncodedPath(
         from: authorizedDirectory, to: documentURL.deletingLastPathComponent())
-      let capability = try assetBroker.register(
+      let capability = try assetBroker.provision(
         documentID: document.bridgeDocumentID, epoch: documentEpoch,
         rootURL: authorizedDirectory, percentEncodedBasePath: basePath,
         percentEncodedRelativePath: relativePath, sha256: inspection.sha256,
         mimeType: inspection.mimeType)
-      guard assetBroker.read(token: capability.token).status == .ready else {
+      guard assetBroker.validateProvisional(token: capability.token).status == .ready else {
+        assetBroker.discardProvisional(tokens: [capability.token])
         throw LocalImageError.unauthorizedDirectory
       }
-      return BridgeImageDescriptor(
-        href: href, status: .ready, displayURL: capability.url.absoluteString,
-        message: nil)
+      return PreparedImageDescriptor(
+        descriptor: BridgeImageDescriptor(
+          href: href, status: .ready, displayURL: capability.url.absoluteString,
+          message: nil), provisionalToken: capability.token)
     } catch let error as LocalImageError {
       let status: BridgeImageStatus
       switch error {
@@ -809,13 +840,63 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       case .invalidSource: status = .missing
       default: status = .error
       }
-      return BridgeImageDescriptor(
-        href: href, status: status, displayURL: nil,
-        message: error.localizedDescription)
+      return PreparedImageDescriptor(
+        descriptor: BridgeImageDescriptor(
+          href: href, status: status, displayURL: nil,
+          message: error.localizedDescription), provisionalToken: nil)
     } catch {
-      return BridgeImageDescriptor(
-        href: href, status: .error, displayURL: nil,
-        message: error.localizedDescription)
+      return PreparedImageDescriptor(
+        descriptor: BridgeImageDescriptor(
+          href: href, status: .error, displayURL: nil,
+          message: error.localizedDescription), provisionalToken: nil)
+    }
+  }
+
+  private func sendImageDescriptors(
+    ownership: BridgeImageOwnershipProof,
+    prepare: @escaping () -> [PreparedImageDescriptor],
+    completion: @escaping (Bool) -> Void = { _ in }
+  ) {
+    guard let bridge else {
+      completion(false)
+      return
+    }
+    let expectedEpoch = documentEpoch
+    bridge.requestVersionedSnapshot { [weak self, weak bridge] result in
+      guard let self, let bridge, self.documentEpoch == expectedEpoch,
+        case .success(let snapshot) = result,
+        let currentOwnership = try? snapshot.requireImageOwnership(),
+        currentOwnership == ownership
+      else {
+        completion(false)
+        return
+      }
+      var prepared: [PreparedImageDescriptor] = []
+      bridge.setImageDescriptors(
+        documentEpoch: expectedEpoch, ownership: ownership,
+        makeDescriptors: {
+          prepared = prepare()
+          return prepared.map(\.descriptor)
+        }
+      ) { [weak self] error in
+        guard let self else {
+          completion(false)
+          return
+        }
+        let tokens = prepared.compactMap(\.provisionalToken)
+        guard error == nil else {
+          self.assetBroker.discardProvisional(tokens: tokens)
+          completion(false)
+          return
+        }
+        do {
+          try self.assetBroker.commitProvisional(tokens: tokens)
+          completion(true)
+        } catch {
+          self.assetBroker.discardProvisional(tokens: tokens)
+          completion(false)
+        }
+      }
     }
   }
 
@@ -886,35 +967,55 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
           completion(.failure(EditorBridgeError.staleRevision))
           return
         }
-        do {
-          let plan = try document.prepareLocalImagesForSave(
-            documentURL: targetURL, authorizedDirectory: directory, snapshot: snapshot)
-          let preparation = DocumentImageSavePreparation(
-            managedPlan: plan,
-            sourceAuthorizedDirectory: sourceDirectory,
-            targetAuthorizedDirectory: directory)
-          guard let plan else {
-            completion(.success(preparation))
+        guard let bridge = self.bridge else {
+          completion(.failure(EditorBridgeError.editorUnavailable))
+          return
+        }
+        bridge.requestVersionedSnapshot { [weak self, weak bridge] result in
+          guard let self, let bridge, self.documentEpoch == ownershipEpoch else {
+            completion(.failure(EditorBridgeError.staleRevision))
             return
           }
-          let assetsByURI = Dictionary(
-            uniqueKeysWithValues: session.assets.map { ($0.markdownURI, $0) })
-          let rewrites = try plan.rewrites.map { source, target -> BridgeImageRewrite in
-            guard let asset = assetsByURI[source] else { throw LocalImageError.corruptManifest }
-            return BridgeImageRewrite(
-              assetID: asset.id.uuidString.lowercased(), from: source, to: target)
-          }
-          if rewrites.isEmpty {
-            completion(.success(preparation))
-            return
-          }
-          guard let bridge else { throw EditorBridgeError.editorUnavailable }
-          bridge.prepareImageSave(
-            documentEpoch: ownershipEpoch, ownership: ownership, rewrites: rewrites
-          ) { error in
-            if let error { completion(.failure(error)) } else { completion(.success(preparation)) }
-          }
-        } catch { completion(.failure(error)) }
+          do {
+            let currentSnapshot = try result.get()
+            guard try currentSnapshot.requireImageOwnership() == ownership else {
+              throw EditorBridgeError.staleRevision
+            }
+            let plan = try document.prepareLocalImagesForSave(
+              documentURL: targetURL, authorizedDirectory: directory,
+              snapshot: currentSnapshot)
+            let preparation = DocumentImageSavePreparation(
+              managedPlan: plan,
+              sourceAuthorizedDirectory: sourceDirectory,
+              targetAuthorizedDirectory: directory)
+            guard let plan else {
+              completion(.success(preparation))
+              return
+            }
+            let assetsByURI = Dictionary(
+              uniqueKeysWithValues: session.assets.map { ($0.markdownURI, $0) })
+            let rewrites = try plan.rewrites.map { source, target -> BridgeImageRewrite in
+              guard let asset = assetsByURI[source] else {
+                throw LocalImageError.corruptManifest
+              }
+              return BridgeImageRewrite(
+                assetID: asset.id.uuidString.lowercased(), from: source, to: target)
+            }
+            if rewrites.isEmpty {
+              completion(.success(preparation))
+              return
+            }
+            bridge.prepareImageSave(
+              documentEpoch: ownershipEpoch, ownership: ownership, rewrites: rewrites
+            ) { error in
+              if let error {
+                completion(.failure(error))
+              } else {
+                completion(.success(preparation))
+              }
+            }
+          } catch { completion(.failure(error)) }
+        }
       }
       if needsMigration, let sourceURL = document.fileURL {
         if let restored = restoredDirectory(role: "save-as-source", for: sourceURL) {

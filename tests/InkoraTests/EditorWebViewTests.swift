@@ -476,8 +476,8 @@ final class EditorWebViewTests: XCTestCase {
       documentID: "image-doc", revision: 3, raw: "old", imageURIs: ["Old.assets/a.png"])
     var descriptorError: Error?
     bridge.setImageDescriptors(
-      documentEpoch: UUID(), ownership: stale, descriptors: []
-    ) { descriptorError = $0 }
+      documentEpoch: UUID(), ownership: stale, makeDescriptors: { [] },
+      completion: { descriptorError = $0 })
     var rewriteError: Error?
     bridge.prepareImageSave(
       documentEpoch: UUID(), ownership: stale,
@@ -499,6 +499,139 @@ final class EditorWebViewTests: XCTestCase {
         $0.type == .setImageDescriptors || $0.type == .prepareImageSave
       },
       "A stale proof must not enqueue resource mutations")
+  }
+
+  @MainActor
+  func testAcknowledgedImageDescriptorLoadsVerifiedPNGThroughRealSchemeHandler() async throws {
+    let scratch = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let png = Data(
+      base64Encoded:
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )!
+    let document = InkoraDocument()
+    document.configureRecovery(store: RecoveryStore(directory: scratch))
+    let asset = try document.importPastedPNG(png, authorizedDirectory: nil)
+    try document.localImages().markInsertionAccepted(assetID: asset.id)
+    let raw = "![verified](\(asset.markdownURI))\n"
+    try document.read(from: Data(raw.utf8), ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(
+      document: document, resourceBundle: Bundle(for: Self.self))
+    controller.loadViewIfNeeded()
+    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: """
+        (() => {
+          const image = document.querySelector('#editor .image-node img');
+          return !!image && image.complete && image.naturalWidth === 1 && image.naturalHeight === 1;
+        })()
+        """
+    ) { $0 as? Bool == true }
+    let snapshot = try await requestSnapshot(from: controller)
+    XCTAssertEqual(snapshot.text, raw)
+    XCTAssertEqual(try snapshot.requireImageOwnership().imageURIs, [asset.markdownURI])
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
+    withExtendedLifetime(document) {}
+  }
+
+  @MainActor
+  func testStaleDescriptorProofIsRejectedBeforeBrokerProvisioning() throws {
+    let bridge = EditorBridge(
+      delegate: SilentBridgeDelegate(), evaluator: { _, completion in completion(nil) })
+    bridge.loadDocument(documentID: "image-doc", revision: 4, text: "current")
+    bridge.receiveEditorEvent(readyEvent())
+    bridge.receiveEditorEvent(
+      stateEvent(documentID: "image-doc", revision: 4, canUndo: false, canRedo: false))
+    let broker = DocumentAssetBroker()
+    let epoch = broker.beginDocument(documentID: "image-doc")
+    let stale = BridgeImageOwnershipProof(
+      documentID: "image-doc", revision: 3, raw: "old", imageURIs: ["a.png"])
+    var providerRan = false
+    var receivedError: Error?
+
+    bridge.setImageDescriptors(
+      documentEpoch: epoch, ownership: stale,
+      makeDescriptors: {
+        providerRan = true
+        _ = try broker.provision(
+          documentID: "image-doc", epoch: epoch,
+          rootURL: FileManager.default.temporaryDirectory,
+          percentEncodedRelativePath: "a.png", sha256: String(repeating: "0", count: 64),
+          mimeType: "image/png")
+        return []
+      },
+      completion: { receivedError = $0 })
+
+    XCTAssertFalse(providerRan)
+    XCTAssertEqual(broker.capabilityCounts.live, 0)
+    XCTAssertEqual(broker.capabilityCounts.provisional, 0)
+    XCTAssertEqual(
+      receivedError?.localizedDescription,
+      EditorBridgeError.staleRevision.localizedDescription)
+  }
+
+  @MainActor
+  func testDescriptorAckAfterNewerStateRollsBackProvisionalCapability() throws {
+    var scripts: [String] = []
+    let bridge = EditorBridge(
+      delegate: SilentBridgeDelegate(),
+      evaluator: { script, completion in
+        scripts.append(script)
+        completion(nil)
+      })
+    bridge.loadDocument(documentID: "image-doc", revision: 4, text: "![a](a.png)")
+    bridge.receiveEditorEvent(readyEvent())
+    bridge.receiveEditorEvent(
+      stateEvent(documentID: "image-doc", revision: 4, canUndo: false, canRedo: false))
+    let broker = DocumentAssetBroker()
+    let epoch = broker.beginDocument(documentID: "image-doc")
+    let ownership = BridgeImageOwnershipProof(
+      documentID: "image-doc", revision: 4, raw: "![a](a.png)", imageURIs: ["a.png"])
+    var completionError: Error?
+    var tokens: [UUID] = []
+
+    bridge.setImageDescriptors(
+      documentEpoch: epoch, ownership: ownership,
+      makeDescriptors: {
+        let capability = try broker.provision(
+          documentID: "image-doc", epoch: epoch,
+          rootURL: FileManager.default.temporaryDirectory,
+          percentEncodedRelativePath: "a.png", sha256: String(repeating: "0", count: 64),
+          mimeType: "image/png")
+        tokens = [capability.token]
+        return [
+          BridgeImageDescriptor(
+            href: "a.png", status: .ready, displayURL: capability.url.absoluteString,
+            message: nil)
+        ]
+      },
+      completion: { error in
+        completionError = error
+        if error == nil {
+          try? broker.commitProvisional(tokens: tokens)
+        } else {
+          broker.discardProvisional(tokens: tokens)
+        }
+      })
+    let command = try XCTUnwrap(
+      scripts.compactMap(decodeBridgeCommand).last { $0.type == .setImageDescriptors })
+    XCTAssertEqual(broker.capabilityCounts.provisional, 1)
+
+    bridge.receiveEditorEvent(
+      stateEvent(documentID: "image-doc", revision: 5, canUndo: true, canRedo: false))
+    bridge.receiveEditorEvent(
+      stateEvent(
+        requestID: command.requestID, documentID: "image-doc", revision: 4,
+        canUndo: false, canRedo: false))
+
+    XCTAssertEqual(
+      completionError?.localizedDescription,
+      EditorBridgeError.staleRevision.localizedDescription)
+    XCTAssertEqual(broker.capabilityCounts.live, 0)
+    XCTAssertEqual(broker.capabilityCounts.provisional, 0)
+    XCTAssertEqual(broker.read(token: try XCTUnwrap(tokens.first)).status, .stale)
   }
 
   @MainActor

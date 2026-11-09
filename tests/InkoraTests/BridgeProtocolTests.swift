@@ -189,12 +189,15 @@ final class BridgeProtocolTests: XCTestCase {
       documentEpoch: "epoch-1", assetID: "asset-1", uri: "Note.assets/a.png",
       alt: "图", title: nil, displayURL: descriptor.displayURL!,
       selectionAnchor: 3, selectionHead: 1)
+    let ownership = BridgeImageOwnershipProof(
+      documentID: "doc-1", revision: 4, raw: "![a](Note.assets/a.png)",
+      imageURIs: ["Note.assets/a.png", "inkora-draft://asset/asset-1"])
     let descriptors = BridgeNativeCommand.setImageDescriptors(
       requestID: "descriptors-1", documentID: "doc-1", revision: 4,
-      documentEpoch: "epoch-1", descriptors: [descriptor])
+      documentEpoch: "epoch-1", ownership: ownership, descriptors: [descriptor])
     let prepare = BridgeNativeCommand.prepareImageSave(
       requestID: "prepare-1", documentID: "doc-1", revision: 4,
-      documentEpoch: "epoch-1",
+      documentEpoch: "epoch-1", ownership: ownership,
       rewrites: [
         BridgeImageRewrite(
           assetID: "asset-1", from: "inkora-draft://asset/asset-1",
@@ -213,11 +216,25 @@ final class BridgeProtocolTests: XCTestCase {
     let invalid = BridgeNativeCommand.setImageDescriptors(
       requestID: "bad", documentID: "doc-1", revision: 0,
       documentEpoch: "epoch-1",
+      ownership: BridgeImageOwnershipProof(
+        documentID: "doc-1", revision: 0, raw: "![a](a.png)", imageURIs: ["a.png"]),
       descriptors: [
         BridgeImageDescriptor(
           href: "a.png", status: .ready, displayURL: "file:///tmp/a.png", message: nil)
       ])
     XCTAssertThrowsError(try invalid.validate())
+  }
+
+  func testLegacyImageCommandDecodesButCannotRunWithoutOwnershipProof() throws {
+    let json = """
+      {"protocolVersion":1,"type":"setImageDescriptors","requestID":"legacy",\
+      "documentID":"doc-1","revision":0,"documentEpoch":"epoch-1","descriptors":[]}
+      """
+    let command = try JSONDecoder().decode(BridgeNativeCommand.self, from: Data(json.utf8))
+    XCTAssertThrowsError(try command.validate()) {
+      XCTAssertEqual(
+        $0 as? BridgeProtocolValidationError, .missingField("imageOwnership"))
+    }
   }
 
   func testImageAccessRequestRequiresCurrentDocumentRevisionAndHrefShape() throws {

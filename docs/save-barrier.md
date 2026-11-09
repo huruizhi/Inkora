@@ -42,7 +42,7 @@
 
 ## 图片资源前置屏障
 
-崩溃后恢复 pending 图片使用同一内容与磁盘边界。启动选择「恢复」只创建与原 session 绑定的未命名文档，不等价于插入；作者在文档内确认后重新捕获当前位置，才发送 `applyImageImport`。Bridge 成功回执后还必须取得 revisioned snapshot，并经 `RecoveryStore.write` 验证持久化；只有 snapshot 中存在该 asset 的真实图片 owner，manifest 才从 `confirming` 进入 `handedOff/accepted`。捕获失败、跨 epoch、内容事务拒绝、snapshot 失败或 manifest 写失败均不产生 accepted 回执，旧 intent、草稿和资源继续可恢复。
+崩溃后恢复 pending 图片使用同一内容与磁盘边界。启动选择「恢复」只创建与原 session 绑定的未命名文档，不等价于插入；作者在文档内确认后重新捕获当前位置，才发送 `applyImageImport`。Bridge 成功回执后还必须取得 revisioned snapshot，并经 `RecoveryStore.write` 写入、回读和核对 document recovery ID、revision 与 payload hash，得到明确 receipt；只有 snapshot 中存在该 asset 的真实图片 owner 且 receipt 精确匹配，manifest 才从 `confirming` 进入 `handedOff/accepted`。stale/closed/nil-store/no-write、捕获失败、跨 epoch、内容事务拒绝、snapshot 失败或 manifest 写失败均不产生 accepted 回执，旧 intent、草稿和资源继续可恢复。
 
 未命名图片首次保存时，目标目录授权不由 Save panel 文件权限替代。Native 先用初始 snapshot proof 过滤仍被当前语义投影拥有的 accepted 草稿；已删除但仍留在恢复区的 accepted asset 不参与发布或改写。`prepareImageSave` 固定到这份 proof 的 document/revision，授权等待期间若版本变化则在资源变更前拒绝；成功重写后再采集正式 snapshot。Native 只验证 proof owner：本 plan 的每个目标 URI 必须存在，原 draft URI 必须消失；不再扫描 raw 或用 `text.contains` 推断。验证失败直接拒绝，不调用 Markdown writer。随后原生重验资源来源 SHA 和目标冲突，资源全部发布并复验后才调用 `super.save`；Markdown 成功才发送 `markSaved` 和以匹配的 plan ID 确认资源清单。
 

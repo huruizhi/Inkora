@@ -578,6 +578,10 @@ it("root070: rejected image descriptors never update the current document DOM", 
   h.receive({
     type: "setImageDescriptors", requestID: "image-stale-descriptors", documentID: "image-old",
     revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    imageOwnership: {
+      documentID: "image-old", revision: 0, raw: "![local](./a.png)\n",
+      imageURIs: ["./a.png"],
+    },
     descriptors: [{ href: "./a.png", status: "ready",
       displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174001" }],
   });
@@ -587,12 +591,124 @@ it("root070: rejected image descriptors never update the current document DOM", 
   h.receive({
     type: "setImageDescriptors", requestID: "image-valid-descriptors", documentID: "image-current",
     revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    imageOwnership: {
+      documentID: "image-current", revision: 0, raw: "![local](./a.png)\n",
+      imageURIs: ["./a.png"],
+    },
     descriptors: [{ href: "./a.png", status: "ready",
       displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174003" }],
   });
   expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 0, dirty: false } });
   expect(h.editorHost().querySelector(".image-node img")?.getAttribute("src"))
     .toBe("inkora-asset://resource/123e4567-e89b-12d3-a456-426614174003");
+});
+
+it("INK-M1-090: descriptors independently reject same-revision raw and owner changes", async () => {
+  const h = await bootMain();
+  const raw = "![local](./a.png)\n";
+  h.receive({
+    type: "loadDocument", requestID: "proof-load", documentID: "proof-doc",
+    revision: 4, text: raw,
+  });
+  const before = h.editorHost().innerHTML;
+  for (const mismatch of [
+    { requestID: "proof-raw-mismatch", proofRaw: "![changed](./a.png)\n", owners: ["./a.png"] },
+    { requestID: "proof-owner-mismatch", proofRaw: raw, owners: ["./b.png"] },
+  ]) {
+    h.receive({
+      type: "setImageDescriptors", requestID: mismatch.requestID, documentID: "proof-doc",
+      revision: 4, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+      imageOwnership: {
+        documentID: "proof-doc", revision: 4, raw: mismatch.proofRaw,
+        imageURIs: mismatch.owners,
+      },
+      descriptors: [{
+        href: mismatch.owners[0], status: "ready",
+        displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000",
+      }],
+    });
+
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "editorError", requestID: mismatch.requestID, code: "stale_revision",
+    });
+    expect(h.editorHost().innerHTML).toBe(before);
+  }
+});
+
+it("INK-M1-090: descriptors reject a matching proof while composition is active", async () => {
+  const h = await bootMain();
+  const raw = "![local](./a.png)\n";
+  h.receive({
+    type: "loadDocument", requestID: "proof-composition-load", documentID: "proof-composition",
+    revision: 2, text: raw,
+  });
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  const before = h.editorHost().innerHTML;
+  h.receive({
+    type: "setImageDescriptors", requestID: "proof-composition-descriptors",
+    documentID: "proof-composition", revision: 2,
+    documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    imageOwnership: {
+      documentID: "proof-composition", revision: 2, raw, imageURIs: ["./a.png"],
+    },
+    descriptors: [{ href: "./a.png", status: "missing" }],
+  });
+
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "editorError", requestID: "proof-composition-descriptors",
+    code: "editor_not_ready",
+  });
+  expect(h.editorHost().innerHTML).toBe(before);
+});
+
+it("INK-M1-090: descriptor proof cannot cross a load or asset epoch", async () => {
+  const h = await bootMain();
+  const firstRaw = "![first](./first.png)\n";
+  const secondRaw = "![second](./second.png)\n";
+  h.receive({
+    type: "loadDocument", requestID: "proof-first-load", documentID: "proof-first",
+    revision: 0, text: firstRaw,
+  });
+  h.receive({
+    type: "loadDocument", requestID: "proof-second-load", documentID: "proof-second",
+    revision: 0, text: secondRaw,
+  });
+  const afterLoad = h.editorHost().innerHTML;
+  h.receive({
+    type: "setImageDescriptors", requestID: "proof-cross-load", documentID: "proof-first",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174020",
+    imageOwnership: {
+      documentID: "proof-first", revision: 0, raw: firstRaw, imageURIs: ["./first.png"],
+    },
+    descriptors: [{ href: "./first.png", status: "missing" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "editorError", requestID: "proof-cross-load", code: "stale_revision",
+  });
+  expect(h.editorHost().innerHTML).toBe(afterLoad);
+
+  const proof = {
+    documentID: "proof-second", revision: 0, raw: secondRaw, imageURIs: ["./second.png"],
+  };
+  h.receive({
+    type: "setImageDescriptors", requestID: "proof-epoch-bind", documentID: "proof-second",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174021",
+    imageOwnership: proof,
+    descriptors: [{ href: "./second.png", status: "missing" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged" });
+  const bound = h.editorHost().innerHTML;
+  h.receive({
+    type: "setImageDescriptors", requestID: "proof-cross-epoch", documentID: "proof-second",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174022",
+    imageOwnership: proof,
+    descriptors: [{ href: "./second.png", status: "unsupported" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "editorError", requestID: "proof-cross-epoch", code: "command_rejected",
+  });
+  expect(h.editorHost().innerHTML).toBe(bound);
 });
 
 it("root070: image import preserves an active link-field composition", async () => {
@@ -659,17 +775,28 @@ it("INK-M1-077: first-save retry follows the current asset owner through the bri
   });
   h.receive({
     type: "prepareImageSave", requestID: "retry-first", documentID, revision: 1,
+    imageOwnership: {
+      documentID, revision: 1, raw: `![图](${draft})`, imageURIs: [draft],
+    },
     documentEpoch, rewrites: [{ assetID, from: draft, to: "Note.assets/a.png" }],
   });
   expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 2 } });
 
   h.receive({
     type: "prepareImageSave", requestID: "retry-same", documentID, revision: 2,
+    imageOwnership: {
+      documentID, revision: 2, raw: "![图](Note.assets/a.png)",
+      imageURIs: ["Note.assets/a.png"],
+    },
     documentEpoch, rewrites: [{ assetID, from: draft, to: "Note.assets/a.png" }],
   });
   expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 2 } });
   h.receive({
     type: "prepareImageSave", requestID: "retry-other", documentID, revision: 2,
+    imageOwnership: {
+      documentID, revision: 2, raw: "![图](Note.assets/a.png)",
+      imageURIs: ["Note.assets/a.png"],
+    },
     documentEpoch, rewrites: [{ assetID, from: draft, to: "Other.assets/a.png" }],
   });
   expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 3 } });
@@ -749,6 +876,9 @@ it("INK-M1-083: image access carries the current canonical owner proof", async (
   h.receive({
     type: "setImageDescriptors", requestID: "access-descriptor", documentID: "access-doc",
     revision: 2, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    imageOwnership: {
+      documentID: "access-doc", revision: 2, raw, imageURIs: ["Old.assets/a.png"],
+    },
     descriptors: [{ href: "Old.assets/a.png", status: "denied", displayURL: null }],
   });
   h.editorHost().querySelector<HTMLButtonElement>(".image-access-button")!.click();
