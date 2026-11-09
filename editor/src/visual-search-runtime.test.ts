@@ -210,3 +210,45 @@ it("root066: partial link ownership remains local during a cross-boundary match"
   expect(runtime.replaceVisualSearch(raw,runtime.search("pha omega",0),"replace-all","beta").ok).toBe(true);
   expect(runtime.getText()).toBe('[albeta](./x "keep")\n');
 });
+
+
+it.each(["navigate", "replace"] as const)(
+  "rejects a prior content version after edit/Undo returns the same raw: %s", action => {
+    const raw = "alpha\n";
+    const { runtime, parent } = boot(raw);
+    const stale = runtime.search("alpha", 10);
+    expect(runtime.enterSourceMode()).toBe(true);
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.value = "beta\n";
+    const ownerWindow = area.ownerDocument.defaultView!;
+    area.dispatchEvent(new ownerWindow.Event("input", { bubbles: true }));
+    expect(runtime.applySourceDraft()).toBe(true);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.cancelSourceDraft()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    const before = runtime.status;
+    const outcome = action === "navigate"
+      ? runtime.navigateVisualSearch(raw, stale, { kind: "index", matchIndex: 0 })
+      : runtime.replaceVisualSearch(raw, stale, "replace-all", "wrong");
+    expect(outcome).toEqual({ ok: false, message: "查找结果已过期" });
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.status).toEqual(before);
+    const fresh = runtime.search("alpha", 12);
+    expect(runtime.replaceVisualSearch(raw, JSON.parse(JSON.stringify(fresh)), "replace-all", "ok"))
+      .toEqual({ ok: true, value: { changed: true, replacedCount: 1 } });
+    expect(runtime.getText()).toBe("ok\n");
+  },
+);
+
+it.each([
+  "[**alpha *omega***](/url)\n",
+  "***alpha***\n",
+  "***alpha*** and **omega**\n",
+  "Text **alpha** [*omega*](/url)\n",
+  "[*alpha*](/url) **omega**\n",
+  "**alpha [omega](/url)**\n",
+])("keeps nested/adjacent emphasis and link ownership auditable in %j", raw => {
+  const { runtime } = boot(raw);
+  expect(runtime.status.saveEligible).toBe(true);
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: raw });
+});

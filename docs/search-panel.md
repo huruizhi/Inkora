@@ -42,3 +42,5 @@
 - 当前补正只隔离 Native `executeCommand` 对**文档**历史的误路由；查询框自身的原生 Cmd-Z/文字 undo 路由没有真实 WKWebView 证据，未在本任务验收，也不宣称已实现完整 query undo。
 - 查询/大小写/结果均私有于 Web 面板，不持久化到用户偏好或磁盘。
 - 真实 WKWebView 渲染、真实 IME 组合、实际布局与 VoiceOver 的最终体验验收保留给管理者阶段；自动化验证为 jsdom DOM 级。磁盘保存/重开也不属于本任务结论。
+
+- runtime查找结果同时绑定当前内容版本；编辑后Undo/Redo即便回到相同字节也使旧结果失效。单纯选区、no-op及保存回执不改变该版本。

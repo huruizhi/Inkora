@@ -72,6 +72,7 @@ export interface RuntimeSearchBinding {
   readonly revision: number;
   readonly epoch: number;
   readonly raw: string;
+  readonly contentVersion: number;
 }
 
 export type RuntimeSearchResult = SourceSearchResult & {
@@ -187,7 +188,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     const result = this.mode === "visual"
       ? searchVisualText(indexVisualText(this.session.state.doc), revision, query, options)
       : searchSource({ raw: this.session.currentRaw, revision }, query, options);
-    return captureRuntimeSearchResult(result, this.searchIdentity, this.session.currentRaw);
+    return captureRuntimeSearchResult(result, this.searchIdentity, this.session.currentRaw, this.session.version);
   }
 
   navigateVisualSearch(raw: string, result: SourceSearchResult, request: VisualSearchNavigation): SourceNavigationResult<VisualSearchLocation> {
@@ -195,7 +196,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     if (!view || this.composing || this.session.draftDirty || this.status.unresolved) {
       return { ok: false, message: "当前输入尚未稳定，不能定位查找结果" };
     }
-    if (!ownsRuntimeSearchResult(result, this.searchIdentity, this.session.currentRaw)) {
+    if (!ownsRuntimeSearchResult(result, this.searchIdentity, this.session.currentRaw, this.session.version)) {
       return { ok: false, message: "查找结果已过期" };
     }
     if (raw !== this.session.currentRaw) return { ok: false, message: "文档已变化，请重新查找" };
@@ -229,7 +230,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     if (!view || this.composing || !this.session.saveEligible || this.session.draft) {
       return { ok: false, message: "当前输入尚未稳定，不能执行可视替换" };
     }
-    if (!ownsRuntimeSearchResult(result, this.searchIdentity, this.session.currentRaw)) {
+    if (!ownsRuntimeSearchResult(result, this.searchIdentity, this.session.currentRaw, this.session.version)) {
       return { ok: false, message: "查找结果已过期" };
     }
     if (raw !== this.session.currentRaw) return { ok: false, message: "文档已变化，请重新查找" };
@@ -823,6 +824,7 @@ function captureRuntimeSearchResult(
   result: SourceSearchResult,
   identity: { readonly documentID: string; readonly epoch: number },
   raw: string,
+  contentVersion = 0,
 ): RuntimeSearchResult {
   return {
     ...result,
@@ -831,6 +833,7 @@ function captureRuntimeSearchResult(
       revision: result.source.revision,
       epoch: identity.epoch,
       raw,
+      contentVersion,
     },
   };
 }
@@ -839,11 +842,12 @@ function ownsRuntimeSearchResult(
   result: SourceSearchResult,
   identity: { readonly documentID: string; readonly epoch: number },
   raw: string,
+  contentVersion: number,
 ): boolean {
   const binding = (result as Partial<RuntimeSearchResult>).runtimeBinding;
   return binding !== undefined && binding.documentID === identity.documentID &&
     binding.epoch === identity.epoch && binding.revision === result.source.revision &&
-    binding.raw === raw;
+    binding.raw === raw && binding.contentVersion === contentVersion;
 }
 
 // EOL-003: keep exact bytes independent of textarea's LF normalization.
