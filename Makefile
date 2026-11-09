@@ -248,6 +248,7 @@ bench-production-model: perf-samples
 bench-production-webview: perf-samples editor-build generate require-xcode prepare-artifacts
 	rm -rf "$(ARTIFACTS_DIR)/test-results/production-perf.xcresult"
 	mkdir -p "$(CURDIR)/build/production-perf"
+	rm -f "$(CURDIR)/build/production-perf/webview.json"
 	node scripts/perf/env-info.mjs --output "$(CURDIR)/build/production-perf/environment.json"
 	env INKORA_PERF=1 TEST_RUNNER_INKORA_PERF=1 \
 		TEST_RUNNER_INKORA_PRODUCTION_PERF_SIZES="$(PRODUCTION_WK_SIZES)" \

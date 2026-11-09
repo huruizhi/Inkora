@@ -9,7 +9,7 @@ import {
   type LinkEditBinding,
 } from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
-import type { SourceAuthoritySession } from "./source-authority";
+import { SourceAuthoritySession } from "./source-authority";
 import { createPasteTransaction } from "./editor-session";
 import {
   setHeading,
@@ -59,6 +59,88 @@ function createRuntime(raw: string, options: EditorRuntimeOptions = {}): {
 }
 
 describe("production source authority runtime", () => {
+  it("rebuilds auditable projections after source, history, reopen, and image owner changes", () => {
+    const original = '[one](./old) tail\r\n';
+    const changed = '[one](./new) tail\r\n';
+    const session = new SourceAuthoritySession(original);
+    expect(session.saveEligible).toBe(true);
+    expect(session.setRawSelection(2)).toBe(true);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./old");
+
+    expect(session.beginSource()).toBe(true);
+    expect(session.updateDraft(changed)).toBe(true);
+    expect(session.cancelSource()).toBe(true);
+    expect(session.currentRaw).toBe(original);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./old");
+    expect(session.stateReport()).toMatchObject({
+      saveEligible: true,
+      documentDirty: false,
+      version: 0,
+      undo: 0,
+      redo: 0,
+    });
+
+    expect(session.beginSource()).toBe(true);
+    expect(session.updateDraft(changed)).toBe(true);
+    expect(session.applySource()).toBe(true);
+    expect(session.currentRaw).toBe(changed);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./new");
+    expect(session.saveEligible).toBe(true);
+    expect(session.undo()).toBe(true);
+    expect(session.currentRaw).toBe(original);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./old");
+    expect(session.redo()).toBe(true);
+    expect(session.currentRaw).toBe(changed);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./new");
+
+    expect(session.reopen(original, { anchor: 2, head: 2, affinity: "right" })).toBe(true);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./old");
+    expect(session.stateReport()).toMatchObject({
+      currentRaw: original,
+      savedRaw: original,
+      saveEligible: true,
+      documentDirty: false,
+      version: 0,
+      undo: 0,
+      redo: 0,
+    });
+
+    const graphemes = "a👩‍💻e\u0301z\n";
+    expect(session.reopen(graphemes)).toBe(true);
+    expect(session.setRawSelection(graphemes.indexOf("‍"))).toBe(false);
+    expect(session.setRawSelection(graphemes.indexOf("e"))).toBe(true);
+    expect(session.reopen("a\r\nb\n")).toBe(true);
+    expect(session.setRawSelection(2)).toBe(false);
+    expect(session.setRawSelection(3)).toBe(true);
+
+    expect(session.reopen("tail\n", { anchor: 0, head: 0, affinity: "right" })).toBe(true);
+    expect(session.insertImage({
+      assetID: "asset-1",
+      uri: "inkora-draft://asset/1",
+      alt: "图",
+      title: null,
+    })).toBe(true);
+    const draftImage = "![图](inkora-draft://asset/1)tail\n";
+    expect(session.currentRaw).toBe(draftImage);
+    expect(session.rewriteManagedImages([{
+      assetID: "asset-1",
+      from: "inkora-draft://asset/1",
+      to: "doc.assets/final.png",
+    }])).toBe(true);
+    const finalImage = "![图](doc.assets/final.png)tail\n";
+    expect(session.currentRaw).toBe(finalImage);
+    expect(session.saveEligible).toBe(true);
+    expect(session.undo()).toBe(true);
+    expect(session.currentRaw).toBe(draftImage);
+    expect(session.redo()).toBe(true);
+    expect(session.currentRaw).toBe(finalImage);
+    expect(session.stateReport()).toMatchObject({
+      saveEligible: true,
+      documentDirty: true,
+      unresolvedIntent: null,
+    });
+  });
+
   it("types in the unchanged code caret after a language attribute change", () => {
     const { dom, runtime } = createRuntime("```python\nabc\n```\n");
     const view = (runtime as unknown as { view: EditorView }).view;
@@ -490,6 +572,34 @@ describe("production source authority runtime", () => {
     expect(created.runtime.snapshotText()).toEqual({ ok: true, value: expected });
     expect(created.runtime.undo()).toBe(true);
     expect(created.runtime.getText()).toBe(raw);
+    created.runtime.destroy();
+  });
+
+  it("isolates one indexed owner without changing neighboring links or history contracts", () => {
+    const raw = '[zero](./same) [one](./same) [two][ref] [target][ref] [![nested](./img.png)](./outer)\r\n\r\n[ref]: ./shared "title"\r\n';
+    const created = requestLinkAt(raw, { anchor: 20, head: 14 });
+    const sourceSession = created.session as unknown as SourceAuthoritySession;
+    expect(created.binding.target).toMatchObject({
+      kind: "reference",
+      href: "./shared",
+      title: "title",
+      referenceUsageCount: 2,
+    });
+
+    expect(created.runtime.applyLinkEdit(created.binding, { href: "./new", title: "新" }))
+      .toEqual({ ok: true, value: { changed: true } });
+    const expected = '[zero](./same) [one](./same) [two][ref] [target](./new "新") [![nested](./img.png)](./outer)\r\n\r\n[ref]: ./shared "title"\r\n';
+    expect(created.runtime.getText()).toBe(expected);
+    expect(created.runtime.snapshotText()).toEqual({ ok: true, value: expected });
+    expect([created.session.state.selection.anchor, created.session.state.selection.head]).toEqual([20, 14]);
+    expect(sourceSession.status).toMatchObject({ revision: 1, dirty: true, canUndo: true, canRedo: false });
+    expect(created.runtime.status).toMatchObject({ saveEligible: true, unresolved: false });
+
+    expect(created.runtime.undo()).toBe(true);
+    expect(created.runtime.getText()).toBe(raw);
+    expect(created.runtime.redo()).toBe(true);
+    expect(created.runtime.getText()).toBe(expected);
+    expect(created.runtime.status).toMatchObject({ dirty: true, saveEligible: true, canUndo: true, canRedo: false });
     created.runtime.destroy();
   });
 

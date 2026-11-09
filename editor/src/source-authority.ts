@@ -496,6 +496,13 @@ export class SourceAuthoritySession {
   private readonly options: EditorStateOptions;
   private preferredEol: '\r\n' | '\n';
   private managedImageOwners = new Map<string, string>();
+  private projectionContextCache: {
+    raw: string;
+    doc: PMNode;
+    projection: ProjectionAudit;
+    context: ProjectionContext;
+  } | null = null;
+  private rawBoundaryCache: { raw: string; boundaries: ReadonlySet<number> } | null = null;
 
   constructor(
     raw: string,
@@ -542,6 +549,20 @@ export class SourceAuthoritySession {
     };
   }
 
+  private boundaryError(raw: string, offset: number): string | null {
+    let cached = this.rawBoundaryCache;
+    if (!cached || cached.raw !== raw) {
+      const boundaries = new Set<number>([0, raw.length]);
+      for (const part of segmenter.segment(raw)) {
+        boundaries.add(part.index);
+        boundaries.add(part.index + part.segment.length);
+      }
+      cached = { raw, boundaries };
+      this.rawBoundaryCache = cached;
+    }
+    return rawBoundaryError(raw, offset, cached.boundaries);
+  }
+
   private restore(snapshot: Snapshot): void {
     this.currentRaw = snapshot.raw;
     this.state = snapshot.state;
@@ -553,9 +574,22 @@ export class SourceAuthoritySession {
   }
 
   private projectionContext(state = this.state, projection = this.projection): ProjectionContext {
-    const parsed = parse(this.currentRaw);
-    const base = baseLedger(this.currentRaw, parsed);
-    if (parsed.doc.eq(state.doc)) return { ledger: base, ranges: parsed.ranges, parsedDoc: parsed.doc };
+    const raw = this.currentRaw;
+    const cached = this.projectionContextCache;
+    if (cached && cached.raw === raw && cached.doc === state.doc && cached.projection === projection) {
+      return cached.context;
+    }
+    const remember = (context: ProjectionContext): ProjectionContext => {
+      if (raw === this.currentRaw && state.doc === this.state.doc && projection === this.projection) {
+        this.projectionContextCache = { raw, doc: state.doc, projection, context };
+      }
+      return context;
+    };
+    const parsed = parse(raw);
+    const base = baseLedger(raw, parsed);
+    if (parsed.doc.eq(state.doc)) {
+      return remember({ ledger: base, ranges: parsed.ranges, parsedDoc: parsed.doc });
+    }
     if (!comparableDoc(parsed.doc).eq(comparableDoc(state.doc))) {
       throw Error('当前 PM 投影与原文派生语义不满足有界投影关系');
     }
@@ -624,7 +658,7 @@ export class SourceAuthoritySession {
           : { ...link, visual: { from: link.visual.from + shift, to: link.visual.to + shift } };
       }),
     };
-    return { ledger, ranges, parsedDoc: parsed.doc };
+    return remember({ ledger, ranges, parsedDoc: parsed.doc });
   }
 
   private projectionIsAuditable(): boolean {
@@ -775,23 +809,28 @@ export class SourceAuthoritySession {
   }
 
   setRawSelection(anchor: number, head = anchor, affinity: Affinity = 'right'): boolean {
-    const anchorError = rawBoundaryError(this.currentRaw, anchor);
-    const headError = rawBoundaryError(this.currentRaw, head);
+    const anchorError = this.boundaryError(this.currentRaw, anchor);
+    const headError = this.boundaryError(this.currentRaw, head);
     if (anchorError || headError) {
       this.diagnostic = anchorError ?? headError ?? '非法原文边界';
       return false;
     }
     try {
       const mappedAnchor = this.syntaxAwareRawMap(anchor, anchor === head ? affinity : anchor > head ? 'right' : 'left');
-      const mappedHead = this.syntaxAwareRawMap(head, anchor === head ? affinity : anchor > head ? 'left' : 'right');
+      const mappedHead = anchor === head
+        ? mappedAnchor
+        : this.syntaxAwareRawMap(head, anchor > head ? 'left' : 'right');
       const selection = TextSelection.create(this.state.doc, mappedAnchor.visual, mappedHead.visual);
       this.state = this.state.apply(this.state.tr.setSelection(selection));
       this.rawSelection = { anchor, head, affinity };
-      this.projection.anchors = dedupeAnchors([
-        ...this.projection.anchors,
-        { visual: selection.anchor, raw: anchor, reason: mappedAnchor.note },
-        { visual: selection.head, raw: head, reason: mappedHead.note },
-      ]);
+      this.projection = {
+        ...this.projection,
+        anchors: dedupeAnchors([
+          ...this.projection.anchors,
+          { visual: selection.anchor, raw: anchor, reason: mappedAnchor.note },
+          { visual: selection.head, raw: head, reason: mappedHead.note },
+        ]),
+      };
       this.diagnostic = '';
       return true;
     } catch (error) {
@@ -801,8 +840,8 @@ export class SourceAuthoritySession {
   }
 
   setSourceSelection(anchor: number, head = anchor, affinity: Affinity = 'right'): boolean {
-    const anchorError = rawBoundaryError(this.currentRaw, anchor);
-    const headError = rawBoundaryError(this.currentRaw, head);
+    const anchorError = this.boundaryError(this.currentRaw, anchor);
+    const headError = this.boundaryError(this.currentRaw, head);
     if (anchorError || headError) {
       this.diagnostic = anchorError ?? headError ?? '非法原文边界';
       return false;
@@ -906,7 +945,7 @@ export class SourceAuthoritySession {
     if (sourceCaret !== undefined) mappedAnchors.push({ visual: step.head, raw: sourceCaret, reason });
     for (const anchor of mappedAnchors) {
       if (anchor.visual < 0 || anchor.visual > target.doc.content.size) throw Error(`投影 anchor 的 PM 位置 ${anchor.visual} 越界`);
-      const boundaryError = rawBoundaryError(raw, anchor.raw);
+      const boundaryError = this.boundaryError(raw, anchor.raw);
       if (boundaryError) throw Error(`投影 anchor 映射失败：${boundaryError}`);
     }
 
@@ -968,11 +1007,14 @@ export class SourceAuthoritySession {
         const rawSelection = this.updateSelectionFromState(this.state.apply(transaction));
         this.state = this.state.apply(transaction);
         this.rawSelection = rawSelection;
-        this.projection.anchors = dedupeAnchors([
-          ...this.projection.anchors,
-          { visual: this.state.selection.anchor, raw: rawSelection.anchor, reason: '真实 PM 选区移动' },
-          { visual: this.state.selection.head, raw: rawSelection.head, reason: '真实 PM 选区移动' },
-        ]);
+        this.projection = {
+          ...this.projection,
+          anchors: dedupeAnchors([
+            ...this.projection.anchors,
+            { visual: this.state.selection.anchor, raw: rawSelection.anchor, reason: '真实 PM 选区移动' },
+            { visual: this.state.selection.head, raw: rawSelection.head, reason: '真实 PM 选区移动' },
+          ]),
+        };
         if (compositionId !== undefined) this.compactComposition();
         return true;
       } catch (error) {
@@ -1404,8 +1446,8 @@ export class SourceAuthoritySession {
     if (!this.draft) return false;
     const draft = this.draft;
     if (draft.raw === this.currentRaw) { this.draft = null; return true; }
-    const anchorError = rawBoundaryError(draft.raw, draft.selection.anchor);
-    const headError = rawBoundaryError(draft.raw, draft.selection.head);
+    const anchorError = this.boundaryError(draft.raw, draft.selection.anchor);
+    const headError = this.boundaryError(draft.raw, draft.selection.head);
     if (anchorError || headError) { this.diagnostic = anchorError ?? headError ?? '非法源码选区'; return false; }
     const before = this.snapshot();
     try {

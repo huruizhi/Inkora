@@ -116,3 +116,30 @@ Node的large及large-crlf均未在60秒整组采集上限内完成，完整命�
 实际V8 CPU profile的主要self样本在`buildSourceLedger`的owner组装及每owner全表扫描，另有重复token/range扫描；保存资格重复建账本放大此成本。此为定位线索，不是已优化或最坏复杂度证明。后续必须在接回075/图片最终候选后，以同字节、同工作流复测；缓存/索引不得绕过source/doc/anchor/owner证明、跨文档身份或安全拒绝。
 
 Native写盘、真实屏幕绘制、系统composition/候选响应、最低系统与支持范围仍按性能票15补齐；hostless输入是JS execCommand普通输入，不当作实体键盘中文证据。源码保存点的Node时间也不等于NSDocument安全写盘时间。未运行`bench-full`或App启动测量。
+
+## Source Ledger 热点优化复测（INK-M1-079，2026-11-09）
+
+079 在固定起点 `4de28e9d` 先重跑当前基线，再对 owner/range 建立有界一次索引，并为同一
+raw、PM doc 与 projection 建立严格按值/对象失效的 context；没有改变输入、预热/测量次数、
+60 秒监督上限或完整原文断言。原始 JSON 位于 [`docs/evidence/INK-M1-079/`](evidence/INK-M1-079/)。
+
+| 测量边界 | 起点 medium 中位数 | 优化后 medium 中位数 | 优化后 large / large-crlf 中位数 |
+| --- | ---: | ---: | ---: |
+| Node 可审计打开 | 148.54ms | 53.79ms | 466.17 / 498.48ms |
+| Node 选区+普通输入+保存资格 | 630.26ms | 147.73ms | 1271.04 / 1282.50ms |
+| Node 保存资格+原文读取 | 135.13ms | 0.004ms | 0.006 / 0.005ms |
+| 离屏 WK 打开到精确快照回执 | 716.99ms | 326.99ms | 1712.87 / 1682.02ms |
+| 离屏 WK 普通输入到精确快照回执 | 945.95ms | 179.05ms | 1245.51 / 1246.57ms |
+| 离屏 WK 快照往返 | 119.04ms | 19.18ms | 178.96 / 184.24ms |
+| 离屏 WK 源码 no-op 往返+快照 | 1686.04ms | 60.59ms | 456.87 / 461.87ms |
+
+起点 model 的 large/large-crlf 仍按监督器规则各自 60 秒超时并使命令非零；优化后五个
+vector 全部完成。medium 普通输入达到了本票“尽量 <200ms”的本机方向性目标；1MB 普通
+输入仍约 1.25 秒，未达到“尽量 <1s”，不能写成预算通过。最终 WK 是一次命令采集四尺寸，
+1 次预热+3 次工作流、每工作流 5 次 snapshot；少量样本的 p95 仍只是顺序统计值。
+
+profile 显示 owner 全表扫描消除后，剩余成本分散在每个新候选 raw 的完整 parse、PM 遍历、
+账本建立与 Unicode 边界证明。缓存只复用同一 raw/doc/projection 的已证明 context；source
+apply、拒绝恢复、Undo/Redo、reopen、anchor/provenance 变化和图片 owner 改写均有公共行为
+回归。规模跑完不证明最坏复杂度已线性化；真实 paint、物理 IME、NSDocument 写盘和最低
+系统仍不在本层证据内。
