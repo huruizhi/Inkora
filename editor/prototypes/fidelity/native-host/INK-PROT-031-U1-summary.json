@@ -1,0 +1,29 @@
+{
+  "check": "M0-U1",
+  "prototypeCommit": "493e2b7cdbe982da02f4747e89a0cf52df3a770f",
+  "artifactBaseline": "1c586967039c2b03b2584a901a3afa077ee17fa7",
+  "bundleSha256": "7aaa2e7f7ff79104c01bf378dd79c959a084ba7a14ce480f82a978e26c23c807",
+  "layer": "real WKWebView, ordinary CUA input; not physical IME or NSDocument disk",
+  "runtimeSha256": "cb5beca74fdfc0fc4e4eee8dd4277c3dcade5453049ea1265d32aeb1dd606e0e",
+  "records": 45,
+  "malformedRaw": "a\n\n$$\nx\n\n",
+  "repairedRaw": "a\n\n$$\nx\n$$\n\n",
+  "observations": {
+    "pendingAndSaveRefusal": "PASS; original savedRaw unchanged and malformed raw retained",
+    "bodyAndProtectedFragment": "PASS in CUA AX; normal paragraph plus local protected block, no whole-document source fallback",
+    "sourceRepair": "PASS; closing fence added, caret explicitly put at normal paragraph raw1 before Apply",
+    "safeMemorySave": "PASS from CUA AX; revision2/history2 unchanged by Save",
+    "undoRepair": "PASS; revision3 pending/dirty/saveEligible=false, repaired savedRaw retained",
+    "redoRepair": "PASS; revision4 not pending/dirty=false/saveEligible=true"
+  },
+  "selectionScope": "pending source caret inside protected fragment is not claimed as precise visual mapping; repair return used normal paragraph anchor",
+  "cleanup": {
+    "stopped": [
+      44868
+    ],
+    "foregroundSession": 73507,
+    "exitCode": 143,
+    "uiLockReleased": true
+  },
+  "verdict": "U1 scoped chain passed; H1/H2/H3 still need physical evidence; M0 not passed"
+}

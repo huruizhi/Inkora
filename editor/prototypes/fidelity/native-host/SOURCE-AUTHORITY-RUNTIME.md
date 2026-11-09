@@ -53,3 +53,11 @@
 - 本轮没有源码区物理中文事件。后续源码检查由CUA输入ASCII source-check：草稿保持当前原文及revision/history不变，dirty草稿Undo拒绝且保留；Apply形成revision75/past18/future0，Undo76回原文、Redo77恢复，内存Save后revision77/past18不变且dirty=false。不是源码物理IME证明。
 
 最后状态已核对当前原文等于保存点，保护片段字节未变。管理者核实可执行文件绝对路径后停止自有PID31436，前台session43410退出143，UI锁释放，无验收宿主遗留。本次仍不证明NSDocument磁盘写盘、macOS14最低系统或M0全部门槛；后续开发可以推进独立模块，架构采纳与生产内核迁移不据此宣布完成。
+
+## U1异常保护补测：通过
+
+在同一固定bundle与项目UI锁内，由管理者普通CUA操作，无需真人输入：源码提交 `a+LF+LF+$$+LF+x+LF+LF` 后原文完整保留，正文a和局部保护块混排；pending=true、保存点击明确拒绝，原保存点仍a+LF，revision/history不变。主动源码补齐closing fence，选择普通正文raw1锚点返回后，pending=false且恢复保存资格。内存Save后revision2/history2不变，Undo到revision3再次pending/dirty/saveEligible=false，Redo到revision4恢复原文等于保存点、dirty=false/saveEligible=true。
+
+修复返回特意使用普通正文锚点，不把保护片段内部的精确光标映射记作通过。U1覆盖内容保全/保存阻断/主动修复/历史恢复状态，不补写H1/H2/H3物理输入法证据。
+
+45条独立原始记录见INK-PROT-031-U1-runtime.txt，SHA-256 `cb5beca74fdfc0fc4e4eee8dd4277c3dcade5453049ea1265d32aeb1dd606e0e`；结构化判据见INK-PROT-031-U1-summary.json。原501条真人日志SHA保持953c52ef…db7a48。自有宿主PID44868已停止，session73507退出143，UI锁释放。U1关闭，M0现余H1/H2/H3；NSDocument写盘及最低系统仍属后续产品/平台验收。
