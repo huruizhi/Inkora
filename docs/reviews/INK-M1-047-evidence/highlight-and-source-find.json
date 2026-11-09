@@ -1,0 +1,38 @@
+{
+  "reviewedHead": "f30ef346a35d1bee790abdb257e642db219f03d9",
+  "binarySHA256": "83fd95692ad7221106e4edb76e3c024621078ab437ff045184ef69c9cd852729",
+  "environment": "macOS 27.2 arm64, actual WKWebView, isolated UITesting bundle",
+  "fixture": {
+    "path": "/tmp/inkora-code-046-261bf0b0-07e3-4fa8-960a-48ce5c95790a/Code Review 046.md",
+    "sha256": "6285e6697d96405d0cc0dd3dbf571e9ec2574ee7f9488c42ac966a8ceff81e8a",
+    "bytes": 249
+  },
+  "savedCheck": {
+    "savedSHA256": "3f3badc404a3ed508e05a8a404070a6e731d08987dc4ae4ece60ccb31278e6d2",
+    "originalSHA256": "6285e6697d96405d0cc0dd3dbf571e9ec2574ee7f9488c42ac966a8ceff81e8a",
+    "exactSingleLanguageTokenReplacement": true,
+    "bom": true,
+    "crlfCount": 22,
+    "bytes": 248
+  },
+  "observed": [
+    "Python keywords/strings and TypeScript alias highlighted in real view",
+    "unknown language retains its token and script-looking text is literal",
+    "native select Python->Swift; source view retains extra info and whitespace",
+    "Undo->Python; Redo->Swift; Cmd-S writes exact expected single-token patch",
+    "close and reopen persisted Swift/ts/unknown tokens and code",
+    "source long doc: last outline title->Start-042 find Enter; body target visible below bounded results, query focused",
+    "close isolated App succeeded, owned process absent, UI lock released"
+  ],
+  "limitations": [
+    "CUA AX selectText on composite Markdown editor produced a shifted code range; native undo acts per typed character; this path not accepted as exact code selection evidence",
+    "temporary code edit was discarded only in owned fixture, persisted language test retained",
+    "no physical Chinese IME, VoiceOver or narrow-window evidence",
+    "049 not in this runtime binary"
+  ],
+  "tests": {
+    "editorFullIncludingBridge": 398,
+    "typecheck": "PASS",
+    "nativeBridgeCandidateXcresult": 9
+  }
+}
