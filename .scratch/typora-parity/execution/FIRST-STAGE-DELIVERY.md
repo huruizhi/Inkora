@@ -1,5 +1,9 @@
 # 首阶段基础功能：交付总表
 
+最新补充：100双轴完成，101 hard0/judgement1、102 Spec三类0；两报告原文见SOURCE-SAVE-REVIEW.md。101/102均备份核验并Agent/workspace两层回收，managed累计88，已无活动Paseo Agent。root提取重复证明构造为0b64d62，定向17绿、lint/build通过，将进入精确提交CI；此前完整720、Native179/Bridge14/15/Release/test-ci仍绑定a526，不重标新SHA。
+
+103独立task/INK-M1-103-canonical-protected-parser（基线e00）正在接parser-owned token evidence：脚注规则红先转为可见opaque，公共ledger归属检查又捕获同字节仍被definition-label/href重复拥有；账本消费同次accepted tokens/reference provenance后两条脚注控制绿，原720保持。callout在首个非引用物理行结束，原红转绿。inline atom仍未完成；新工作文件尚有已知失败，不把排除该工作文件的基线控制称为完整全绿。main仍11773c6，阶段与物理门槛未完成。
+
 用户已将当前目标设为“完成首阶段基础功能”。范围以03写作闭环票为准；不能用辅助模块合并、原型或非UI测试代替完整闭环。
 
 当前生产 main：`11773c66a6beef63b40f1f9191c7ef8656a27ad2`。PR #71核心、#72表格/任务、#73可视查找替换、#74本地图片生命周期、#75 GFM自动链接均已merge。PR75精确head `e20065c5e6e9f2f45567644d47d98959a5c6c624` 默认[CI42672764590 attempt2](https://github.com/huruizhi/Inkora/actions/runs/42672764590) success；editor713/713，默认非UI/Release-offline/lightbench通过，UI/full-bench明确skip。首轮GitHub在生成job前失败，未改工作流，同SHA重跑成功。096另实证V2保护边界3缺口，不能只等物理验收或据绿灯结束阶段；下述旧“当前/执行中”均为历史。
