@@ -2,7 +2,7 @@
 
 用户已将当前目标设为“完成首阶段基础功能”。范围以03写作闭环票为准；不能用辅助模块合并、原型或非UI测试代替完整闭环。
 
-当前生产 main：`15687430b7f2e5272975cc469e9c6ff30f0324f9`。PR #71核心、#72表格/任务、#73可视查找替换、#74本地图片生命周期均已merge；main整树与受检PR74 head `0bc5e2772a0bdd879509bce46998f1da309b4d99`一致，完整editor682/682、默认[CI42666505028](https://github.com/huruizhi/Inkora/actions/runs/42666505028) success。物理/最低系统/AX/性能预算与093自动链接缺口仍未完成；下述旧“当前/执行中”均为历史，以本节与最新执行状态为准。
+当前生产 main：`11773c66a6beef63b40f1f9191c7ef8656a27ad2`。PR #71核心、#72表格/任务、#73可视查找替换、#74本地图片生命周期、#75 GFM自动链接均已merge。PR75精确head `e20065c5e6e9f2f45567644d47d98959a5c6c624` 默认[CI42672764590 attempt2](https://github.com/huruizhi/Inkora/actions/runs/42672764590) success；editor713/713，默认非UI/Release-offline/lightbench通过，UI/full-bench明确skip。首轮GitHub在生成job前失败，未改工作流，同SHA重跑成功。096另实证V2保护边界3缺口，不能只等物理验收或据绿灯结束阶段；下述旧“当前/执行中”均为历史。
 
 | 能力 | 当前状态 | 交付前剩余事项 |
 | --- | --- | --- |
@@ -13,11 +13,17 @@
 | 可编辑表格/任务列表 | PR #72 已合 main，完整 editor 485/485、精确 CI success | 真实控件/物理输入/文件生命周期与 AX 验收 |
 | 本地图片 | PR #74已合main；canonical proof、恢复receipt、资源发布/迁移与真实hostless WK PNG解码均已回归 | 最新系统面板/跨启动bookmark/拖放粘贴/物理输入/文件窗口与最低系统验收 |
 | 代码高亮/语言选择 | 已合 main；有真实 WK 语言选择、字节及正式保存重开证据 | 新组合回归与最终集中验收 |
-| 高级语法保护混排/异常安全 | 生产接线已合 main | 新组合保护块邻接、含混阻断和主动源码修复回归 |
+| 高级语法保护混排/异常安全 | 部分生产接线；096公共审计3红1绿 | 脚注定义显示、callout精确边界、行内片段旁正文编辑须V2补齐，异常/修复及物理回归继续 |
 
 M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代替新生产组合的真实 WK/中文输入、文件与资源生命周期、键盘/AX及发布门槛。物理验收按用户“稍后”暂缓，不启动 GUI、不反复催促。导出、文件树、跨文件、主题及高级完整渲染仍后置。总目标保持 active。
 
-## 最新执行状态（2026-11-10，覆盖下述历史）
+## 最新：PR75交付与V2核查
+
+PR75已按既定增量授权合并，main11773c6。修正095后e20065c通过713项及精确CI；最终494文件tar SHA `27732f56cc3637dc0bf96f7d60b4d68c7aaec874b3014e88bc71a46f7bb1063e`，CI JSON/log另存archive，临时symlink已移除。094/095均已两层回收，累计84。
+
+096独立公开会话审计已提交5dbe618（只报告/冻结测试，产品仍156）：footnote定义没有opaque节点、callout吞lazy continuation、Wiki整段冻结正文；未闭合frontmatter/source repair控制通过。不是物理门槛替代，也未自动改写产品。097/098委员会仅只读分析V2统一边界；无profiles，实时inspect后Sol5.6 high/default与Sonnet5.5 high启动，Sonnet额度403立即归档，替换为Luna5.6 high/default复用098工作区。当前agent765de7ab / workspacewks_35cec0601ac647f2与agentf9965744 / workspacewks_c6668613ea434ddf，均禁止编辑/代码/测试/GUI/新agent，通知完成后先备份结论并回收。未把失败Sonnet当有效评审。
+
+## 历史执行状态（2026-11-10）
 
 当前 main为 **1568743**，PR74已合；root验证其整树与精确CI受检head **0bc5e27**一致。root组合完整editor **682/682**（含Bridge）、Native **186total/178passed/0fail/8skip**、Bridge双侧14/15、lint/Release-offline/test-ci通过。另新真实hostless WK PNG scheme→NodeView解码专项1/1；最终默认CI覆盖新增测试后精确head并success。UI/full-bench按政策skip，未据此宣称首阶段通过。
 

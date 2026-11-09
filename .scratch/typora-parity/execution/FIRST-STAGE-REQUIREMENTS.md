@@ -53,3 +53,7 @@ PR74精确head0bc5e27默认CI42666505028 success后，按既定增量交付授�
 ## 2026-11-10 自动链接候选
 
 093代码04b7f18、证据3e8b8e9，完整711、Native179/0/8、Bridge14/15、lint/Release-offline/test-ci及固定commit五组Node模型通过。覆盖SYN-S016及与表格/任务、Mod-K、查找替换、有向选区、源码/历史和synthetic composition的组合；原尖括号oracle不改。094/095双轴复核执行中，尚未进入main，不宣称S016交付完成。当前main仍1568743/PR74，实际物理与最低系统门槛仍未执行。
+
+## 2026-11-10 PR75与V2实证缺口
+
+PR75 e20065c经精确CI42672764590 attempt2成功后合main11773c6；S016完成非UI生产接线，713项通过，物理门槛不变。096公共SourceAuthoritySession核查4项3红1绿：脚注定义被reference gap隐藏、callout吞普通lazy行、Wiki所在整段无法直接编辑；未闭合frontmatter及源码修复为绿控。原“高级保护片段生产接线”不能代表canonical边界全部满足，下一步V2需统一accepted opaque span/诊断与真实inline atom，不能降低D/U目标或只剩UI待验。冻结原件在task/INK-REV-096@5dbe618；两名委员会正在只读规划。
