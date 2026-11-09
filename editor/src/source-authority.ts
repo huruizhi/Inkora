@@ -182,7 +182,7 @@ function nodeCount(doc: PMNode, type: string): number {
 }
 
 function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, projection: ProjectionAudit, plan: NativePlan, parsedDoc: PMNode, targetDoc: PMNode): string | null {
-  if (!['text', 'empty-text'].includes(plan.kind) || plan.patches.length !== 1) return null;
+  if (!['text', 'empty-text', 'projection-sync'].includes(plan.kind) || plan.patches.length !== 1) return null;
   const patch = plan.patches[0];
 
   if (patch.from !== patch.to) return null;
@@ -233,15 +233,22 @@ function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, project
     && projection.anchors.some(anchor => anchor.raw === patch.from);
   if (materializesAnchoredEmptyLine) return 'semantic-contract: insertion at an audited raw anchor materializes an empty line';
 
-  if (patch.insert !== ' ') return null;
-
-  const marker = beforeRaw.slice(rawLineStart, patch.from);
-  const activatesEmptyAtxHeading = /^#{1,6}$/.test(marker)
-    && patch.from === rawLineEnd
-    && nodeCount(parsedDoc, 'heading') === nodeCount(beforeDoc, 'heading') + 1
-    && nodeCount(targetDoc, 'heading') === nodeCount(beforeDoc, 'heading');
-  if (activatesEmptyAtxHeading) return `semantic-contract: ${marker.length}-level empty ATX heading whitespace activation`;
-  return null;
+  if (patch.insert === ' ') {
+    const marker = beforeRaw.slice(rawLineStart, patch.from);
+    const activatesEmptyAtxHeading = /^#{1,6}$/.test(marker)
+      && patch.from === rawLineEnd
+      && nodeCount(parsedDoc, 'heading') === nodeCount(beforeDoc, 'heading') + 1
+      && nodeCount(targetDoc, 'heading') === nodeCount(beforeDoc, 'heading');
+    if (activatesEmptyAtxHeading) return `semantic-contract: ${marker.length}-level empty ATX heading whitespace activation`;
+  }
+  // The source patch itself is already proven local, mapped and grapheme-safe.
+  // A plain insertion may activate or deactivate Markdown syntax while the PM
+  // transaction still describes the pre-insertion projection (input rules are
+  // allowed to run only after the text event). In that case the parser result
+  // is the derived projection of the accepted bytes, not a serializer escape
+  // hatch. Unknown/ambiguous candidates never reach this branch because the
+  // caller requires a clean parse before accepting the proof.
+  return `source-authoritative local insertion: ${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`;
 }
 
 function rawBoundaryError(raw: string, offset: number): string | null {

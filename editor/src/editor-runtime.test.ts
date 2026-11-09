@@ -50,6 +50,41 @@ function enterSource(runtime: EditorRuntime, parent: HTMLElement): HTMLTextAreaE
 }
 
 describe("editor runtime", () => {
+  it("preserves a no-op source caret across cancel and re-entry", () => {
+    const { parent } = stubBrowserEnvironment();
+    const runtime = createEditorRuntime(parent, "abc\n", () => {});
+    const area = enterSource(runtime, parent);
+    area.setSelectionRange(2, 2);
+
+    expect(runtime.cancelSourceDraft()).toBe(true);
+    const reopened = enterSource(runtime, parent);
+
+    expect([reopened.selectionStart, reopened.selectionEnd]).toEqual([2, 2]);
+    expect(runtime.getText()).toBe("abc\n");
+    expect(runtime.status).toMatchObject({ dirty: false, canUndo: false, canRedo: false });
+    runtime.destroy();
+  });
+
+  it("preserves a backward no-op source selection but discards a dirty draft selection", () => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const runtime = createEditorRuntime(parent, "abcd\n", () => {});
+    let area = enterSource(runtime, parent);
+    area.setSelectionRange(1, 3, "backward");
+    expect(runtime.cancelSourceDraft()).toBe(true);
+    area = enterSource(runtime, parent);
+    expect([area.selectionStart, area.selectionEnd, area.selectionDirection]).toEqual([1, 3, "backward"]);
+
+    area.value = "draft changed\n";
+    area.setSelectionRange(7, 7);
+    area.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    expect(runtime.cancelSourceDraft()).toBe(true);
+    area = enterSource(runtime, parent);
+    expect(area.value).toBe("abcd\n");
+    expect([area.selectionStart, area.selectionEnd, area.selectionDirection]).toEqual([1, 3, "backward"]);
+    expect(runtime.status).toMatchObject({ dirty: false, canUndo: false, canRedo: false });
+    runtime.destroy();
+  });
+
   it("captures replacement history selection by value independently of the caller plan", () => {
     const { dom, parent } = stubBrowserEnvironment();
     const raw = "<x>a</x>\n";
@@ -340,17 +375,13 @@ describe("editor runtime", () => {
   });
 
   it("preserves source composition and selection when native history is requested", () => {
-    const dom = new JSDOM("<!doctype html><main id='app'></main>");
-    Object.defineProperty(globalThis, "document", {
-      configurable: true,
-      value: dom.window.document,
-    });
-    const parent = dom.window.document.querySelector<HTMLElement>("#app")!;
+    const { dom, parent } = stubBrowserEnvironment();
     const states: unknown[] = [];
     const runtime = createEditorRuntime(parent, "<x>original</x>", (state) => states.push(state));
-    const editor = parent.querySelector("textarea")!;
+    const editor = enterSource(runtime, parent);
     editor.value = "<x>changed</x>";
     editor.dispatchEvent(new dom.window.Event("input"));
+    expect(runtime.applySourceDraft()).toBe(true);
     expect(runtime.undo()).toBe(true);
     editor.dispatchEvent(new dom.window.Event("compositionstart"));
     editor.value = "<x>中文</x>";
@@ -362,6 +393,7 @@ describe("editor runtime", () => {
     expect([editor.selectionStart, editor.selectionEnd]).toEqual([4, 5]);
     expect(states).toHaveLength(notifications);
     editor.dispatchEvent(new dom.window.Event("compositionend"));
+    expect(runtime.applySourceDraft()).toBe(true);
     expect(runtime.undo()).toBe(true);
     expect(editor.value).toBe("<x>original</x>");
     expect(runtime.redo()).toBe(true);
@@ -370,22 +402,17 @@ describe("editor runtime", () => {
   });
 
   it("keeps edits after a persisted source snapshot dirty", () => {
-    const dom = new JSDOM("<!doctype html><main id='app'></main>");
-    Object.defineProperty(globalThis, "document", {
-      configurable: true,
-      value: dom.window.document,
-    });
-    const parent = dom.window.document.querySelector<HTMLElement>("#app");
-    if (!parent) throw new Error("Missing test parent");
+    const { dom, parent } = stubBrowserEnvironment();
     const runtime = createEditorRuntime(parent, "<x>one</x>\n", () => {});
-    const textArea = parent.querySelector<HTMLTextAreaElement>("textarea");
-    if (!textArea) throw new Error("Expected source mode");
+    const textArea = enterSource(runtime, parent);
 
     textArea.value = "<x>two</x>\n";
     textArea.dispatchEvent(new dom.window.Event("input"));
+    expect(runtime.applySourceDraft()).toBe(true);
     const persisted = runtime.getText();
     textArea.value = "<x>three</x>\n";
     textArea.dispatchEvent(new dom.window.Event("input"));
+    expect(runtime.applySourceDraft()).toBe(true);
 
     runtime.markSaved(persisted);
 
@@ -394,21 +421,23 @@ describe("editor runtime", () => {
     runtime.destroy();
   });
 
-  it.each(["# Safe heading\r\n\nBody 👩‍💻\r\n", "# Heading\rBody"])("routes mixed or bare CR to source mode: %j", (original) => {
-    const dom = new JSDOM("<!doctype html><main id='app'></main>");
-    Object.defineProperty(globalThis, "document", {
-      configurable: true,
-      value: dom.window.document,
-    });
-    const parent = dom.window.document.querySelector<HTMLElement>("#app");
-    if (!parent) throw new Error("Missing test parent");
-
+  it("keeps mixed LF/CRLF on the visual source-authoritative path", () => {
+    const { parent } = stubBrowserEnvironment();
+    const original = "# Safe heading\r\n\nBody 👩‍💻\r\n";
     const runtime = createEditorRuntime(parent, original, () => {});
-    const textArea = parent.querySelector<HTMLTextAreaElement>("textarea");
-    if (!textArea) throw new Error("Expected source mode for CR document");
+    expect(parent.querySelector(".ProseMirror")).not.toBeNull();
+    expect(parent.querySelector("textarea")).toBeNull();
+    expect(runtime.getText()).toBe(original);
+    runtime.destroy();
+  });
+
+  it("keeps bare CR on the explicit read-only source path", () => {
+    const { parent } = stubBrowserEnvironment();
+    const original = "# Heading\rBody";
+    const runtime = createEditorRuntime(parent, original, () => {});
+    expect(parent.querySelector<HTMLTextAreaElement>("textarea")?.readOnly).toBe(true);
     expect(parent.querySelector(".ProseMirror")).toBeNull();
     expect(runtime.getText()).toBe(original);
-
     runtime.destroy();
   });
 

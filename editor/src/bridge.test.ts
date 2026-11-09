@@ -264,6 +264,48 @@ describe("Bridge protocol v1 contracts", () => {
     ).toMatchObject({ type: "editorError", code: "stale_revision" });
   });
 
+  it("validates every saved receipt before running its side effect", () => {
+    const session = new EditorProtocolSession();
+    session.loadDocument({
+      protocolVersion: 1,
+      type: "loadDocument",
+      requestID: "load-side-effect",
+      documentID: "doc-side-effect",
+      revision: 2,
+      text: "before",
+    });
+    let applied = 0;
+    let stateReads = 0;
+    const editable = () => {
+      stateReads += 1;
+      return { dirty: false, canUndo: true, canRedo: false };
+    };
+    const apply = () => { applied += 1; };
+
+    expect(session.markSaved({
+      protocolVersion: 1, type: "markSaved", requestID: "wrong-document",
+      documentID: "other", revision: 2, text: "wrong",
+    }, editable, apply)).toMatchObject({ type: "editorError", code: "stale_revision" });
+    expect(session.markSaved({
+      protocolVersion: 1, type: "markSaved", requestID: "ahead",
+      documentID: "doc-side-effect", revision: 3, text: "future",
+    }, editable, apply)).toMatchObject({ type: "editorError", code: "stale_revision" });
+    expect({ applied, stateReads }).toEqual({ applied: 0, stateReads: 0 });
+
+    const accepted = {
+      protocolVersion: 1 as const, type: "markSaved" as const, requestID: "accepted",
+      documentID: "doc-side-effect", revision: 2, text: "persisted",
+    };
+    expect(session.markSaved(accepted, editable, apply)).toMatchObject({
+      type: "stateChanged", state: { revision: 2, dirty: false },
+    });
+    expect({ applied, stateReads }).toEqual({ applied: 1, stateReads: 1 });
+    expect(session.markSaved(accepted, editable, apply)).toMatchObject({
+      type: "editorError", code: "request_conflict",
+    });
+    expect({ applied, stateReads }).toEqual({ applied: 1, stateReads: 1 });
+  });
+
   it("classifies errors into retry, notify, and stop-saving actions", () => {
     expect(recoveryActionFor("editor_not_ready")).toBe("retry");
     expect(recoveryActionFor("stale_revision")).toBe("retry");

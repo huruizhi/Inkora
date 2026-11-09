@@ -511,11 +511,11 @@ window.inkora = {
         case "markSaved":
           executingCommand = true;
           try {
-            runtime?.markSaved(command.text);
             postToNative(
               session.markSaved(
                 command,
-                runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+                () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+                () => runtime?.markSaved(command.text),
               ),
             );
           } finally {

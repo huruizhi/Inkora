@@ -196,7 +196,7 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
     attrs: {
       order: { default: 1, validate: validateListOrder },
       delimiter: { default: ".", validate: validateOrderedDelimiter },
-      tight: { default: false, validate: "boolean" },
+      tight: { default: true, validate: "boolean" },
     },
     content: "list_item+",
     group: "block",
@@ -205,7 +205,7 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
     ...baseBulletList,
     attrs: {
       bullet: { default: "-", validate: validateBullet },
-      tight: { default: false, validate: "boolean" },
+      tight: { default: true, validate: "boolean" },
     },
     content: "list_item+",
     group: "block",
