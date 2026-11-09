@@ -59,3 +59,15 @@ Spec workspace 已备份并回收，removedDirectory=true；bundle 验证和 tar
 当前仅一位执行者：OMP GLM-5.3 / low，Agent `dedd2092-7197-4ce6-9489-68ff734d9c54`，workspace `wks_97b8c36c09ed8465`，host `srv_MEqRNkRW6fSx`，路径 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-017-html-analysis`，分支 `task/INK-M1-017-html-analysis-correction`，基线 6ad325b，notifyOnFinish=true。
 
 只允许 analysis 实现/测试、既有分析文档澄清与本任务记录四文件；先在实际 analyzeDocument 上复现 red，再做 HTML tokenization 与过滤的单变量诊断，覆盖 inline/block/comment/code/escape/entity/Unicode/EOL。不修改运行时、主界面或依赖，不把规范维护建议扩成此次重构。完成后独立复核、备份回收，再集成并对新 HEAD 运行默认 CI。
+
+017 已交付 cf71e3944a837c15b777dab5c6e1db00036bb2a7。管理者独立最小 API 检查确认 HTML 标签排除、代码及转义字面保留正确。两个越界面板/main测试预期从错误的标签字面展示改为既定HTML口径，DOM零危险元素断言保留，管理者接受该必要连带。执行者报告299非bridge通过，不能冒称包含bridge的完整套件。
+
+但文档原有“标题 end 不含尾随 EOL”的约定被替换掉，管理者要求恢复；不得用删验收解决行为错误。执行者发现的 CRLF 问题已由管理者真实 API 独立复现：ATX及Setext标题后跟空行时，end多含CRLF；冻结8项中6绿2红，LF/裸CR和HTML为绿控。冻结文件与输出在归档 root-m1-checks/html-and-heading-boundary-review.test.ts、HTML-AND-HEADING-BOUNDARY-RED.txt。
+
+017 Agent已归档，workspace已备份回收，removedDirectory=true；227文件tar逐SHA与bundle校验通过，远端tip一致。累计完成受管workspace回收45个；未合入PR。
+
+## INK-M1-018 标题 EOL 补正
+
+当前仅一位执行者：GLM-5.3/low，Agent `9365bf81-1fb2-44a8-9676-d0fd8111c28c`，workspace `wks_d38a5a5ab5d19725`，路径 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-018-heading-eol`，分支 `task/INK-M1-018-heading-eol-boundaries`，基线cf71e39，host=srv_MEqRNkRW6fSx，notifyOnFinish=true。
+
+仅analysis实现/测试、分析文档及新018任务记录4文件；恢复原EOL约定，修复原文范围映射，保持HTML口径、raw和revision不变。先复现冻结2红，再单变量诊断；补ATX/Setext/BOM/混合EOL/EOF与容器范围控制。最终 editor test 必须含bridge，未执行GUI/IME/磁盘不改门槛；完成后统一独立验收与新HEAD默认CI，不扩大重构。
