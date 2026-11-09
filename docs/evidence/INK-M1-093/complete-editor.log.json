@@ -1,0 +1,5 @@
+{
+  "sourceLog": "inkora-093-complete-editor.log",
+  "sha256": "e98f693ea0cfe9f18aac81b6c8e5d21b0fb1a606b0bd3fc3b7d061e88c240db5",
+  "utf8": "$ vitest run\n\n RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-093/editor\n\n\n Test Files  34 passed (34)\n      Tests  709 passed (709)\n   Start at  01:53:36\n   Duration  12.86s (tests 73%, import 25%, transform 1%)\n\n"
+}

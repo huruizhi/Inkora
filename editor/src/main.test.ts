@@ -569,6 +569,45 @@ async function rootLinkHarness(
   return h;
 }
 
+it("edits a bare URL through the real Mod-K form and restores its spelling on Undo", async () => {
+  const raw = "www.example.org\r\n";
+  const h = await rootLinkHarness(false, raw);
+  const form = h.linkEditor()!;
+  expect(form.querySelector<HTMLInputElement>('.link-editor-href')!.value).toBe('http://www.example.org');
+  form.querySelector<HTMLInputElement>('.link-editor-href')!.value = './new';
+  form.dispatchEvent(new h.dom.window.Event('submit', { bubbles: true, cancelable: true }));
+  expect(h.lastRevision()).toBe(1);
+  h.receive({ type: 'createSnapshot', requestID: 'bare-link-edited', documentID: 'root-link', revision: 1 });
+  expect(h.sent.at(-1)).toMatchObject({ type: 'snapshotReady', text: '[www.example.org](./new)\r\n' });
+  h.receive({ type: 'executeCommand', requestID: 'bare-link-undo', documentID: 'root-link', revision: 1, command: 'undo' });
+  expect(h.lastRevision()).toBe(2);
+  h.receive({ type: 'createSnapshot', requestID: 'bare-link-restored', documentID: 'root-link', revision: 2 });
+  expect(h.sent.at(-1)).toMatchObject({ type: 'snapshotReady', text: raw });
+});
+
+it("replaces bare email labels through the real search panel as one Bridge edit", async () => {
+  const raw = '\uFEFFwriter@example.org and writer@example.net\r\n';
+  const h = await bootMain();
+  h.receive({ type: 'loadDocument', requestID: 'email-load', documentID: 'email', revision: 0, text: raw });
+  h.searchButton().click();
+  h.typeSearchQuery('writer');
+  await settle();
+  expect(h.searchMatches()).toHaveLength(2);
+  h.replacement().value = 'author';
+  h.replacement().dispatchEvent(new h.dom.window.InputEvent('input', { bubbles: true }));
+  const before = h.stateMessages().length;
+  h.replaceAll().click();
+  expect(h.stateMessages()).toHaveLength(before + 1);
+  expect(h.lastRevision()).toBe(1);
+  h.receive({ type: 'createSnapshot', requestID: 'email-replaced', documentID: 'email', revision: 1 });
+  expect(h.sent.at(-1)).toMatchObject({ type: 'snapshotReady',
+    text: '\uFEFF[author@example.org](<mailto:writer@example.org>) and [author@example.net](<mailto:writer@example.net>)\r\n' });
+  h.editorHost().querySelector<HTMLElement>('#editor')!.focus();
+  h.receive({ type: 'executeCommand', requestID: 'email-undo', documentID: 'email', revision: 1, command: 'undo' });
+  h.receive({ type: 'createSnapshot', requestID: 'email-restored', documentID: 'email', revision: 2 });
+  expect(h.sent.at(-1)).toMatchObject({ type: 'snapshotReady', text: raw });
+});
+
 it("root070: rejected image descriptors never update the current document DOM", async () => {
   const h = await bootMain();
   h.receive({ type: "loadDocument", requestID: "image-owner-load", documentID: "image-current",

@@ -14,7 +14,7 @@ import { applyNativePatches, planNativeTransaction, type NativePatch, type Nativ
 import { createInkoraProjectionState, type EditorStateOptions } from "./editor-session";
 import { isWellFormed } from "./source-replacement";
 import type { VisualTextEdit } from "./visual-search";
-import { planVisualReplacementPatch, renderAutolinkLabel } from "./visual-replacement";
+import { escapeEditableText, planVisualReplacementPatch, renderAutolinkLabel } from "./visual-replacement";
 
 export type Affinity = 'left' | 'right';
 export type RawSelection = { anchor: number; head: number; affinity: Affinity };
@@ -307,6 +307,29 @@ function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, project
   return `source-authoritative local insertion: ${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`;
 }
 
+function implicitLinkReprojectionProof(
+  raw: string, ledger: SourceLedger, plan: NativePlan,
+  parsed: ReturnType<typeof parse>, targetDoc: PMNode, mapping: Transaction['mapping'],
+): string | null {
+  if (plan.kind !== 'text' || plan.patches.length !== 1) return null;
+  const patch = plan.patches[0];
+  if (/[\r\n]/.test(patch.insert)) return null;
+  const owners = ledger.links.filter(owner => owner.kind === 'autolink'
+    && raw[owner.source.from] !== '<'
+    && patch.from >= owner.source.from && patch.to <= owner.source.to);
+  if (owners.length !== 1) return null;
+  const from = mapping.map(owners[0].visual.from, -1);
+  const to = mapping.map(owners[0].visual.to, 1);
+  const updated = baseLedger(plan.candidate, parsed);
+  const links = updated.links.filter(owner => owner.visual.from < to && owner.visual.to > from);
+  if (links.some(owner => owner.kind !== 'autolink' || plan.candidate[owner.source.from] === '<'
+      || owner.visual.from < from || owner.visual.to > to)) return null;
+  const withoutImplicitLink = (doc: PMNode): PMNode =>
+    EditorState.create({ doc }).tr.removeMark(from, to, schema.marks.link).doc;
+  if (!withoutImplicitLink(parsed.doc).eq(withoutImplicitLink(targetDoc))) return null;
+  return 'semantic-contract: a mapped text edit changes only the derived bare-link mark in its audited owner';
+}
+
 function rawCodeUnitBoundaryError(raw: string, offset: number): string | null {
   if (!Number.isInteger(offset) || offset < 0 || offset > raw.length) return `原文位置 ${offset} 越界`;
   if (raw.startsWith('\uFEFF') && offset === 0) return 'BOM 前位置不是正文边界';
@@ -405,6 +428,10 @@ function planOwnedLinkPatches(
   attrs: { href: string; title: string | null } | null,
 ): NativePatch[] {
   if (!attrs) {
+    if (owner.kind === 'autolink' && raw[owner.source.from] !== '<') {
+      return [{ from: owner.source.from, to: owner.source.to,
+        insert: escapeEditableText(raw.slice(owner.labelMarkupSource.from, owner.labelMarkupSource.to)) }];
+    }
     return [
       { from: owner.source.from, to: owner.labelMarkupSource.from, insert: '' },
       { from: owner.labelMarkupSource.to, to: owner.source.to, insert: '' },
@@ -792,7 +819,7 @@ export class SourceAuthoritySession {
     const before = this.snapshot();
     const selection = cloneSelection(this.rawSelection);
     const forward = selection.anchor <= selection.head;
-    const mappedSelection: RawSelection = {
+    let mappedSelection: RawSelection = {
       anchor: mapRawOffset(
         selection.anchor,
         patches,
@@ -812,6 +839,26 @@ export class SourceAuthoritySession {
     try {
       const parsed = this.parseSource(candidate);
       if (parsed.issues.length) throw Error(parsed.issues[0].message);
+      if (current.kind === 'autolink') {
+        const expectedDoc = attrs
+          ? before.state.tr.addMark(current.visual.from, current.visual.to, schema.marks.link.create(attrs)).doc
+          : before.state.tr.removeMark(current.visual.from, current.visual.to, schema.marks.link).doc;
+        if (!parsed.doc.eq(expectedDoc)) throw Error('自动链接属性更新改变了请求之外的投影');
+        const ledger = baseLedger(candidate, parsed);
+        const updatedOwners = attrs ? ledger.links.filter(owner => owner.visual.from === current.visual.from
+          && owner.visual.to === current.visual.to && owner.href === attrs.href && owner.title === attrs.title) : [];
+        if (attrs && updatedOwners.length !== 1) throw Error('自动链接转换后没有唯一的字段归属');
+        const endpoint = (visual: number): number => {
+          const owner = updatedOwners[0];
+          if (owner && visual === current.visual.from) return owner.labelMarkupSource.from;
+          if (owner && visual === current.visual.to) return owner.labelMarkupSource.to;
+          const mapped = visualToSource(ledger, visual, visual, { collapsedAffinity: selection.affinity });
+          if (!mapped.ok) throw Error(mapped.reason);
+          return mapped.anchor;
+        };
+        mappedSelection = { anchor: endpoint(before.state.selection.anchor),
+          head: endpoint(before.state.selection.head), affinity: selection.affinity };
+      }
       this.currentRaw = candidate;
       this.state = createInkoraProjectionState(parsed.doc, this.options);
       this.issues = parsed.issues;
@@ -1114,7 +1161,8 @@ export class SourceAuthoritySession {
       }
       const parsed = this.parseSource(plan.candidate);
       if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
-        const proof = semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
+        const proof = implicitLinkReprojectionProof(before.raw, context.ledger, plan, parsed, target.doc, tr.mapping)
+          ?? semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
         const semanticCaret = sourceCaret ?? plan.patches.at(-1)!.from + plan.patches.at(-1)!.insert.length;
         this.currentRaw = plan.candidate;

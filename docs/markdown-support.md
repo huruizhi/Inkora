@@ -16,7 +16,7 @@
 - 图片资源 owner 以实际编辑器 accepted 语义投影为唯一权威，并与同一 snapshot 的 document/revision/逐字 raw 绑定。Native 不再独立扫描 Markdown 推断 owner；缺失 proof 与已证明空数组必须区分。
 - `SYN-S010` 引用定义复用 CommonMark block rule 实际接受的全局 first-wins 结果；支持 destination/title 跨行、容器内定义和转义 label。字段 provenance 同时用于语义解析与原文账本，未编辑的 destination 转义、title 实体、容器前缀和 EOL 不重写。CommonMark 的空 destination 是合法语义值；创建/导入命令仍使用各自的 URL 安全守卫。
 - `D` 级稳定片段可与可视正文混排并逐字节保留；块内编辑使用主动源码草稿。畸形或边界未证明的输入保留完整当前原文、可信投影和诊断，并阻断不安全快照，修复后可恢复。
-- bare CR 仍按 `EOL-003` 只读。可视查找替换与源码导航/原子替换已接入生产路径；`SYN-S016` 裸URL/邮箱识别尚未完成，093独立任务保留S级目标，不以纯文本显示代替支持。
+- bare CR 仍按 `EOL-003` 只读。可视查找替换与源码导航/原子替换已接入生产路径；`SYN-S016` 裸URL/邮箱识别现已接入共享GFM词法规则、PM投影、owner账本、属性编辑和查找替换的非UI候选，仍须组合回归与独立验收。
 
 ## 1. 术语与支持级别
 

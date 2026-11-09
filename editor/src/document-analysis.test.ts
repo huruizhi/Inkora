@@ -8,6 +8,11 @@ import {
 const snap = (raw: string, revision = 7): DocumentSnapshot => ({ raw, revision });
 
 describe("analyzeDocument 快照契约", () => {
+  it("按 GFM 自动链接保留 URL 内部的星号显示与统计", () => {
+    const result = analyzeDocument(snap("# www.example.org/a*b*\n"));
+    expect(result.headings[0].text).toBe("www.example.org/a*b*");
+    expect(result.content).toEqual({ characters: 20, writingUnits: 5 });
+  });
   it("返回相同 revision 且不修改原文与快照", () => {
     const raw = "# 标题\n\n正文 `code` 行。\n";
     const snapshot = snap(raw, 42);

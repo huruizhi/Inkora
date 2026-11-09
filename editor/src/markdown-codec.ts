@@ -8,6 +8,7 @@ import {
   type ParseSpec,
 } from "prosemirror-markdown";
 import { inkoraSchema } from "./schema";
+import { installGfmAutolinks } from "./gfm-autolinks";
 
 function listIsTight(tokens: readonly Token[], index: number): boolean {
   for (let current = index + 1; current < tokens.length; current += 1) {
@@ -95,6 +96,7 @@ const tokenizer = new MarkdownIt("commonmark", {
   html: false,
   linkify: false,
 }).enable(["table", "strikethrough"]);
+installGfmAutolinks(tokenizer);
 
 tokenizer.core.ruler.after("block", "inkora_fence_closure", annotateFenceClosure);
 tokenizer.core.ruler.after("inline", "inkora_soft_breaks", preserveSoftBreaks);

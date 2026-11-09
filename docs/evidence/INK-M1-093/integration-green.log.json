@@ -1,0 +1,5 @@
+{
+  "sourceLog": "inkora-093-integration-green.log",
+  "sha256": "5af42ed1b8fc8479759135cdc43449e30a63fb5423f7acdeb8fe2fbb63b17006",
+  "utf8": "\n RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-093/editor\n\n\n Test Files  1 passed (1)\n      Tests  9 passed (9)\n   Start at  01:50:02\n   Duration  211ms (import 38%, transform 38%, tests 23%, worker 1%)\n\n"
+}

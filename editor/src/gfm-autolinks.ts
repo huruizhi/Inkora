@@ -1,0 +1,122 @@
+import type MarkdownIt from "markdown-it";
+import type { StateInline } from "markdown-it";
+
+export interface GfmAutolink {
+  readonly from: number;
+  readonly to: number;
+  readonly href: string;
+}
+
+/** GFM 0.29 extended autolinks, in unmodified inline source coordinates. */
+export function gfmAutolinks(text: string): GfmAutolink[] {
+  const candidates = /https?:\/\/|www\.|(?:mailto|xmpp):|@/gi;
+  const result: GfmAutolink[] = [];
+  let candidate: RegExpExecArray | null;
+  while ((candidate = candidates.exec(text))) {
+    let from = candidate.index;
+    if (candidate[0] === "@") {
+      while (from > 0 && /[a-z0-9.+_-]/i.test(text[from - 1])) from--;
+    }
+    const rest = text.slice(from);
+    const url = /^(?:https?:\/\/|www\.)([a-z0-9_-]+(?:\.[a-z0-9_-]+)+)[^\s<]*/i.exec(rest);
+    let value: string;
+    let href: string;
+    if (url) {
+      if (from > 0 && !/[\s*_~(]/u.test(text[from - 1])) continue;
+      if (url[1].split(".").slice(-2).some(segment => segment.includes("_"))) continue;
+      value = url[0];
+      let end = value.length;
+      let parentheses = 0;
+      for (const char of value) {
+        if (char === "(") parentheses++;
+        if (char === ")") parentheses--;
+      }
+      while (end > 0) {
+        if (/[?!.,:*_~]/.test(value[end - 1])) { end--; continue; }
+        if (value[end - 1] === ")" && parentheses < 0) { end--; parentheses++; continue; }
+        if (value[end - 1] === ";") {
+          const entity = /&[a-z0-9]+;$/i.exec(value.slice(0, end));
+          if (entity) { end -= entity[0].length; continue; }
+        }
+        break;
+      }
+      value = value.slice(0, end);
+      href = /^www\./i.test(value) ? `http://${value}` : value;
+    } else {
+      const email = /^(?:(mailto:|xmpp:))?([a-z0-9.+_-]+@[a-z0-9_-]+(?:\.[a-z0-9_-]+)+)/i.exec(rest);
+      if (!email || /[-_]$/.test(email[2])) continue;
+      value = email[0];
+      if (email[1]?.toLowerCase() === "xmpp:") {
+        value += /^\/[a-z0-9@.]+/i.exec(rest.slice(value.length))?.[0] ?? "";
+      }
+      href = email[1] ? value : `mailto:${value}`;
+    }
+    const to = from + value.length;
+    result.push({ from, to, href });
+    candidates.lastIndex = to;
+  }
+  return result;
+}
+
+/** Resolve before emphasis, escape, and entity rules consume URL punctuation. */
+export function installGfmAutolinks(markdown: MarkdownIt): void {
+  type Rule = (state: StateInline, silent: boolean) => boolean;
+  const ruler = markdown.inline.ruler as typeof markdown.inline.ruler & {
+    __rules__: Array<{ name: string; fn: Rule }>;
+  };
+  const originalText = ruler.__rules__.find(rule => rule.name === "text")?.fn;
+  if (!originalText) throw Error("markdown-it text rule unavailable");
+  const cache = new WeakMap<StateInline, readonly GfmAutolink[]>();
+  // Present in the locked markdown-it runtime, omitted by its older typings.
+  const insideLink = (state: StateInline): boolean =>
+    (state as StateInline & { linkLevel: number }).linkLevel > 0;
+  const matches = (state: StateInline): readonly GfmAutolink[] => {
+    let value = cache.get(state);
+    if (!value) { value = gfmAutolinks(state.src); cache.set(state, value); }
+    return value;
+  };
+  const nextAt = (state: StateInline): GfmAutolink | undefined => {
+    const values = matches(state);
+    let low = 0, high = values.length;
+    while (low < high) {
+      const mid = (low + high) >>> 1;
+      if (values[mid].from < state.pos) low = mid + 1;
+      else high = mid;
+    }
+    const match = values[low];
+    return match && match.to <= state.posMax ? match : undefined;
+  };
+  ruler.before("text", "inkora_gfm_autolink", (state, silent) => {
+    // Link-label probing uses skipToken(silent). It must still see its own
+    // closing bracket before the real parse establishes linkLevel.
+    if (silent || insideLink(state)) return false;
+    const match = nextAt(state);
+    if (!match || match.from !== state.pos) return false;
+    const href = markdown.normalizeLink(match.href);
+    if (!markdown.validateLink(href)) return false;
+    if (!silent) {
+      const open = state.push("link_open", "a", 1);
+      open.attrs = [["href", href]];
+      open.markup = "linkify";
+      open.info = "auto";
+      const text = state.push("text", "", 0);
+      text.content = state.src.slice(match.from, match.to);
+      const close = state.push("link_close", "a", -1);
+      close.markup = "linkify";
+      close.info = "auto";
+    }
+    state.pos = match.to;
+    return true;
+  });
+  ruler.at("text", (state, silent) => {
+    const match = insideLink(state) ? undefined : nextAt(state);
+    const from = state.pos;
+    const pending = state.pending;
+    const accepted = originalText(state, silent);
+    if (match && match.from > from && match.from < state.pos) {
+      state.pos = match.from;
+      if (!silent) state.pending = pending + state.src.slice(from, match.from);
+    }
+    return accepted;
+  });
+}
