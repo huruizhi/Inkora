@@ -13,7 +13,7 @@
 ```ts
 const result = searchSource(snapshot, query, {
   caseSensitive: true,
-  maxResults: 10_000,
+  maxResults: 1_000,
 });
 ```
 
