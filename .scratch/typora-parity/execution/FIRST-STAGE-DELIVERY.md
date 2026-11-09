@@ -12,6 +12,10 @@
 
 下方含旧时点的“当前/未实现”字样，均为过程历史；以本节及最终代码/证据SHA为准。
 
+PR77已创建draft（https://github.com/huruizhi/Inkora/pull/77），head6a366f3dd41c3c4576953e5d05f486af089bf122；产品代码fab0bcc，后续docs与editor/src整树diff为空。默认CI42690666114绑定该精确head正在执行，ui-tests=false/full-bench=false，无重复触发或假定空jobs失败。固定fab重新完整765、Bridge14/15、Native179/0/8、lint/Release/offline/test-ci、model5及hostlessWK4向量全过。103最终619文件tar SHA e30975f636f3cbd92fe77aac4b52d1b00ea016fce710a679896150ce7e2a4a61。
+
+104纠正后hard0/3 judgement；105三P1已修：new epoch/cache身份、Mermaid S005、EOF-only metadata。106限定Standards0/0已备份回收（累计91），107限定Spec仍执行。根未以765或旧47c性能冒充最终物理验收或独立Spec。原审查原文与根限定补正在PARSER-REVIEW.md分别保留，不跨轴改写。
+
 **当前生产main `acf33923081e066812603269da6a332b7c8e02e3`，PR76已合。** 精确head0b64d62经CI42678426122 completed/success，默认非UI/Release-offline/lightbench通过，UI/full-bench按参数skip；root本地main与该受检head整树diff为空。100最终521文件tar SHA `7fa0e0a1f88f1e151ad425169c7774b4b4a93f1e2d0da52e9d78f5ceba2f79cf`，CI JSON/log另存，临时symlink已清理。099源码保存切片已交付不代表V2全完成。
 
 103本轮额外公共保存检查发现水平线可解析/输入却不可保存；已在PR76受检代码0b64原样重放为红，确认预存而非新parser回归。账本按accepted hr token与PM nodeSize=1显式映射后保存转绿；NodeSelection删除又暴露缺少原生replace规划，补唯一局部删除并全doc.eq验证后单历史/dirty/UndoRedo控制绿。输入`---` EOF无换行的旧有效HR回归保留，元数据开始围栏要求已有行结束，同字节打开/输入一致；该边界明确记入任务而非入口特例。真正inline保护仍未实现，103尚未完成。

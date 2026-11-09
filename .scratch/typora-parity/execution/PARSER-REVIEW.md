@@ -54,3 +54,27 @@
 104最终554文件、tar SHA70fbc20232a30a13d5f78c4733db39822202673fd28b32568f34b7cc9834cf65；Git bundle与逐文件tar核验、origin等同后归档Agent/workspace，managed累计89。103当前代码仍47c，文档15ad819，BOM测试206c832；15ad备份591文件/tar SHA c73fefe77e2631fa54ae6c301774f394c7582a14cb8ba9bb1ecb622fa198f01e，完整测试xcresult另存fdad037789210bf53e2bb9e044234202dc170477bf1c30e0bd975aed73ba067c。未合main/未建PR。
 
 105最终554文件、tar SHA9ed65f1eb2224b12a51c80d0251eb7c36dc50a4f12a9edf23eb5f797ace110f0，origin/clean/bundle/tar逐文件核验后Agent/workspace归档，managed累计90。当前无活动Paseo Agent。根继续在103修三个实证P1，不以物理延期代替可做开发。
+
+## 限定修正：106 Standards
+
+受检47c...fab0bcc，仅审补正。106最终5396cc64715ce717f0f327b725896eed8d3a7558：hard0、judgement0；实跑新公开3例3/3。原文如下。
+
+# Standards
+
+## 范围
+
+审查 `47c0d54735c70b9e55268ad43f9f085f08ff4dd6...fab0bccc98dc62518af462fb97f54660d46b328a`，仅覆盖 parser corrections 相关代码与必要上下文；不做 Spec 轴判断。仓库未找到 `CODING_STANDARDS.md` 或 `CONTRIBUTING.md`，因此以指定正式文档、AGENTS.md 与 Fowler baseline 为准。
+
+## Findings
+
+无 documented-standard hard violation。
+
+无足够证据成立 Fowler baseline smell。epoch 修正清除 `reopen` 的 parse/context/boundary 缓存，并以 `transaction.before !== this.state.doc` 检查 PM 文档身份，符合 `docs/design/protected-syntax-production-v2.md:13,19,41` 的 raw/epoch、缓存失效和完整身份约束，也符合 `docs/save-barrier.md:57-59` 的不可变 PM 文档与 epoch 绑定。
+
+`inputRulePlan` 保留实际键入的 `---`，由会话建立 U 投影并阻断结构化保存；这符合 `docs/markdown-support.md:27,41`、`docs/design/protected-syntax-production-v2.md:17` 的完整原文、可信投影、诊断与保存闸门要求。闭合 Mermaid 未被降级，符合 `SYN-S005` 的支持级别。
+
+## Verification
+
+实际运行：`pnpm --dir editor exec vitest run src/protected-parser-review.test.ts`，1 file、3 tests passed。未重跑全 Web/Native/Release、lint 或 UI；其结果不由本审查声称。新文档本身不改变产品行为。
+
+106已核对origin/clean并逐文件603文件tar+bundle备份，tar SHA8e523f480eba4a12724bb83c3f2a5e6baedc1ff2ce56e0f2bf7303828f1c0e75；Agent/workspace两层归档，managed累计91。107 Spec（Agent bb828ae9-e894-4dd2-9734-25b511292b81 / workspace wks_99c1b502a4358654）仍执行，不能用Standards0代替其结论。
