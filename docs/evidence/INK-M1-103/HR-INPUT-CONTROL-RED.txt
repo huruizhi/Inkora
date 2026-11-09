@@ -1,0 +1,31 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/source-authority-runtime.test.ts (65 tests | 1 failed) 1413ms
+   ❯ production source authority runtime (65)
+     × keeps the horizontal rule input rule on the source projection 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/source-authority-runtime.test.ts > production source authority runtime > keeps the horizontal rule input rule on the source projection
+AssertionError: 该原生事务尚未支持（replace）；可信原文与 PM 状态保持不变: expected '--' to be '---' // Object.is equality
+
+Expected: "---"
+Received: "--"
+
+ ❯ src/source-authority-runtime.test.ts:540:91
+    538|     const view = (runtime as unknown as { view: EditorView }).view;
+    539|     typeThroughInputRules(view, typed);
+    540|     expect(runtime.getText(), (session as unknown as { diagnostic?: st…
+       |                                                                                           ^
+    541|     expect(session.state.doc.firstChild?.type.name).toBe(nodeType);
+    542|     expect(runtime.status.unresolved).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 34 passed (35)
+      Tests  1 failed | 719 passed (720)
+   Start at  03:07:55
+   Duration  13.97s (tests 75%, import 24%, transform 2%)
+

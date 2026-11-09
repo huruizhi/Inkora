@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-100/editor
+
+ ❯ src/root-hr-save-audit.test.ts (9 tests | 1 failed | 8 skipped) 5ms
+   × keeps supported horizontal-rule source saveable through the canonical ledger 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/root-hr-save-audit.test.ts > keeps supported horizontal-rule source saveable through the canonical ledger
+AssertionError: 当前投影、草稿或未解决意图不具备保存资格: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/root-hr-save-audit.test.ts:72:52
+     70|   expect(session.state.doc.firstChild?.type.name).toBe("horizontal_rul…
+     71|   expect(session.issues).toEqual([]);
+     72|   expect(session.saveMemory(), session.diagnostic).toBe(true);
+       |                                                    ^
+     73|   expect(session.currentRaw).toBe(raw);
+     74| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 skipped (9)
+   Start at  03:12:16
+   Duration  258ms (import 78%, transform 19%, tests 3%, worker 1%)
+

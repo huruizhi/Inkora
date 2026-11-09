@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (10 tests | 1 failed | 8 skipped) 7ms
+   × maps a horizontal-rule selection and deletion as one source history unit 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > maps a horizontal-rule selection and deletion as one source history unit
+AssertionError: 该原生事务尚未支持（replace）；可信原文与 PM 状态保持不变: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/protected-source-runtime.test.ts:84:40
+     82|   let accepted = false;
+     83|   expect(deleteSelection(session.state, tr => { accepted = session.dis…
+     84|   expect(accepted, session.diagnostic).toBe(true);
+       |                                        ^
+     85|   expect(session.currentRaw).toBe("");
+     86|   expect(session.documentDirty).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 8 skipped (10)
+   Start at  03:13:10
+   Duration  254ms (import 83%, transform 12%, tests 4%, worker 1%)
+

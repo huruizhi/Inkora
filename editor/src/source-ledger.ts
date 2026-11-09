@@ -2,9 +2,8 @@
 
 import MarkdownIt, { type Token } from 'markdown-it';
 import type { Node as PMNode } from 'prosemirror-model';
-import type { Range } from "./source-document";
-import { installReferenceCapture, referenceLineRanges, referenceDefinitions, type ReferenceLineRange } from "./reference-context";
-import { annotateTaskListItems } from "./markdown-codec";
+import { parse as parseCanonicalSource, type Range, type CanonicalTokenEvidence } from "./source-document";
+import { referenceDefinitions, type ReferenceLineRange } from "./reference-context";
 import { gfmAutolinks, installGfmAutolinks } from "./gfm-autolinks";
 
 export type SourceRole =
@@ -139,63 +138,8 @@ const markdown = new MarkdownIt('commonmark', {
   html: false,
   linkify: false,
 }).enable(['table', 'strikethrough']);
-installReferenceCapture(markdown);
 installGfmAutolinks(markdown);
-// Capture the container prefix while markdown-it's block parser still has its
-// list/quote indentation context. Restored physical lines cannot reconstruct
-// that context by looking for the first occurrence of token.content.
-type ContainerBlockState = {
-  src: string;
-  tokens: Token[];
-  bMarks: number[];
-  eMarks: number[];
-  tShift: number[];
-  bsCount: number[];
-  blkIndent: number;
-};
-type ContainerBlockRule = (state: ContainerBlockState, start: number, end: number, silent: boolean) => boolean;
-type ContainerBlockRuler = {
-  __rules__?: Array<{ name: string; fn: ContainerBlockRule; alt: string[] }>;
-  at(name: string, fn: ContainerBlockRule, options: { alt: string[] }): void;
-};
-const containerRuler = markdown.block.ruler as unknown as ContainerBlockRuler;
-for (const name of ['paragraph', 'fence', 'code']) {
-  const entry = containerRuler.__rules__?.find(rule => rule.name === name);
-  if (!entry) throw Error(`markdown-it ${name} block rule unavailable`);
-  const original = entry.fn;
-  containerRuler.at(name, (state, start, end, silent) => {
-    const before = state.tokens.length;
-    const accepted = original(state, start, end, silent);
-    if (!accepted || silent) return accepted;
-    for (const token of state.tokens.slice(before)) {
-      if (!token.map || !['inline', 'fence', 'code_block'].includes(token.type)) continue;
-      const columns: number[] = [];
-      for (let line = token.map[0]; line < token.map[1]; line++) {
-        const lineStart = state.bMarks[line];
-        let first = lineStart;
-        let indent = 0;
-        while (first < state.eMarks[line] && indent < state.blkIndent) {
-          const char = state.src[first];
-          if (char === '\t') indent += 4 - (indent + state.bsCount[line]) % 4;
-          else if (char === ' ' || first - lineStart < state.tShift[line]) indent++;
-          else break;
-          first++;
-        }
-        // A partial tab expansion has no one-to-one raw character boundary.
-        // Preserve the existing explicit refusal instead of inventing spaces.
-        if (indent > state.blkIndent) {
-          columns.push(-1);
-        } else {
-          const physicalStart = state.src.lastIndexOf('\n', Math.max(0, lineStart - 1)) + 1;
-          columns.push(first - physicalStart);
-        }
-      }
-      token.meta = { ...token.meta, inkoraContainerColumns: columns };
-    }
-    return accepted;
-  }, { alt: entry.alt });
-}
-markdown.core.ruler.after('inline', 'inkora_task_items', annotateTaskListItems);
+
 
 type EmphasisDelimiter = {
   from: number;
@@ -1095,19 +1039,20 @@ function mapTableNode(
   }
 }
 
-export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonly Range[]): BuildLedgerResult {
+export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonly Range[], evidence?: CanonicalTokenEvidence): BuildLedgerResult {
   const diagnostics: LedgerDiagnostic[] = [];
   try {
     const lines = lineTable(source);
-    const env: Record<string, unknown> = {};
-    const tokens = markdown.parse(source.replace(/^\uFEFF/, ''), env);
-    const references = parseDefinitions(source, referenceLineRanges(env));
+    const accepted = evidence ?? parseCanonicalSource(source).tokenEvidence;
+    if (accepted.raw !== source) throw Error('已接受 token 的原文已过期');
+    const tokens = accepted.tokens;
+    const references = parseDefinitions(source, accepted.references);
     const indexedTokensByRange: Array<Array<{
       token: Token;
       tokenIndex: number;
     }>> = Array.from({ length: ranges.length }, () => []);
     tokens.forEach((token, tokenIndex) => {
-      if (!token.map || !['inline', 'table_open', 'fence', 'code_block'].includes(token.type)) return;
+      if (!token.map || !['inline', 'table_open', 'fence', 'code_block', 'hr'].includes(token.type)) return;
       const tokenStart = lines[token.map[0]]?.start;
       const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
       if (tokenStart === undefined || tokenEnd === undefined) return;
@@ -1137,6 +1082,20 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         continue;
       }
       const state: ScanState = { spans: [], atoms: [], expectations: [], references, ownerSerial };
+      if (range.kind === 'horizontal_rule') {
+        const token = indexedTokensByRange[rangeIndex].find(item => item.token.type === 'hr');
+        if (!token) throw Error('水平线没有同次解析的已接受 token');
+        const atom: Atom = {
+          sourceStart: range.start, sourceEnd: range.end,
+          role: 'delimiter', syntax: 'horizontal-rule', visible: true, text: '',
+          projection: 'atom', expectedNode: { type: 'horizontal_rule', attrs: {} },
+        };
+        const error = assignVisualPositions([atom], projectionUnitsFor(pmDoc, range), []);
+        if (error) throw Error(`水平线投影不一致：${error}`);
+        blocks.push({ range, spans: [atom], visualText: '', inlineCount: 0 });
+        allSpans.push(atom);
+        continue;
+      }
       if (range.kind === 'table') {
         const table = pmDoc.nodeAt(range.pos);
         // The token index uses overlap, so a BOF table whose model range starts

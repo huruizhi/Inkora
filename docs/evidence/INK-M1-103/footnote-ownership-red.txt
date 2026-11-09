@@ -1,0 +1,38 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (5 tests | 1 failed | 4 skipped) 7ms
+   × assigns footnote bytes only to their accepted opaque block 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > assigns footnote bytes only to their accepted opaque block
+AssertionError: expected [ 'delimiter', 'protected', …(3) ] to deeply equal [ 'protected' ]
+
+- Expected
++ Received
+
+  [
++   "delimiter",
+    "protected",
++   "definition-label",
++   "delimiter",
++   "definition-href",
+  ]
+
+ ❯ src/protected-source-runtime.test.ts:14:48
+     12|   const footnoteSpans = result.ledger.spans.filter(span =>
+     13|     span.sourceStart < 20 && span.sourceEnd > 0 && span.sourceEnd > sp…
+     14|   expect(footnoteSpans.map(span => span.role)).toEqual(["protected"]);
+       |                                                ^
+     15|   expect(result.ledger.links.map(owner => owner.href)).toEqual(["/firs…
+     16| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 skipped (5)
+   Start at  02:50:34
+   Duration  138ms (import 57%, transform 29%, tests 13%, worker 2%)
+

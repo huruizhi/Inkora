@@ -92,13 +92,13 @@ function semanticWhitespaceShadow(raw: string): {
 }
 
 function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger {
-  const direct = buildSourceLedger(raw, parsed.doc, parsed.ranges);
+  const direct = buildSourceLedger(raw, parsed.doc, parsed.ranges, parsed.tokenEvidence);
   if (direct.ok) return direct.ledger;
   const shadow = semanticWhitespaceShadow(raw);
   if (!shadow.removed.length) throw Error(`投影账本失败：${direct.reason}`);
   const shadowParsed = parse(shadow.shadow);
   if (!shadowParsed.doc.eq(parsed.doc)) throw Error(`投影账本失败：${direct.reason}`);
-  const fallback = buildSourceLedger(shadow.shadow, shadowParsed.doc, shadowParsed.ranges);
+  const fallback = buildSourceLedger(shadow.shadow, shadowParsed.doc, shadowParsed.ranges, shadowParsed.tokenEvidence);
   if (!fallback.ok) throw Error(`投影账本失败：${fallback.reason}`);
   const translated = fallback.ledger.spans.map(span => ({
     ...span,

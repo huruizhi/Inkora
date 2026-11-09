@@ -899,6 +899,18 @@ export function planNativeTransaction(
     // the explicit local planners; none may accept by parser failure alone.
   }
 
+  if (step.stepType === 'replace' && state.doc.nodeAt(step.from)?.type.name === 'horizontal_rule') {
+    const range = ranges.find(item => item.kind === 'horizontal_rule' &&
+      item.pos === step.from && item.pos + item.size === step.to);
+    if (range) {
+      const patches = [{ from: range.start, to: range.end, insert: '' }];
+      const candidate = applyNativePatches(source, patches);
+      if (parse(candidate).doc.eq(tr.doc)) {
+        return { patches, candidate, kind: 'block-structure', sourceCaret: range.start };
+      }
+    }
+  }
+
   const paste = pastePlan(source, state, tr, position, fallbackEol);
   if (paste) return paste;
   const inputRule = inputRulePlan(source, tr, position, fallbackEol);

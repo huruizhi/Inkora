@@ -1,65 +1,35 @@
-import MarkdownIt from "markdown-it";
+import MarkdownIt, { type Token } from "markdown-it";
 import type { Node as PMNode } from "prosemirror-model";
 import type { EditorState } from "prosemirror-state";
-import { inkoraMarkdownParser } from "./markdown-codec";
+import { parseAcceptedMarkdownTokens, configureProjectionTokens } from "./markdown-codec";
 import { analyzeMarkdownSafety } from "./markdown-safety";
 import { parseProtectedMarkdown } from "./protected-markdown";
 import { inkoraSchema as schema } from "./schema";
-import { installReferenceCapture, referenceLineRanges, referenceDefinitions } from "./reference-context";
+import { installReferenceCapture, referenceLineRanges, type ReferenceLineRange } from "./reference-context";
+import { installProtectedSyntax } from "./protected-syntax";
+import { installGfmAutolinks } from "./gfm-autolinks";
+import { installContainerProvenance } from "./source-token-provenance";
 
 export { schema };
 
 export type Range = { start: number; end: number; pos: number; size: number; kind: string; issue?: string };
+export type CanonicalTokenEvidence = { readonly raw: string; readonly tokens: Token[]; readonly references: readonly ReferenceLineRange[] };
 export type Issue = { code: string; start: number; end: number; message: string };
 const tokenizer = new MarkdownIt('commonmark', { html: false }).enable(['table', 'strikethrough']);
 installReferenceCapture(tokenizer);
-// Production token specs reused verbatim (inkoraMarkdownParser.tokens is the
-// public copy point); image tokens become selectable atoms whose source owner
-// is audited by source-ledger rather than exposed as marked alt text.
-const markdownParser = inkoraMarkdownParser;
+installProtectedSyntax(tokenizer);
+installContainerProvenance(tokenizer);
+installGfmAutolinks(tokenizer);
+configureProjectionTokens(tokenizer);
 export function parse(source: string) {
   const starts = [0];
   for (let i = 0; i < source.length; i++) if (source[i] === '\n') starts.push(i + 1);
-  const frontStart = source.startsWith('\uFEFF') ? 1 : 0;
-  const front = /^(---|\+\+\+)(?:\r\n|\n)[\s\S]*?(?:\r\n|\n)(?:\1|\.\.\.)(?=\r\n|\n|$)/
-    .exec(source.slice(frontStart));
-  const frontEnd = front ? frontStart + front[0].length : frontStart;
-  const tokenSource = front
-    ? source.slice(0, frontStart) +
-      source.slice(frontStart, frontEnd).replace(/[^\r\n]/g, ' ') +
-      source.slice(frontEnd)
-    : source;
-  const blockEnv: Record<string, unknown> = {};
-  const blockTokens = tokenizer.parse(tokenSource.replace(/^\uFEFF/, ''), blockEnv);
-  // Keep the accepted block parser's global, first-wins reference semantics.
-  // The capture also owns the exact multi-line/container source fields, so
-  // no source suffix or separate one-line definition regex is needed.
-  const references: Record<string, { href: string; title: string }> = Object.create(null);
-  for (const definition of referenceDefinitions(source, referenceLineRanges(blockEnv))) {
-    if (!Object.hasOwn(references, definition.key)) references[definition.key] = {
-      href: definition.href, title: definition.title ?? '',
-    };
-  }
+  const blockEnv: Record<string, unknown> = { source: source.replace(/^\uFEFF/, '') };
+  const blockTokens = tokenizer.parse(source.replace(/^\uFEFF/, ''), blockEnv);
   const ranges: Range[] = [], nodes: PMNode[] = [], issues: Issue[] = [];
   let cursor = 0, pos = 0;
-  if (front) {
-    const node = schema.nodes.protected_block.create({
-      raw: source.slice(frontStart, frontEnd),
-      kind: 'metadata',
-    });
-    ranges.push({
-      start: frontStart,
-      end: frontEnd,
-      pos,
-      size: node.nodeSize,
-      kind: node.type.name,
-    });
-    nodes.push(node);
-    pos += node.nodeSize;
-    cursor = frontEnd;
-  }
-  // Reference gaps (including footnote-style labels consumed by the block
-  // parser) use the accepted line ranges, not a second definition grammar.
+  // Only accepted CommonMark reference definitions own these hidden gaps.
+  // Canonical footnote definitions have already become opaque block tokens.
   const gapParts: string[] = [];
   let gapCursor = 0;
   for (const definition of referenceLineRanges(blockEnv)) {
@@ -72,7 +42,7 @@ export function parse(source: string) {
   gapParts.push(source.slice(gapCursor));
   const gapSource = gapParts.join('');
   const cleanGap = (from: number, to: number) => gapSource.slice(from, to).trim().length === 0;
-  for (const token of blockTokens) {
+  for (const [tokenIndex, token] of blockTokens.entries()) {
     if (token.level !== 0 || !token.map || token.type.endsWith('_close')) continue;
     let start = starts[token.map[0]], end = starts[token.map[1]] ?? source.length;
     if (start < cursor) continue;
@@ -84,11 +54,14 @@ export function parse(source: string) {
     // Comment interiors are literal: mask them (length-preserving) before any
     // math/mermaid boundary decision so `$x$` inside `<!-- -->` stays literal.
     const masked = normalized.replace(/<!--[\s\S]*?-->/g, m => ' '.repeat(m.length));
-    const risks = analyzeMarkdownSafety(normalized).risks;
+    const risks = analyzeMarkdownSafety(normalized).risks.filter(risk => risk.code !== 'front_matter');
     const maskedRisks = analyzeMarkdownSafety(masked).risks;
     const protect = () => schema.nodes.protected_block.create({ raw, kind: 'metadata' });
     let node: PMNode, issue: Issue | undefined;
-    if (/^\$\$\n[\s\S]*\n\$\$$/.test(masked)) {
+    if (token.type === 'inkora_protected_block') {
+      node = schema.nodes.protected_block.create({ raw, kind: token.meta.inkoraOpaque });
+      if (token.meta.inkoraIssue) issue = { code: token.meta.inkoraOpaque, start, end, message: token.meta.inkoraIssue };
+    } else if (/^\$\$\n[\s\S]*\n\$\$$/.test(masked)) {
       node = protect(); // 稳定可识别的块级数学围栏：整段原字节保留
     } else if (token.type === 'fence' && token.info.trim() === 'mermaid' && /^(`{3,}|~{3,})mermaid\n[\s\S]*\n(?:`{3,}|~{3,})$/.test(masked)) {
       node = protect();
@@ -104,7 +77,7 @@ export function parse(source: string) {
       node = protect(); // callout / 脚注片段：与正文混排，原字节保留
     } else {
       const protectedDoc = token.type === 'table_open' ? null : parseProtectedMarkdown(normalized);
-      if (protectedDoc && protectedDoc.childCount === 1 && protectedDoc.firstChild?.type.name === 'protected_block') {
+      if (protectedDoc && protectedDoc.childCount === 1 && protectedDoc.firstChild?.type.name === 'protected_block' && protectedDoc.firstChild.attrs.kind === 'wiki') {
         node = schema.nodes.protected_block.create({ raw, kind: protectedDoc.firstChild.attrs.kind });
       } else {
         // Bare URLs/email use the shared GFM rule; reference
@@ -123,11 +96,11 @@ export function parse(source: string) {
           };
           node = protect();
         } else {
-          const text = normalized;
-          const parsed = markdownParser.parse(text, {
-            source: text,
-            references,
-          });
+          let tokenEnd = tokenIndex + 1;
+          let depth = token.nesting;
+          while (depth > 0 && tokenEnd < blockTokens.length) depth += blockTokens[tokenEnd++].nesting;
+          if (depth > 0) throw Error('已接受的块 token 没有匹配闭合');
+          const parsed = parseAcceptedMarkdownTokens(blockTokens.slice(tokenIndex, tokenEnd));
           if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
           node = parsed.firstChild!;
           // CommonMark permits a fenced code block to end at EOF without a
@@ -143,7 +116,8 @@ export function parse(source: string) {
   }
   if (!cleanGap(cursor, source.length)) throw Error('尾部存在无法归属的原文范围');
   if (!nodes.length) nodes.push(schema.nodes.paragraph.create());
-  return { doc: schema.topNodeType.createChecked(null, nodes), ranges, issues };
+  return { doc: schema.topNodeType.createChecked(null, nodes), ranges, issues,
+    tokenEvidence: { raw: source, tokens: blockTokens, references: referenceLineRanges(blockEnv) } satisfies CanonicalTokenEvidence };
 }
 // Leaves align to their range source in document order (markdown-it emits
 // inline tokens in source order): each leaf must match at/after the previous

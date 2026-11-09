@@ -8,9 +8,9 @@ export function protectedPreview(raw: string, kind: string): HTMLElement {
   element.dataset.inkoraRaw = raw;
   element.dataset.inkoraKind = kind;
   element.contentEditable = "false";
-  element.setAttribute("aria-label", "保留原文的预览（整块选择或删除）");
-  element.title = "保留原文的预览；暂不支持块内编辑";
-  if (kind === "metadata") {
+  element.setAttribute("aria-label", "受保护原文；请在源码中修改");
+  element.title = "保留完整原文；请在源码中修改";
+  if (kind !== "table" && kind !== "wiki") {
     const pre = document.createElement("pre");
     pre.textContent = raw;
     element.append(pre);

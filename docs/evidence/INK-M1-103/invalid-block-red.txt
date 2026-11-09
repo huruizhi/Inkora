@@ -1,0 +1,37 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (8 tests | 1 failed | 7 skipped) 6ms
+   × keeps malformed callout and footnote definitions behind the unsafe gate 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > keeps malformed callout and footnote definitions behind the unsafe gate
+AssertionError: > [!BAD TYPE]
+> raw
+
+After.
+: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/protected-source-runtime.test.ts:60:39
+     58|   for (const raw of ["> [!BAD TYPE]\n> raw\n\nAfter.\n", "[^bad label]…
+     59|     const session = new SourceAuthoritySession(raw);
+     60|     expect(session.saveEligible, raw).toBe(false);
+       |                                       ^
+     61|     expect(session.issues, raw).not.toHaveLength(0);
+     62|     expect(session.currentRaw).toBe(raw);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  03:02:44
+   Duration  256ms (import 83%, transform 12%, tests 4%, worker 1%)
+
