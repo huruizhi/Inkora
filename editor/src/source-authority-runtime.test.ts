@@ -134,6 +134,31 @@ describe("production source authority runtime", () => {
     removed.runtime.destroy();
   });
 
+  it("removes a mark from only the selected middle and preserves both marked sides", () => {
+    const { runtime, session } = createRuntime("**abc**\n");
+    session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, 2, 3)));
+    expect(execute(session, toggleStrong)).toBe(true);
+    expect(runtime.getText()).toBe("**a**b**c**\n");
+    expect(session.state.doc.firstChild?.child(0).marks.some(mark => mark.type.name === "strong")).toBe(true);
+    expect(session.state.doc.firstChild?.child(1).marks).toHaveLength(0);
+    expect(session.state.doc.firstChild?.child(2).marks.some(mark => mark.type.name === "strong")).toBe(true);
+    runtime.destroy();
+  });
+
+  it("adds and removes strong across paragraphs with independent local delimiters", () => {
+    const added = createRuntime("one\n\ntwo\n");
+    added.session.dispatch(added.session.state.tr.setSelection(TextSelection.create(added.session.state.doc, 1, 9)));
+    expect(execute(added.session, toggleStrong)).toBe(true);
+    expect(added.runtime.getText()).toBe("**one**\n\n**two**\n");
+    added.runtime.destroy();
+
+    const removed = createRuntime("**one**\n\n**two**\n");
+    removed.session.dispatch(removed.session.state.tr.setSelection(TextSelection.create(removed.session.state.doc, 1, 9)));
+    expect(execute(removed.session, toggleStrong)).toBe(true);
+    expect(removed.runtime.getText()).toBe("one\n\ntwo\n");
+    removed.runtime.destroy();
+  });
+
   it.each([
     ["heading", setHeading(2), "## 正文\n", "heading"],
     ["blockquote", wrapBlockquote, "> 正文\n", "blockquote"],

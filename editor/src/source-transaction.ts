@@ -222,26 +222,78 @@ function existingMarkDelimiters(
   throw Error(`尚未支持 ${String(mark.type)} mark 的原文局部删除`);
 }
 
-function markPlan(source: string, tr: Transaction, position: SourcePosition): NativePlan | null {
+function sameMark(left: Record<string, any>, right: { type: { name: string }; attrs: Record<string, unknown> }): boolean {
+  return left.type === right.type.name && JSON.stringify(left.attrs ?? {}) === JSON.stringify(right.attrs ?? {});
+}
+
+function textSegments(
+  state: EditorState,
+  from: number,
+  to: number,
+): Array<{ from: number; to: number }> {
+  const segments: Array<{ from: number; to: number }> = [];
+  state.doc.nodesBetween(from, to, (node, pos) => {
+    if (!node.isText) return;
+    const start = Math.max(from, pos);
+    const end = Math.min(to, pos + node.nodeSize);
+    if (start < end) segments.push({ from: start, to: end });
+  });
+  return segments;
+}
+
+function markedRuns(
+  state: EditorState,
+  mark: Record<string, any>,
+): Array<{ from: number; to: number }> {
+  const segments: Array<{ from: number; to: number }> = [];
+  state.doc.descendants((node, pos) => {
+    if (!node.isText || !node.marks.some(candidate => sameMark(mark, candidate))) return;
+    const previous = segments.at(-1);
+    if (previous?.to === pos) previous.to = pos + node.nodeSize;
+    else segments.push({ from: pos, to: pos + node.nodeSize });
+  });
+  return segments;
+}
+
+function markPlan(source: string, state: EditorState, tr: Transaction, position: SourcePosition): NativePlan | null {
   const steps = tr.steps.map(step => step.toJSON() as Record<string, any>);
   if (!steps.length || steps.some(step => step.stepType !== 'addMark' && step.stepType !== 'removeMark')) return null;
   const patches: NativePatch[] = [];
   for (const step of steps) {
-    const from = position(step.from, 'from');
-    const to = position(step.to, 'to');
-    if (from >= to) throw Error('mark 事务缺少可编辑文字范围');
     if (step.stepType === 'addMark') {
-      const delimiters = markDelimiters(step.mark, source.slice(from, to));
-      patches.push(
-        { from: to, to, insert: delimiters.close },
-        { from, to: from, insert: delimiters.open },
-      );
+      const segments = textSegments(state, step.from, step.to);
+      if (!segments.length) throw Error('mark 事务缺少可编辑文字范围');
+      for (const segment of segments) {
+        const from = position(segment.from, 'from');
+        const to = position(segment.to, 'to');
+        const delimiters = markDelimiters(step.mark, source.slice(from, to));
+        patches.push(
+          { from: to, to, insert: delimiters.close },
+          { from, to: from, insert: delimiters.open },
+        );
+      }
     } else {
-      const delimiters = existingMarkDelimiters(source, from, to, step.mark);
-      patches.push(
-        { from: to, to: delimiters.closeTo, insert: '' },
-        { from: delimiters.openFrom, to: from, insert: '' },
-      );
+      const runs = markedRuns(state, step.mark).filter(run => run.from < step.to && run.to > step.from);
+      if (!runs.length) throw Error('removeMark 事务缺少可编辑 mark 范围');
+      for (const run of runs) {
+        const selectedFrom = Math.max(run.from, step.from);
+        const selectedTo = Math.min(run.to, step.to);
+        const runFrom = position(run.from, 'from');
+        const runTo = position(run.to, 'to');
+        const from = position(selectedFrom, 'from');
+        const to = position(selectedTo, 'to');
+        const delimiters = existingMarkDelimiters(source, runFrom, runTo, step.mark);
+        if (selectedFrom === run.from) {
+          patches.push({ from: delimiters.openFrom, to: runFrom, insert: '' });
+        } else {
+          patches.push({ from, to: from, insert: delimiters.close });
+        }
+        if (selectedTo === run.to) {
+          patches.push({ from: runTo, to: delimiters.closeTo, insert: '' });
+        } else {
+          patches.push({ from: to, to, insert: delimiters.open });
+        }
+      }
     }
   }
   return { patches, candidate: applyNativePatches(source, patches), kind: 'inline-mark' };
@@ -485,7 +537,7 @@ export function planNativeTransaction(
   const inputRule = inputRulePlan(source, tr, position, fallbackEol);
   if (inputRule) return inputRule;
 
-  const mark = markPlan(source, tr, position);
+  const mark = markPlan(source, state, tr, position);
   if (mark) return mark;
   const attrs = attrPlan(source, state, tr, ranges);
   if (attrs) return attrs;
