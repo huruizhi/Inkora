@@ -117,6 +117,28 @@ final class RecoveryStore {
     }
   }
 
+  private struct ImageRecoveryReceipt: Codable, Equatable {
+    enum Outcome: String, Codable { case abandonRequested, abandoned }
+
+    let schema: Int
+    let sessionID: UUID
+    let documentID: String
+    let assetIDs: [UUID]
+    let assetSHA256: [String]
+    let outcome: Outcome
+    let writtenAt: Date
+
+    init(_ candidate: LocalImageStore.RecoveryCandidate, outcome: Outcome) {
+      schema = 1
+      sessionID = candidate.sessionID
+      documentID = candidate.documentID
+      assetIDs = candidate.assets.map(\.id)
+      assetSHA256 = candidate.assets.map(\.sha256)
+      self.outcome = outcome
+      writtenAt = Date()
+    }
+  }
+
   let directory: URL
   private let writer: any DocumentDataWriting
   private let remove: (URL) throws -> Void
@@ -166,6 +188,29 @@ final class RecoveryStore {
     } catch {
       // The receipt remains authoritative when unlink fails.
     }
+  }
+
+  func abandonImageRecovery(_ candidate: LocalImageStore.RecoveryCandidate) throws {
+    try FileManager.default.createDirectory(
+      at: imageRecoveryReceiptURL(candidate.sessionID).deletingLastPathComponent(),
+      withIntermediateDirectories: true)
+    try writer.write(
+      try JSONEncoder().encode(
+        ImageRecoveryReceipt(candidate, outcome: .abandonRequested)),
+      to: imageRecoveryReceiptURL(candidate.sessionID))
+    let session = try LocalImageStore(
+      root: directory.appendingPathComponent("LocalImages", isDirectory: true)
+    ).begin(documentID: candidate.documentID, sessionID: candidate.sessionID)
+    try session.abandonRecovery()
+    try writer.write(
+      try JSONEncoder().encode(
+        ImageRecoveryReceipt(candidate, outcome: .abandoned)),
+      to: imageRecoveryReceiptURL(candidate.sessionID))
+  }
+
+  func imageRecoveryReceiptURL(_ sessionID: UUID) -> URL {
+    directory.appendingPathComponent(
+      "ImageRecoveryReceipts/\(sessionID.uuidString.lowercased()).json")
   }
 
   func discover() -> Discovery {

@@ -136,6 +136,48 @@ final class InkoraDocument: NSDocument {
     synchronizeEditedState(true)
   }
 
+  convenience init(
+    recoveryDraft: RecoveryDraft,
+    pendingImageRecovery: LocalImageStore.RecoveryCandidate,
+    recoveryStore: RecoveryStore,
+    snapshotRequester: SnapshotRequester? = nil
+  ) throws {
+    guard recoveryDraft.id == pendingImageRecovery.sessionID else {
+      throw LocalImageError.corruptManifest
+    }
+    try self.init(recoveryDraft: recoveryDraft, recoveryStore: recoveryStore)
+    self.snapshotRequester = snapshotRequester
+    try attachPendingImageRecovery(pendingImageRecovery, store: recoveryStore)
+  }
+
+  convenience init(
+    pendingImageRecovery: LocalImageStore.RecoveryCandidate,
+    recoveryStore: RecoveryStore,
+    snapshotRequester: SnapshotRequester? = nil
+  ) throws {
+    self.init()
+    self.recoveryStore = recoveryStore
+    self.snapshotRequester = snapshotRequester
+    try read(from: Data(), ofType: "net.daringfireball.markdown")
+    fileType = "net.daringfireball.markdown"
+    try attachPendingImageRecovery(pendingImageRecovery, store: recoveryStore)
+  }
+
+  private func attachPendingImageRecovery(
+    _ candidate: LocalImageStore.RecoveryCandidate,
+    store: RecoveryStore
+  ) throws {
+    let session = try LocalImageStore(
+      root: store.directory.appendingPathComponent("LocalImages", isDirectory: true)
+    ).begin(documentID: candidate.documentID, sessionID: candidate.sessionID)
+    guard session.assets.map(\.id) == candidate.assets.map(\.id) else {
+      throw LocalImageError.corruptManifest
+    }
+    recoveryID = candidate.sessionID
+    bridgeDocumentID = candidate.documentID
+    localImageSession = session
+  }
+
   func preserveDirtyForEditorRecovery() {
     // A replayed snapshot initializes a clean Web session, but it is not a disk save.
     recoveredUnsaved = recoveredUnsaved || isDocumentEdited
@@ -162,6 +204,15 @@ final class InkoraDocument: NSDocument {
       documentID: recoveryID.uuidString.lowercased(), sessionID: recoveryID)
     localImageSession = session
     return session
+  }
+
+  var pendingRecoveredImages: [LocalImageAsset] {
+    guard let session = try? localImages() else { return [] }
+    return session.assets.filter {
+      $0.insertion == .pending
+        && ($0.importIntent?.recoveryState == .requiresConfirmation
+          || $0.recoveryDisposition != nil)
+    }
   }
 
   func rememberImageDirectory(
@@ -896,6 +947,21 @@ final class InkoraDocument: NSDocument {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { _exit(99) }
       }
     #endif
+  }
+
+  func persistRecoveredImageHandoff(
+    _ snapshot: BridgeSnapshot,
+    assetID: UUID,
+    freshIntent: LocalImageAsset.ImportIntent
+  ) throws {
+    let session = try localImages()
+    guard snapshot.documentID == bridgeDocumentID,
+      let asset = session.assets.first(where: { $0.id == assetID }),
+      asset.recoveryIntent == freshIntent,
+      LocalImageMigrationCoordinator.imageURIs(in: snapshot.text).contains(asset.markdownURI)
+    else { throw LocalImageError.unresolvedMarkdownOwner }
+    try writeRecovery(snapshot)
+    try session.completeRecoveredInsertion(assetID: assetID, freshIntent: freshIntent)
   }
 
   private func retireRecovery() {

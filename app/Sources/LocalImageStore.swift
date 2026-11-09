@@ -34,6 +34,11 @@ struct LocalImageAsset: Codable, Equatable {
   enum Ownership: String, Codable { case session, operation, none }
   enum State: String, Codable { case draft, awaitingMarkdown, published, reused }
   enum Insertion: String, Codable { case pending, accepted }
+  enum RecoveryDisposition: String, Codable {
+    case pendingConfirmation
+    case confirming
+    case handedOff
+  }
 
   struct ImportIntent: Codable, Equatable {
     enum RecoveryState: String, Codable { case active, requiresConfirmation }
@@ -58,6 +63,8 @@ struct LocalImageAsset: Codable, Equatable {
   var insertion: Insertion
   var pendingSaveID: UUID?
   var importIntent: ImportIntent?
+  var recoveryIntent: ImportIntent?
+  var recoveryDisposition: RecoveryDisposition?
 }
 
 struct LocalImageSavePlan: Equatable {
@@ -160,7 +167,7 @@ final class LocalImageSession {
     do {
       let manifest = try JSONDecoder().decode(
         Manifest.self, from: readRegularFile(manifestURL))
-      guard [1, 2].contains(manifest.schema), !manifest.documentID.isEmpty else {
+      guard [1, 2, 3].contains(manifest.schema), !manifest.documentID.isEmpty else {
         throw LocalImageError.corruptManifest
       }
       return (manifest.sessionID, manifest.documentID)
@@ -198,16 +205,32 @@ final class LocalImageSession {
         }
         let manifest = try JSONDecoder().decode(
           Manifest.self, from: manifestData)
-        guard [1, 2].contains(manifest.schema), manifest.sessionID == sessionID,
+        guard [1, 2, 3].contains(manifest.schema), manifest.sessionID == sessionID,
           manifest.documentID == documentID
         else { throw LocalImageError.corruptManifest }
         for asset in manifest.assets {
           if let intent = asset.importIntent {
-            guard intent.documentID == documentID, intent.sessionID == sessionID,
+            guard !intent.documentID.isEmpty, intent.sessionID == sessionID,
               intent.revision >= 0,
               (intent.selectionAnchor == nil) == (intent.selectionHead == nil),
               (intent.selectionAnchor ?? 0) >= 0, (intent.selectionHead ?? 0) >= 0
             else { throw LocalImageError.corruptManifest }
+          }
+          if let intent = asset.recoveryIntent {
+            guard intent.documentID == documentID, intent.sessionID == sessionID,
+              intent.revision >= 0, intent.recoveryState == .active,
+              intent.selectionAnchor != nil, intent.selectionHead != nil,
+              (intent.selectionAnchor ?? 0) >= 0, (intent.selectionHead ?? 0) >= 0,
+              asset.recoveryDisposition != nil
+            else { throw LocalImageError.corruptManifest }
+          }
+          if asset.recoveryDisposition == .confirming && asset.recoveryIntent == nil {
+            throw LocalImageError.corruptManifest
+          }
+          if asset.recoveryDisposition == .handedOff,
+            asset.insertion != .accepted || asset.recoveryIntent == nil
+          {
+            throw LocalImageError.corruptManifest
           }
           try Self.validateStoredAsset(asset, inside: directory)
         }
@@ -307,7 +330,8 @@ final class LocalImageSession {
         mimeType: image.mime,
         ownership: allocated.reused ? .none : .operation,
         state: allocated.reused ? .reused : .published,
-        insertion: .pending, pendingSaveID: nil, importIntent: importIntent)
+        insertion: .pending, pendingSaveID: nil, importIntent: importIntent,
+        recoveryIntent: nil, recoveryDisposition: nil)
     } else {
       let imports = directory.appendingPathComponent("imports", isDirectory: true)
       try FileManager.default.createDirectory(at: imports, withIntermediateDirectories: true)
@@ -327,7 +351,8 @@ final class LocalImageSession {
         mimeType: image.mime,
         ownership: .session,
         state: .draft,
-        insertion: .pending, pendingSaveID: nil, importIntent: importIntent)
+        insertion: .pending, pendingSaveID: nil, importIntent: importIntent,
+        recoveryIntent: nil, recoveryDisposition: nil)
     }
     assets.append(asset)
     try persist()
@@ -346,6 +371,7 @@ final class LocalImageSession {
     guard let index = assets.firstIndex(where: { $0.id == assetID }),
       assets[index].insertion == .pending
     else { throw LocalImageError.corruptManifest }
+    let previous = assets[index]
     var intent =
       assets[index].importIntent
       ?? LocalImageAsset.ImportIntent(
@@ -355,7 +381,68 @@ final class LocalImageSession {
         recoveryState: .requiresConfirmation)
     intent.recoveryState = .requiresConfirmation
     assets[index].importIntent = intent
-    try persist()
+    assets[index].recoveryDisposition = .pendingConfirmation
+    do { try persist() } catch {
+      assets[index] = previous
+      throw error
+    }
+  }
+
+  @discardableResult
+  func beginRecoveredInsertion(
+    assetID: UUID,
+    freshIntent: LocalImageAsset.ImportIntent
+  ) throws -> LocalImageAsset {
+    guard let index = assets.firstIndex(where: { $0.id == assetID }),
+      assets[index].insertion == .pending,
+      assets[index].recoveryDisposition != .confirming,
+      freshIntent.documentID == documentID,
+      freshIntent.sessionID == sessionID,
+      freshIntent.recoveryState == .active,
+      freshIntent.revision >= 0,
+      freshIntent.selectionAnchor != nil,
+      freshIntent.selectionHead != nil,
+      (freshIntent.selectionAnchor ?? -1) >= 0,
+      (freshIntent.selectionHead ?? -1) >= 0
+    else { throw LocalImageError.corruptManifest }
+    let previous = assets[index]
+    assets[index].recoveryIntent = freshIntent
+    assets[index].recoveryDisposition = .confirming
+    do { try persist() } catch {
+      assets[index] = previous
+      throw error
+    }
+    return assets[index]
+  }
+
+  func cancelRecoveredInsertion(assetID: UUID) throws {
+    guard let index = assets.firstIndex(where: { $0.id == assetID }),
+      assets[index].insertion == .pending
+    else { throw LocalImageError.corruptManifest }
+    let previous = assets[index]
+    assets[index].recoveryDisposition = .pendingConfirmation
+    do { try persist() } catch {
+      assets[index] = previous
+      throw error
+    }
+  }
+
+  func completeRecoveredInsertion(
+    assetID: UUID,
+    freshIntent: LocalImageAsset.ImportIntent
+  ) throws {
+    guard let index = assets.firstIndex(where: { $0.id == assetID }),
+      assets[index].insertion == .pending,
+      assets[index].recoveryDisposition == .confirming,
+      assets[index].recoveryIntent == freshIntent
+    else { throw LocalImageError.corruptManifest }
+    let previous = assets[index]
+    assets[index].insertion = .accepted
+    assets[index].recoveryDisposition = .handedOff
+    do { try persist() } catch {
+      assets[index] = previous
+      throw error
+    }
   }
 
   func prepareFirstSave(
@@ -469,9 +556,30 @@ final class LocalImageSession {
     }
   }
 
+  func abandonRecovery() throws {
+    let abandoned = assets.filter { $0.insertion == .pending }
+    guard !abandoned.isEmpty else { return }
+    let remaining = assets.filter { $0.insertion != .pending }
+    let previous = assets
+    assets = remaining
+    do { try persist() } catch {
+      assets = previous
+      throw error
+    }
+    let retainedStorage = Set(remaining.map { $0.storageURL.standardizedFileURL })
+    for asset in abandoned {
+      let storage = asset.storageURL.standardizedFileURL
+      guard storage.path.hasPrefix(directory.standardizedFileURL.path + "/"),
+        !retainedStorage.contains(storage),
+        FileManager.default.fileExists(atPath: storage.path)
+      else { continue }
+      try FileManager.default.removeItem(at: storage)
+    }
+  }
+
   private func persist() throws {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    let manifest = Manifest(schema: 2, sessionID: sessionID, documentID: documentID, assets: assets)
+    let manifest = Manifest(schema: 3, sessionID: sessionID, documentID: documentID, assets: assets)
     try Self.atomicWrite(try JSONEncoder().encode(manifest), to: manifestURL)
   }
 
