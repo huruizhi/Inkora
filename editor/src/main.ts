@@ -78,6 +78,11 @@ const sourceCancelButton = document.createElement("button");
 sourceCancelButton.type = "button";
 sourceCancelButton.className = "source-draft-cancel";
 sourceCancelButton.textContent = "取消草稿";
+const insertTableButton = document.createElement("button");
+insertTableButton.type = "button";
+insertTableButton.className = "insert-table";
+insertTableButton.textContent = "插入表格";
+insertTableButton.setAttribute("aria-label", "插入两列表格");
 const modeStatus = document.createElement("span");
 modeStatus.className = "editor-mode-status";
 modeStatus.setAttribute("role", "status");
@@ -86,6 +91,7 @@ modeBar.append(
   sourceModeButton,
   sourceApplyButton,
   sourceCancelButton,
+  insertTableButton,
   modeStatus,
 );
 workspace.append(modeBar);
@@ -112,6 +118,7 @@ function updateModeControls(): void {
   sourceCancelButton.hidden = mode !== "source";
   sourceApplyButton.disabled = !activeRuntime?.status.draftDirty || activeRuntime.composing;
   sourceCancelButton.disabled = !activeRuntime || activeRuntime.composing;
+  insertTableButton.disabled = !activeRuntime || mode !== "visual" || activeRuntime.composing;
   modeStatus.textContent = activeRuntime?.status.unresolved
     ? "当前原文需要源码修复，保存已阻断"
     : activeRuntime?.status.draftDirty
@@ -135,6 +142,11 @@ sourceApplyButton.addEventListener("click", () => {
 });
 sourceCancelButton.addEventListener("click", () => {
   runtime?.cancelSourceDraft();
+  updateModeControls();
+});
+insertTableButton.addEventListener("pointerdown", (event) => event.preventDefault());
+insertTableButton.addEventListener("click", () => {
+  runtime?.insertTable();
   updateModeControls();
 });
 updateModeControls();

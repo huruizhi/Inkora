@@ -23,6 +23,12 @@ describe("analyzeDocument 快照契约", () => {
     expect(() => analyzeDocument({ raw: "", revision: NaN })).toThrow(TypeError);
     expect(() => analyzeDocument(null as never)).toThrow(TypeError);
   });
+
+  it("内容统计排除任务标记和表格管道，只计可见 cell 与 label", () => {
+    const raw = "- [ ] 中文\n- [x] done\n\n| A | B |\n| --- | --- |\n| x | y |\n";
+    const result = analyzeDocument(snap(raw));
+    expect(result.content).toEqual({ characters: 10, writingUnits: 7 });
+  });
 });
 
 describe("大纲：标题识别与原文偏移", () => {

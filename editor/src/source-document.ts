@@ -112,7 +112,7 @@ export function parse(source: string) {
     } else if (risks.some(r => r.code === 'obsidian_callout' || r.code === 'footnote')) {
       node = protect(); // callout / 脚注片段：与正文混排，原字节保留
     } else {
-      const protectedDoc = parseProtectedMarkdown(normalized);
+      const protectedDoc = token.type === 'table_open' ? null : parseProtectedMarkdown(normalized);
       if (protectedDoc && protectedDoc.childCount === 1 && protectedDoc.firstChild?.type.name === 'protected_block') {
         node = schema.nodes.protected_block.create({ raw, kind: protectedDoc.firstChild.attrs.kind });
       } else {
@@ -122,7 +122,7 @@ export function parse(source: string) {
         // all stay separated. Unknown syntax is still a bounded source-owned
         // block: keep it beside editable body text and expose one repair issue
         // instead of throwing the entire document into the legacy textarea.
-        const unsupported = risks.filter(r => !['task_list', 'gfm_autolink', 'image'].includes(r.code));
+        const unsupported = risks.filter(r => !['task_list', 'gfm_autolink', 'image', 'gfm_table'].includes(r.code));
         if (unsupported.length) {
           issue = {
             code: unsupported[0].code,

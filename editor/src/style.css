@@ -47,6 +47,51 @@ div#editor {
   border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
   padding: 6px 10px;
 }
+.inkora-table-shell {
+  margin: 1em 0;
+  overflow-x: auto;
+}
+.inkora-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.inkora-table-toolbar button {
+  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border-radius: 5px;
+  padding: 2px 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+}
+.inkora-table-toolbar button:focus-visible,
+.inkora-task-checkbox:focus-visible {
+  outline: 2px solid AccentColor;
+  outline-offset: 1px;
+}
+.inkora-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.inkora-table th,
+.inkora-table td {
+  min-width: 72px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  vertical-align: top;
+}
+li[data-task-state] {
+  list-style: none;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 7px;
+}
+.inkora-task-checkbox { margin-top: 0.45em; }
+.inkora-task-content > :first-child { margin-top: 0; }
+.inkora-task-content > :last-child { margin-bottom: 0; }
 div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 
 /* 大纲与统计面板：INK-055 约束 —— 页面不滚动，编辑区与面板各自内层滚动。 */

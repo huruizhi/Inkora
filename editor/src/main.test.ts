@@ -42,6 +42,7 @@ interface Harness {
   visualMode(): HTMLButtonElement;
   sourceApply(): HTMLButtonElement;
   sourceCancel(): HTMLButtonElement;
+  insertTable(): HTMLButtonElement;
  }
 
 // prosemirror-view 在 jsdom 下还需要这些全局（MutationObserver、raf、
@@ -170,6 +171,7 @@ async function bootMain(): Promise<Harness> {
     visualMode: () => dom.window.document.querySelector<HTMLButtonElement>(".editor-mode-visual")!,
     sourceApply: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-apply")!,
     sourceCancel: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-cancel")!,
+    insertTable: () => dom.window.document.querySelector<HTMLButtonElement>(".insert-table")!,
   };
 }
 
@@ -200,6 +202,56 @@ it("提供键盘可达的可视/源码切换和草稿提交取消入口", async 
   expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
   expect(h.visualMode().getAttribute("aria-pressed")).toBe("true");
   expect(h.stateMessages()).toHaveLength(1);
+});
+
+it("生产 main 工具栏新建两列表格并通过正式 Bridge 快照", async () => {
+  const h = await bootMain();
+  const expected = "| 列 1 | 列 2 |\n| --- | --- |\n|  |  |";
+  h.receive({
+    type: "loadDocument", requestID: "load-table", documentID: "doc-table", revision: 0,
+    text: "",
+  });
+  expect(h.insertTable().type).toBe("button");
+
+  h.insertTable().click();
+
+  expect(h.editorHost().querySelectorAll("table th")).toHaveLength(2);
+  expect(h.editorHost().querySelectorAll("table td")).toHaveLength(2);
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ revision: 1, dirty: true });
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-table", documentID: "doc-table", revision: 1,
+  });
+  expect(h.sent.find((message) => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-table")).toMatchObject({ text: expected, revision: 1 });
+});
+
+it("生产 main 任务 checkbox 通过 Bridge 发布单字符切换与历史", async () => {
+  const h = await bootMain();
+  const input = "- [ ] 中文任务\r\n- [X] 保持\r\n";
+  const expected = input.replace("[ ] 中文", "[x] 中文");
+  h.receive({
+    type: "loadDocument", requestID: "load-task", documentID: "doc-task", revision: 0,
+    text: input,
+  });
+  const checkbox = h.editorHost().querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+
+  checkbox.click();
+
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ revision: 1, dirty: true });
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-task", documentID: "doc-task", revision: 1,
+  });
+  expect(h.sent.find((message) => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-task")).toMatchObject({ text: expected });
+  h.receive({
+    type: "executeCommand", requestID: "undo-task", documentID: "doc-task",
+    revision: 1, command: "undo",
+  });
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-task-undo", documentID: "doc-task", revision: 2,
+  });
+  expect(h.sent.find((message) => message.type === "snapshotReady" &&
+    message.requestID === "snapshot-task-undo")).toMatchObject({ text: input });
 });
 
 it("拒绝错误文档的保存回执且不污染 dirty 保存基线", async () => {

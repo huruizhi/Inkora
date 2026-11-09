@@ -22,6 +22,8 @@ import { SourceAuthoritySession } from "./source-authority";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
 import { createCodeBlockNodeViews } from "./code-block-view";
+import { createTableNodeViews, handleTableTab, insertDefaultTable } from "./table-editing";
+import { createTaskListItemNodeViews } from "./task-list-view";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
@@ -48,6 +50,7 @@ export interface EditorRuntime {
     readonly replacedCount: number;
   }>;
   readonly composing: boolean;
+  insertTable(): boolean;
   enterSourceMode(): boolean;
   applySourceDraft(): boolean;
   cancelSourceDraft(): boolean;
@@ -258,6 +261,10 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     this.onChange(this.status, "status");
   }
 
+  insertTable(): boolean {
+    return this.view ? insertDefaultTable(this.view) : false;
+  }
+
   undo(): boolean {
     if (this.composing) return false;
     if (!this.session.undo()) return false;
@@ -361,10 +368,28 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       },
     });
     const codeDecorations = createCodeHighlightDecorations();
+    const tableNodeView = createTableNodeViews({
+      isComposing: () => this.session.composing || view?.composing === true,
+    });
+    const taskListItemNodeView = createTaskListItemNodeViews({
+      isComposing: () => this.session.composing || view?.composing === true,
+    });
     view = new EditorView(this.parent, {
       state: this.session.state,
       decorations: codeDecorations,
-      nodeViews: { code_block: codeBlockNodeView },
+      nodeViews: {
+        code_block: codeBlockNodeView,
+        table: tableNodeView,
+        list_item: taskListItemNodeView,
+      },
+      handleDOMEvents: {
+        keydown: (activeView, event) => {
+          if (event.key !== "Tab" || this.session.composing || activeView.composing) return false;
+          if (!handleTableTab(activeView, event.shiftKey)) return false;
+          event.preventDefault();
+          return true;
+        },
+      },
       dispatchTransaction: (transaction) => {
         const before = this.session.currentRaw;
         const accepted = this.session.dispatch(transaction);
@@ -495,6 +520,7 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   }
 
   getText(): string { return this.text; }
+  insertTable(): boolean { return false; }
   enterSourceMode(): boolean { return true; }
   applySourceDraft(): boolean { return false; }
   cancelSourceDraft(): boolean { return false; }
