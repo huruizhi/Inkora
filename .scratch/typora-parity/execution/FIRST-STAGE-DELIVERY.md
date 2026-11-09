@@ -21,7 +21,13 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 
 PR75已按既定增量授权合并，main11773c6。修正095后e20065c通过713项及精确CI；最终494文件tar SHA `27732f56cc3637dc0bf96f7d60b4d68c7aaec874b3014e88bc71a46f7bb1063e`，CI JSON/log另存archive，临时symlink已移除。094/095均已两层回收，累计84。
 
-096独立公开会话审计已提交5dbe618（只报告/冻结测试，产品仍156）：footnote定义没有opaque节点、callout吞lazy continuation、Wiki整段冻结正文；未闭合frontmatter/source repair控制通过。不是物理门槛替代，也未自动改写产品。097/098委员会仅只读分析V2统一边界；无profiles，实时inspect后Sol5.6 high/default与Sonnet5.5 high启动，Sonnet额度403立即归档，替换为Luna5.6 high/default复用098工作区。当前agent765de7ab / workspacewks_35cec0601ac647f2与agentf9965744 / workspacewks_c6668613ea434ddf，均禁止编辑/代码/测试/GUI/新agent，通知完成后先备份结论并回收。未把失败Sonnet当有效评审。
+096独立公开会话审计已提交5dbe618（只报告/冻结测试，产品仍156）：footnote定义没有opaque节点、callout吞lazy continuation、Wiki整段冻结正文；未闭合frontmatter/source repair控制通过。root096最终454文件tar SHA `6701860564cfa7d4eee38d74390e92c06ad23bbb35092aaa297519a0387f1705`。099在main117另复现GATE004：主动源码把$x$改$y$并提交后，原文已准确但仍无法保存；实证1红，单独冻结。
+
+097/098委员会独立与cross-check均收敛parser-owned accepted边界，PM block/inline atom与ledger共同消费，不采用独立range pass；D完整可视删除按现canonical仍拒绝；GATE004以内容状态保存来源证明与结构化资格分开，保留诊断。Sonnet额度403立即归档，098在同工作区替换为Luna high后完成；失败不当有效评审。两路结果和原始输出已纳入099，18项独立literal oracle（数据自检、不是产品通过）冻结于42ded5e，原16例及规则编号修正保留。
+
+097/098现均Agent/workspace两层回收、removedDirectory=true，managed累计86，无活动Paseo Agent。两工作区各454文件，tar SHA分别 `cf383e36ebfae6b09c6bc7d073317f99548383ec3e84130b951f17063c563ca1`、`df4482ea142ecbcc23cf05742f8d999d28bf29f3516b8e2d5192e6cd7bef199d`。
+
+root100已在独立task/INK-M1-100-explicit-source-save（.worktrees/INK-M1-100，起点099/42ded5e，含main117）实施GATE004纵向切片。已实际先红后绿：source save资格、非法Unicode/bareCR草稿保留、main错误阻断提示、no-op源码确认按钮；model source-proof/history/后续编辑/重载/组合/草稿/过期事务控制，真实textarea→Apply→Bridge snapshot/markSaved→UndoRedo通过。最初main夹具显式移除了BOM，其失败不计产品红；校准为真实原value局部替换后才捕获真实状态提示错误。完整回归正在跑，尚未交付；脚注/callout/inline atom统一边界还需后续V2切片，不宣告首阶段通过。
 
 ## 历史执行状态（2026-11-10）
 
