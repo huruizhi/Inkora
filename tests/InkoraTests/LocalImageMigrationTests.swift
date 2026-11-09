@@ -23,6 +23,7 @@ final class LocalImageMigrationTests: XCTestCase {
 
     let plan = try migration.prepare(
       markdown: markdown,
+      ownerURIs: ["Old.assets/%E6%9E%B6%E6%9E%84%20%E5%9B%BE%25.png"],
       sourceDocumentURL: sourceDirectory.appendingPathComponent("Old.md"),
       targetDocumentURL: targetDirectory.appendingPathComponent("New.md"),
       sourceAuthorizedDirectory: sourceDirectory,
@@ -56,6 +57,7 @@ final class LocalImageMigrationTests: XCTestCase {
 
     let reusable = try migration.prepare(
       markdown: markdown,
+      ownerURIs: ["Old.assets/a.png"],
       sourceDocumentURL: source.appendingPathComponent("Old.md"),
       targetDocumentURL: target.appendingPathComponent("New.md"),
       sourceAuthorizedDirectory: source,
@@ -68,6 +70,7 @@ final class LocalImageMigrationTests: XCTestCase {
     XCTAssertThrowsError(
       try migration.prepare(
         markdown: markdown,
+        ownerURIs: ["Old.assets/a.png"],
         sourceDocumentURL: source.appendingPathComponent("Old.md"),
         targetDocumentURL: target.appendingPathComponent("New.md"),
         sourceAuthorizedDirectory: source,
@@ -100,6 +103,9 @@ final class LocalImageMigrationTests: XCTestCase {
 
     let plan = try migration.prepare(
       markdown: markdown,
+      ownerURIs: [
+        "Old.assets/full.png", "Old.assets/collapsed.png", "Old.assets/shortcut.png",
+      ],
       sourceDocumentURL: source.appendingPathComponent("Old.md"),
       targetDocumentURL: target.appendingPathComponent("New.md"),
       sourceAuthorizedDirectory: source,
@@ -133,6 +139,7 @@ final class LocalImageMigrationTests: XCTestCase {
 
     let plan = try migration.prepare(
       markdown: markdown,
+      ownerURIs: ["Old.assets/%E4%B8%AD%20%E6%96%87%25.png"],
       sourceDocumentURL: source.appendingPathComponent("Old.md"),
       targetDocumentURL: target.appendingPathComponent("New.md"),
       sourceAuthorizedDirectory: source,
@@ -143,62 +150,6 @@ final class LocalImageMigrationTests: XCTestCase {
     XCTAssertEqual(plan.items.map(\.uri), ["Old.assets/%E4%B8%AD%20%E6%96%87%25.png"])
     XCTAssertEqual(
       try Data(contentsOf: target.appendingPathComponent("Old.assets/中 文%.png")), png)
-  }
-
-  func testReferenceOwnershipUsesEscapesEntitiesAndIgnoresLinksAndUnusedDefinitions() {
-    let markdown = #"""
-      ![x][A\&amp;   B]
-      ![entity][&#169;]
-      [ordinary][a& b]
-
-      [a&amp; b]: Old.assets/owned.png
-      [&copy;]: Old.assets/entity.png
-      [unused]: Old.assets/unused.png
-      """#
-    XCTAssertEqual(
-      LocalImageMigrationCoordinator.localImageURIs(in: markdown),
-      ["Old.assets/owned.png", "Old.assets/entity.png"])
-  }
-
-  func testReferenceOwnershipAcceptsCanonicalLineBreakAndEscapedBracketLabels() {
-    let markdown = #"""
-      ![x][A\]
-        B]
-
-      [a\] b]: Old.assets/owned.png
-      """#
-    XCTAssertEqual(
-      LocalImageMigrationCoordinator.localImageURIs(in: markdown),
-      ["Old.assets/owned.png"])
-  }
-
-  func testDraftURIOwnershipRejectsCodeAndPlainTextSubstringMatches() {
-    let uri = "inkora-draft://asset/11111111-1111-4111-8111-111111111111"
-    let markdown = "plain \(uri)\n`![code](\(uri))`\n![owned](\(uri))\n"
-    XCTAssertEqual(LocalImageMigrationCoordinator.imageURIs(in: markdown), [uri])
-  }
-
-  func testInlineImageScannerKeepsBalancedAngleTitleAndEscapedDestinations() {
-    let markdown = #"""
-      ![balanced](Old.assets/a(b).png)
-      ![angle](<Old.assets/angle image.png> "title")
-      ![escaped](Old.assets/a\(b\).png 'title')
-      [ordinary](Old.assets/not-image.png)
-      `![code](Old.assets/not-code.png)`
-      """#
-    XCTAssertEqual(
-      LocalImageMigrationCoordinator.imageURIs(in: markdown),
-      ["Old.assets/a(b).png", "Old.assets/angle image.png"])
-  }
-
-  func testInlineImageScannerRejectsUnclosedOwnersAndPlainLinks() {
-    let markdown = #"""
-      ![unclosed](Old.assets/a(b.png)
-      [plain](Old.assets/real.png)
-      ![valid](Old.assets/real.png)
-      """#
-    XCTAssertEqual(
-      LocalImageMigrationCoordinator.imageURIs(in: markdown), ["Old.assets/real.png"])
   }
 
   func testSaveAsMigratesBalancedParenthesisWithoutChangingMarkdown() throws {
@@ -223,6 +174,9 @@ final class LocalImageMigrationTests: XCTestCase {
 
     let plan = try migration.prepare(
       markdown: markdown,
+      ownerURIs: [
+        "Old.assets/a(b).png", "Old.assets/angle image.png", "Old.assets/escaped(a).png",
+      ],
       sourceDocumentURL: source.appendingPathComponent("Old.md"),
       targetDocumentURL: target.appendingPathComponent("New.md"),
       sourceAuthorizedDirectory: source,
@@ -260,6 +214,7 @@ final class LocalImageMigrationTests: XCTestCase {
 
     let plan = try migration.prepare(
       markdown: markdown,
+      ownerURIs: ["Old.assets/real.png"],
       sourceDocumentURL: source.appendingPathComponent("Old.md"),
       targetDocumentURL: target.appendingPathComponent("New.md"),
       sourceAuthorizedDirectory: source,
@@ -283,6 +238,7 @@ final class LocalImageMigrationTests: XCTestCase {
     let coordinator = LocalImageMigrationCoordinator(journalRoot: journal)
     let plan = try coordinator.prepare(
       markdown: markdown,
+      ownerURIs: ["Old.assets/a.png"],
       sourceDocumentURL: source.appendingPathComponent("Old.md"),
       targetDocumentURL: target.appendingPathComponent("New.md"),
       sourceAuthorizedDirectory: source,
@@ -351,6 +307,7 @@ final class LocalImageMigrationTests: XCTestCase {
       let coordinator = LocalImageMigrationCoordinator(journalRoot: journal)
       let plan = try coordinator.prepare(
         markdown: "![x](Old.assets/a.png)\n",
+        ownerURIs: ["Old.assets/a.png"],
         sourceDocumentURL: source.appendingPathComponent("Old.md"),
         targetDocumentURL: target.appendingPathComponent("New.md"),
         sourceAuthorizedDirectory: source,
@@ -390,21 +347,6 @@ final class LocalImageMigrationTests: XCTestCase {
     XCTAssertEqual(try Data(contentsOf: target.appendingPathComponent("Old.assets/a.png")), png)
   }
 
-  func testReferenceImageDefinitionsKeepTheFirstCanonicalLabel() {
-    let markdown = "![x][ref]\n\n[ref]: Old.assets/first.png\n[REF]: Old.assets/second.png\n"
-    XCTAssertEqual(LocalImageMigrationCoordinator.imageURIs(in: markdown), ["Old.assets/first.png"])
-  }
-
-  func testReferenceImageDestinationsDecodeCommonMarkEscapes() {
-    let markdown = #"![x][ref]"# + "\n\n" + #"[ref]: Old.assets/a\(b\).png"# + "\n"
-    XCTAssertEqual(LocalImageMigrationCoordinator.imageURIs(in: markdown), ["Old.assets/a(b).png"])
-  }
-
-  func testReferenceImageDestinationsDecodeCharacterReferences() {
-    let markdown = "![x][ref]\n\n[ref]: Old.assets/a&amp;b.png\n"
-    XCTAssertEqual(LocalImageMigrationCoordinator.imageURIs(in: markdown), ["Old.assets/a&b.png"])
-  }
-
   func testSaveAsCopiesTheCanonicalFirstReferenceOwnerAndKeepsAllMarkdownBytes() throws {
     let scratch = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: scratch) }
@@ -423,7 +365,9 @@ final class LocalImageMigrationTests: XCTestCase {
     let migration = LocalImageMigrationCoordinator(
       journalRoot: scratch.appendingPathComponent("Journal"))
     let plan = try migration.prepare(
-      markdown: markdown, sourceDocumentURL: source.appendingPathComponent("Old.md"),
+      markdown: markdown,
+      ownerURIs: ["Old.assets/first.png", "Old.assets/a(b).png", "Old.assets/a&b.png"],
+      sourceDocumentURL: source.appendingPathComponent("Old.md"),
       targetDocumentURL: target.appendingPathComponent("New.md"),
       sourceAuthorizedDirectory: source, targetAuthorizedDirectory: target)
     XCTAssertEqual(plan.markdown, markdown)

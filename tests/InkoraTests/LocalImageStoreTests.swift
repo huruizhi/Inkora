@@ -120,7 +120,8 @@ final class LocalImageStoreTests: XCTestCase {
     let documentURL = targetDirectory.appendingPathComponent("Note.md")
 
     let plan = try session.prepareFirstSave(
-      documentURL: documentURL, authorizedDirectory: targetDirectory)
+      documentURL: documentURL, authorizedDirectory: targetDirectory,
+      ownerURIs: [asset.markdownURI])
     XCTAssertEqual(plan.rewrites, [asset.markdownURI: "Note.assets/a.png"])
     XCTAssertFalse(
       FileManager.default.fileExists(
@@ -165,7 +166,8 @@ final class LocalImageStoreTests: XCTestCase {
     try session.markInsertionAccepted(assetID: asset.id)
 
     let first = try session.prepareFirstSave(
-      documentURL: target, authorizedDirectory: targetDirectory)
+      documentURL: target, authorizedDirectory: targetDirectory,
+      ownerURIs: [asset.markdownURI])
     XCTAssertEqual(first.rewrites[asset.markdownURI], "Note.assets/source.png")
     try session.publish(first)
 
@@ -176,7 +178,8 @@ final class LocalImageStoreTests: XCTestCase {
     XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
 
     let retry = try session.prepareFirstSave(
-      documentURL: target, authorizedDirectory: targetDirectory)
+      documentURL: target, authorizedDirectory: targetDirectory,
+      ownerURIs: [asset.markdownURI])
     XCTAssertEqual(retry.rewrites[asset.markdownURI], "Note.assets/source.png")
     XCTAssertEqual(retry.items.first?.sourceURL, asset.storageURL)
     XCTAssertEqual(retry.items.first?.sha256, asset.sha256)
@@ -185,7 +188,7 @@ final class LocalImageStoreTests: XCTestCase {
     try FileManager.default.createDirectory(at: otherDirectory, withIntermediateDirectories: true)
     let other = try session.prepareFirstSave(
       documentURL: otherDirectory.appendingPathComponent("Renamed.md"),
-      authorizedDirectory: otherDirectory)
+      authorizedDirectory: otherDirectory, ownerURIs: [asset.markdownURI])
     XCTAssertEqual(other.rewrites[asset.markdownURI], "Renamed.assets/source.png")
     try session.publish(other)
     try session.confirmMarkdownCommit(first)
@@ -193,6 +196,25 @@ final class LocalImageStoreTests: XCTestCase {
     XCTAssertEqual(session.assets.first?.state, .awaitingMarkdown)
     try session.confirmMarkdownCommit(other)
     XCTAssertEqual(session.assets.first?.markdownURI, "Renamed.assets/source.png")
+  }
+
+  func testFirstSaveRetainsAcceptedRecoveryAssetThatHasNoCurrentOwner() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let target = scratch.appendingPathComponent("Note.md")
+    let session = try LocalImageStore(root: scratch.appendingPathComponent("Recovery"))
+      .begin(documentID: "doc-1", sessionID: UUID())
+    let asset = try session.importBitmapPNG(
+      png, preferredName: "deleted.png", documentURL: nil, authorizedDirectory: nil)
+    try session.markInsertionAccepted(assetID: asset.id)
+
+    let plan = try session.prepareFirstSave(
+      documentURL: target, authorizedDirectory: scratch, ownerURIs: [])
+
+    XCTAssertTrue(plan.items.isEmpty)
+    XCTAssertTrue(plan.rewrites.isEmpty)
+    XCTAssertEqual(session.assets.first?.id, asset.id)
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
   }
 
   func testPendingRestartPreservesImportIdentityAndRequiresConfirmation() throws {

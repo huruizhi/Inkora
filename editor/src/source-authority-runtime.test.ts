@@ -59,6 +59,97 @@ function createRuntime(raw: string, options: EditorRuntimeOptions = {}): {
 }
 
 describe("production source authority runtime", () => {
+  it("captures canonical image owners from the accepted semantic projection", () => {
+    const protectedRaw = [
+      "    ![code](Old.assets/missing-code.png)",
+      "$$",
+      "![math](Old.assets/missing-math.png)",
+      "$$",
+      "",
+      "![real](Old.assets/real.png)",
+      "",
+    ].join("\n");
+    const protectedRuntime = createRuntime(protectedRaw).runtime;
+    expect(protectedRuntime.captureImageOwnership()).toEqual({
+      raw: protectedRaw,
+      imageURIs: ["Old.assets/real.png"],
+    });
+
+    const inlineRaw = "![inline](Old.assets/a\\(b\\).png)\n";
+    expect(createRuntime(inlineRaw).runtime.captureImageOwnership().imageURIs)
+      .toEqual(["Old.assets/a(b).png"]);
+
+    const referenceRaw = [
+      "![first][REF] ![shared][ref]",
+      "",
+      "[ref]: Old.assets/first&amp;.png",
+      "[REF]: Old.assets/second.png",
+      "",
+    ].join("\n");
+    expect(createRuntime(referenceRaw).runtime.captureImageOwnership().imageURIs)
+      .toEqual(["Old.assets/first&.png", "Old.assets/first&.png"]);
+
+    const escapedReference = String.raw`![x][A\&amp;   B]
+![entity][&#169;]
+[ordinary][a& b]
+
+[a&amp; b]: Old.assets/owned.png
+[&copy;]: Old.assets/entity.png
+[unused]: Old.assets/unused.png
+`;
+    const escapedReferenceRuntime = createRuntime(escapedReference).runtime;
+    expect(escapedReferenceRuntime.status.saveEligible).toBe(true);
+    expect(escapedReferenceRuntime.captureImageOwnership().imageURIs).toEqual([]);
+
+    const unsupportedMultilineLabel = String.raw`![line][A\]
+  B]
+
+[a\] b]: Old.assets/line.png
+`;
+    expect(() => createRuntime(unsupportedMultilineLabel)).toThrow(
+      "尾部存在无法归属的原文范围",
+    );
+
+    const destinations = [
+      "![balanced](Old.assets/a(b).png)",
+      '![angle](<Old.assets/angle image.png> "title")',
+      String.raw`![escaped](Old.assets/a\(b\).png 'title')`,
+      "[ordinary](Old.assets/not-image.png)",
+      "`![code](Old.assets/not-code.png)`",
+      "",
+    ].join("\n");
+    expect(createRuntime(destinations).runtime.captureImageOwnership().imageURIs)
+      .toEqual([
+        "Old.assets/a(b).png", "Old.assets/angle%20image.png", "Old.assets/a(b).png",
+      ]);
+
+    const protectedInline = "<!-- ![comment](Old.assets/not-comment.png) -->\n" +
+      String.raw`\![escaped-image](Old.assets/not-escaped.png)` + "\n";
+    expect(createRuntime(protectedInline).runtime.captureImageOwnership().imageURIs).toEqual([]);
+
+    const invalid = "![unclosed](Old.assets/a(b.png)\n" +
+      "[plain](Old.assets/not-image.png)\n![valid](Old.assets/real.png)\n";
+    expect(createRuntime(invalid).runtime.captureImageOwnership().imageURIs)
+      .toEqual(["Old.assets/real.png"]);
+
+    const draft = "plain inkora-draft://asset/plain\n" +
+      "`![code](inkora-draft://asset/code)`\n" +
+      "![owned](inkora-draft://asset/owned)\n";
+    expect(createRuntime(draft).runtime.captureImageOwnership().imageURIs)
+      .toEqual(["inkora-draft://asset/owned"]);
+
+    const quoteFence = "> ~~~md\n> ![example](Old.assets/missing-quote.png)\n> ~~~\n";
+    const quoteRuntime = createRuntime(quoteFence).runtime;
+    expect(quoteRuntime.status.saveEligible).toBe(true);
+    expect(quoteRuntime.captureImageOwnership().imageURIs).toEqual([]);
+
+    const listContinuation = "- item\n\n    ![real](Old.assets/list-real.png)\n";
+    const listRuntime = createRuntime(listContinuation).runtime;
+    expect(listRuntime.status.saveEligible).toBe(true);
+    expect(listRuntime.captureImageOwnership().imageURIs)
+      .toEqual(["Old.assets/list-real.png"]);
+  });
+
   it("rebuilds auditable projections after source, history, reopen, and image owner changes", () => {
     const original = '[one](./old) tail\r\n';
     const changed = '[one](./new) tail\r\n';

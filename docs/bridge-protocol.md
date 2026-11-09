@@ -17,7 +17,7 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 2. 每次已经提交的用户编辑或 history transaction 恰好增加一次 revision；IME composition 中间态及 DOM end 后尚未稳定的 PM final 不增加，稳定边界只增加一次。
 3. 相同文档的旧 `stateChanged` 不得覆盖较新状态；不同 `documentID` 的事件不得改变当前文档。
 4. `createSnapshot.revision` 是原生已确认的最低 revision；编辑器原子捕获不低于该值的当前 revision 与文本。文档不一致或请求 revision 超前时返回 `stale_revision`。
-5. `snapshotReady` 固定表示编辑器处理请求时捕获的 revision。之后发生的新编辑不会改变该 snapshot，也不得被旧 snapshot 反向覆盖。
+5. `snapshotReady` 固定表示编辑器处理请求时捕获的 revision。之后发生的新编辑不会改变该 snapshot，也不得被旧 snapshot 反向覆盖。可选 `imageOwnership` 把同一次捕获的 `documentID`、revision、逐字 `raw` 与语义投影中的图片 URI 顺序绑定；四者任一不一致即为非法 proof。
 6. 磁盘提交成功后，原生以 `markSaved` 确认实际落盘的 snapshot。该命令不增加 revision；若期间已有更高 revision，编辑器仍保持 dirty。
 
 ## Native → Editor
@@ -97,9 +97,9 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
 
 `applyImageImport` 携带 document/revision、`documentEpoch`、asset UUID、已确定 URI、alt、可空 title、导入意图采样的 `selectionAnchor/selectionHead` 与单个 `inkora-asset://resource/<uuid>` capability。selection 使用当前原文的 directed offsets；执行时 selection、document、revision 或 epoch 任一不匹配都拒绝，不迁移到当前光标。成功是一次正文/history/revision 事务；composition、源码 dirty draft、过期 revision 或无法证明 owner 时拒绝。
 
-`setImageDescriptors` 携带同一 document epoch 的 descriptor 数组。状态限定为 `ready/missing/denied/unsupported/error/pending`；只有 ready 必须且只能带 capability URL。它只刷新 NodeView，不改变正文、dirty、revision、selection 或 history。
+`setImageDescriptors` 携带同一 document epoch 的 descriptor 数组。状态限定为 `ready/missing/denied/unsupported/error/pending`；只有 ready 必须且只能带 capability URL。Native 只能从当前 `imageOwnership` proof 生成 descriptor，并把命令固定到 proof 的 document/revision；迟到 proof 不得迁移到新 revision。它只刷新 NodeView，不改变正文、dirty、revision、selection 或 history。
 
-`prepareImageSave` 携带非空 rewrite 数组，每项以 asset ID 绑定唯一 `from` owner 和确定 `to` URI。编辑器整体校验并作为一个内容事务接受或拒绝；该命令不能由 `markSaved` 替代，也不得改写已有非托管引用。
+`prepareImageSave` 携带非空 rewrite 数组，每项以 asset ID 绑定唯一 `from` owner 和确定 `to` URI。命令必须固定到产生 plan 的 `imageOwnership` document/revision；授权等待期间若 revision 前进，旧 plan 在资源或正文变化前以 `stale_revision` 拒绝。编辑器整体校验并作为一个内容事务接受或拒绝；该命令不能由 `markSaved` 替代，也不得改写已有非托管引用。
 
 ## Editor → Native
 
@@ -141,11 +141,19 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
   "requestID": "snapshot-1",
   "documentID": "document-uuid",
   "revision": 4,
-  "text": "current Markdown"
+  "text": "current Markdown",
+  "imageOwnership": {
+    "documentID": "document-uuid",
+    "revision": 4,
+    "raw": "current Markdown",
+    "imageURIs": ["Note.assets/a.png"]
+  }
 }
 ```
 
-原生层只完成相同 `requestID`、`documentID` 且响应 revision 不低于请求门槛的等待请求。未知 request ID 被忽略；字段不匹配导致该请求失败，不得使用返回正文覆盖当前状态。
+`imageOwnership` 是 v1 的可选兼容扩展；旧 golden 可省略，但所有图片资源流程必须显式要求它。编辑器在同一稳定 runtime、同一个 JavaScript turn 捕获 `text/raw` 与语义投影 owner；`raw` 必须逐字等于 `text`，owner 数组保留文档顺序和重复使用。同一 URI 被两个图片节点使用时保留两项；代码、数学、普通链接与保护块中的伪图片不进入数组。
+
+原生层只完成相同 `requestID`、`documentID` 且响应 revision 不低于请求门槛的等待请求。若 proof 存在，还必须严格验证内外 document/revision/raw 与非空 URI。未知 request ID 被忽略；字段不匹配导致该请求失败，不得使用返回正文覆盖当前状态。缺少 proof 表示“未知”，不等价于 `imageURIs: []`；后者才是已证明无图片。
 
 ### `editorError`
 
@@ -178,7 +186,7 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
 
 ### `imageAccessRequested`
 
-图片占位的「授权/定位」动作发送 document ID、revision 和原 `href`。原生只接受当前 document/revision，经过用户选择签发新 capability，再用 `setImageDescriptors` 回填；该事件本身不改正文或焦点。
+图片占位的「授权/定位」动作发送 document ID、revision、原 `href` 和同一当前版本的 `imageOwnership`。proof 必须包含该 href；原生只接受当前 document/revision，经过用户选择签发新 capability，再用固定到同一 proof 的 `setImageDescriptors` 回填。缺失、跨文档、跨 revision 或不再拥有 href 的事件被忽略；该事件本身不改正文或焦点。
 
 ## 请求、超时与乱序
 

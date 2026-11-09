@@ -743,12 +743,16 @@ final class InkoraDocumentTests: XCTestCase {
     }
     var documentID = ""
     var snapshotText = ""
+    var snapshotOwners: [String] = []
     let document = InkoraDocument(
       snapshotRequester: { completion in
         completion(
           .success(
             BridgeSnapshot(
-              documentID: documentID, revision: 1, text: snapshotText)))
+              documentID: documentID, revision: 1, text: snapshotText,
+              imageOwnership: self.imageOwnership(
+                documentID: documentID, revision: 1, raw: snapshotText,
+                imageURIs: snapshotOwners))))
       }, dataWriter: writer)
     documentID = document.bridgeDocumentID
     document.configureRecovery(
@@ -759,9 +763,13 @@ final class InkoraDocumentTests: XCTestCase {
     try session.markInsertionAccepted(assetID: asset.id)
     let plan = try XCTUnwrap(
       document.prepareLocalImagesForSave(
-        documentURL: target, authorizedDirectory: directory))
+        documentURL: target, authorizedDirectory: directory,
+        snapshot: imageSnapshot(
+          documentID: documentID, revision: 1,
+          raw: "![图](\(asset.markdownURI))\n", imageURIs: [asset.markdownURI])))
     snapshotText = "![图](\(try XCTUnwrap(plan.items.first?.targetURI)))\n"
-    document.configureImageSavePreparer { _, completion in
+    snapshotOwners = [try XCTUnwrap(plan.items.first?.targetURI)]
+    document.configureImageSavePreparer { _, _, completion in
       completion(
         .success(
           DocumentImageSavePreparation(
@@ -789,12 +797,16 @@ final class InkoraDocumentTests: XCTestCase {
     )!
     var documentID = ""
     var snapshotText = ""
+    var snapshotOwners: [String] = []
     let document = InkoraDocument(
       snapshotRequester: { completion in
         completion(
           .success(
             BridgeSnapshot(
-              documentID: documentID, revision: 1, text: snapshotText)))
+              documentID: documentID, revision: 1, text: snapshotText,
+              imageOwnership: self.imageOwnership(
+                documentID: documentID, revision: 1, raw: snapshotText,
+                imageURIs: snapshotOwners))))
       }, dataWriter: FailingDocumentDataWriter(error: CocoaError(.fileWriteOutOfSpace)))
     documentID = document.bridgeDocumentID
     document.configureRecovery(
@@ -805,9 +817,13 @@ final class InkoraDocumentTests: XCTestCase {
     try session.markInsertionAccepted(assetID: asset.id)
     let plan = try XCTUnwrap(
       document.prepareLocalImagesForSave(
-        documentURL: target, authorizedDirectory: directory))
+        documentURL: target, authorizedDirectory: directory,
+        snapshot: imageSnapshot(
+          documentID: documentID, revision: 1,
+          raw: "![图](\(asset.markdownURI))\n", imageURIs: [asset.markdownURI])))
     snapshotText = "![图](\(try XCTUnwrap(plan.items.first?.targetURI)))\n"
-    document.configureImageSavePreparer { _, completion in
+    snapshotOwners = [try XCTUnwrap(plan.items.first?.targetURI)]
+    document.configureImageSavePreparer { _, _, completion in
       completion(
         .success(
           DocumentImageSavePreparation(
@@ -837,11 +853,17 @@ final class InkoraDocumentTests: XCTestCase {
     )!
     var documentID = ""
     var snapshotText = ""
+    var snapshotOwners: [String] = []
     let writer = ObservingDocumentDataWriter {}
     let document = InkoraDocument(
       snapshotRequester: { completion in
         completion(
-          .success(BridgeSnapshot(documentID: documentID, revision: 1, text: snapshotText)))
+          .success(
+            BridgeSnapshot(
+              documentID: documentID, revision: 1, text: snapshotText,
+              imageOwnership: self.imageOwnership(
+                documentID: documentID, revision: 1, raw: snapshotText,
+                imageURIs: snapshotOwners))))
       }, dataWriter: writer)
     documentID = document.bridgeDocumentID
     document.configureRecovery(
@@ -850,9 +872,14 @@ final class InkoraDocumentTests: XCTestCase {
     let asset = try document.importPastedPNG(png, authorizedDirectory: nil)
     try session.markInsertionAccepted(assetID: asset.id)
     let plan = try XCTUnwrap(
-      document.prepareLocalImagesForSave(documentURL: target, authorizedDirectory: directory))
+      document.prepareLocalImagesForSave(
+        documentURL: target, authorizedDirectory: directory,
+        snapshot: imageSnapshot(
+          documentID: documentID, revision: 1,
+          raw: "![图](\(asset.markdownURI))\n", imageURIs: [asset.markdownURI])))
     snapshotText = "![图](\(asset.markdownURI))\n"
-    document.configureImageSavePreparer { _, completion in
+    snapshotOwners = [asset.markdownURI]
+    document.configureImageSavePreparer { _, _, completion in
       completion(
         .success(
           DocumentImageSavePreparation(
@@ -893,14 +920,19 @@ final class InkoraDocumentTests: XCTestCase {
     var documentID = ""
     let document = InkoraDocument { completion in
       completion(
-        .success(BridgeSnapshot(documentID: documentID, revision: 1, text: markdown)))
+        .success(
+          BridgeSnapshot(
+            documentID: documentID, revision: 1, text: markdown,
+            imageOwnership: self.imageOwnership(
+              documentID: documentID, revision: 1, raw: markdown,
+              imageURIs: ["Old.assets/a.png"]))))
     }
     documentID = document.bridgeDocumentID
     try document.read(from: sourceURL, ofType: markdownType)
     document.fileURL = sourceURL
     document.configureRecovery(
       store: RecoveryStore(directory: scratch.appendingPathComponent("Recovery")))
-    document.configureImageSavePreparer { _, completion in
+    document.configureImageSavePreparer { _, _, completion in
       completion(
         .success(
           DocumentImageSavePreparation(
@@ -918,6 +950,136 @@ final class InkoraDocumentTests: XCTestCase {
     XCTAssertEqual(
       try Data(contentsOf: targetDirectory.appendingPathComponent("Old.assets/a.png")), png)
     document.close()
+  }
+
+  @MainActor
+  func testProvenEmptySaveAsDoesNotRequestImageDirectories() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let source = scratch.appendingPathComponent("Source.md")
+    let target = scratch.appendingPathComponent("Other/Target.md")
+    let raw = "plain text\n"
+    try Data(raw.utf8).write(to: source)
+    let document = InkoraDocument()
+    try document.read(from: source, ofType: markdownType)
+    document.fileURL = source
+    document.configureRecovery(
+      store: RecoveryStore(directory: scratch.appendingPathComponent("Recovery")))
+    var authorizationCount = 0
+    let controller = EditorViewController(
+      document: document,
+      imageSaveDirectoryAuthorizer: { _, _, _, completion in
+        authorizationCount += 1
+        completion(nil)
+      })
+    let snapshot = imageSnapshot(
+      documentID: document.bridgeDocumentID, revision: document.bridgeRevision,
+      raw: raw, imageURIs: [])
+    var result: Result<DocumentImageSavePreparation?, Error>?
+
+    controller.prepareImagesForSave(to: target, snapshot: snapshot) { result = $0 }
+
+    XCTAssertEqual(authorizationCount, 0)
+    guard case .success(let preparation) = result else {
+      return XCTFail("Expected proven-empty preparation to succeed")
+    }
+    XCTAssertNil(preparation)
+
+    result = nil
+    controller.prepareImagesForSave(
+      to: target,
+      snapshot: imageSnapshot(
+        documentID: document.bridgeDocumentID, revision: document.bridgeRevision,
+        raw: "![remote](https://example.com/a.png)\n",
+        imageURIs: ["https://example.com/a.png"])
+    ) { result = $0 }
+    guard case .success(let remotePreparation) = result else {
+      return XCTFail("External-only owners must not require local image authorization")
+    }
+    XCTAssertNil(remotePreparation)
+    XCTAssertEqual(authorizationCount, 0)
+
+    result = nil
+    controller.prepareImagesForSave(
+      to: target,
+      snapshot: BridgeSnapshot(
+        documentID: document.bridgeDocumentID, revision: document.bridgeRevision, text: raw)
+    ) { result = $0 }
+    guard case .failure(let error) = result else {
+      return XCTFail("Missing ownership proof must not mean proven empty")
+    }
+    XCTAssertEqual(
+      error as? BridgeProtocolValidationError, .missingField("imageOwnership"))
+    XCTAssertEqual(authorizationCount, 0)
+    document.close()
+  }
+
+  @MainActor
+  func testImageSaveAuthorizationRejectsAProofAcrossDocumentEpoch() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let target = scratch.appendingPathComponent("Note.md")
+    let png = Data(
+      base64Encoded:
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )!
+    let document = InkoraDocument()
+    document.configureRecovery(
+      store: RecoveryStore(directory: scratch.appendingPathComponent("Recovery")))
+    let session = try document.localImages()
+    let asset = try document.importPastedPNG(png, authorizedDirectory: nil)
+    try session.markInsertionAccepted(assetID: asset.id)
+    var authorizationCompletion: ((URL?) -> Void)?
+    let controller = EditorViewController(
+      document: document,
+      imageSaveDirectoryAuthorizer: { _, _, _, completion in
+        authorizationCompletion = completion
+      })
+    let raw = "![image](\(asset.markdownURI))\n"
+    var result: Result<DocumentImageSavePreparation?, Error>?
+
+    controller.prepareImagesForSave(
+      to: target,
+      snapshot: imageSnapshot(
+        documentID: document.bridgeDocumentID, revision: document.bridgeRevision,
+        raw: raw, imageURIs: [asset.markdownURI])
+    ) { result = $0 }
+    XCTAssertNotNil(authorizationCompletion)
+    controller.reloadDocument()
+    authorizationCompletion?(scratch)
+
+    guard case .failure(let error) = result else {
+      return XCTFail("An authorization result from an old epoch must fail")
+    }
+    XCTAssertEqual(error.localizedDescription, EditorBridgeError.staleRevision.localizedDescription)
+    XCTAssertEqual(session.assets.first?.state, .draft)
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
+    XCTAssertFalse(
+      FileManager.default.fileExists(
+        atPath: scratch.appendingPathComponent("Note.assets").path))
+    document.close()
+  }
+
+  private func imageOwnership(
+    documentID: String,
+    revision: Int,
+    raw: String,
+    imageURIs: [String]
+  ) -> BridgeImageOwnershipProof {
+    BridgeImageOwnershipProof(
+      documentID: documentID, revision: revision, raw: raw, imageURIs: imageURIs)
+  }
+
+  private func imageSnapshot(
+    documentID: String,
+    revision: Int,
+    raw: String,
+    imageURIs: [String]
+  ) -> BridgeSnapshot {
+    BridgeSnapshot(
+      documentID: documentID, revision: revision, text: raw,
+      imageOwnership: imageOwnership(
+        documentID: documentID, revision: revision, raw: raw, imageURIs: imageURIs))
   }
 
   private func fixtureData(named name: String) throws -> Data {

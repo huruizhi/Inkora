@@ -14,7 +14,7 @@ INK-M1-055 将图片接入正式 source-authoritative 编辑器与 `NSDocument` 
 
 ## 安全边界
 
-`inkora-asset://resource/<uuid>` 同时绑定 document、epoch 和 token。导入与首次保存路径事务在入队时固定 document/revision，过期后拒绝且不迁移到新选区重试；授权事件也只接受当前精确 revision。broker 对每个路径组件使用 descriptor-relative open，拒绝越界、symlink、非普通文件、超限、MIME/解码/SHA 不符；重载使旧 token 失效。真实 `WKURLSchemeHandler` 与测试共用 `DocumentAssetTaskCore`，stop 后不再回调，读取结束才配对释放 security-scope lease。
+`inkora-asset://resource/<uuid>` 同时绑定 document、epoch 和 token。导入、descriptor 与首次保存路径事务在入队时固定 canonical owner proof 的 document/revision，过期后拒绝且不迁移到新选区或新文本重试；授权事件也必须携带当前精确 proof 且 href 仍是 owner。broker 对每个路径组件使用 descriptor-relative open，拒绝越界、symlink、非普通文件、超限、MIME/解码/SHA 不符；重载使旧 token 失效。真实 `WKURLSchemeHandler` 与测试共用 `DocumentAssetTaskCore`，stop 后不再回调，读取结束才配对释放 security-scope lease。
 
 目录选择产生版本化 security-scoped bookmark；只读来源使用 read-only 选项，写入目标使用读写 bookmark。解析失败保留记录并要求重新授权，不把拒权伪装成缺图。CSP 只增加 `inkora-asset://resource` 的 `img-src`，`connect-src 'none'` 不变。
 
@@ -22,10 +22,10 @@ PNG、JPEG、GIF、WebP 使用 ImageIO 做真实解码检查，保留源字节�
 
 ## 故障与恢复
 
-导入先以 `pending` 和完整 source identity 持久化，Bridge 确认后才记为 `accepted`；`accepted` 只由真实图片语法 owner 判定，代码、普通正文与链接中的 URI 不计。进程中断时，启动协调器提供恢复、稍后和明确放弃；有可信正文时恢复同一草稿，没有正文时只打开空白图片草稿。作者在常驻 banner 明确确认后，系统重新捕获当前 document/epoch/revision/directed selection，走真实图片事务并持久化包含真实 owner 的 snapshot，最后才记 `handedOff/accepted`。旧 intent 保留用于审计，不重绑或自动重投。首存资源发布后、Markdown 提交前的状态为 `awaitingMarkdown`：manifest 仍保留 draft owner，草稿源和已发布孤儿都保留，重试相同目标复用，改目标则产生新的路径事务。
+导入先以 `pending` 和完整 source identity 持久化，Bridge 确认后才记为 `accepted`；`accepted` 只由当前编辑器 accepted 语义投影的 canonical owner proof 判定，代码、普通正文与链接中的 URI 不计。进程中断时，启动协调器提供恢复、稍后和明确放弃；有可信正文时恢复同一草稿，没有正文时只打开空白图片草稿。作者在常驻 banner 明确确认后，系统重新捕获当前 document/epoch/revision/directed selection，走真实图片事务并持久化包含相同 document/revision/raw owner proof 的 snapshot，最后才记 `handedOff/accepted`。旧 intent 保留用于审计，不重绑或自动重投。首存资源发布后、Markdown 提交前的状态为 `awaitingMarkdown`：manifest 仍保留 draft owner，草稿源和已发布孤儿都保留，重试相同目标复用，改目标则产生新的路径事务。
 
-Save As 使用 UUID 私有 staging，并把 prepared、published-awaiting-markdown 或 failed-conservative schema 2 journal 写在 Recovery，记录 Markdown SHA、源/目标文档和授权根。启动只读枚举并分别报告历史 journal state 与当前 Markdown/资源 SHA 完整性；非法 schema/path/symlink 保留原记录并拒绝裁决。Markdown 成功后才删除 journal；失败只清本操作 staging，已发布资源保守保留。扫描覆盖行内、完整、折叠与快捷参考图，引用标签按 CommonMark escape/entity/case/whitespace 归一化，并排除普通链接、未使用定义、fenced/inline code、HTML 注释和转义图片示例。
+Save As 使用 UUID 私有 staging，并把 prepared、published-awaiting-markdown 或 failed-conservative schema 2 journal 写在 Recovery，记录 Markdown SHA、源/目标文档和授权根。启动只读枚举并分别报告历史 journal state 与当前 Markdown/资源 SHA 完整性；非法 schema/path/symlink 保留原记录并拒绝裁决。Markdown 成功后才删除 journal；失败只清本操作 staging，已发布资源保守保留。需要迁移的 URI 只取自编辑器生产 canonical parser 已接受的图片节点：行内、完整、折叠与快捷参考图，以及 CommonMark escape/entity/first-wins/case/whitespace、平衡括号和容器语义均与实际编辑器一致；Native 不再建立第二套 Markdown owner 语法真值。
 
-行内图片 owner 使用有界 CommonMark scanner，而非在首个 `)` 截断的正则：支持平衡括号、angle destination、title 与反斜杠转义 delimiter，返回解码后的真实资源 URI，但不改 Markdown 原字节。命名图片注册后的同步预检与异步 scheme 读取都由 broker 自己取得根目录 security-scope lease；descriptor 读取完成、取消或失败后对称单次释放，不依赖调用者残留 grant。
+proof 的 URI 用于选择资源，不改 Markdown 原字节。Native 继续独占真实目录 grant、安全 open、MIME/ImageIO 解码、SHA、staging/publish/journal 与 safe-save；命名图片注册后的同步预检与异步 scheme 读取都由 broker 自己取得根目录 security-scope lease，descriptor 读取完成、取消或失败后对称单次释放，不依赖调用者残留 grant。proof 缺失、跨文档、跨 revision、raw 不同或迟到时不触碰资源并保留恢复资产。
 
 真实 Sandbox 面板、跨启动 bookmark、WK 图片显示、拖放/系统剪贴板、IME 与正式关闭重开由管理者集中物理验收；hostless 测试只证明生产接缝与注入的授权/调度模型，不外推系统权限已授予。

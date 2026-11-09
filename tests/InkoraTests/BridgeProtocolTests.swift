@@ -82,7 +82,13 @@ final class BridgeProtocolTests: XCTestCase {
         "requestID": "snapshot-1",
         "documentID": "doc-1",
         "revision": 7,
-        "text": "正文"
+        "text": "![图](Old.assets/a.png)",
+        "imageOwnership": {
+          "documentID": "doc-1",
+          "revision": 7,
+          "raw": "![图](Old.assets/a.png)",
+          "imageURIs": ["Old.assets/a.png"]
+        }
       }
       """
     let event = try JSONDecoder().decode(BridgeEditorEvent.self, from: Data(json.utf8))
@@ -90,7 +96,27 @@ final class BridgeProtocolTests: XCTestCase {
     try event.validate()
     XCTAssertEqual(event.type, .snapshotReady)
     XCTAssertEqual(event.revision, 7)
-    XCTAssertEqual(event.text, "正文")
+    XCTAssertEqual(event.text, "![图](Old.assets/a.png)")
+    XCTAssertEqual(event.imageOwnership?.imageURIs, ["Old.assets/a.png"])
+  }
+
+  func testSnapshotRejectsImageOwnershipFromAnotherAcceptedDocumentVersion() throws {
+    let mismatches: [[String: Any]] = [
+      ["documentID": "other", "revision": 7, "raw": "same", "imageURIs": []],
+      ["documentID": "doc-1", "revision": 6, "raw": "same", "imageURIs": []],
+      ["documentID": "doc-1", "revision": 7, "raw": "other", "imageURIs": []],
+      ["documentID": "doc-1", "revision": 7, "raw": "same", "imageURIs": [""]],
+    ]
+    for proof in mismatches {
+      let json: [String: Any] = [
+        "protocolVersion": 1, "type": "snapshotReady", "requestID": "snapshot-1",
+        "documentID": "doc-1", "revision": 7, "text": "same",
+        "imageOwnership": proof,
+      ]
+      let event = try JSONDecoder().decode(
+        BridgeEditorEvent.self, from: JSONSerialization.data(withJSONObject: json))
+      XCTAssertThrowsError(try event.validate())
+    }
   }
 
   func testStateChangedValidatesAndRoundTripsDirectedSelection() throws {
@@ -197,11 +223,14 @@ final class BridgeProtocolTests: XCTestCase {
   func testImageAccessRequestRequiresCurrentDocumentRevisionAndHrefShape() throws {
     let json = """
       {"protocolVersion":1,"type":"imageAccessRequested","documentID":"doc-1",\
-      "revision":3,"href":"Old.assets/a.png"}
+      "revision":3,"href":"Old.assets/a.png","imageOwnership":{\
+      "documentID":"doc-1","revision":3,"raw":"![a](Old.assets/a.png)",\
+      "imageURIs":["Old.assets/a.png"]}}
       """
     let event = try JSONDecoder().decode(BridgeEditorEvent.self, from: Data(json.utf8))
     try event.validate()
     XCTAssertEqual(event.href, "Old.assets/a.png")
+    XCTAssertEqual(event.imageOwnership?.raw, "![a](Old.assets/a.png)")
 
     let missing = """
       {"protocolVersion":1,"type":"imageAccessRequested","documentID":"doc-1","revision":3}
@@ -209,6 +238,29 @@ final class BridgeProtocolTests: XCTestCase {
     let invalid = try JSONDecoder().decode(BridgeEditorEvent.self, from: Data(missing.utf8))
     XCTAssertThrowsError(try invalid.validate()) {
       XCTAssertEqual($0 as? BridgeProtocolValidationError, .missingField("href"))
+    }
+
+    let foreignOwner = """
+      {"protocolVersion":1,"type":"imageAccessRequested","documentID":"doc-1",\
+      "revision":3,"href":"Old.assets/a.png","imageOwnership":{\
+      "documentID":"doc-1","revision":2,"raw":"![a](Old.assets/a.png)",\
+      "imageURIs":["Old.assets/a.png"]}}
+      """
+    let foreignEvent = try JSONDecoder().decode(
+      BridgeEditorEvent.self, from: Data(foreignOwner.utf8))
+    XCTAssertThrowsError(try foreignEvent.validate()) {
+      XCTAssertEqual($0 as? BridgeProtocolValidationError, .invalidImageOwnership)
+    }
+
+    let unownedHref = """
+      {"protocolVersion":1,"type":"imageAccessRequested","documentID":"doc-1",\
+      "revision":3,"href":"Old.assets/a.png","imageOwnership":{\
+      "documentID":"doc-1","revision":3,"raw":"plain","imageURIs":[]}}
+      """
+    let unownedEvent = try JSONDecoder().decode(
+      BridgeEditorEvent.self, from: Data(unownedHref.utf8))
+    XCTAssertThrowsError(try unownedEvent.validate()) {
+      XCTAssertEqual($0 as? BridgeProtocolValidationError, .invalidImageOwnership)
     }
   }
 

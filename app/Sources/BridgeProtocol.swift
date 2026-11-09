@@ -51,6 +51,22 @@ struct BridgeImageRewrite: Codable, Equatable {
   let to: String
 }
 
+struct BridgeImageOwnershipProof: Codable, Equatable {
+  let documentID: String
+  let revision: Int
+  let raw: String
+  let imageURIs: [String]
+
+  func validate(documentID: String, revision: Int, raw: String) throws {
+    guard self.documentID == documentID, self.revision == revision, self.raw == raw else {
+      throw BridgeProtocolValidationError.invalidImageOwnership
+    }
+    guard imageURIs.allSatisfy({ !$0.isEmpty }) else {
+      throw BridgeProtocolValidationError.invalidImageOwnership
+    }
+  }
+}
+
 enum BridgeErrorCode: String, Codable, CaseIterable {
   case invalidMessage = "invalid_message"
   case unsupportedVersion = "unsupported_version"
@@ -481,6 +497,7 @@ struct BridgeEditorEvent: Codable, Equatable {
   let action: BridgeRecoveryAction?
   let message: String?
   let href: String?
+  let imageOwnership: BridgeImageOwnershipProof?
 
   init(
     protocolVersion: Int,
@@ -493,7 +510,8 @@ struct BridgeEditorEvent: Codable, Equatable {
     code: BridgeErrorCode?,
     action: BridgeRecoveryAction?,
     message: String?,
-    href: String? = nil
+    href: String? = nil,
+    imageOwnership: BridgeImageOwnershipProof? = nil
   ) {
     self.protocolVersion = protocolVersion
     self.type = type
@@ -506,6 +524,7 @@ struct BridgeEditorEvent: Codable, Equatable {
     self.action = action
     self.message = message
     self.href = href
+    self.imageOwnership = imageOwnership
   }
 
   func validate() throws {
@@ -538,6 +557,9 @@ struct BridgeEditorEvent: Codable, Equatable {
       guard let revision else { throw BridgeProtocolValidationError.missingField("revision") }
       try Self.validateRevision(revision)
       guard text != nil else { throw BridgeProtocolValidationError.missingField("text") }
+      if let imageOwnership {
+        try imageOwnership.validate(documentID: documentID, revision: revision, raw: text!)
+      }
     case .editorError:
       guard let code else { throw BridgeProtocolValidationError.missingField("code") }
       guard action == code.recoveryAction else {
@@ -554,6 +576,13 @@ struct BridgeEditorEvent: Codable, Equatable {
       try Self.validateRevision(revision)
       guard let href, !href.isEmpty else {
         throw BridgeProtocolValidationError.missingField("href")
+      }
+      if let imageOwnership {
+        try imageOwnership.validate(
+          documentID: documentID, revision: revision, raw: imageOwnership.raw)
+        guard imageOwnership.imageURIs.contains(href) else {
+          throw BridgeProtocolValidationError.invalidImageOwnership
+        }
       }
     }
   }
@@ -572,6 +601,7 @@ enum BridgeProtocolValidationError: Error, Equatable {
   case invalidErrorAction
   case invalidCapabilityURL
   case invalidImageRewrite
+  case invalidImageOwnership
 }
 
 struct BridgeRevisionTracker {

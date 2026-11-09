@@ -165,7 +165,11 @@ final class PendingImageRecoveryTests: XCTestCase {
       snapshot: { completion in
         completion(
           .success(
-            BridgeSnapshot(documentID: documentID, revision: 5, text: recoveredText)))
+            BridgeSnapshot(
+              documentID: documentID, revision: 5, text: recoveredText,
+              imageOwnership: BridgeImageOwnershipProof(
+                documentID: documentID, revision: 5, raw: recoveredText,
+                imageURIs: [asset.markdownURI]))))
       },
       completion: { completionError = $0 })
     try XCTUnwrap(capturedIntentCallback)(.success(freshIntent))
@@ -315,13 +319,18 @@ final class PendingImageRecoveryTests: XCTestCase {
         selectionAnchor: 7, selectionHead: 3, recoveryState: .active))
     let candidate = try XCTUnwrap(store.discover().pendingImageSessions.first)
     var saveSnapshotText = ""
+    var saveOwnerURIs: [String] = []
     let document = try InkoraDocument(
       pendingImageRecovery: candidate,
       recoveryStore: store,
       snapshotRequester: { completion in
         completion(
           .success(
-            BridgeSnapshot(documentID: documentID, revision: 1, text: saveSnapshotText)))
+            BridgeSnapshot(
+              documentID: documentID, revision: 1, text: saveSnapshotText,
+              imageOwnership: BridgeImageOwnershipProof(
+                documentID: documentID, revision: 1, raw: saveSnapshotText,
+                imageURIs: saveOwnerURIs))))
       })
     let draftText = "![](\(asset.markdownURI))\n"
     let freshIntent = LocalImageAsset.ImportIntent(
@@ -339,7 +348,13 @@ final class PendingImageRecoveryTests: XCTestCase {
         completion(nil)
       },
       snapshot: {
-        $0(.success(BridgeSnapshot(documentID: documentID, revision: 1, text: draftText)))
+        $0(
+          .success(
+            BridgeSnapshot(
+              documentID: documentID, revision: 1, text: draftText,
+              imageOwnership: BridgeImageOwnershipProof(
+                documentID: documentID, revision: 1, raw: draftText,
+                imageURIs: [asset.markdownURI]))))
       },
       completion: { handoffError = $0 })
     XCTAssertNil(handoffError)
@@ -347,10 +362,16 @@ final class PendingImageRecoveryTests: XCTestCase {
     let target = scratch.appendingPathComponent("Recovered.md")
     let plan = try XCTUnwrap(
       document.prepareLocalImagesForSave(
-        documentURL: target, authorizedDirectory: scratch))
+        documentURL: target, authorizedDirectory: scratch,
+        snapshot: BridgeSnapshot(
+          documentID: documentID, revision: 1, text: draftText,
+          imageOwnership: BridgeImageOwnershipProof(
+            documentID: documentID, revision: 1, raw: draftText,
+            imageURIs: [asset.markdownURI]))))
     let targetURI = try XCTUnwrap(plan.items.first?.targetURI)
     saveSnapshotText = "![](\(targetURI))\n"
-    document.configureImageSavePreparer { _, completion in
+    saveOwnerURIs = [targetURI]
+    document.configureImageSavePreparer { _, _, completion in
       completion(
         .success(
           DocumentImageSavePreparation(

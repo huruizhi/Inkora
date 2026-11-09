@@ -639,6 +639,7 @@ window.inkora = {
               closeLinkEditor();
               assetEpoch = undefined;
               runtime?.destroy();
+              const runtimeEpoch = loadEpoch;
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange, {
                 searchIdentity: { documentID: command.documentID, epoch: loadEpoch },
                 onLinkRequest: (binding) => {
@@ -646,13 +647,22 @@ window.inkora = {
                   if (owner) openLinkEditor(owner, binding);
                 },
                 onImageAccessRequest: href => {
+                  if (loadEpoch !== runtimeEpoch) return;
                   if (activeDocumentID === undefined || activeRevision === undefined) return;
+                  const ownership = runtime?.captureImageOwnership();
+                  if (!ownership || !ownership.imageURIs.includes(href)) return;
                   postToNative({
                     protocolVersion: BRIDGE_PROTOCOL_VERSION,
                     type: "imageAccessRequested",
                     documentID: activeDocumentID,
                     revision: activeRevision,
                     href,
+                    imageOwnership: {
+                      documentID: activeDocumentID,
+                      revision: activeRevision,
+                      raw: ownership.raw,
+                      imageURIs: ownership.imageURIs,
+                    },
                   });
                 },
               });
@@ -678,7 +688,7 @@ window.inkora = {
                 });
                 return;
               }
-              if (runtime?.composing) {
+              if (captureRuntime?.composing) {
                 postToNative({
                   protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
                   requestID: command.requestID, code: "editor_not_ready", action: "retry",
@@ -686,7 +696,7 @@ window.inkora = {
                 });
                 return;
               }
-              const snapshot = runtime?.snapshotText();
+              const snapshot = captureRuntime?.snapshotText();
               if (!snapshot?.ok) {
                 postToNative({
                   protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
@@ -699,7 +709,16 @@ window.inkora = {
                 protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "queryState",
                 requestID: `${command.requestID}-state`,
               }));
-              postToNative(session.createSnapshot(command, snapshot.value));
+              const ownership = captureRuntime?.captureImageOwnership();
+              if (!ownership || ownership.raw !== snapshot.value) {
+                postToNative({
+                  protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+                  requestID: command.requestID, code: "editor_not_ready", action: "retry",
+                  message: "Image ownership changed while capturing the snapshot",
+                });
+                return;
+              }
+              postToNative(session.createSnapshot(command, ownership));
             };
             if (captureRuntime?.composing) {
               void captureRuntime.whenCompositionStable().then(stable => {

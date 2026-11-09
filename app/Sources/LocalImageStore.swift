@@ -447,7 +447,8 @@ final class LocalImageSession {
 
   func prepareFirstSave(
     documentURL: URL,
-    authorizedDirectory: URL
+    authorizedDirectory: URL,
+    ownerURIs: [String]
   ) throws -> LocalImageSavePlan {
     let assetsDirectory = try Self.assetsDirectory(
       documentURL: documentURL, authorizedDirectory: authorizedDirectory)
@@ -455,10 +456,12 @@ final class LocalImageSession {
     var rewrites: [String: String] = [:]
     var items: [LocalImageSavePlan.Item] = []
     let directoryName = documentURL.deletingPathExtension().lastPathComponent + ".assets"
+    let owners = Set(ownerURIs)
     for asset in assets
     where
       (asset.state == .draft || asset.state == .awaitingMarkdown)
       && asset.insertion == .accepted
+      && owners.contains(asset.markdownURI)
     {
       try Self.validateStoredAsset(asset, inside: directory)
       let allocation = try Self.allocate(
@@ -532,9 +535,9 @@ final class LocalImageSession {
     try persist()
   }
 
-  func validateMarkdownSnapshot(_ markdown: String, for plan: LocalImageSavePlan) throws {
+  func validateMarkdownOwners(_ ownerURIs: [String], for plan: LocalImageSavePlan) throws {
     guard plan.sessionID == sessionID else { throw LocalImageError.corruptManifest }
-    let owners = Set(LocalImageMigrationCoordinator.imageURIs(in: markdown))
+    let owners = Set(ownerURIs)
     for item in plan.items {
       guard let asset = assets.first(where: { $0.id == item.assetID }),
         asset.sha256 == item.sha256,

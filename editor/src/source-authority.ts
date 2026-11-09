@@ -33,6 +33,10 @@ export type ManagedImageInsertion = {
   title: string | null;
 };
 export type ManagedImageRewrite = { assetID: string; from: string; to: string };
+export type CanonicalImageOwnership = {
+  readonly raw: string;
+  readonly imageURIs: readonly string[];
+};
 
 type Snapshot = {
   raw: string;
@@ -537,6 +541,16 @@ export class SourceAuthoritySession {
       !this.unresolvedIntent && this.projectionIsAuditable();
   }
   get sourceAccessible(): boolean { return !this.composing; }
+
+  captureImageOwnership(): CanonicalImageOwnership {
+    const imageURIs: string[] = [];
+    this.state.doc.descendants(node => {
+      if (node.type.name === 'image' && typeof node.attrs.href === 'string' && node.attrs.href) {
+        imageURIs.push(node.attrs.href);
+      }
+    });
+    return { raw: this.currentRaw, imageURIs };
+  }
 
   private snapshot(): Snapshot {
     return {

@@ -39,6 +39,7 @@ final class InkoraDocument: NSDocument {
   typealias SnapshotRequester = (@escaping (Result<BridgeSnapshot, Error>) -> Void) -> Void
   typealias ImageSavePreparer = (
     _ targetURL: URL,
+    _ snapshot: BridgeSnapshot,
     _ completion: @escaping (Result<DocumentImageSavePreparation?, Error>) -> Void
   ) -> Void
 
@@ -291,19 +292,23 @@ final class InkoraDocument: NSDocument {
 
   func prepareLocalImagesForSave(
     documentURL: URL,
-    authorizedDirectory: URL
+    authorizedDirectory: URL,
+    snapshot: BridgeSnapshot
   ) throws -> LocalImageSavePlan? {
+    let ownership = try snapshot.requireImageOwnership()
     let session = try localImages()
     guard
       session.assets.contains(where: {
         ($0.state == .draft || $0.state == .awaitingMarkdown)
           && $0.insertion == .accepted
+          && ownership.imageURIs.contains($0.markdownURI)
       })
     else { return nil }
     let accessed = authorizedDirectory.startAccessingSecurityScopedResource()
     defer { if accessed { authorizedDirectory.stopAccessingSecurityScopedResource() } }
     return try session.prepareFirstSave(
-      documentURL: documentURL, authorizedDirectory: authorizedDirectory)
+      documentURL: documentURL, authorizedDirectory: authorizedDirectory,
+      ownerURIs: ownership.imageURIs)
   }
 
   var text: String {
@@ -580,20 +585,40 @@ final class InkoraDocument: NSDocument {
     }
 
     saveInProgress = true
+    snapshotRequester { [weak self] result in
+      guard let self else { return }
+      switch result {
+      case .failure(let error):
+        self.finishCurrentSave(error)
+      case .success(let snapshot):
+        self.prepareImagesAndPersist(snapshot, for: save, using: snapshotRequester)
+      }
+    }
+  }
+
+  private func prepareImagesAndPersist(
+    _ snapshot: BridgeSnapshot,
+    for save: PendingSave,
+    using snapshotRequester: @escaping SnapshotRequester
+  ) {
     if let imageSavePreparer {
-      imageSavePreparer(save.url) { [weak self] result in
+      imageSavePreparer(save.url, snapshot) { [weak self] result in
         guard let self else { return }
         switch result {
         case .success(let plan):
           self.preparedImageSave = plan
-          self.requestSnapshotForSave(save, using: snapshotRequester)
+          if plan?.managedPlan?.rewrites.isEmpty == false {
+            self.requestSnapshotForSave(save, using: snapshotRequester)
+          } else {
+            self.acceptSnapshotForSave(snapshot, for: save)
+          }
         case .failure(let error):
           self.finishCurrentSave(error)
         }
       }
       return
     }
-    requestSnapshotForSave(save, using: snapshotRequester)
+    acceptSnapshotForSave(snapshot, for: save)
   }
 
   private func requestSnapshotForSave(
@@ -604,19 +629,23 @@ final class InkoraDocument: NSDocument {
       guard let self else { return }
       switch result {
       case .success(let snapshot):
-        self.textStorage.set(snapshot.text)
-        if save.url == self.fileURL {
-          self.refreshFileState()
-          if self.fileState != .current && self.fileState != .moved {
-            self.resolveFileState()
-            return
-          }
-        }
-        self.persist(snapshot, for: save)
+        self.acceptSnapshotForSave(snapshot, for: save)
       case .failure(let error):
         self.finishCurrentSave(error)
       }
     }
+  }
+
+  private func acceptSnapshotForSave(_ snapshot: BridgeSnapshot, for save: PendingSave) {
+    textStorage.set(snapshot.text)
+    if save.url == fileURL {
+      refreshFileState()
+      if fileState != .current && fileState != .moved {
+        resolveFileState()
+        return
+      }
+    }
+    persist(snapshot, for: save)
   }
 
   private func persist(_ snapshot: BridgeSnapshot, for save: PendingSave) {
@@ -635,7 +664,8 @@ final class InkoraDocument: NSDocument {
       defer { if accessed { plan.authorizedDirectory.stopAccessingSecurityScopedResource() } }
       do {
         let session = try localImages()
-        try session.validateMarkdownSnapshot(snapshot.text, for: plan)
+        try session.validateMarkdownOwners(
+          try snapshot.requireImageOwnership().imageURIs, for: plan)
         try session.publish(plan)
       } catch {
         finishCurrentSave(error)
@@ -655,11 +685,13 @@ final class InkoraDocument: NSDocument {
         if targetAccessed { targetGrant.stopAccessingSecurityScopedResource() }
       }
       do {
+        let ownership = try snapshot.requireImageOwnership()
         let migrator = LocalImageMigrationCoordinator(
           journalRoot: recoveryStore.directory.appendingPathComponent(
             "ImageMigrationJournal", isDirectory: true))
         let migration = try migrator.prepare(
           markdown: snapshot.text,
+          ownerURIs: ownership.imageURIs,
           sourceDocumentURL: sourceURL,
           targetDocumentURL: save.url,
           sourceAuthorizedDirectory: sourceGrant,
@@ -958,7 +990,7 @@ final class InkoraDocument: NSDocument {
     guard snapshot.documentID == bridgeDocumentID,
       let asset = session.assets.first(where: { $0.id == assetID }),
       asset.recoveryIntent == freshIntent,
-      LocalImageMigrationCoordinator.imageURIs(in: snapshot.text).contains(asset.markdownURI)
+      try snapshot.requireImageOwnership().imageURIs.contains(asset.markdownURI)
     else { throw LocalImageError.unresolvedMarkdownOwner }
     try writeRecovery(snapshot)
     try session.completeRecoveredInsertion(assetID: assetID, freshIntent: freshIntent)

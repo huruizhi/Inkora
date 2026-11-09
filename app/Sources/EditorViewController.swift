@@ -6,6 +6,13 @@ import WebKit
 final class EditorViewController: NSViewController, EditorBridgeDelegate,
   NSUserInterfaceValidations, WKNavigationDelegate, WKUIDelegate
 {
+  typealias ImageSaveDirectoryAuthorizer = (
+    _ documentURL: URL,
+    _ role: String,
+    _ access: AssetDirectoryAccess,
+    _ completion: @escaping (URL?) -> Void
+  ) -> Void
+
   weak var document: InkoraDocument?
 
   private let resourceBundle: Bundle
@@ -23,17 +30,20 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   private let maximumAutomaticRecoveryAttempts = 1
   private var pendingImageRecoveryDeferred = false
   private var pendingImageRecoveryInFlight = false
+  private let imageSaveDirectoryAuthorizer: ImageSaveDirectoryAuthorizer?
 
   init(
     document: InkoraDocument,
     resourceBundle: Bundle = .main,
     requestTimeout: Duration = .seconds(5),
-    diagnostics: BridgeDiagnostics = BridgeDiagnostics()
+    diagnostics: BridgeDiagnostics = BridgeDiagnostics(),
+    imageSaveDirectoryAuthorizer: ImageSaveDirectoryAuthorizer? = nil
   ) {
     self.document = document
     self.resourceBundle = resourceBundle
     self.requestTimeout = requestTimeout
     self.diagnostics = diagnostics
+    self.imageSaveDirectoryAuthorizer = imageSaveDirectoryAuthorizer
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -99,8 +109,8 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     self.webView = webView
     presentEditor(webView)
 
-    document?.configureImageSavePreparer { [weak self] targetURL, completion in
-      self?.prepareImagesForSave(to: targetURL, completion: completion)
+    document?.configureImageSavePreparer { [weak self] targetURL, snapshot, completion in
+      self?.prepareImagesForSave(to: targetURL, snapshot: snapshot, completion: completion)
         ?? completion(.failure(EditorBridgeError.editorUnavailable))
     }
 
@@ -154,7 +164,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
 
   func confirmSaved(_ snapshot: BridgeSnapshot) {
     bridge?.confirmSaved(snapshot)
-    refreshImageDescriptors()
+    refreshImageDescriptors(using: snapshot)
   }
 
   func canPerformEditorCommand(_ command: BridgeEditorCommand) -> Bool {
@@ -223,16 +233,23 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     NSApplication.shared.mainMenu?.update()
   }
 
-  func editorBridge(_ bridge: EditorBridge, didRequestImageAccess href: String) {
+  func editorBridge(
+    _ bridge: EditorBridge,
+    didRequestImageAccess href: String,
+    ownership: BridgeImageOwnershipProof
+  ) {
     guard let documentURL = document?.fileURL else { return }
+    let ownershipEpoch = documentEpoch
     requestDirectoryAuthorization(
       for: documentURL, role: "document-read-directory", access: .readOnly
     ) { [weak self] directory in
       guard let self, let directory else { return }
+      guard self.documentEpoch == ownershipEpoch else { return }
       let accessed = directory.startAccessingSecurityScopedResource()
       defer { if accessed { directory.stopAccessingSecurityScopedResource() } }
       bridge.setImageDescriptors(
-        documentEpoch: self.documentEpoch,
+        documentEpoch: ownershipEpoch,
+        ownership: ownership,
         descriptors: [
           self.existingImageDescriptor(
             href: href, documentURL: documentURL, authorizedDirectory: directory)
@@ -670,8 +687,18 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   }
 
   private func refreshImageDescriptors() {
+    bridge?.requestVersionedSnapshot { [weak self] result in
+      guard let self, case .success(let snapshot) = result else { return }
+      self.refreshImageDescriptors(using: snapshot)
+    }
+  }
+
+  private func refreshImageDescriptors(using snapshot: BridgeSnapshot) {
     guard let document, let session = try? document.localImages() else { return }
-    var descriptors = session.assets.map { asset -> BridgeImageDescriptor in
+    guard let ownership = try? snapshot.requireImageOwnership() else { return }
+    let owners = Set(ownership.imageURIs)
+    var descriptors = session.assets.filter { owners.contains($0.markdownURI) }.map {
+      asset -> BridgeImageDescriptor in
       do {
         return BridgeImageDescriptor(
           href: asset.markdownURI, status: .ready,
@@ -692,7 +719,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
         document.restoredImageDirectory(role: "document-directory", for: documentURL)
         ?? document.restoredImageDirectory(role: "document-read-directory", for: documentURL)
       guard let grant else {
-        for href in LocalImageMigrationCoordinator.localImageURIs(in: document.text)
+        for href in LocalImageMigrationCoordinator.localImageURIs(in: ownership.imageURIs)
         where known.insert(href).inserted {
           descriptors.append(
             BridgeImageDescriptor(
@@ -700,13 +727,14 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
               message: LocalImageError.unauthorizedDirectory.localizedDescription))
         }
         if !descriptors.isEmpty {
-          bridge?.setImageDescriptors(documentEpoch: documentEpoch, descriptors: descriptors)
+          bridge?.setImageDescriptors(
+            documentEpoch: documentEpoch, ownership: ownership, descriptors: descriptors)
         }
         return
       }
       let accessed = grant.startAccessingSecurityScopedResource()
       defer { if accessed { grant.stopAccessingSecurityScopedResource() } }
-      for href in LocalImageMigrationCoordinator.localImageURIs(in: document.text)
+      for href in LocalImageMigrationCoordinator.localImageURIs(in: ownership.imageURIs)
       where known.insert(href).inserted {
         descriptors.append(
           existingImageDescriptor(
@@ -714,10 +742,11 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       }
     }
     guard !descriptors.isEmpty else { return }
-    bridge?.setImageDescriptors(documentEpoch: documentEpoch, descriptors: descriptors) {
+    bridge?.setImageDescriptors(
+      documentEpoch: documentEpoch, ownership: ownership, descriptors: descriptors
+    ) {
       [weak self] error in
       guard error == nil, let self else { return }
-      let owners = Set(LocalImageMigrationCoordinator.imageURIs(in: document.text))
       for asset in session.assets where asset.insertion == .pending {
         if asset.recoveryDisposition != nil
           || asset.importIntent?.recoveryState == .requiresConfirmation
@@ -790,37 +819,76 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     }
   }
 
-  private func prepareImagesForSave(
+  func prepareImagesForSave(
     to targetURL: URL,
+    snapshot: BridgeSnapshot,
     completion: @escaping (Result<DocumentImageSavePreparation?, Error>) -> Void
   ) {
-    guard let document, let session = try? document.localImages() else {
+    guard let document else {
       completion(.success(nil))
       return
     }
+    let ownership: BridgeImageOwnershipProof
+    do {
+      ownership = try snapshot.requireImageOwnership()
+    } catch {
+      completion(.failure(error))
+      return
+    }
+    if ownership.imageURIs.isEmpty {
+      completion(.success(nil))
+      return
+    }
+    let localOwners = LocalImageMigrationCoordinator.localImageURIs(in: ownership.imageURIs)
+    let hasDraftOwner = ownership.imageURIs.contains {
+      $0.lowercased().hasPrefix("inkora-draft:")
+    }
+    if localOwners.isEmpty && !hasDraftOwner {
+      completion(.success(nil))
+      return
+    }
+    let session: LocalImageSession
+    do {
+      session = try document.localImages()
+    } catch {
+      completion(.failure(error))
+      return
+    }
+    let owners = Set(ownership.imageURIs)
+    let ownershipEpoch = documentEpoch
     let hasDrafts = session.assets.contains {
       ($0.state == .draft || $0.state == .awaitingMarkdown)
         && $0.insertion == .accepted
+        && owners.contains($0.markdownURI)
     }
     let needsMigration =
-      document.fileURL.map {
+      (document.fileURL.map {
         $0.standardizedFileURL != targetURL.standardizedFileURL
-      } ?? false
+      } ?? false)
+      && !localOwners.isEmpty
     guard hasDrafts || needsMigration else {
       completion(.success(nil))
       return
     }
     let receiveTarget: (URL?) -> Void = { [weak self] directory in
       guard let self else { return }
+      guard self.documentEpoch == ownershipEpoch else {
+        completion(.failure(EditorBridgeError.staleRevision))
+        return
+      }
       guard let directory else {
         completion(.failure(CocoaError(.userCancelled)))
         return
       }
       let finish: (URL?) -> Void = { [weak self] sourceDirectory in
         guard let self else { return }
+        guard self.documentEpoch == ownershipEpoch else {
+          completion(.failure(EditorBridgeError.staleRevision))
+          return
+        }
         do {
           let plan = try document.prepareLocalImagesForSave(
-            documentURL: targetURL, authorizedDirectory: directory)
+            documentURL: targetURL, authorizedDirectory: directory, snapshot: snapshot)
           let preparation = DocumentImageSavePreparation(
             managedPlan: plan,
             sourceAuthorizedDirectory: sourceDirectory,
@@ -841,7 +909,9 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
             return
           }
           guard let bridge else { throw EditorBridgeError.editorUnavailable }
-          bridge.prepareImageSave(documentEpoch: documentEpoch, rewrites: rewrites) { error in
+          bridge.prepareImageSave(
+            documentEpoch: ownershipEpoch, ownership: ownership, rewrites: rewrites
+          ) { error in
             if let error { completion(.failure(error)) } else { completion(.success(preparation)) }
           }
         } catch { completion(.failure(error)) }
@@ -851,7 +921,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
           finish(restored)
           return
         }
-        requestDirectoryAuthorization(
+        authorizeImageSaveDirectory(
           for: sourceURL, role: "save-as-source", access: .readOnly
         ) { sourceDirectory in
           guard let sourceDirectory else {
@@ -867,9 +937,23 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     if let restored = restoredDirectory(role: "document-directory", for: targetURL) {
       receiveTarget(restored)
     } else {
-      requestDirectoryAuthorization(
+      authorizeImageSaveDirectory(
         for: targetURL, role: "document-directory", access: .readWrite,
         completion: receiveTarget)
+    }
+  }
+
+  private func authorizeImageSaveDirectory(
+    for documentURL: URL,
+    role: String,
+    access: AssetDirectoryAccess,
+    completion: @escaping (URL?) -> Void
+  ) {
+    if let imageSaveDirectoryAuthorizer {
+      imageSaveDirectoryAuthorizer(documentURL, role, access, completion)
+    } else {
+      requestDirectoryAuthorization(
+        for: documentURL, role: role, access: access, completion: completion)
     }
   }
 

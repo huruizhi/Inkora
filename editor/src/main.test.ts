@@ -690,6 +690,83 @@ it("INK-M1-077: first-save retry follows the current asset owner through the bri
   });
 });
 
+it("INK-M1-083: snapshot binds raw and canonical image owners atomically", async () => {
+  const h = await bootMain();
+  const raw = [
+    "    ![code](Old.assets/missing-code.png)",
+    "",
+    "![real](Old.assets/real.png)",
+    "",
+  ].join("\n");
+  h.receive({
+    type: "loadDocument", requestID: "owners-load", documentID: "owners-doc",
+    revision: 4, text: raw,
+  });
+  h.receive({
+    type: "createSnapshot", requestID: "owners-snapshot", documentID: "owners-doc",
+    revision: 4,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady",
+    requestID: "owners-snapshot",
+    documentID: "owners-doc",
+    revision: 4,
+    text: raw,
+    imageOwnership: {
+      documentID: "owners-doc",
+      revision: 4,
+      raw,
+      imageURIs: ["Old.assets/real.png"],
+    },
+  });
+});
+
+it("INK-M1-083: bare-CR snapshot keeps raw bytes while proving owners", async () => {
+  const h = await bootMain();
+  const raw = "![real](Old.assets/real.png)\rplain";
+  h.receive({
+    type: "loadDocument", requestID: "bare-cr-load", documentID: "bare-cr-doc",
+    revision: 0, text: raw,
+  });
+  h.receive({
+    type: "createSnapshot", requestID: "bare-cr-snapshot", documentID: "bare-cr-doc",
+    revision: 0,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady",
+    text: raw,
+    imageOwnership: { raw, imageURIs: ["Old.assets/real.png"] },
+  });
+});
+
+it("INK-M1-083: image access carries the current canonical owner proof", async () => {
+  const h = await bootMain();
+  const raw = "![local](Old.assets/a.png)\n";
+  h.receive({
+    type: "loadDocument", requestID: "access-load", documentID: "access-doc",
+    revision: 2, text: raw,
+  });
+  h.receive({
+    type: "setImageDescriptors", requestID: "access-descriptor", documentID: "access-doc",
+    revision: 2, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    descriptors: [{ href: "Old.assets/a.png", status: "denied", displayURL: null }],
+  });
+  h.editorHost().querySelector<HTMLButtonElement>(".image-access-button")!.click();
+
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "imageAccessRequested",
+    documentID: "access-doc",
+    revision: 2,
+    href: "Old.assets/a.png",
+    imageOwnership: {
+      documentID: "access-doc",
+      revision: 2,
+      raw,
+      imageURIs: ["Old.assets/a.png"],
+    },
+  });
+});
+
 it("root062: link action pointerdown keeps an active candidate field focused", async () => {
   const h = await rootLinkHarness();
   const form = h.linkEditor()!;

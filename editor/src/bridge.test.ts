@@ -153,9 +153,19 @@ describe("Bridge protocol v1 contracts", () => {
           documentID: "doc-1",
           revision: 2,
           text: "正文",
+          imageOwnership: {
+            documentID: "doc-1",
+            revision: 2,
+            raw: "正文",
+            imageURIs: [],
+          },
         }),
       ),
-    ).toMatchObject({ type: "snapshotReady", text: "正文" });
+    ).toMatchObject({
+      type: "snapshotReady",
+      text: "正文",
+      imageOwnership: { documentID: "doc-1", revision: 2, raw: "正文", imageURIs: [] },
+    });
     expect(
       JSON.parse(
         encodeEditorMessage({
@@ -209,12 +219,18 @@ describe("Bridge protocol v1 contracts", () => {
           documentID: "doc-1",
           revision: 4,
         },
-        "current after fast input",
+        { raw: "current after fast input", imageURIs: ["a.png"] },
       ),
     ).toMatchObject({
       type: "snapshotReady",
       revision: 5,
       text: "current after fast input",
+      imageOwnership: {
+        documentID: "doc-1",
+        revision: 5,
+        raw: "current after fast input",
+        imageURIs: ["a.png"],
+      },
     });
     const currentCommand = {
       protocolVersion: 1 as const,
@@ -223,19 +239,19 @@ describe("Bridge protocol v1 contracts", () => {
       documentID: "doc-1",
       revision: 5,
     };
-    expect(session.createSnapshot(currentCommand, "current")).toMatchObject({
+    expect(session.createSnapshot(currentCommand, { raw: "current", imageURIs: [] })).toMatchObject({
       type: "snapshotReady",
       revision: 5,
       text: "current",
     });
-    expect(session.createSnapshot(currentCommand, "duplicate")).toMatchObject({
+    expect(session.createSnapshot(currentCommand, { raw: "duplicate", imageURIs: [] })).toMatchObject({
       type: "editorError",
       code: "request_conflict",
     });
     expect(
       session.createSnapshot(
         { ...currentCommand, requestID: "snap-ahead", revision: 6 },
-        "future",
+        { raw: "future", imageURIs: [] },
       ),
     ).toMatchObject({ type: "editorError", code: "stale_revision" });
     expect(

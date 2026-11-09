@@ -391,6 +391,49 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testImageOwnerProofRejectsDescriptorAndRewriteAcrossRevision() throws {
+    var scripts: [String] = []
+    let bridge = EditorBridge(
+      delegate: SilentBridgeDelegate(),
+      evaluator: { script, completion in
+        scripts.append(script)
+        completion(nil)
+      }
+    )
+    bridge.loadDocument(documentID: "image-doc", revision: 4, text: "current")
+    bridge.receiveEditorEvent(readyEvent())
+    bridge.receiveEditorEvent(
+      stateEvent(documentID: "image-doc", revision: 4, canUndo: false, canRedo: false))
+    let stale = BridgeImageOwnershipProof(
+      documentID: "image-doc", revision: 3, raw: "old", imageURIs: ["Old.assets/a.png"])
+    var descriptorError: Error?
+    bridge.setImageDescriptors(
+      documentEpoch: UUID(), ownership: stale, descriptors: []
+    ) { descriptorError = $0 }
+    var rewriteError: Error?
+    bridge.prepareImageSave(
+      documentEpoch: UUID(), ownership: stale,
+      rewrites: [
+        BridgeImageRewrite(
+          assetID: UUID().uuidString.lowercased(), from: "inkora-draft://asset/a",
+          to: "Note.assets/a.png")
+      ]
+    ) { rewriteError = $0 }
+
+    XCTAssertEqual(
+      descriptorError?.localizedDescription,
+      EditorBridgeError.staleRevision.localizedDescription)
+    XCTAssertEqual(
+      rewriteError?.localizedDescription,
+      EditorBridgeError.staleRevision.localizedDescription)
+    XCTAssertFalse(
+      try scripts.compactMap(decodeBridgeCommand).contains {
+        $0.type == .setImageDescriptors || $0.type == .prepareImageSave
+      },
+      "A stale proof must not enqueue resource mutations")
+  }
+
+  @MainActor
   func testSnapshotBarrierTimesOutWhenTheEditorStopsReplying() async throws {
     let delegate = SilentBridgeDelegate()
     let bridge = EditorBridge(

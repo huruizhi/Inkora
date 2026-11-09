@@ -21,6 +21,8 @@ import { indexVisualText, locateVisualMatch, mapVisualMatches, sameSearchResult,
 import { validateSourceReplacementPlan } from "./source-replacement";
 import { SourceAuthoritySession } from "./source-authority";
 import type { ManagedImageInsertion, ManagedImageRewrite } from "./source-authority";
+import type { CanonicalImageOwnership } from "./source-authority";
+import { parse as parseCanonicalSource } from "./source-document";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
 import { createCodeBlockNodeViews } from "./code-block-view";
@@ -107,6 +109,7 @@ export interface EditorRuntime {
   applyImageDescriptors(values: readonly ImageResourceDescriptor[]): void;
   insertImage(value: ManagedImageInsertion): boolean;
   rewriteManagedImages(values: readonly ManagedImageRewrite[]): boolean;
+  captureImageOwnership(): CanonicalImageOwnership;
   enterSourceMode(): boolean;
   applySourceDraft(): boolean;
   cancelSourceDraft(): boolean;
@@ -199,6 +202,10 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
 
   getText(): string {
     return this.session.currentRaw;
+  }
+
+  captureImageOwnership(): CanonicalImageOwnership {
+    return this.session.captureImageOwnership();
   }
 
   search(query: string, revision: number, options: SearchOptions = {}): RuntimeSearchResult {
@@ -934,6 +941,17 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   applyImageDescriptors(_values: readonly ImageResourceDescriptor[]): void {}
   insertImage(_value: ManagedImageInsertion): boolean { return false; }
   rewriteManagedImages(_values: readonly ManagedImageRewrite[]): boolean { return false; }
+
+  captureImageOwnership(): CanonicalImageOwnership {
+    const imageURIs: string[] = [];
+    const semanticCopy = this.text.replace(/\r(?!\n)/g, "\n");
+    parseCanonicalSource(semanticCopy).doc.descendants(node => {
+      if (node.type.name === "image" && typeof node.attrs.href === "string" && node.attrs.href) {
+        imageURIs.push(node.attrs.href);
+      }
+    });
+    return { raw: this.text, imageURIs };
+  }
 
   constructor(
     parent: HTMLElement,

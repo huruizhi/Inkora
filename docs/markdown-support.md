@@ -13,6 +13,7 @@
 - `SYN-S001` 至 `SYN-S008`、`SYN-S010` 的链接部分、`SYN-S011` 至 `SYN-S013`、`SYN-S015` 已接入原文权威的基本编辑路径；仍以本矩阵 fixtures 为完整验收范围。
 - `SYN-S009` 任务列表与 `SYN-S014` 表格已接入生产 schema、原文账本、EditorView/NodeView、main 与 Bridge snapshot 路径；冻结12例及独立非UI接缝已通过。真实 WK/物理输入法、VoiceOver 与正式 NSDocument 文件保存重开仍由管理者验收，当前仅为 V3 非UI完成候选。
 - `SYN-S010` 图片保持 S 级首阶段目标；V1 只提供逐字节占位/局部原文路径，完整直接交互由 V4 补齐，当前不得冒称已验收。
+- 图片资源 owner 以实际编辑器 accepted 语义投影为唯一权威，并与同一 snapshot 的 document/revision/逐字 raw 绑定。Native 不再独立扫描 Markdown 推断 owner；缺失 proof 与已证明空数组必须区分。
 - `D` 级稳定片段可与可视正文混排并逐字节保留；块内编辑使用主动源码草稿。畸形或边界未证明的输入保留完整当前原文、可信投影和诊断，并阻断不安全快照，修复后可恢复。
 - bare CR 仍按 `EOL-003` 只读。可视查找替换仍由 V6 完成；源码导航和原子替换继续可用。
 

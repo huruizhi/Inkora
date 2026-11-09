@@ -39,6 +39,13 @@ export interface BridgeImageDescriptor {
   message?: string;
 }
 
+export interface BridgeImageOwnershipProof {
+  readonly documentID: string;
+  readonly revision: number;
+  readonly raw: string;
+  readonly imageURIs: readonly string[];
+}
+
 export type NativeCommand =
   | {
       protocolVersion: 1;
@@ -125,6 +132,7 @@ export type EditorMessage =
       documentID: string;
       revision: number;
       text: string;
+      imageOwnership?: BridgeImageOwnershipProof;
     }
   | {
       protocolVersion: 1;
@@ -142,6 +150,7 @@ export type EditorMessage =
       documentID: string;
       revision: number;
       href: string;
+      imageOwnership?: BridgeImageOwnershipProof;
     };
 
 export function decodeNativeCommand(serialized: string): NativeCommand {
@@ -327,7 +336,7 @@ export class EditorProtocolSession {
 
   createSnapshot(
     command: Extract<NativeCommand, { type: "createSnapshot" }>,
-    text: string,
+    ownership: { readonly raw: string; readonly imageURIs: readonly string[] } | string,
   ): EditorMessage {
     const duplicate = this.claimRequest(command.requestID);
     if (duplicate) return duplicate;
@@ -340,13 +349,24 @@ export class EditorProtocolSession {
     ) {
       return this.error("stale_revision", command.requestID, "Revision is ahead or mismatched");
     }
+    const captured = typeof ownership === "string"
+      ? { raw: ownership, imageURIs: undefined }
+      : ownership;
     return {
       protocolVersion: BRIDGE_PROTOCOL_VERSION,
       type: "snapshotReady",
       requestID: command.requestID,
       documentID: command.documentID,
       revision: this.state.revision,
-      text,
+      text: captured.raw,
+      ...(captured.imageURIs ? {
+        imageOwnership: {
+          documentID: command.documentID,
+          revision: this.state.revision,
+          raw: captured.raw,
+          imageURIs: [...captured.imageURIs],
+        },
+      } : {}),
     };
   }
 
