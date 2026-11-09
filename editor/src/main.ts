@@ -9,6 +9,7 @@ import {
   createEditorRuntime,
   type EditorRuntime,
   type EditorRuntimeStatus,
+  type LinkEditBinding,
   type RuntimeChangeKind,
 } from "./editor-runtime";
 import { analyzeDocument } from "./document-analysis";
@@ -89,6 +90,9 @@ modeBar.append(
   modeStatus,
 );
 workspace.append(modeBar);
+const linkEditorHost = document.createElement("div");
+linkEditorHost.className = "link-editor-host";
+workspace.append(linkEditorHost);
 const editorHost = document.createElement("div");
 editorHost.className = "editor-host";
 workspace.append(editorHost);
@@ -98,6 +102,144 @@ let executingCommand = false;
 let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
 let loadEpoch = 0;
+let activeLinkEditor: HTMLFormElement | undefined;
+const composingLinkEditors = new WeakSet<HTMLFormElement>();
+
+function closeLinkEditor(form = activeLinkEditor): boolean {
+  if (!form) return true;
+  if (composingLinkEditors.has(form)) return false;
+  form.remove();
+  if (activeLinkEditor === form) activeLinkEditor = undefined;
+  return true;
+}
+
+function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
+  if (owner.composing || runtime !== owner || activeDocumentID === undefined ||
+      activeRevision === undefined) return;
+  if (!closeLinkEditor()) return;
+  const documentID = activeDocumentID;
+  const revision = activeRevision;
+  const epoch = loadEpoch;
+  const form = document.createElement("form");
+  form.className = "link-editor";
+  form.setAttribute("role", "dialog");
+  form.setAttribute("aria-label", binding.attrs ? "编辑链接" : "创建链接");
+
+  const hrefLabel = document.createElement("label");
+  hrefLabel.textContent = "链接";
+  const href = document.createElement("input");
+  href.className = "link-editor-href";
+  href.type = "text";
+  href.required = true;
+  href.autocomplete = "off";
+  href.value = binding.attrs?.href ?? "";
+  hrefLabel.append(href);
+
+  const titleLabel = document.createElement("label");
+  titleLabel.textContent = "标题";
+  const title = document.createElement("input");
+  title.className = "link-editor-title";
+  title.type = "text";
+  title.autocomplete = "off";
+  title.value = binding.attrs?.title ?? "";
+  titleLabel.append(title);
+
+  const save = document.createElement("button");
+  save.type = "submit";
+  save.className = "link-editor-save";
+  save.textContent = binding.attrs ? "更新" : "创建";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "link-editor-cancel";
+  cancel.textContent = "取消";
+  const status = document.createElement("span");
+  status.className = "link-editor-status";
+  status.setAttribute("role", "status");
+
+  const apply = (
+    attrs: { href: string; title: string | null } | null,
+    eventIsComposing = false,
+  ): void => {
+    if (eventIsComposing || composingLinkEditors.has(form)) return;
+    if (runtime !== owner || activeDocumentID !== documentID || activeRevision !== revision ||
+        loadEpoch !== epoch) {
+      status.textContent = "链接编辑请求已过期，请重新执行 Mod-K";
+      return;
+    }
+    const result = owner.applyLinkEdit(binding, attrs);
+    if (!result.ok) {
+      status.textContent = result.message;
+      return;
+    }
+    closeLinkEditor(form);
+    owner.focus();
+  };
+  form.addEventListener("submit", event => {
+    // This cancels form navigation, not the input method's key event.
+    event.preventDefault();
+    if ((event as Event & { isComposing?: boolean }).isComposing ||
+        composingLinkEditors.has(form)) return;
+    apply({ href: href.value, title: title.value.length ? title.value : null });
+  });
+  cancel.addEventListener("click", event => {
+    if ((event as PointerEvent & { isComposing?: boolean }).isComposing ||
+        composingLinkEditors.has(form)) return;
+    closeLinkEditor(form);
+    if (runtime === owner && loadEpoch === epoch) owner.focus();
+  });
+  form.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || event.isComposing || composingLinkEditors.has(form)) return;
+    event.preventDefault();
+    cancel.click();
+  });
+  const compositionStart = (): void => {
+    composingLinkEditors.add(form);
+  };
+  const compositionEnd = (): void => {
+    composingLinkEditors.delete(form);
+    if (runtime !== owner || activeDocumentID !== documentID || loadEpoch !== epoch) {
+      closeLinkEditor(form);
+    }
+  };
+  href.addEventListener("compositionstart", compositionStart);
+  href.addEventListener("compositionend", compositionEnd);
+  title.addEventListener("compositionstart", compositionStart);
+  title.addEventListener("compositionend", compositionEnd);
+  form.addEventListener("pointerdown", event => {
+    if (composingLinkEditors.has(form) && event.target !== document.activeElement) {
+      event.preventDefault();
+    }
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "link-editor-actions";
+  if (binding.attrs) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "link-editor-remove";
+    remove.textContent = "移除链接";
+    remove.addEventListener("click", event => apply(
+      null,
+      (event as PointerEvent & { isComposing?: boolean }).isComposing === true,
+    ));
+    actions.append(remove);
+  }
+  actions.append(save, cancel, status);
+  form.append(hrefLabel, titleLabel, actions);
+  linkEditorHost.append(form);
+  activeLinkEditor = form;
+  href.focus();
+  href.select();
+}
+
+const guardLinkCompositionAction = (event: Event): void => {
+  const form = activeLinkEditor;
+  if (!form || !composingLinkEditors.has(form) || form.contains(event.target as Node | null)) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+};
+app.addEventListener("pointerdown", guardLinkCompositionAction, true);
+app.addEventListener("click", guardLinkCompositionAction, true);
 
 function updateModeControls(): void {
   const activeRuntime = runtime;
@@ -120,10 +262,12 @@ function updateModeControls(): void {
 }
 
 sourceModeButton.addEventListener("click", () => {
+  closeLinkEditor();
   runtime?.enterSourceMode();
   updateModeControls();
 });
 visualModeButton.addEventListener("click", () => {
+  closeLinkEditor();
   if (runtime?.mode === "source" && !runtime.status.draftDirty) {
     runtime.cancelSourceDraft();
   }
@@ -462,17 +606,25 @@ window.inkora = {
             const response = session.loadDocument(command);
             if (response.type === "stateChanged") {
               const queryWasComposing = searchPanel.isInputComposing;
+              const linkWasComposing = !!activeLinkEditor &&
+                composingLinkEditors.has(activeLinkEditor);
               cancelPendingSearch();
               // 接受新 load：立即清旧查找结果与绑定（查询/大小写回到默认，
               // 面板开关保留）。被拒 load 不走这里，查找状态原样保留。
               searchPanel.resetForNewDocument();
               loadEpoch += 1;
+              closeLinkEditor();
               runtime?.destroy();
-              runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange);
+              runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange, {
+                onLinkRequest: (binding) => {
+                  const owner = runtime;
+                  if (owner) openLinkEditor(owner, binding);
+                },
+              });
               updateModeControls();
               // 跨 load 不夺走查询框正在进行的 IME composition；面板会在
               // compositionend 安全收口后执行已声明的新文档查询重置。
-              if (!queryWasComposing) runtime.focus();
+              if (!queryWasComposing && !linkWasComposing) runtime.focus();
             }
             postToNative(response);
           }
@@ -551,7 +703,11 @@ window.inkora = {
             // 正在 composition 时，明确拒绝文档 Undo/Redo，避免越过查询框
             // 修改正文；正文重新拥有焦点后仍走既有文档历史。
             const documentCommandBlocked =
-              searchPanel.ownsFocus || searchPanel.isInputComposing;
+              searchPanel.ownsFocus || searchPanel.isInputComposing ||
+              !!activeLinkEditor && (
+                composingLinkEditors.has(activeLinkEditor) ||
+                activeLinkEditor.contains(document.activeElement)
+              );
             postToNative(
               session.executeCommand(
                 command,

@@ -2,7 +2,12 @@ import { JSDOM } from "jsdom";
 import { TextSelection } from "prosemirror-state";
 import { splitBlock } from "prosemirror-commands";
 import { afterEach, describe, expect, it } from "vitest";
-import { createEditorRuntime, type EditorRuntime } from "./editor-runtime";
+import {
+  createEditorRuntime,
+  type EditorRuntime,
+  type EditorRuntimeOptions,
+  type LinkEditBinding,
+} from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
 import { createPasteTransaction } from "./editor-session";
 import {
@@ -34,7 +39,7 @@ afterEach(() => {
   Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
 });
 
-function createRuntime(raw: string): {
+function createRuntime(raw: string, options: EditorRuntimeOptions = {}): {
   dom: JSDOM;
   runtime: EditorRuntime;
   session: InkoraEditorSession;
@@ -43,7 +48,7 @@ function createRuntime(raw: string): {
   Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
   Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
   const parent = dom.window.document.querySelector<HTMLElement>("#app")!;
-  const runtime = createEditorRuntime(parent, raw, () => {});
+  const runtime = createEditorRuntime(parent, raw, () => {}, options);
   const editor = parent.querySelector<HTMLElement>("#editor");
   if (!editor || editor instanceof dom.window.HTMLTextAreaElement) {
     throw new Error("Expected visual source-authoritative runtime");
@@ -64,6 +69,26 @@ describe("production source authority runtime", () => {
         handler(view, from, to, character, () => view.state.tr.insertText(character, from, to)));
       if (!handled) view.dispatch(view.state.tr.insertText(character, from, to));
     }
+  }
+
+  function requestLinkAt(
+    raw: string,
+    selection: { anchor: number; head?: number },
+  ): ReturnType<typeof createRuntime> & { binding: LinkEditBinding } {
+    let binding: LinkEditBinding | undefined;
+    const created = createRuntime(raw, { onLinkRequest: value => { binding = value; } });
+    const view = (created.runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(
+      view.state.doc,
+      selection.anchor,
+      selection.head ?? selection.anchor,
+    )));
+    const shortcut = new created.dom.window.KeyboardEvent("keydown", {
+      key: "k", metaKey: true, bubbles: true, cancelable: true,
+    });
+    expect(view.dom.dispatchEvent(shortcut)).toBe(false);
+    if (!binding) throw new Error("Expected a link edit binding");
+    return { ...created, binding };
   }
 
   it.each([
@@ -134,6 +159,130 @@ describe("production source authority runtime", () => {
     removed.runtime.destroy();
   });
 
+  it("edits only the source-ledger owner under a collapsed caret", () => {
+    const first = requestLinkAt("[one](./same)[two](./same)\n", { anchor: 2 });
+    expect(first.binding.attrs).toEqual({ href: "./same", title: null });
+    expect(first.runtime.applyLinkEdit(first.binding, { href: "./first", title: null })).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(first.runtime.getText()).toBe("[one](./first)[two](./same)\n");
+    expect(first.session.state.selection.anchor).toBe(2);
+    expect(first.runtime.status).toMatchObject({ canUndo: true, canRedo: false });
+    first.runtime.destroy();
+
+    const secondBlock = requestLinkAt("[one](./same)\n\n[two](./same)\n", { anchor: 7 });
+    expect(secondBlock.runtime.applyLinkEdit(secondBlock.binding, {
+      href: "./second",
+      title: null,
+    })).toEqual({ ok: true, value: { changed: true } });
+    expect(secondBlock.runtime.getText()).toBe("[one](./same)\n\n[two](./second)\n");
+    secondBlock.runtime.destroy();
+
+    const marked = requestLinkAt("[**one** two](./old)\n", { anchor: 2 });
+    expect(marked.runtime.applyLinkEdit(marked.binding, { href: "./new", title: "标题" })).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(marked.runtime.getText()).toBe('[**one** two](./new "标题")\n');
+    marked.runtime.destroy();
+
+    const removed = requestLinkAt("[one](./same)[two](./same)\n", { anchor: 2 });
+    expect(removed.runtime.applyLinkEdit(removed.binding, null)).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(removed.runtime.getText()).toBe("one[two](./same)\n");
+    expect(removed.session.state.selection.anchor).toBe(2);
+    expect(removed.runtime.undo()).toBe(true);
+    expect(removed.runtime.getText()).toBe("[one](./same)[two](./same)\n");
+    expect(removed.runtime.redo()).toBe(true);
+    expect(removed.runtime.getText()).toBe("one[two](./same)\n");
+    removed.runtime.destroy();
+  });
+
+  it("preserves backward selection and a unique reference link spelling", () => {
+    const selected = requestLinkAt("[one](./old) tail\n", { anchor: 4, head: 1 });
+    expect(selected.runtime.applyLinkEdit(selected.binding, { href: "./new", title: null })).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(selected.runtime.getText()).toBe("[one](./new) tail\n");
+    expect([selected.session.state.selection.anchor, selected.session.state.selection.head]).toEqual([4, 1]);
+    expect(selected.runtime.undo()).toBe(true);
+    expect(selected.runtime.getText()).toBe("[one](./old) tail\n");
+    expect(selected.runtime.redo()).toBe(true);
+    expect(selected.runtime.getText()).toBe("[one](./new) tail\n");
+    selected.runtime.destroy();
+
+    const reference = requestLinkAt("[one][ref]\n\n[ref]: <./old> '旧标题'\n", { anchor: 2 });
+    expect(reference.runtime.applyLinkEdit(reference.binding, { href: "./new", title: "新标题" })).toEqual({
+      ok: true,
+      value: { changed: true },
+    });
+    expect(reference.runtime.getText()).toBe("[one][ref]\n\n[ref]: <./new> '新标题'\n");
+    reference.runtime.destroy();
+  });
+
+  it("preserves inline spacing and isolates one use of a shared reference", () => {
+    const spaced = requestLinkAt("[one](  <./old>   '旧标题'  )\n", { anchor: 2 });
+    expect(spaced.runtime.applyLinkEdit(spaced.binding, {
+      href: "./new",
+      title: "新标题",
+    })).toEqual({ ok: true, value: { changed: true } });
+    expect(spaced.runtime.getText()).toBe("[one](  <./new>   '新标题'  )\n");
+    spaced.runtime.destroy();
+
+    const shared = requestLinkAt(
+      "[one][ref] [two][ref]\n\n[ref]: ./old \"旧标题\"\n",
+      { anchor: 2 },
+    );
+    expect(shared.runtime.applyLinkEdit(shared.binding, {
+      href: "./new",
+      title: "新标题",
+    })).toEqual({ ok: true, value: { changed: true } });
+    expect(shared.runtime.getText()).toBe(
+      '[one](./new "新标题") [two][ref]\n\n[ref]: ./old "旧标题"\n',
+    );
+    shared.runtime.destroy();
+  });
+
+  it("rolls back source and history when the accepted link cannot restore its owner", () => {
+    const raw = "[one](./old) tail\n";
+    const rejected = requestLinkAt(raw, { anchor: 2 });
+    const selection = rejected.session.state.selection;
+    const result = rejected.runtime.applyLinkEdit(rejected.binding, {
+      href: "./new",
+      title: "候选\n\n# 未闭合",
+    });
+    expect(result.ok).toBe(false);
+    expect(rejected.runtime.getText()).toBe(raw);
+    expect(rejected.session.state.selection.eq(selection)).toBe(true);
+    expect(rejected.runtime.status).toMatchObject({
+      dirty: false,
+      canUndo: false,
+      canRedo: false,
+    });
+    rejected.runtime.destroy();
+  });
+
+  it("removes an inline link through the real Mod-Shift-K keymap", () => {
+    const { dom, runtime, session } = createRuntime("[正文](./target)\n");
+    const view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 3)));
+    const editor = dom.window.document.querySelector<HTMLElement>("#editor")!;
+    expect(editor.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "k", metaKey: true, shiftKey: true, bubbles: true, cancelable: true,
+    }))).toBe(false);
+    expect(runtime.getText(), (session as unknown as { diagnostic?: string }).diagnostic).toBe("正文\n");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("[正文](./target)\n");
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("正文\n");
+    runtime.destroy();
+  });
+
   it("removes a mark from only the selected middle and preserves both marked sides", () => {
     const { runtime, session } = createRuntime("**abc**\n");
     session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, 2, 3)));
@@ -201,6 +350,103 @@ describe("production source authority runtime", () => {
     expect(execute(session, blockKeyBindings.Tab)).toBe(true);
     expect(runtime.getText()).toBe("```ts\ncode\n\t\n```\n");
     expect(runtime.status.unresolved).toBe(false);
+    runtime.destroy();
+  });
+
+  it("converts only the active paragraph to a code block in a multi-block document", () => {
+    const { dom, runtime, session } = createRuntime("one\n\ntwo\n");
+    const view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+    const editor = dom.window.document.querySelector<HTMLElement>("#editor")!;
+    expect(editor.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "c",
+      metaKey: true,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    }))).toBe(false);
+    expect(runtime.getText()).toBe("```\none\n```\n\ntwo\n");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("one\n\ntwo\n");
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("```\none\n```\n\ntwo\n");
+    runtime.destroy();
+  });
+
+  it("keeps a requested code language when converting one block among siblings", () => {
+    const { runtime, session } = createRuntime("one\n\ntwo\n");
+    session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, 2)));
+    expect(execute(session, setCodeBlock("ts"))).toBe(true);
+    expect(runtime.getText()).toBe("```ts\none\n```\n\ntwo\n");
+    expect(runtime.status.unresolved).toBe(false);
+    runtime.destroy();
+  });
+
+  it("preserves BOM, CRLF, neighbours, selection and missing final newline on conversion", () => {
+    const raw = "\uFEFFone\r\n\r\ntwo";
+    const { runtime, session } = createRuntime(raw);
+    let two = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "two") two = pos + 1;
+    });
+    session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, two)));
+    expect(execute(session, setCodeBlock("ts"))).toBe(true);
+    expect(runtime.getText()).toBe("\uFEFFone\r\n\r\n```ts\r\ntwo\r\n```");
+    session.dispatch(session.state.tr.insertText("X"));
+    expect(runtime.getText()).toBe("\uFEFFone\r\n\r\n```ts\r\ntXwo\r\n```");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("\uFEFFone\r\n\r\n```ts\r\ntwo\r\n```");
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    runtime.destroy();
+  });
+
+  it("exits a fenced code block through the real Mod-Enter keymap", () => {
+    const { dom, runtime, session } = createRuntime("```ts\none\n```\n\ntwo\n");
+    let end = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "one") end = pos + node.nodeSize;
+    });
+    const view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, end)));
+    const editor = dom.window.document.querySelector<HTMLElement>("#editor")!;
+    const event = new dom.window.KeyboardEvent("keydown", {
+      key: "Enter",
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    expect(editor.dispatchEvent(event)).toBe(false);
+    expect(runtime.getText()).toBe("```ts\none\n```\n\n\ntwo\n");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("```ts\none\n```\n\ntwo\n");
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("```ts\none\n```\n\n\ntwo\n");
+    runtime.destroy();
+  });
+
+  it("exits a CRLF fenced block without changing BOM, fence or trailing neighbour", () => {
+    const raw = "\uFEFF```ts\r\none\r\n```\r\n\r\ntwo";
+    const { dom, runtime, session } = createRuntime(raw);
+    let end = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "one") end = pos + node.nodeSize;
+    });
+    const view = (runtime as unknown as { view: EditorView }).view;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, end)));
+    const editor = dom.window.document.querySelector<HTMLElement>("#editor")!;
+    expect(editor.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "Enter", metaKey: true, bubbles: true, cancelable: true,
+    }))).toBe(false);
+    expect(runtime.getText()).toBe("\uFEFF```ts\r\none\r\n```\r\n\r\n\r\ntwo");
+    expect(runtime.status.unresolved).toBe(false);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("\uFEFF```ts\r\none\r\n```\r\n\r\n\r\ntwo");
     runtime.destroy();
   });
 

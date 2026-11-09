@@ -92,6 +92,7 @@ export const blockKeyBindings: Record<string, Command> = {
   "Mod-Shift-7": wrapOrderedList,
   "Mod-Shift-8": wrapBulletList,
   "Mod-Shift-.": wrapBlockquote,
+  "Mod-Alt-c": setCodeBlock(),
 };
 
 export function createBlockKeymap(): Plugin {
