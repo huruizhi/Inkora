@@ -440,3 +440,5 @@ INK-PROT-030：Agent b8560dcd-b9a8-4cc0-9c15-e5c1bf6b493a，workspace wks_aa63ec
 030补正7cedafc的原3项红已独立转绿，新增11组和原9域重跑通过；执行Agent已归档。但compositionend后同ID最终PM事务再Undo的真实EditorView重放仍暴露中间拼音，root脚本exit1。Agent adb05108-b6a8-42df-bb49-516f67e07b07 只在同030工作区接续（GPT-5.6-Sol/medium/default），不新开侧栏工作区，不启动GUI。详细记录见独立验收文档末节。
 
 030最终493e2b7已独立接收自动层：原4条红全部转绿，页面11组与集成10域通过；完成Agent和030workspace已备份回收（328文件、Git bundle，累计34workspace）。031采用独立本地worktree，不登记侧栏；只读诊断适配及签名宿主构建完成，源HTML固定4b8a2a3d…ceca99，构建基线1c58696。desktop preflight锁屏退出78，App未启动，等待用户解锁/真人搜狗配合。不是M0或架构采纳通过，008/main不合；详见独立验收末节。
+
+用户暂缓物理验收后明确询问可否锁屏继续开发。已启动不依赖M0架构的两项纯模块：INK-M1-001大纲/统计、INK-M1-002原文字面查找替换。分别独立生产基线worktree，只新增模块/测试/文档，不连接UI或冻结内核；031不启动，M0门槛不解除。完整契约、模型和Agent/workspace指针见[HEADLESS-DEVELOPMENT.md](HEADLESS-DEVELOPMENT.md)。

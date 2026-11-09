@@ -30,3 +30,14 @@
 沿用项目AGENTS，Conventional Commits，真实运行新专项及editor lint/完整editor非UI测试；不运行UI或make run。工具只复用主仓锁定pnpm/依赖，临时自建链接结束移除。源码与测试不允许安装依赖或改冻结031。完成回报文件、命令/实际结果、未完成、风险、分支与完整SHA；提交推送核对远端/clean。管理者随后独立复核并备份、回收Agent和workspace两层。
 
 模型profiles当前为空，经provider探测后使用OMP GLM-5.3/medium承担索引统计，Codex GPT-5.6-Sol/medium承担查找替换；默认速度。最多两执行任务，避免大量侧栏窗口。以上只是启动配置与授权范围，不是实现完成。
+
+## 执行指针
+
+Host均为 `srv_MEqRNkRW6fSx`，任务工作区均从固定36e6365创建，未启动UI。已调用create_agent并取得running回执，等待notifyOnFinish，不轮询或催促。
+
+| 任务 | Agent | Workspace | 分支 | 模型 |
+| --- | --- | --- | --- | --- |
+| INK-M1-001 | 2ae7d24f-ea93-4ef3-9d0a-bf3402e4d013 | wks_d8f1f1a6cdbf1238 | task/INK-M1-001-document-analysis | OMP GLM-5.3 / medium / full |
+| INK-M1-002 | 87c4178e-305e-4029-ab3b-1bc78da6accb | wks_ac09438964adb924 | task/INK-M1-002-source-search | Codex GPT-5.6-Sol / medium / default / full-access |
+
+工作目录分别为 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-001-document-analysis` 和 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-002-source-search`。二者只改各自四个新文件，不共享可写文件。模块当前状态均为执行中，尚无验收或合并结论；完成后备份与回收遵循既有流程。
