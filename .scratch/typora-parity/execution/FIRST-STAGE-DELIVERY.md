@@ -19,7 +19,7 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 
 ## 最新执行状态（2026-11-10，覆盖下述历史）
 
-当前 main 仍 `0f93c4ab52dc55da786c925c5bb135f8188e0933`。图片组合070本地当前 **d6c159bb2524a979c9ef95fc9cc3a5a5b2d0af14**，083已形成统一owner候选；root独立完整editor **615/615**（含Bridge）、Native **177total/169passed/0fail/8性能skip**。图片PR尚未创建，089发现两项Spec wrong，已交090修复；绿灯不替代审查通过。
+当前 main 仍 `0f93c4ab52dc55da786c925c5bb135f8188e0933`。图片组合070已推送 **49440e1b3bd7ea70974a5d671680c34f5b5c75d1**（含087）；root独立完整editor **679/679**（含Bridge）、Native **177total/169passed/0fail/8性能skip**。图片PR尚未创建，089发现两项Spec wrong，已交090修复；绿灯不替代审查通过。
 
 - **079**：1e63a505，owner/range索引与严格raw/doc/projection上下文缓存，已接回/独立回归/两层回收。旧1MB整组超时、优化后约1.25s输入等分阶段数据原样保留。
 - **080**：3ef26139，生产恢复/稍后/放弃、fresh selection确认、snapshot→持久handoff、schema3审计与安全放弃已接回；386文件tar SHA `79312a4b6403697a1b9b423c7c42acf01c96ea8d109ee3c41dc0f3e1a92b4b54`，实际日志/xcresult备份，workspace removedDirectory=true。累计managed workspace回收 **76**。
@@ -33,7 +33,9 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 
 **唯一Paseo实施者090**：Agent `8eb608e4-1973-4175-8ad7-4624e82c5217` / workspace `wks_f242a3ab4bf54ec3` / branch `task/INK-M1-090-owner-proof-recovery-barrier`，固定d6c159b。修复stale proof在capability注册前及Web exact raw/URI消费点的验证，以及080恢复草稿未实际写入仍accepted的问题；必须真实红绿、明确持久写入结果、失败保留pending/旧草稿/资源。禁止GUI，不改root087语法范围。
 
-**root087**：独立 `task/INK-M1-087-reference-definition-coverage`，固定d6c159b。实际单变量证据依次为多行合法定义被gap拒绝、仅修gap后正文引用降为字面量、修语义后ledger保存资格失败；现已接入parser接受时的字段provenance。新增官方CommonMark 0.31.2引用定义27例（26语义比较+1按既有HTML保护策略单测）、9项字段/历史/图片owner回归及真实main表单无操作保真。多行title在单行表单未改也触发revision的新反例已红→绿；完整组合仍在执行，不提前写通过。
+**root087已提交/推送/接回070**：`49440e1b3bd7ea70974a5d671680c34f5b5c75d1`，原始起点d6c159b。实际单变量证据依次为多行合法定义被gap拒绝、仅修gap后正文引用降为字面量、修语义后ledger保存资格失败；现已接入parser接受时的字段provenance。起点新36项实际19红/17绿，修后全绿；新增官方CommonMark 0.31.2引用定义27例（26例各LF/BOM+CRLF语义比较+1既有HTML保护策略）、9项字段/历史/图片owner回归及真实main表单no-op保真。BOM+CRLF例193又捕获BOM被当成缩进空格，修后完整679/679、Bridge双侧14/14、Native169passed/0fail/8skip、lint通过。440文件tar SHA `bab8be237eec5a3e62c921d22f7222e864ce98174d77c1720548cee372c1a389`，真实测试产物另存sha `5d2d5e50be11919ac13325389c69cc1b0ea1305c8645f231dc0b542e56c2fb08`；本地worktree已清临时symlink，不增加managed回收数。
+
+**087独立双轴复核091/092执行中**：固定d6c159b...49440e1。091 Luna5.6 medium/default，Agent `712daa28-7a30-41b8-90d6-36ec4d0e93c5` / workspace `wks_985d72b1c302f022`；092 Sol5.6 high/default，Agent `1cd9c699-d9b3-4710-8128-6d2ea3230cd7` / workspace `wks_1a60b13095c50fd6`。实时profiles仍为空，经provider核实选用。只审不修，独立新上下文；完成即时备份/两层回收。090仍是唯一实施worker，不因评审新增产品任务。
 
 物理验收仍按用户“稍后”，不启动App/窗口/系统面板、不反复催问。hostless WK、普通DOM文本、synthetic composition、scratch与真实SIGKILL分别结算，不代替物理中文、当前Sandbox/bookmark/系统拖放粘贴、真实AX、窗口文件生命周期或macOS14。总目标active，main未因本轮变化。
 
