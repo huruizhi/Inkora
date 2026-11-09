@@ -181,6 +181,53 @@ async function bootMain(): Promise<Harness> {
 // （仓库 tsconfig 较低且不在本任务允许修改范围），沿用 executor 形式。
 const settle = (ms = 60): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+it("可视查找仅计可编辑内容，不计链接目标、标题和代码语言", async () => {
+  const h = await bootMain();
+  const raw = '[alpha](alpha "alpha") alpha\n\n```alpha\nalpha\n```\n';
+  h.receive({
+    type: "loadDocument", requestID: "visible-content", documentID: "visible-content",
+    revision: 0, text: raw,
+  });
+  h.searchButton().click();
+  const before = h.stateMessages().length;
+  h.typeSearchQuery("alpha");
+  await settle();
+  expect(h.searchMatches()).toHaveLength(3);
+  expect(Array.from(h.dom.window.document.querySelectorAll(".search-panel-match mark"), item => item.textContent))
+    .toEqual(["alpha", "alpha", "alpha"]);
+  expect(h.searchResultsText()).toContain("可编辑内容");
+  expect(h.stateMessages()).toHaveLength(before);
+  expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+  h.sourceMode().click();
+  await settle();
+  expect(h.searchMatches()).toHaveLength(6);
+  h.visualMode().click();
+  await settle();
+  expect(h.searchMatches()).toHaveLength(3);
+  expect(h.stateMessages()).toHaveLength(before);
+});
+
+it("可视查找按位置定位第二个同文结果，保留查询焦点与正文历史", async () => {
+  const h = await bootMain();
+  const raw = "[alpha](target) alpha\n";
+  h.receive({ type: "loadDocument", requestID: "visible-navigation", documentID: "visible-nav", revision: 0, text: raw });
+  h.searchButton().click();
+  h.typeSearchQuery("alpha");
+  await settle();
+  h.searchQuery().focus();
+  const messages = h.sent.length;
+  const buttons = h.dom.window.document.querySelectorAll<HTMLButtonElement>(".search-panel-match-button");
+  expect(buttons).toHaveLength(2);
+  buttons[1].click();
+  expect(h.dom.window.document.activeElement).toBe(h.searchQuery());
+  expect(h.sent).toHaveLength(messages);
+  h.sourceMode().click();
+  const source = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+  expect(source.selectionStart).toBe(raw.lastIndexOf("alpha"));
+  expect(source.selectionEnd).toBe(raw.lastIndexOf("alpha") + 5);
+  expect(h.sent).toHaveLength(messages);
+});
+
 it("提供键盘可达的可视/源码切换和草稿提交取消入口", async () => {
   const h = await bootMain();
   h.receive({
@@ -1018,7 +1065,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.lastRevision()).toBe(4);
   });
 
-  it("bare-CR 只读模式可定位，结构化模式只显示计数与不支持原因", async () => {
+  it("bare-CR 保留原文定位，结构化模式提供可编辑内容定位", async () => {
     const readOnly = await bootMain();
     readOnly.receive({ type: "loadDocument", requestID: "r1", documentID: "ro", revision: 0, text: "one\rone" });
     await settle();
@@ -1039,9 +1086,9 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     structured.typeSearchQuery("one");
     await settle();
     expect(structured.searchResultsText()).toContain("2 处匹配");
-    expect(structured.searchResultsText()).toContain("结构化编辑模式暂不支持原文范围定位");
-    expect(structured.dom.window.document.querySelector(".search-panel-match-button")).toBeNull();
-    expect(structured.dom.window.document.querySelector(".search-panel-navigation")).toBeNull();
+    expect(structured.searchResultsText()).toContain("可编辑内容");
+    expect(structured.dom.window.document.querySelectorAll(".search-panel-match-button")).toHaveLength(2);
+    expect(structured.dom.window.document.querySelector(".search-panel-navigation")).not.toBeNull();
   });
 
   it("旧结果按钮与 composition 导航请求均拒绝且不改变正文选区", async () => {
@@ -1268,6 +1315,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
   it("查找面板：接受 load 清旧结果与绑定，被拒 load 完全保留查找状态", async () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-a", revision: 5, text: "<x>needle needle</x>\n" });
+    h.sourceMode().click();
     await settle();
     h.searchButton().click();
     h.typeSearchQuery("needle");
@@ -1392,6 +1440,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
   it("查找面板：查询框自身 composition 不用半拼音重搜", async () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>zhong 文</x>\n" });
+    h.sourceMode().click();
     await settle();
     h.searchButton().click();
     h.typeSearchQuery("文");
@@ -1413,6 +1462,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
   it("查找面板：已排队查询遇到 query composition 时不读取半成品", async () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>foo foo bar</x>\n" });
+    h.sourceMode().click();
     await settle();
     h.searchButton().click();
     h.typeSearchQuery("foo");
@@ -1432,6 +1482,7 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
   it("查找面板：query composition 中拒绝关闭和大小写变更", async () => {
     const h = await bootMain();
     h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc-src", revision: 0, text: "<x>foo foo</x>\n" });
+    h.sourceMode().click();
     await settle();
     h.searchButton().click();
     h.typeSearchQuery("foo");

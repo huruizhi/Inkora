@@ -30,6 +30,7 @@ export type SearchPanelState =
       kind: "document";
       binding: SearchSnapshotBinding;
       result: SourceSearchResult;
+      scope?: "content" | "source";
       navigation?: { readonly available: boolean; readonly reason?: string };
       replacement?: { readonly available: boolean; readonly reason?: string };
     }
@@ -677,7 +678,9 @@ export class SearchPanel {
     if (state.kind === "idle" || state.result.query === "") {
       const note = document.createElement("p");
       note.className = "search-panel-note";
-      note.textContent = "输入查询以在当前文档中查找（结果基于 Markdown 原文）。";
+      note.textContent = state.kind === "document" && state.scope === "content"
+        ? "输入查询以查找可编辑内容（不含 Markdown 定界符、链接目标和工具栏）。"
+        : "输入查询以在当前文档中查找（结果基于 Markdown 原文）。";
       this.resultsBody.append(note);
       return;
     }
@@ -755,7 +758,8 @@ export class SearchPanel {
 
     const list = document.createElement("ul");
     list.className = "search-panel-matches";
-    const graphemes = segmentGraphemes(state.binding.raw);
+    const displayText = state.result.source.raw;
+    const graphemes = segmentGraphemes(displayText);
     state.result.matches.forEach((match, matchIndex) => {
       const item = document.createElement("li");
       item.className = "search-panel-match";
@@ -776,7 +780,7 @@ export class SearchPanel {
         });
         button.addEventListener("click", () => this.navigateIndex(matchIndex, state));
       }
-      const snippet = buildSnippet(state.binding.raw, graphemes, match.from, match.to);
+      const snippet = buildSnippet(displayText, graphemes, match.from, match.to);
       content.append(document.createTextNode(snippet.before));
       const hit = document.createElement("mark");
       hit.textContent = snippet.hit;
@@ -788,9 +792,10 @@ export class SearchPanel {
 
     const hint = document.createElement("p");
     hint.className = "search-panel-hint";
+    const scope = state.scope === "content" ? "结果基于可编辑内容" : "结果基于 Markdown 原文";
     hint.textContent = state.navigation?.available
-      ? `结果基于 Markdown 原文；Enter/Shift-Enter 或结果按钮仅在显示的 ${state.result.matches.length} 处内定位${state.result.truncated ? "，未显示部分不参与循环" : ""}。`
-      : `结果基于 Markdown 原文；${state.navigation?.reason ?? "当前编辑模式不支持原文定位"}。`;
+      ? `${scope}；Enter/Shift-Enter 或结果按钮仅在显示的 ${state.result.matches.length} 处内定位${state.result.truncated ? "，未显示部分不参与循环" : ""}。`
+      : `${scope}；${state.navigation?.reason ?? "当前编辑模式不支持原文定位"}。`;
     this.resultsBody.append(hint);
   }
 }

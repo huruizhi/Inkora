@@ -16,7 +16,8 @@ import {
   textareaProjection,
   type SourceNavigationResult,
 } from "./source-navigation";
-import type { DirectedSelection, SourceReplacementPlan } from "./source-search";
+import { searchSource, type DirectedSelection, type SourceReplacementPlan, type SourceSearchResult, type SearchOptions } from "./source-search";
+import { indexVisualText, locateVisualMatch, sameSearchResult, searchVisualText, type VisualSearchNavigation, type VisualSearchLocation } from "./visual-search";
 import { validateSourceReplacementPlan } from "./source-replacement";
 import { SourceAuthoritySession } from "./source-authority";
 import { revealTextareaOffset } from "./textarea-visibility";
@@ -43,6 +44,8 @@ export interface EditorRuntime {
   readonly sourceNavigation: boolean;
   readonly sourceReplacement: boolean;
   getText(): string;
+  search(query: string, revision: number, options?: SearchOptions): SourceSearchResult;
+  navigateVisualSearch(raw: string, result: SourceSearchResult, request: VisualSearchNavigation): SourceNavigationResult<VisualSearchLocation>;
   getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection>;
   selectSourceRange(raw: string, selection: DirectedSelection): SourceNavigationResult;
   applySourceReplacement(plan: SourceReplacementPlan): SourceNavigationResult<{
@@ -128,6 +131,31 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
 
   getText(): string {
     return this.session.currentRaw;
+  }
+
+  search(query: string, revision: number, options: SearchOptions = {}): SourceSearchResult {
+    return this.mode === "visual"
+      ? searchVisualText(indexVisualText(this.session.state.doc), revision, query, options)
+      : searchSource({ raw: this.session.currentRaw, revision }, query, options);
+  }
+
+  navigateVisualSearch(raw: string, result: SourceSearchResult, request: VisualSearchNavigation): SourceNavigationResult<VisualSearchLocation> {
+    const view = this.view;
+    if (!view || this.composing || this.session.draftDirty || this.status.unresolved) {
+      return { ok: false, message: "当前输入尚未稳定，不能定位查找结果" };
+    }
+    if (raw !== this.session.currentRaw) return { ok: false, message: "文档已变化，请重新查找" };
+    const index = indexVisualText(view.state.doc);
+    const current = searchVisualText(index, result.source.revision, result.query,
+      { caseSensitive: result.caseSensitive, maxResults: result.maxResults < 10_000 ? result.maxResults : undefined });
+    if (!sameSearchResult(current, result)) return { ok: false, message: "查找结果已过期" };
+    const location = locateVisualMatch(index, current, view.state.selection, request);
+    if (!location) return { ok: false, message: "当前查询没有可定位的匹配" };
+    const selection = TextSelection.create(view.state.doc, location.anchor, location.head);
+    view.dispatch(view.state.tr.setSelection(selection).scrollIntoView().setMeta("addToHistory", false));
+    return view.state.selection.eq(selection)
+      ? { ok: true, value: location }
+      : { ok: false, message: "该结果无法安全映射到当前原文" };
   }
 
   snapshotText(): SourceNavigationResult<string> {
@@ -613,6 +641,12 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   }
 
   getText(): string { return this.text; }
+  search(query: string, revision: number, options: SearchOptions = {}): SourceSearchResult {
+    return searchSource({ raw: this.text, revision }, query, options);
+  }
+  navigateVisualSearch(_raw: string, _result: SourceSearchResult, _request: VisualSearchNavigation): SourceNavigationResult<VisualSearchLocation> {
+    return { ok: false, message: "当前文档采用原文导航" };
+  }
   insertTable(): boolean { return false; }
   enterSourceMode(): boolean { return true; }
   applySourceDraft(): boolean { return false; }
