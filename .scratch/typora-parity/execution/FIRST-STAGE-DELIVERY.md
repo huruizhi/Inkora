@@ -27,7 +27,7 @@ PR75已按既定增量授权合并，main11773c6。修正095后e20065c通过713�
 
 097/098现均Agent/workspace两层回收、removedDirectory=true，managed累计86，无活动Paseo Agent。两工作区各454文件，tar SHA分别 `cf383e36ebfae6b09c6bc7d073317f99548383ec3e84130b951f17063c563ca1`、`df4482ea142ecbcc23cf05742f8d999d28bf29f3516b8e2d5192e6cd7bef199d`。
 
-root100已在独立task/INK-M1-100-explicit-source-save（.worktrees/INK-M1-100，起点099/42ded5e，含main117）实施GATE004纵向切片。已实际先红后绿：source save资格、非法Unicode/bareCR草稿保留、main错误阻断提示、no-op源码确认按钮；model source-proof/history/后续编辑/重载/组合/草稿/过期事务控制，真实textarea→Apply→Bridge snapshot/markSaved→UndoRedo通过。最初main夹具显式移除了BOM，其失败不计产品红；校准为真实原value局部替换后才捕获真实状态提示错误。完整回归正在跑，尚未交付；脚注/callout/inline atom统一边界还需后续V2切片，不宣告首阶段通过。
+root100已在独立task/INK-M1-100-explicit-source-save（.worktrees/INK-M1-100，起点099/42ded5e，含main117）实施GATE004纵向切片。已实际先红后绿：source save资格、非法Unicode/bareCR草稿保留、main错误阻断提示、no-op源码确认按钮；model source-proof/history/后续编辑/重载/组合/草稿/过期事务控制，真实textarea→Apply→Bridge snapshot/markSaved→UndoRedo通过。最初main夹具显式移除了BOM，其失败不计产品红；校准为真实原value局部替换后才捕获真实状态提示错误。固定代码a526136上完整720/720、lint/editor build、Bridge14/15、Native179passed/0fail/8既有性能skip、Release-offline/test-ci均通过；实际sourceSHA对git blob已核验。当前101/102新上下文双轴评审中，main仍117，尚未开PR/交付；脚注/callout/inline atom统一边界还需后续V2切片，不宣告首阶段通过。
 
 ## 历史执行状态（2026-11-10）
 
@@ -249,3 +249,7 @@ CI 42611845164 已实际 completed/success，受检 head 为93a3b5933b8ca2ae2216
 061在实际059树上先提交根四红70b586f，再由Sol5.6/high/default接续限定修复；无配置profile。task/INK-M1-061-link-input-guards，agent adc30f4a-c0e6-4572-aa0f-ebf1c3e5d47e / workspace wks_0576bc8f76bbce80。要求真实ledger link-owner而非同href盲合并、原子选区恢复，以及链接字段/候选/Native命令/跨load/导航统一守卫。禁止GUI、新Agent和依赖；与055图片保持两实施者并行。
 
 根060在独立.worktrees/INK-M1-060、task/INK-M1-060-visual-search-replacement接回054冻结判据并实施前两个切片：真实SearchPanel改搜PM可编辑内容，准确排除href/title/info/工具栏，跨marks连续但不跨paragraph/cell；索引定位真实PM选区且query持焦、源码精确原文选区、零Bridge/history变更。旧6vs3计数和无定位按钮均先红后绿；全量26文件477 passed，lint/build及冻结132检查通过。仍未实现原子替换，不能宣告V6；详细进行中清单docs/tasks/INK-M1-060.md。14例现在只核对input内容计数，不冒称expected替换字节已过。物理/UI继续按用户稍后，main48258a9、PR71 draft。
+
+## 2026-11-10 Source-save候选独立审查
+
+固定main117...a526136。101 Standards：Luna5.6 medium/default，agentf9fddad0-30d9-4440-b616-3edfabb78531 / workspacewks_b95f76f02369eb98；102 Spec：Sol5.6 high/default，agent76e6355e-332c-498a-ba47-32cad9cd8d71 / workspacewks_314acf2f5014fe3c。实时profiles为空，inspect后按既定成本fallback。只审不修、禁止GUI/新agent/安装/全量；完成立即备份并回收。主目标active，当前main117，物理按用户稍后。
