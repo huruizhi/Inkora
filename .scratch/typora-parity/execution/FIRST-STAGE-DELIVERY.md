@@ -10,7 +10,7 @@
 | 正文/标题/列表/引用/基础格式/代码/链接 | 原文权威核心已合 main | 新生产组合的物理 IME、NSDocument 保存/关闭/重开集中验收 |
 | 大纲/统计/章节定位 | 已合main | 新内核兼容、真实滚动/键盘/辅助功能点验 |
 | 当前文档查找替换 | 源码能力已合；可视查询/导航/原子批替换正在收口 | 066 修复 caret/marks/字面替换反例，完整 14 例及真实 UI |
-| 可编辑表格/任务列表 | PR #72 非 UI 候选，完整 editor 480/480 | 精确提交 CI、独立合入与真实控件/文件验收 |
+| 可编辑表格/任务列表 | PR #72 非 UI 候选，完整 editor 483/483 | 精确提交 CI、独立合入与真实控件/文件验收 |
 | 本地图片 | 055 完整生产候选；独立 Spec 审查不通过 | 067 修复首存重试、引用迁移、pending 意图、journal 恢复及授权状态，再集成与真机验收 |
 | 代码高亮/语言选择 | 已合 main；有真实 WK 语言选择、字节及正式保存重开证据 | 新组合回归与最终集中验收 |
 | 高级语法保护混排/异常安全 | 生产接线已合 main | 新组合保护块邻接、含混阻断和主动源码修复回归 |
@@ -20,7 +20,7 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 ## 最新执行指针（2026-11-09，覆盖后文历史）
 
 - PR #71 已合入 main `1e68608`；包含 059/061 链接/代码命令、root 062 表单默认行为保护、root 063 属性修改后的 caret provenance。最终默认非 UI CI [42621826345](https://github.com/huruizhi/Inkora/actions/runs/42621826345) success；物理步骤未冒称通过。
-- PR #72 draft，分支 `task/INK-M1-056-tables-tasks-integration`，HEAD `b30b368e5b5598e2d912512049b08b8a277cba5a`。已基于实际 main 重放三项 V3 提交，整树与已实测 480/480 的 `8a9401c` 相同。CI [42623488092](https://github.com/huruizhi/Inkora/actions/runs/42623488092) 首次失败于 checkout 三次 GitHub 443 连接超时，产品检查未执行；已对同一提交重跑失败任务，尚未判绿。
+- PR #72 draft，分支 `task/INK-M1-056-tables-tasks-integration`，HEAD `24fcf9f2071e90a6fe97f8f09986ef2d18811d10`。原 b30b368 的 [CI 42623488092 attempt2](https://github.com/huruizhi/Inkora/actions/runs/42623488092) success；首次仅 checkout 网络超时，产品未运行。管理者随后 068 独立发现并修复表头插行索引和 BOM 顶层表格账本归属，真实三组回归与完整 **483/483**、make lint、editor build 通过。新精确 head 的 [CI 42626094355](https://github.com/huruizhi/Inkora/actions/runs/42626094355) 进行中，不沿用旧 head 成功。
 - 060 合并最新 core/V3，HEAD `fc18f78da7dc6a6000e6aca2a67d9345e0396806`，完整 editor 511/511；11 个冻结 replace-all 正例及 140 处真实面板单历史批替换通过。root 066 新造 7 项控制为 5 红/2 绿，暴露 code owner caret、跨 marks 替换和字面 Markdown 输入问题，故 V6 仍未交付。
 - 066 实施：Sol 5.6/high/default，Agent `0b609331-2228-42a0-8060-627040786f37`，workspace `wks_8b7d6efeb6a0391a`，分支 `task/INK-M1-066-visual-replacement-completion`，红例起点 `19c0e5e`。完成完整 14 例、可视与源码完整查询批替换、caret/marks/owner 和一次原子历史/发布；冻结红例外存不改。不得缩为纯计数或少量正例。
 - 055 图片候选 `056f74fa` 已校验备份并回收 Agent/workspace。根实际读取 Native xcresult：148 total / 141 pass / 0 fail / 7 性能 skip；BridgeNative 12/12。此为候选非 UI 证据，不是图片授权、拖放、剪贴板或生产窗口验收。
