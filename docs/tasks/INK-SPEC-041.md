@@ -7,3 +7,5 @@
 实际执行：verify.py → 12用例100项PASS；verify-tables.cjs → 8个表格语义对照PASS，使用主仓既有markdown-it14.3.3；git diff --check。未运行产品315回归，因为未修改产品；未开GUI/WK/IME/磁盘产品测试，不冒称通过。官方GFM只用于少量语法边界核对，交互与原文字节策略为项目决定。
 
 依赖/风险：V1公共会话/位置接口尚在实施；少格/额外格、容器、中文组合和正式保存仍需真实实现验证，不能以静态文档化解。后续实施禁止手供patch/改oracle假通过。
+
+持久性核验：逐一读取HEAD的24个Git blob，与manifest SHA完全一致；为golden Markdown声明-text，禁止其他checkout配置归一化CRLF或尾换行。

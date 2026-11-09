@@ -1,0 +1,2 @@
+# Golden Markdown includes deliberate BOM, CRLF and missing final EOL.
+cases/**/*.md -text
