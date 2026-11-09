@@ -164,3 +164,5 @@ main仍48258a9；M0有界门槛保持通过。V1最终IME发布未闭合，V3/V4
 055本地图片生产实现已正式启动：基线7d20ed4，task/INK-M1-055-local-images-production，agent 6ce1aa7e-d799-4a97-a40a-f63fd80c52aa / workspace wks_28e2b6ca347d9098，Sol5.6/high/default，无配置profile。必须真实插入/图片投影/拖放/粘贴/未命名持久恢复/首次保存路径内容事务/资源先发布Markdown后提交/SaveAs原引用不改/Sandbox broker及失败负例；不能整目录搬原型或只交模块。禁止GUI和新Agent；与050表格/任务两名执行者并行，完成后逐项验收回收。
 
 已通过GitHub连接器建立草稿 PR #71：https://github.com/huruizhi/Inkora/pull/71 ，head93a3b59、base最新main48258a9（fetch和祖先验证已执行）。内容为V1/V5/导航与其证据，不把V3/V4/V6规格当实现，也不解除用户暂缓的物理IME步骤。默认CI手动触发中（ui-tests=false，full-bench=false）；仍需CI/独立审查，不启用自动合并、不提前宣告首阶段完成。
+
+workflow_dispatch 已实际返回 run 42611845164：https://github.com/huruizhi/Inkora/actions/runs/42611845164 。随即按分支列表尚为空，属于索引延迟；保持确切run handle查询，不重复触发，不把此时CI记成功。Paseo两执行者继续；根临时.tools已清理，UI锁未持有，未启动新的App。
