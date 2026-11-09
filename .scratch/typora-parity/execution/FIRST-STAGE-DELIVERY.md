@@ -9,9 +9,9 @@
 | 原生新建/打开/保存/另存/关闭/恢复保护 | 已有生产实现 | 与新编辑内核及图片资源联动验收 |
 | 正文/标题/列表/引用/基础格式/代码/链接 | 原文权威核心已合 main | 新生产组合的物理 IME、NSDocument 保存/关闭/重开集中验收 |
 | 大纲/统计/章节定位 | 已合main | 新内核兼容、真实滚动/键盘/辅助功能点验 |
-| 当前文档查找替换 | PR #73 draft，071 完整 552/552、lint/build 通过；066 已备份回收 | 最终精确 CI、双轴审查、合入及真实 UI |
+| 当前文档查找替换 | PR #73 draft；552/552与受检c0 CI通过；073指出两项Spec缺口 | 075补正epoch/嵌套marks，组合后精确CI/合入及真实UI |
 | 可编辑表格/任务列表 | PR #72 已合 main，完整 editor 485/485、精确 CI success | 真实控件/物理输入/文件生命周期与 AX 验收 |
-| 本地图片 | 055 完整生产候选；独立 Spec 审查不通过 | 067 修复首存重试、引用迁移、pending 意图、journal 恢复及授权状态，再集成与真机验收 |
+| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 074/076独立审查、075接回、最终CI与物理验收 |
 | 代码高亮/语言选择 | 已合 main；有真实 WK 语言选择、字节及正式保存重开证据 | 新组合回归与最终集中验收 |
 | 高级语法保护混排/异常安全 | 生产接线已合 main | 新组合保护块邻接、含混阻断和主动源码修复回归 |
 
@@ -23,12 +23,14 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 - PR #72 已 merge，精确 head `c50133e1353aa0339f5aaf396e47b234b42e7161`，main 为 `0edb13d` 且整树与其一致。068 补正表头插行索引/BOM 表格账本，069 补正表格链接 owner/共享引用计数；完整 **485/485**、lint/build 通过。最终 [CI 42626828782](https://github.com/huruizhi/Inkora/actions/runs/42626828782) success，覆盖非 UI、Release 离线与轻量基准；UI/full-bench 按参数 skip。旧 b30b368 checkout 超时及重跑成功、24fcf9f CI 成功只作历史分层，不替代最终 head 证据。
 - 060 合并最新 core/V3，HEAD `fc18f78da7dc6a6000e6aca2a67d9345e0396806`，完整 editor 511/511；11 个冻结 replace-all 正例及 140 处真实面板单历史批替换通过。root 066 新造 7 项控制为 5 红/2 绿，暴露 code owner caret、跨 marks 替换和字面 Markdown 输入问题，故 V6 仍未交付。
 - 066 已交付 `c6845c7a741b092ee48f0aa68bbdd610442758dc`。作者完整 545；root 将冻结原件按 SHA 不变复制重跑，**7/7** 全绿，随后在 `task/INK-M1-071-visual-replacement-integration` 接回 main，初始完整 **550/550** 通过。root 新造同一 autolink 两次命中真实红例，修复 owner 全范围补丁冲突及批替换续写的锚点归属；以真实 `deletedAcross` 区分已删除位置，保留表格删除语义与未编辑 gap/affinity。最终 **552/552**、56 项表格/owner 控制、make lint、production build 通过。完整 14 面板动作已核对，无 manifest 补丁执行路径。
-- [PR #73](https://github.com/huruizhi/Inkora/pull/73) draft：head `c0b375670a2dedc3df998f3377d398d09f5357e8`，base 为最新 main `0edb13d`。精确默认 [CI 42630358139](https://github.com/huruizhi/Inkora/actions/runs/42630358139) **success**，非 UI/Release 离线/轻量基准通过，UI/full-bench 按参数 skip。双轴固定三点范围 `0edb13d...c0b3756`：[审查原文](PR73-REVIEW.md)保留072 Standards的1处文档规则背离和judgement；root已准备同步071工作区文档，无产品改动，最终文档提交待073后收束并重跑精确CI。073 Spec（Sol5.6 high/default，Agent `af685ea3-6a37-46be-a210-3e90d3bb840b` / workspace `wks_dcce2d635944c77b`）仍执行中，未预判通过。
+- [PR #73](https://github.com/huruizhi/Inkora/pull/73) draft，已推进文档同步 `c9e247defa790db399f6286f8e83086b736bfd4d`（产品代码仍为c0），base为main `0edb13d`。原精确c0默认 [CI 42630358139](https://github.com/huruizhi/Inkora/actions/runs/42630358139) **success**；最终补正后另跑精确CI。双轴固定 `0edb13d...c0b3756`：[审查原文](PR73-REVIEW.md)分别保留072的一处文档规则背离/judgement和073的两项Spec缺口：同内容新runtime可接旧epoch结果、合法嵌套strong/em可搜不可替换。073实跑2/2红，PR继续draft，不以CI绿绕过Spec。
+- 075实施：Sol5.6 high/default，Agent `0e96521f-fc3a-4de1-892b-952238bc2c13` / workspace `wks_c8831901210f29b8` / branch `task/INK-M1-075-search-epoch-nested-marks`，固定c9e247d。只修073两项，先真实红绿，保持root071原文/marks/owner/caret/批次历史与安全拒绝，不合图片或改冻结oracle；无新Bridge/Swift字段。完成后root接回071和070并独立核对。
 - 055 图片候选 `056f74fa` 已校验备份并回收 Agent/workspace。根实际读取 Native xcresult：148 total / 141 pass / 0 fail / 7 性能 skip；BridgeNative 12/12。此为候选非 UI 证据，不是图片授权、拖放、剪贴板或生产窗口验收。
-- 独立双轴报告见 [V4 审查原文](V4-IMAGE-REVIEW.md)：064 Standards 为 0 hard、judgement smell；065 Spec 为 3 P1 + 2 P2，阻断图片合入。两个报告分轴保留，不混用静态合规与功能正确性。
+- 原055双轴报告见 [V4 审查原文](V4-IMAGE-REVIEW.md)：064为0hard/judgement，065为3P1+2P2，原候选未直接合入；五项已由067修复并接回070，仍待下述组合复审，不改写旧报告制造通过。
 - 067 已交付 `96703899dbd29d170316aa31b8e86320b5056e7e`，固定055起点五修：首次保存publish/confirm分离与真实owner snapshot屏障、CommonMark标签迁移、持久selection意图、journal重启只读核验、显式grant/真实read后ready。root已读取候选xcresult并单独保留：Native152/0/7、BridgeNative13/13；非物理授权证据。执行Agent/workspace已312文件/tar/Git bundle校验备份回收。
-- 070 `task/INK-M1-070-image-core-integration` 最新 `9e952ff517e25e9e43ecd5170aa39b51983f7c8c` 已组合core/V3/V6及067五修；保留图片/表格/代码NodeView、链接form/Native Undo、composition最终发布、公共owner等双方契约。原502→组合V6后569→五修后 **570/570**（含WebBridge14）通过。root在该新组合独立 `make test-native` exit0，实际xcresult为 **159 total / 152 pass / 0 fail / 7 skip**，包含NativeBridge13及五修真实接缝。main冲突显式合并epoch/selection/跨控件composition守卫，descriptor先ack后副作用保持。Release离线资源、最终lint/test-ci正在执行；未合图片PR，未做物理授权/显示/输入/保存关闭重开，不代表V4完整验收。
-- 完成的067、072已各自连同xcresult/报告校验备份、Agent归档及workspace回收，累计完成 workspace **69**。067备份312文件/tar SHA `447bbd20c9dae5cd36528a23e992bd0debb891a5844365b8efec9bf88e2fc7fb`；072备份367文件/tar SHA `6f1b933a310f88d31d02ab4abb12f2f5273b219eda850a6d80898d5be9e0ae68`。当前仅073只读Spec审查Agent运行，root负责070/071组合、后续精确CI与合入，不保留空闲执行会话。
+- 070最新 `a58b8ba1edddb7863856214b9c36f0893030bf11`（branch `task/INK-M1-070-image-core-integration`），产品代码与实际受检9e952ff完全一致已gitdiff证明。core/V3/V6/067组合 **570/570**（含WebBridge14）；root独立Native **159 total / 152 pass / 0 fail / 7 skip**（含NativeBridge13）。最终 make lint、release-bundle-check（Release+offline smoke）、test-ci均exit0；既有Swift/JS chunk警告保留。descriptor先ack后副作用、epoch/selection/跨控件composition联合守卫保持。未合图片PR、未做物理授权/显示/输入/保存关闭重开，不代表V4完整验收。
+- 070组合双轴复审固定 `c9e247d...a58b8ba`（仅V4 overlay）：074 Standards，GLM5.3 low/full，Agent `bab46316-3385-471d-8372-52075e5b6000` / workspace `wks_e0d1c570bf35ce3a` / branch `task/INK-REV-074-image-integration-standards`；076 Spec，Sol5.6 high/default，Agent `171fb114-b50d-4e7d-a058-d037bf176f17` / workspace `wks_de89a05eb452cfab` / branch `task/INK-REV-076-image-integration-spec`。产品只读，两轴独立、无GUI、不重复570/159；不混入已交075的V6缺口。
+- 067、072、073均已校验备份并两层回收，累计完成 workspace **70**。073备份367文件/tar SHA `3e200779bfa291f491a81b8d808a42b32a4b90dd15963d4163042bb56ae8b77e`；067备份312文件/tar SHA `447bbd20c9dae5cd36528a23e992bd0debb891a5844365b8efec9bf88e2fc7fb`；072备份367文件/tar SHA `6f1b933a310f88d31d02ab4abb12f2f5273b219eda850a6d80898d5be9e0ae68`。当前一名075实施者及074/076两名只读审查者，root负责接收、独立组合与精确CI。不保留空闲会话。
 
 本节为进度文档修订，不因此重复未改产品测试或把待执行检查记成通过。
 
