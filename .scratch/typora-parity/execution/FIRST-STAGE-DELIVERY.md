@@ -117,3 +117,14 @@ main仍48258a9，M0有界门槛保持通过；本轮新生产接线失败不回�
 - 046生产离线高亮/语言选择：基线0937615，task/INK-M1-046-code-highlighting，workspace wks_b5798bc3c9c84636。GLM5.3因真实429额度终止，Agent已归档；8份未提交文件逐项SHA归档后同workspace由Sol5.6/medium/default接续，agent c5e42c80-33e8-469b-8ecf-a4a61bdf9441。唯一声明依赖highlight.js exact11.12.0（registry与官方源核实、BSD-3-Clause），静态离线语言、PM装饰与语言真实patch/undo，不改其它核心；许可证须随产物分发。
 
 main未变，下一整合点是047接回049/046后独立运行核心/辅助/代码体验与NSDocument闭环。V3表格/任务、V4图片和V6完整视觉替换仍必须实现，不因本轮UI或辅助交付缩减目标。
+
+
+## 最新：高亮集成与V3实施（2026-11-09）
+
+046@ce77485a6056ede7ea88e14b6abac19f3d25a0fa离线13语言/选择器候选已交付。管理者核对实际Native Bridge xcresult为9/9 Passed、原版BSD LICENSE完整包含于notice且源码/build/App拷贝一致，246 tracked文件SHA与Git bundle备份后归档Agent和workspace，并删除干净worktree，完成workspace回收累计56。046通知末尾“未运行Native9”与证据矛盾，以实际xcresult为准；不把非UI当真实WK/IME。
+
+047集成046时保留045核心/逻辑revision和047reveal，手工保留双方runtime/tests，完整editor含Bridge 22文件398/398、tsc通过。集成1360f54，接入041冻结规格/oracle后HEAD f30ef346a35d1bee790abdb257e642db219f03d9，已push；尚未合main，当前正在构建集中UI候选。
+
+当前两名执行Agent：049保持原handle，负责IME最终值/一次稳定发布与snapshot barrier；050实际生产表格/任务列表，基线f30ef346，Sol5.6/high/default（无配置profile），agent 2a381265-4405-4055-8d90-3781dbc50b49 / workspace wks_2c898384256215db / task/INK-M1-050-tables-tasks。050须真实cell编辑/增删行列/对齐/checkbox/键盘/字节/history/保存接缝，不得手供oracle补丁，不改冻结12例、不新增未声明依赖、不使用GUI。完成即独立验收与两层回收。
+
+main仍48258a9；M0有界门槛保持通过。V1最终IME发布未闭合，V3/V4/V6及正式保存重开仍缺完整交付，目标active。
