@@ -133,6 +133,7 @@ struct BridgeNativeCommand: Codable, Equatable {
   let displayURL: String?
   let selectionAnchor: Int?
   let selectionHead: Int?
+  let imageOwnership: BridgeImageOwnershipProof?
   let descriptors: [BridgeImageDescriptor]?
   let rewrites: [BridgeImageRewrite]?
 
@@ -152,6 +153,7 @@ struct BridgeNativeCommand: Codable, Equatable {
     displayURL: String? = nil,
     selectionAnchor: Int? = nil,
     selectionHead: Int? = nil,
+    imageOwnership: BridgeImageOwnershipProof? = nil,
     descriptors: [BridgeImageDescriptor]? = nil,
     rewrites: [BridgeImageRewrite]? = nil
   ) {
@@ -170,6 +172,7 @@ struct BridgeNativeCommand: Codable, Equatable {
     self.displayURL = displayURL
     self.selectionAnchor = selectionAnchor
     self.selectionHead = selectionHead
+    self.imageOwnership = imageOwnership
     self.descriptors = descriptors
     self.rewrites = rewrites
   }
@@ -328,6 +331,7 @@ struct BridgeNativeCommand: Codable, Equatable {
     documentID: String,
     revision: Int,
     documentEpoch: String,
+    ownership: BridgeImageOwnershipProof,
     descriptors: [BridgeImageDescriptor]
   ) -> Self {
     Self(
@@ -344,6 +348,7 @@ struct BridgeNativeCommand: Codable, Equatable {
       alt: nil,
       title: nil,
       displayURL: nil,
+      imageOwnership: ownership,
       descriptors: descriptors,
       rewrites: nil
     )
@@ -354,6 +359,7 @@ struct BridgeNativeCommand: Codable, Equatable {
     documentID: String,
     revision: Int,
     documentEpoch: String,
+    ownership: BridgeImageOwnershipProof,
     rewrites: [BridgeImageRewrite]
   ) -> Self {
     Self(
@@ -370,6 +376,7 @@ struct BridgeNativeCommand: Codable, Equatable {
       alt: nil,
       title: nil,
       displayURL: nil,
+      imageOwnership: ownership,
       descriptors: nil,
       rewrites: rewrites
     )
@@ -419,12 +426,20 @@ struct BridgeNativeCommand: Codable, Equatable {
     case .setImageDescriptors:
       try validateDocumentRevision()
       try validateDocumentEpoch()
+      guard let imageOwnership, let documentID, let revision else {
+        throw BridgeProtocolValidationError.missingField("imageOwnership")
+      }
+      try imageOwnership.validate(
+        documentID: documentID, revision: revision, raw: imageOwnership.raw)
       guard let descriptors else {
         throw BridgeProtocolValidationError.missingField("descriptors")
       }
       for descriptor in descriptors {
         guard !descriptor.href.isEmpty else {
           throw BridgeProtocolValidationError.missingField("descriptors.href")
+        }
+        guard imageOwnership.imageURIs.contains(descriptor.href) else {
+          throw BridgeProtocolValidationError.invalidImageOwnership
         }
         if descriptor.status == .ready {
           guard let displayURL = descriptor.displayURL, Self.isCapabilityURL(displayURL) else {
@@ -437,6 +452,11 @@ struct BridgeNativeCommand: Codable, Equatable {
     case .prepareImageSave:
       try validateDocumentRevision()
       try validateDocumentEpoch()
+      guard let imageOwnership, let documentID, let revision else {
+        throw BridgeProtocolValidationError.missingField("imageOwnership")
+      }
+      try imageOwnership.validate(
+        documentID: documentID, revision: revision, raw: imageOwnership.raw)
       guard let rewrites, !rewrites.isEmpty else {
         throw BridgeProtocolValidationError.missingField("rewrites")
       }

@@ -14,7 +14,7 @@ INK-M1-055 将图片接入正式 source-authoritative 编辑器与 `NSDocument` 
 
 ## 安全边界
 
-`inkora-asset://resource/<uuid>` 同时绑定 document、epoch 和 token。导入、descriptor 与首次保存路径事务在入队时固定 canonical owner proof 的 document/revision，过期后拒绝且不迁移到新选区或新文本重试；授权事件也必须携带当前精确 proof 且 href 仍是 owner。broker 对每个路径组件使用 descriptor-relative open，拒绝越界、symlink、非普通文件、超限、MIME/解码/SHA 不符；重载使旧 token 失效。真实 `WKURLSchemeHandler` 与测试共用 `DocumentAssetTaskCore`，stop 后不再回调，读取结束才配对释放 security-scope lease。
+`inkora-asset://resource/<uuid>` 同时绑定 document、epoch 和 token。导入、descriptor 与首次保存路径事务在入队时固定 canonical owner proof 的 document/revision/raw/有序 URI，过期后拒绝且不迁移到新选区或新文本重试；授权事件也必须携带当前精确 proof 且 href 仍是 owner。descriptor token 分为 provisional 与 live：provisional 可做同步字节预检但 scheme 读取不可达，只有 Web 对同一完整 proof ack 后整批提交；拒绝、超时、迟到 ack 与跨 epoch/load 整批丢弃。broker 对每个路径组件使用 descriptor-relative open，拒绝越界、symlink、非普通文件、超限、MIME/解码/SHA 不符；重载使旧 token 失效。同步预检与真实 `WKURLSchemeHandler` 读取各自取得并单次释放 security-scope lease，stop 后不再回调。
 
 目录选择产生版本化 security-scoped bookmark；只读来源使用 read-only 选项，写入目标使用读写 bookmark。解析失败保留记录并要求重新授权，不把拒权伪装成缺图。CSP 只增加 `inkora-asset://resource` 的 `img-src`，`connect-src 'none'` 不变。
 

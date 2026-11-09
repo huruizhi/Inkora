@@ -98,6 +98,20 @@ struct RecoveryDraft: Codable, Equatable {
 // Main-thread document callbacks serialize store operations. Injected writers and
 // removers let tests model full disks and a failed unlink without touching real data.
 final class RecoveryStore {
+  struct WriteReceipt: Equatable {
+    let draftID: UUID
+    let generation: UUID
+    let revision: Int
+    let payloadHash: String
+
+    init(_ draft: RecoveryDraft) {
+      draftID = draft.id
+      generation = draft.generation
+      revision = draft.revision
+      payloadHash = draft.payloadHash
+    }
+  }
+
   struct Discovery {
     var drafts: [RecoveryDraft] = []
     var corruptCount = 0
@@ -152,21 +166,27 @@ final class RecoveryStore {
     self.remove = remove
   }
 
-  func write(_ draft: RecoveryDraft) throws {
+  @discardableResult
+  func write(
+    _ draft: RecoveryDraft, requireExactRevision: Bool = false
+  ) throws -> WriteReceipt {
     try draft.validate()
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let url = draftURL(draft.id)
     let receipt = try? JSONDecoder().decode(
       Receipt.self, from: Data(contentsOf: receiptURL(draft.id)))
-    if let previous = try? decodeDraft(url),
+    if !requireExactRevision, let previous = try? decodeDraft(url),
       receipt != Receipt(previous),
       previous.data == draft.data,
       previous.sourceURL == draft.sourceURL,
       previous.sourceFingerprint == draft.sourceFingerprint
     {
-      return
+      return WriteReceipt(previous)
     }
     try writer.write(try JSONEncoder().encode(draft), to: url)
+    let persisted = try decodeDraft(url)
+    guard persisted == draft else { throw CocoaError(.fileWriteUnknown) }
+    return WriteReceipt(persisted)
   }
 
   func retire(_ id: UUID) throws {

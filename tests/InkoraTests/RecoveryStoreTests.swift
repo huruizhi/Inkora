@@ -118,6 +118,18 @@ final class RecoveryStoreTests: XCTestCase {
     XCTAssertEqual(failing.discover().drafts, [record])
   }
 
+  func testExactWriteReceiptRejectsASilentWriterAndKeepsPreviousDraft() throws {
+    let root = try directory()
+    let record = try draft()
+    try RecoveryStore(directory: root).write(record)
+    let silent = RecoveryStore(directory: root, writer: RecoverySilentWriter())
+    let replacement = try draft(id: record.id, revision: 8, text: "new")
+
+    XCTAssertThrowsError(
+      try silent.write(replacement, requireExactRevision: true))
+    XCTAssertEqual(silent.discover().drafts, [record])
+  }
+
   func testUnchangedPayloadDoesNotRewriteDisk() throws {
     let root = try directory()
     let record = try draft()
@@ -336,8 +348,27 @@ final class RecoveryStoreTests: XCTestCase {
     XCTAssertTrue(store.discover().drafts.isEmpty)
     document.close()
   }
+
+  @MainActor
+  func testRecoveryPersistenceExplicitlyRejectsMissingStoreAndClosedDocument() throws {
+    let document = InkoraDocument()
+    document.updateChangeCount(.changeDone)
+    let snapshot = BridgeSnapshot(
+      documentID: document.bridgeDocumentID, revision: 0, text: "draft")
+
+    XCTAssertEqual(try document.writeRecovery(snapshot), .rejected)
+
+    let store = RecoveryStore(directory: try directory())
+    document.configureRecovery(store: store)
+    document.finishRecoveryForNormalTermination()
+    XCTAssertEqual(try document.writeRecovery(snapshot), .rejected)
+  }
 }
 
 private struct RecoveryFailingWriter: DocumentDataWriting {
   func write(_ data: Data, to url: URL) throws { throw CocoaError(.fileWriteOutOfSpace) }
+}
+
+private struct RecoverySilentWriter: DocumentDataWriting {
+  func write(_ data: Data, to url: URL) throws {}
 }

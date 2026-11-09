@@ -248,6 +248,80 @@ final class PendingImageRecoveryTests: XCTestCase {
     XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
   }
 
+  func testStaleRecoverySnapshotCannotAcceptHandoffWithoutPersistingNewDraft() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let store = RecoveryStore(directory: scratch.appendingPathComponent("Recovery"))
+    let sessionID = UUID()
+    let documentID = "recovered-document"
+    let epoch = UUID()
+    let session = try LocalImageStore(
+      root: store.directory.appendingPathComponent("LocalImages")
+    ).begin(documentID: documentID, sessionID: sessionID)
+    let asset = try session.importBitmapPNG(
+      png, documentURL: nil, authorizedDirectory: nil,
+      importIntent: LocalImageAsset.ImportIntent(
+        documentID: documentID, sessionID: sessionID, documentEpoch: UUID(), revision: 4,
+        selectionAnchor: 3, selectionHead: 3, recoveryState: .active))
+    let original = Data("old recovery\n".utf8)
+    try store.write(
+      RecoveryDraft(
+        id: sessionID, revision: 4, data: original, sourceURL: nil,
+        sourceFingerprint: nil))
+    let discovery = store.discover()
+    let document = try InkoraDocument(
+      recoveryDraft: try XCTUnwrap(discovery.drafts.first),
+      pendingImageRecovery: try XCTUnwrap(discovery.pendingImageSessions.first),
+      recoveryStore: store)
+    let intent = LocalImageAsset.ImportIntent(
+      documentID: documentID, sessionID: sessionID, documentEpoch: epoch, revision: 5,
+      selectionAnchor: 0, selectionHead: 0, recoveryState: .active)
+    let staleText = "![](\(asset.markdownURI))\n"
+    var completionError: Error?
+
+    PendingImageRecoveryHandoff(document: document, expectedDocumentEpoch: epoch).confirm(
+      assetID: asset.id,
+      captureIntent: { $0(.success(intent)) },
+      apply: { _, _, completion in
+        document.editorDidChangeState(
+          BridgeEditorState(
+            documentID: documentID, revision: 6, dirty: true,
+            canUndo: true, canRedo: false))
+        completion(nil)
+      },
+      snapshot: {
+        $0(
+          .success(
+            BridgeSnapshot(
+              documentID: documentID, revision: 5, text: staleText,
+              imageOwnership: BridgeImageOwnershipProof(
+                documentID: documentID, revision: 5, raw: staleText,
+                imageURIs: [asset.markdownURI]))))
+      },
+      completion: { completionError = $0 })
+
+    XCTAssertNotNil(completionError)
+    let reopened = try LocalImageStore(
+      root: store.directory.appendingPathComponent("LocalImages")
+    ).begin(documentID: documentID, sessionID: sessionID)
+    let pending = try XCTUnwrap(reopened.assets.first)
+    XCTAssertEqual(pending.insertion, .pending)
+    XCTAssertEqual(pending.recoveryIntent, intent)
+    XCTAssertEqual(pending.recoveryDisposition, .pendingConfirmation)
+    XCTAssertEqual(try XCTUnwrap(store.discover().drafts.first).data, original)
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
+  }
+
+  func testSilentRecoveryWriterKeepsHandoffPendingAndOldEvidence() throws {
+    try assertRecoveryWriterFailureKeepsPending(
+      writer: PendingPersistenceWriter(mode: .silent))
+  }
+
+  func testThrowingRecoveryWriterKeepsHandoffPendingAndOldEvidence() throws {
+    try assertRecoveryWriterFailureKeepsPending(
+      writer: PendingPersistenceWriter(mode: .throwing))
+  }
+
   func testCrossEpochConfirmationIsRejectedBeforeApplyAndKeepsEvidence() throws {
     let scratch = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: scratch) }
@@ -486,6 +560,74 @@ final class PendingImageRecoveryTests: XCTestCase {
     return url
   }
 
+  private func assertRecoveryWriterFailureKeepsPending(
+    writer: any DocumentDataWriting
+  ) throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let recovery = scratch.appendingPathComponent("Recovery")
+    let realStore = RecoveryStore(directory: recovery)
+    let sessionID = UUID()
+    let documentID = "recovered-document"
+    let epoch = UUID()
+    let session = try LocalImageStore(
+      root: recovery.appendingPathComponent("LocalImages")
+    ).begin(documentID: documentID, sessionID: sessionID)
+    let asset = try session.importBitmapPNG(
+      png, documentURL: nil, authorizedDirectory: nil,
+      importIntent: LocalImageAsset.ImportIntent(
+        documentID: documentID, sessionID: sessionID, documentEpoch: UUID(), revision: 4,
+        selectionAnchor: 1, selectionHead: 1, recoveryState: .active))
+    let original = Data("old recovery\n".utf8)
+    try realStore.write(
+      RecoveryDraft(
+        id: sessionID, revision: 4, data: original, sourceURL: nil,
+        sourceFingerprint: nil))
+    let discovery = realStore.discover()
+    let failingStore = RecoveryStore(directory: recovery, writer: writer)
+    let document = try InkoraDocument(
+      recoveryDraft: try XCTUnwrap(discovery.drafts.first),
+      pendingImageRecovery: try XCTUnwrap(discovery.pendingImageSessions.first),
+      recoveryStore: failingStore)
+    let intent = LocalImageAsset.ImportIntent(
+      documentID: documentID, sessionID: sessionID, documentEpoch: epoch, revision: 4,
+      selectionAnchor: 0, selectionHead: 0, recoveryState: .active)
+    let text = "![](\(asset.markdownURI))\n"
+    var completionError: Error?
+
+    PendingImageRecoveryHandoff(document: document, expectedDocumentEpoch: epoch).confirm(
+      assetID: asset.id,
+      captureIntent: { $0(.success(intent)) },
+      apply: { _, _, completion in
+        document.editorDidChangeState(
+          BridgeEditorState(
+            documentID: documentID, revision: 5, dirty: true,
+            canUndo: true, canRedo: false))
+        completion(nil)
+      },
+      snapshot: {
+        $0(
+          .success(
+            BridgeSnapshot(
+              documentID: documentID, revision: 5, text: text,
+              imageOwnership: BridgeImageOwnershipProof(
+                documentID: documentID, revision: 5, raw: text,
+                imageURIs: [asset.markdownURI]))))
+      },
+      completion: { completionError = $0 })
+
+    XCTAssertNotNil(completionError)
+    let reopened = try LocalImageStore(
+      root: recovery.appendingPathComponent("LocalImages")
+    ).begin(documentID: documentID, sessionID: sessionID)
+    let pending = try XCTUnwrap(reopened.assets.first)
+    XCTAssertEqual(pending.insertion, .pending)
+    XCTAssertEqual(pending.recoveryIntent, intent)
+    XCTAssertEqual(pending.recoveryDisposition, .pendingConfirmation)
+    XCTAssertEqual(try XCTUnwrap(realStore.discover().drafts.first).data, original)
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
+  }
+
   private func save(_ document: InkoraDocument, to url: URL) async -> Error? {
     await withCheckedContinuation { continuation in
       document.save(
@@ -496,6 +638,15 @@ final class PendingImageRecoveryTests: XCTestCase {
         continuation.resume(returning: error)
       }
     }
+  }
+}
+
+private struct PendingPersistenceWriter: DocumentDataWriting {
+  enum Mode: Equatable { case silent, throwing }
+  let mode: Mode
+
+  func write(_ data: Data, to url: URL) throws {
+    if mode == .throwing { throw CocoaError(.fileWriteOutOfSpace) }
   }
 }
 

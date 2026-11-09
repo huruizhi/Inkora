@@ -30,6 +30,42 @@ final class DocumentAssetBrokerTests: XCTestCase {
     XCTAssertEqual(broker.read(token: UUID()).status, .unknownToken)
   }
 
+  func testProvisionalCapabilityIsNotLiveUntilCommitAndFailureCanDiscardIt() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    try png.write(to: scratch.appendingPathComponent("a.png"))
+    let leases = CountingAssetLeaseFactory()
+    let broker = DocumentAssetBroker(leaseFactory: leases)
+    let epoch = broker.beginDocument(documentID: "doc")
+    let provisional = try broker.provision(
+      documentID: "doc", epoch: epoch, rootURL: scratch,
+      percentEncodedRelativePath: "a.png", sha256: RecoveryFingerprint.hash(png),
+      mimeType: "image/png")
+
+    XCTAssertEqual(broker.capabilityCounts.live, 0)
+    XCTAssertEqual(broker.capabilityCounts.provisional, 1)
+    XCTAssertEqual(broker.read(token: provisional.token).status, .stale)
+    XCTAssertEqual(broker.validateProvisional(token: provisional.token).status, .ready)
+    XCTAssertEqual(leases.active, 0)
+    XCTAssertEqual(leases.starts, 1)
+    XCTAssertEqual(leases.stops, 1)
+
+    try broker.commitProvisional(tokens: [provisional.token])
+    XCTAssertEqual(broker.capabilityCounts.live, 1)
+    XCTAssertEqual(broker.capabilityCounts.provisional, 0)
+    XCTAssertEqual(broker.read(token: provisional.token).status, .ready)
+
+    let rejected = try broker.provision(
+      documentID: "doc", epoch: epoch, rootURL: scratch,
+      percentEncodedRelativePath: "a.png", sha256: RecoveryFingerprint.hash(png),
+      mimeType: "image/png")
+    broker.discardProvisional(tokens: [rejected.token])
+    XCTAssertEqual(broker.capabilityCounts.live, 1)
+    XCTAssertEqual(broker.capabilityCounts.provisional, 0)
+    XCTAssertEqual(broker.read(token: rejected.token).status, .stale)
+    XCTAssertEqual(leases.active, 0)
+  }
+
   func testDescriptorTraversalSymlinkSizeMimeSHAAndDecodeAreRejected() throws {
     let scratch = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: scratch) }

@@ -131,14 +131,23 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     case imageImport(
       documentEpoch: String, assetID: String, uri: String, alt: String,
       title: String?, displayURL: String, selectionAnchor: Int, selectionHead: Int)
-    case imageDescriptors(documentEpoch: String, descriptors: [BridgeImageDescriptor])
-    case imageSave(documentEpoch: String, rewrites: [BridgeImageRewrite])
+    case imageDescriptors(
+      documentEpoch: String, ownership: BridgeImageOwnershipProof,
+      descriptors: [BridgeImageDescriptor])
+    case imageSave(
+      documentEpoch: String, ownership: BridgeImageOwnershipProof,
+      rewrites: [BridgeImageRewrite])
 
     var requiresStrictBinding: Bool {
       switch self {
       case .imageImport, .imageDescriptors, .imageSave: true
       case .history: false
       }
+    }
+
+    var requiresExactAcknowledgementBinding: Bool {
+      if case .imageDescriptors = self { return true }
+      return false
     }
 
     func command(
@@ -159,14 +168,14 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
           documentEpoch: documentEpoch, assetID: assetID, uri: uri, alt: alt,
           title: title, displayURL: displayURL,
           selectionAnchor: selectionAnchor, selectionHead: selectionHead)
-      case .imageDescriptors(let documentEpoch, let descriptors):
+      case .imageDescriptors(let documentEpoch, let ownership, let descriptors):
         .setImageDescriptors(
           requestID: requestID, documentID: documentID, revision: revision,
-          documentEpoch: documentEpoch, descriptors: descriptors)
-      case .imageSave(let documentEpoch, let rewrites):
+          documentEpoch: documentEpoch, ownership: ownership, descriptors: descriptors)
+      case .imageSave(let documentEpoch, let ownership, let rewrites):
         .prepareImageSave(
           requestID: requestID, documentID: documentID, revision: revision,
-          documentEpoch: documentEpoch, rewrites: rewrites)
+          documentEpoch: documentEpoch, ownership: ownership, rewrites: rewrites)
       }
     }
   }
@@ -336,7 +345,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       completion: completion)
   }
 
-  func setImageDescriptors(
+  private func setImageDescriptors(
     documentEpoch: UUID,
     ownership: BridgeImageOwnershipProof,
     descriptors: [BridgeImageDescriptor],
@@ -344,9 +353,29 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   ) {
     enqueueMutation(
       .imageDescriptors(
-        documentEpoch: documentEpoch.uuidString.lowercased(), descriptors: descriptors),
+        documentEpoch: documentEpoch.uuidString.lowercased(), ownership: ownership,
+        descriptors: descriptors),
       requiredBinding: (ownership.documentID, ownership.revision),
       completion: completion)
+  }
+
+  func setImageDescriptors(
+    documentEpoch: UUID,
+    ownership: BridgeImageOwnershipProof,
+    makeDescriptors: () throws -> [BridgeImageDescriptor],
+    completion: @escaping (Error?) -> Void = { _ in }
+  ) {
+    guard currentBindingMatches(ownership) else {
+      completion(EditorBridgeError.staleRevision)
+      return
+    }
+    do {
+      setImageDescriptors(
+        documentEpoch: documentEpoch, ownership: ownership,
+        descriptors: try makeDescriptors(), completion: completion)
+    } catch {
+      completion(error)
+    }
   }
 
   func prepareImageSave(
@@ -356,7 +385,9 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     completion: @escaping (Error?) -> Void
   ) {
     enqueueMutation(
-      .imageSave(documentEpoch: documentEpoch.uuidString.lowercased(), rewrites: rewrites),
+      .imageSave(
+        documentEpoch: documentEpoch.uuidString.lowercased(), ownership: ownership,
+        rewrites: rewrites),
       requiredBinding: (ownership.documentID, ownership.revision),
       completion: completion)
   }
@@ -393,6 +424,11 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
         completion: completion)
     )
     processNextEditorCommand()
+  }
+
+  private func currentBindingMatches(_ ownership: BridgeImageOwnershipProof) -> Bool {
+    lifecycle == .ready && revisionTracker.documentID == ownership.documentID
+      && revisionTracker.latestRevision == ownership.revision
   }
 
   func userContentController(
@@ -484,6 +520,18 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
   private func handleStateChanged(_ event: BridgeEditorEvent) {
     guard let state = event.state else { return }
+    let exactBindingWasCurrent: Bool
+    if let activeEditorCommand,
+      activeEditorCommand.request.payload.requiresExactAcknowledgementBinding,
+      let binding = activeEditorCommand.request.binding
+    {
+      exactBindingWasCurrent =
+        revisionTracker.documentID == binding.documentID
+        && revisionTracker.latestRevision == binding.revision
+        && state.documentID == binding.documentID && state.revision == binding.revision
+    } else {
+      exactBindingWasCurrent = true
+    }
     if revisionTracker.accept(state) {
       delegate?.editorBridge(self, didChangeState: state)
     }
@@ -497,6 +545,11 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       activeEditorCommand.requestID == requestID
     else { return }
     self.activeEditorCommand = nil
+    guard exactBindingWasCurrent else {
+      activeEditorCommand.request.completion(EditorBridgeError.staleRevision)
+      processNextEditorCommand()
+      return
+    }
     activeEditorCommand.request.completion(nil)
     processNextEditorCommand()
   }
