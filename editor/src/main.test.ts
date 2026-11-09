@@ -191,6 +191,50 @@ async function bootMain(): Promise<Harness> {
 // （仓库 tsconfig 较低且不在本任务允许修改范围），沿用 executor 形式。
 const settle = (ms = 60): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+it("V2：真实DOM邻接输入、可视查找、图片proof和源码往返保持同一原文", async () => {
+  const h = await bootMain();
+  const raw = '\uFEFFBefore [[![fake](fake.png)]] after.\r\n\r\n![real](real.png)\r\n';
+  const changed = '\uFEFFNew Before [[![fake](fake.png)]] after.\r\n\r\n![real](real.png)\r\n';
+  h.receive({ type: 'loadDocument', requestID: 'v2-load', documentID: 'v2-inline', revision: 0, text: raw });
+  const editor = h.editorHost().querySelector<HTMLElement>('#editor')!;
+  const atom = editor.querySelector<HTMLElement>('.protected-inline')!;
+  expect(atom.textContent).toBe('[[![fake](fake.png)]]');
+  expect(atom.getAttribute('contenteditable')).toBe('false');
+  expect(editor.querySelectorAll('.image-node')).toHaveLength(1);
+  const text = editor.querySelector('p')!.firstChild as Text;
+  text.insertData(0, 'New ');
+  editor.dispatchEvent(new h.dom.window.Event('input', { bubbles: true }));
+  await settle(150);
+  expect(h.lastRevision()).toBe(1);
+  h.receive({ type: 'createSnapshot', requestID: 'v2-snapshot', documentID: 'v2-inline', revision: 1 });
+  expect(h.sent.at(-1)).toMatchObject({ type: 'snapshotReady', text: changed,
+    imageOwnership: { raw: changed, imageURIs: ['real.png'] } });
+  h.searchButton().click(); h.typeSearchQuery('fake'); await settle();
+  expect(h.searchMatches()).toHaveLength(0);
+  h.searchClose().click();
+  h.sourceMode().click();
+  expect(h.editorHost().querySelector<HTMLTextAreaElement>('textarea')!.value).toBe(changed.replace(/\r\n/g, '\n'));
+  h.sourceApply().click();
+  expect(h.lastRevision()).toBe(1);
+  h.visualMode().click(); h.editorHost().querySelector<HTMLElement>('#editor')!.focus();
+  h.receive({ type: 'executeCommand', requestID: 'v2-undo', documentID: 'v2-inline', revision: 1, command: 'undo' });
+  h.receive({ type: 'createSnapshot', requestID: 'v2-original', documentID: 'v2-inline', revision: h.lastRevision() });
+  expect(h.sent.at(-1)).toMatchObject({ type: 'snapshotReady', text: raw });
+  h.receive({ type: 'executeCommand', requestID: 'v2-redo', documentID: 'v2-inline', revision: h.lastRevision(), command: 'redo' });
+  h.receive({ type: 'createSnapshot', requestID: 'v2-restored', documentID: 'v2-inline', revision: h.lastRevision() });
+  expect(h.sent.at(-1)).toMatchObject({ type: 'snapshotReady', text: changed });
+});
+
+it("V2：大纲统计排除canonical保护片段中的伪标题与预览字串", async () => {
+  const h = await bootMain();
+  const raw = '---\n# Hidden\n---\n\n# Visible\n\nBefore [[secret]] after.\n';
+  h.receive({ type: 'loadDocument', requestID: 'v2-analysis-load', documentID: 'v2-analysis', revision: 0, text: raw });
+  await settle();
+  expect(h.panelHeadings()).toEqual(['Visible']);
+  expect(h.panelStat('字符数')).toBe('19');
+  expect(h.panelStat('字数')).toBe('3');
+});
+
 const frozenVisualSearch = JSON.parse(readFileSync(
   new URL("../../docs/acceptance/visual-search/cases.json", import.meta.url),
   "utf8",

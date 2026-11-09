@@ -611,6 +611,19 @@ export class SourceAuthoritySession {
     return { raw: this.currentRaw, imageURIs };
   }
 
+  captureProtectedRanges(raw = this.currentRaw): { raw: string; ranges: Array<{ start: number; end: number }> } {
+    const parsed = this.parseSource(raw);
+    const candidates = parsed.opaqueSpans.map(span => ({ start: span.sourceStart, end: span.sourceEnd }));
+    candidates.sort((a, b) => a.start - b.start || a.end - b.end);
+    const ranges: Array<{ start: number; end: number }> = [];
+    for (const range of candidates) {
+      const previous = ranges.at(-1);
+      if (previous && range.start <= previous.end) previous.end = Math.max(previous.end, range.end);
+      else ranges.push({ ...range });
+    }
+    return { raw, ranges };
+  }
+
   private parseSource(raw: string): ReturnType<typeof parse> {
     if (this.parsedSourceCache?.raw === raw) return this.parsedSourceCache.parsed;
     const parsed = parse(raw);
@@ -1147,6 +1160,18 @@ export class SourceAuthoritySession {
     const before = this.snapshot();
     let attemptedRaw: string | undefined;
     try {
+      // D fragments are read-only in the visual projection, including a
+      // selection covering the whole atom. Only an explicit source commit
+      // authorizes removing/changing their raw bytes (GATE-002/GATE-004).
+      this.state.doc.descendants((node, pos) => {
+        if (!['protected_inline', 'protected_block'].includes(node.type.name)) return;
+        const mapped = transaction.mapping.mapResult(pos, 1);
+        const after = transaction.doc.nodeAt(mapped.pos);
+        if (mapped.deleted || after?.type !== node.type ||
+            after.attrs.raw !== node.attrs.raw || after.attrs.kind !== node.attrs.kind) {
+          throw Error('保护片段只读；完整删除或改写必须在源码中显式提交');
+        }
+      });
       let tr = transaction;
       const step = tr.steps[0]?.toJSON() as { stepType?: string; from?: number; to?: number; slice?: { content?: Array<{ text?: string }> } } | undefined;
       const insert = step?.stepType === 'replace' && !(step.slice?.content ?? []).some(node => node.text === undefined)

@@ -370,9 +370,15 @@ describe("editor runtime", () => {
     expect(headings.length).toBeGreaterThan(1);
     expect(runtime.navigateToHeading(raw, { ...headings[0], index: 0 })).toEqual({
       ok: false,
-      message: "当前编辑视图与原文大纲不一致，无法安全定位",
+      message: "大纲快照已过期，无法定位标题",
     });
     expect(session.state.selection.eq(selection)).toBe(true);
+    const accepted = runtime.analyzeDocument(0).headings;
+    expect(accepted.map(heading => heading.text)).toEqual(['Real']);
+    const before = { text: runtime.getText(), status: runtime.status };
+    expect(runtime.navigateToHeading(raw, { ...accepted[0], index: 0 })).toEqual({ ok: true });
+    expect(runtime.getText()).toBe(before.text);
+    expect(runtime.status).toEqual(before.status);
     runtime.destroy();
   });
 

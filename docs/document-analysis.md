@@ -12,6 +12,8 @@ analyzeDocument({ raw, revision }, { excludedRanges?: SourceRange[] })
 - `revision: number`：原样带回结果，用于调用方校验快照一致性。
 - `excludedRanges`：调用方已识别的高级原文/元数据范围。校验通过后在**解析副本**上等长屏蔽（保留 EOL 字符与行结构），原文本身不变。
 
+生产 source-authoritative runtime 从当前 raw 的 canonical parse 捕获保护范围，并将其传给此接口。大纲/内容统计不计保护原文与预览字串；原文统计仍覆盖完整文件。源码草稿按该草稿自身 raw 重新取得范围，不能借用旧文档范围。bare-CR 只读 runtime 继续采用既有 CommonMark 统计口径。
+
 非法快照（`raw` 非字符串、`revision` 非有限数字）抛 `TypeError`。
 
 ### 排除范围校验（抛 `ExcludedRangeError`）

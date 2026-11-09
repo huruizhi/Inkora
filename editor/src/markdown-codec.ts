@@ -106,6 +106,14 @@ export function configureProjectionTokens(markdown: MarkdownIt): void {
 configureProjectionTokens(tokenizer);
 
 const tokenSpecs: Record<string, ParseSpec> = {
+  inkora_protected_block: {
+    node: "protected_block",
+    getAttrs: token => ({ raw: token.meta.inkoraRaw, kind: token.meta.inkoraOpaque }),
+  },
+  inkora_protected_inline: {
+    node: "protected_inline",
+    getAttrs: token => ({ raw: token.meta.inkoraRaw, kind: token.meta.inkoraOpaque }),
+  },
   table: { block: "table" },
   thead: { block: "table_head" },
   tbody: { block: "table_body" },
@@ -303,6 +311,7 @@ export const inkoraMarkdownSerializer = new MarkdownSerializer(
       state.write(node.attrs.raw);
       state.closeBlock(node);
     },
+    protected_inline(state, node) { state.write(node.attrs.raw); },
     heading: renderHeading,
     code_block: renderCodeBlock,
     bullet_list(state, node) {
