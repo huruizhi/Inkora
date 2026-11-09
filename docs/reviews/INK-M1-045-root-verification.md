@@ -1,0 +1,9 @@
+# INK-M1-045 独立复核
+
+固定候选e92b6f489721401ae9bf0dc3734fe1e1046e02b3。执行者已239文件及Git bundle逐项SHA验证备份，Agent/workspace两层回收。管理者在独立worktree重跑原冻结真实EditorView反例：5/5通过。
+
+追加“唯一document回调必须携带最终被接受内容”的断言后，4绿1红：compositionend的0ms收口后，10ms时同ID final把原文由`azh\n`改为`a中文\n`；唯一已发布回调仍为前者，最终只发status，main不刷新统计/查找。故发布次数正确不能证明稳定提交；本候选暂不合main。
+
+冻结新测试SHA：732e3f07b192ed8f4deb8db14eee3232c21640704a8f343a43af8270a258bc7b。红日志SHA：323f90a761de518cbd59409bd27a72e69adabff151b19f70f0f06285b917ce72。只读原件位于归档root-m1-checks/INK-M1-045；新产品测试应以稳定边界和最终内容/快照资格为依据，不能删断言、改冻结材料或只压事件次数。
+
+INK-M1-049从同一候选接续生产composition稳定发布和快照屏障。047已合入045的其他命令/回执/保护片段补正，另有368非UI测试通过，但仍不代表此IME缺陷已修。未运行物理搜狗或NSDocument联动，不宣告V1/首阶段通过。
