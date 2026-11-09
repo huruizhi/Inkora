@@ -301,7 +301,7 @@ function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, project
   return `source-authoritative local insertion: ${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`;
 }
 
-function rawBoundaryError(raw: string, offset: number, knownBoundaries?: ReadonlySet<number>): string | null {
+function rawCodeUnitBoundaryError(raw: string, offset: number): string | null {
   if (!Number.isInteger(offset) || offset < 0 || offset > raw.length) return `原文位置 ${offset} 越界`;
   if (raw.startsWith('\uFEFF') && offset === 0) return 'BOM 前位置不是正文边界';
   if (offset > 0 && offset < raw.length && raw[offset - 1] === '\r' && raw[offset] === '\n') return 'CRLF 内部不是合法边界';
@@ -310,6 +310,12 @@ function rawBoundaryError(raw: string, offset: number, knownBoundaries?: Readonl
     const next = raw.charCodeAt(offset);
     if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) return 'surrogate pair 内部不是合法边界';
   }
+  return null;
+}
+
+function rawBoundaryError(raw: string, offset: number, knownBoundaries?: ReadonlySet<number>): string | null {
+  const structuralError = rawCodeUnitBoundaryError(raw, offset);
+  if (structuralError) return structuralError;
   const boundaries = knownBoundaries ?? new Set<number>([0, raw.length]);
   if (!knownBoundaries) {
     const writable = boundaries as Set<number>;
@@ -914,7 +920,7 @@ export class SourceAuthoritySession {
     const parsed = parse(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
-    const exactTargetLedger = needsAnchorReproof && !parsed.issues.length && parsed.doc.eq(target.doc)
+    let exactTargetLedger = needsAnchorReproof && !parsed.issues.length && parsed.doc.eq(target.doc)
       ? baseLedger(raw, parsed)
       : undefined;
     this.currentRaw = raw;
@@ -941,12 +947,28 @@ export class SourceAuthoritySession {
           visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
       };
     });
+    const oldAnchorCount = mappedAnchors.length;
     const step = target.selection;
     if (sourceCaret !== undefined) mappedAnchors.push({ visual: step.head, raw: sourceCaret, reason });
-    for (const anchor of mappedAnchors) {
+    const validatedAnchors: ProjectionAnchor[] = [];
+    for (const [index, anchor] of mappedAnchors.entries()) {
       if (anchor.visual < 0 || anchor.visual > target.doc.content.size) throw Error(`投影 anchor 的 PM 位置 ${anchor.visual} 越界`);
       const boundaryError = this.boundaryError(raw, anchor.raw);
-      if (boundaryError) throw Error(`投影 anchor 映射失败：${boundaryError}`);
+      if (boundaryError) {
+        // A text edit can merge two old graphemes. Retire only a former
+        // boundary proven to be inside the same new visible raw/PM unit.
+        // Never snap BOM/CRLF/surrogate boundaries or the new caret anchor.
+        if (index < oldAnchorCount && !rawCodeUnitBoundaryError(raw, anchor.raw) &&
+            !parsed.issues.length && parsed.doc.eq(target.doc)) {
+          exactTargetLedger ??= baseLedger(raw, parsed);
+          if (exactTargetLedger.spans.some(span =>
+            span.visible && span.visualStart !== undefined && span.visualEnd !== undefined &&
+            span.sourceStart < anchor.raw && anchor.raw < span.sourceEnd &&
+            span.visualStart < anchor.visual && anchor.visual < span.visualEnd)) continue;
+        }
+        throw Error(`投影 anchor 映射失败：${boundaryError}`);
+      }
+      validatedAnchors.push(anchor);
     }
 
     if (parsed.issues.length) {
@@ -955,7 +977,7 @@ export class SourceAuthoritySession {
       this.projection = { kind: 'exact', reason: '含混原文的保守保护投影', anchors: [], provenance: parsed.issues.map(issue => issue.message) };
     } else if (parsed.doc.eq(target.doc)) {
       this.state = target;
-      this.projection = { kind: 'exact', reason: '当前原文与 PM 投影精确一致', anchors: dedupeAnchors(mappedAnchors), provenance: [reason] };
+      this.projection = { kind: 'exact', reason: '当前原文与 PM 投影精确一致', anchors: dedupeAnchors(validatedAnchors), provenance: [reason] };
       try {
         this.rawSelection = this.updateSelectionFromState(this.state);
       } catch (error) {
@@ -967,7 +989,7 @@ export class SourceAuthoritySession {
       }
     } else {
       this.state = target;
-      this.projection = { kind: 'anchored', reason, anchors: dedupeAnchors(mappedAnchors), provenance: [reason, ...patches.map(patch => `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`)] };
+      this.projection = { kind: 'anchored', reason, anchors: dedupeAnchors(validatedAnchors), provenance: [reason, ...patches.map(patch => `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`)] };
       this.projectionContext();
       this.rawSelection = this.updateSelectionFromState(this.state);
     }
