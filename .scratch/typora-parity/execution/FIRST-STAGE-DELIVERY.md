@@ -140,3 +140,13 @@ main仍48258a9；M0有界门槛保持通过。V1最终IME发布未闭合，V3/V4
 当前功能执行只有 050（V3 表格/任务列表），未轮询或重启。新 production IME、NSDocument 完整保存重开仍待集中验收；V4 图片和 V6 可视替换未实现，main 未变，总目标 active。
 
 用户选择本轮物理输入“稍后”：051 集中验收仅暂缓，整体开发继续。已实际确认自有 IME Production 051.md 正文仍为 Input here.，正常退出 UITesting 应用，CUA inventory 不再含该测试 bundle；唯一 fixture SHA 与初始一致，构建、分支、样稿保留。持锁进程已经 FIFO 正常退出，UI 锁释放；不维持等待窗口，也不误记物理输入通过。待用户明确恢复再重新预检和定位，不重复催促。
+
+## 非 UI 接续：图片生产规格和原生回归
+
+052 图片生产实施契约 744c0141f5ffb0c6fcb0b7c2d6761efbce0be973 已提交推送并接入 047，组合 HEAD 00cce96489fb50558ca014c3a4d74e112ea22b52。只新增 docs/design/local-images-production-v4.md 和任务记录；依据实际生产 image_ref、Bridge、NSDocument、Recovery、CSP，及 021/037/040 分层证据与 Apple 官方文档。规定真实导入/显示/拖放/粘贴、未命名恢复、首次保存路径内容事务、资源先发布/Markdown 最后提交、Save As 原引用不改、broker 授权/取消和完整失败矩阵。它是实施契约，图片代码尚未因此完成。
+
+管理者对 b80a968 实跑 make test-native：实际 xcresult 为 121 项，108 passed / 6 failed / 7 skipped。六项均在 EditorWebViewTests，涉及旧 textarea/fallback 假设、CRLF 源码编辑、reload、bareCR conversion 及 composition recovery 的生命周期错误。不能仅因旧假设就忽略错误，也不能为了测试退回整篇源码；原 xcresult、完整日志、baseline Swift 和 SHA manifest 冻结于 workspace-archives 的 root-m1-checks/INK-REV-053。
+
+已派 053 基线744c014（产品树与b80相同）独立复现/补正，Sol5.6/medium/default，无配置profile；agent e6b473a5-eba9-40ab-8265-d08cff3b093f / workspace wks_0ed404817c93ab1c / task/INK-M1-053-native-core-regressions。范围先是原生 headless WK 测试，若产品缺陷须先报告红例与最小范围；不删/skip有效断言，不开App/UI，不改050。两个执行者为050与053，完成须分别独立验收及Agent/workspace两层回收。
+
+图片实际实施安排在该原生阻断修正后接续，保持两执行者上限。物理输入暂缓；main仍48258a9，V1原生绿灯与首阶段完整功能都未闭合，不合并失败候选或提前标完。
