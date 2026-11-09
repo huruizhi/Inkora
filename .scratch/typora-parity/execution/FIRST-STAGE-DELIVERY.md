@@ -11,7 +11,7 @@
 | 大纲/统计/章节定位 | 已合main | 新内核兼容、真实滚动/键盘/辅助功能点验 |
 | 当前文档查找替换 | PR #73 draft；552/552与受检c0 CI通过；073指出两项Spec缺口 | 075补正epoch/嵌套marks，组合后精确CI/合入及真实UI |
 | 可编辑表格/任务列表 | PR #72 已合 main，完整 editor 485/485、精确 CI success | 真实控件/物理输入/文件生命周期与 AX 验收 |
-| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 074/076独立审查、075接回、最终CI与物理验收 |
+| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 076四项交077补正；075接回、最终CI与物理验收 |
 | 代码高亮/语言选择 | 已合 main；有真实 WK 语言选择、字节及正式保存重开证据 | 新组合回归与最终集中验收 |
 | 高级语法保护混排/异常安全 | 生产接线已合 main | 新组合保护块邻接、含混阻断和主动源码修复回归 |
 
@@ -29,8 +29,10 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 - 原055双轴报告见 [V4 审查原文](V4-IMAGE-REVIEW.md)：064为0hard/judgement，065为3P1+2P2，原候选未直接合入；五项已由067修复并接回070，仍待下述组合复审，不改写旧报告制造通过。
 - 067 已交付 `96703899dbd29d170316aa31b8e86320b5056e7e`，固定055起点五修：首次保存publish/confirm分离与真实owner snapshot屏障、CommonMark标签迁移、持久selection意图、journal重启只读核验、显式grant/真实read后ready。root已读取候选xcresult并单独保留：Native152/0/7、BridgeNative13/13；非物理授权证据。执行Agent/workspace已312文件/tar/Git bundle校验备份回收。
 - 070最新 `a58b8ba1edddb7863856214b9c36f0893030bf11`（branch `task/INK-M1-070-image-core-integration`），产品代码与实际受检9e952ff完全一致已gitdiff证明。core/V3/V6/067组合 **570/570**（含WebBridge14）；root独立Native **159 total / 152 pass / 0 fail / 7 skip**（含NativeBridge13）。最终 make lint、release-bundle-check（Release+offline smoke）、test-ci均exit0；既有Swift/JS chunk警告保留。descriptor先ack后副作用、epoch/selection/跨控件composition联合守卫保持。未合图片PR、未做物理授权/显示/输入/保存关闭重开，不代表V4完整验收。
-- 070组合双轴复审固定 `c9e247d...a58b8ba`（仅V4 overlay）：074 Standards，GLM5.3 low/full，Agent `bab46316-3385-471d-8372-52075e5b6000` / workspace `wks_e0d1c570bf35ce3a` / branch `task/INK-REV-074-image-integration-standards`；076 Spec，Sol5.6 high/default，Agent `171fb114-b50d-4e7d-a058-d037bf176f17` / workspace `wks_de89a05eb452cfab` / branch `task/INK-REV-076-image-integration-spec`。产品只读，两轴独立、无GUI、不重复570/159；不混入已交075的V6缺口。
-- 067、072、073均已校验备份并两层回收，累计完成 workspace **70**。073备份367文件/tar SHA `3e200779bfa291f491a81b8d808a42b32a4b90dd15963d4163042bb56ae8b77e`；067备份312文件/tar SHA `447bbd20c9dae5cd36528a23e992bd0debb891a5844365b8efec9bf88e2fc7fb`；072备份367文件/tar SHA `6f1b933a310f88d31d02ab4abb12f2f5273b219eda850a6d80898d5be9e0ae68`。当前一名075实施者及074/076两名只读审查者，root负责接收、独立组合与精确CI。不保留空闲会话。
+- 070组合双轴复审固定 `c9e247d...a58b8ba`（仅V4 overlay），[两轴原文](V4-INTEGRATION-REVIEW.md)完整分别保留。074 Standards `f962ea3`：无hard，安全读文件语义重复等judgement；076 Spec `c671c6d`：首存失败后无Undo重试/异目标锁死、Bridge接受前pending manifest缺启动发现入口、括号图片URI截断、命名图片同步预检缺scope lease。非UI通过不能抵消这四项。
+- 077实施：Sol5.6 high/default（无命名profile），Agent `a71a5803-135a-454c-bfdf-4a32d955306d` / workspace `wks_b6433d1df099cb22` / branch `task/INK-M1-077-image-retry-recovery-scope`，固定a58b8ba。四项分别实际红绿、公共保存/恢复/broker接缝，保持owner/历史/selection/授权失败保护；不合075，不开GUI，不新加Agent或依赖。
+- 067、072、073、074、076均已校验备份并两层回收，累计完成 workspace **72**。074备份381文件/tar SHA `1a9889e3c984e08b2b9fc2f82a9fc84c88cb94648bcac4c391f089e4a4fa1246`；076备份381文件/tar SHA `0eb29db643fdae77e1b8c8bd74f576060d59223f4465f4090033430134d69f01`。当前两名实施者仅075与077，root负责独立接收、组合和性能覆盖核查，不保留空闲Agent。
+- 性能票15的旧12依赖已解决；实际核查现有Node轻量bench仍调用旧InkoraEditorSession/整篇serializer，不能代表新source-authoritative runtime输入、模式或snapshot。root将在独立078分支新增实际生产路径测量，保留旧指标与样本，不将Node/离屏WK/桌面物理混为同一层或提前承诺最低系统预算。
 
 本节为进度文档修订，不因此重复未改产品测试或把待执行检查记成通过。
 

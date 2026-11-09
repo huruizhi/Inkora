@@ -4,7 +4,7 @@ Type: prototype
 Labels: wayfinder:prototype
 Status: open
 Assignee: None
-Blocked by: 12
+Blocked by: None
 Parent: ../map.md
 
 ## Question
@@ -19,3 +19,7 @@ Parent: ../map.md
 - 真实IME和桌面检查按届时仓库UI规则执行；缺少权限/环境的项保留未执行。测量原型、日志和结果保存在独立分支，预算回写本票，实施任务将预算转成对应可复现验证。
 
 本票源自[质量门槛决策](07-quality-gates.md)。属于可交付前必须明确的体验指标，不代替M0的内容/历史/输入法正确性门槛，也不把当前单机基线当最低系统结果。
+
+## 执行更新（2026-11-09）
+
+12已由038关闭并采纳ADR-0004，解除历史依赖；本票仍open。root078准备补充新生产路径的分层测量，旧Node AST/serializer指标继续保留为历史控制。真实桌面/物理IME/最低macOS证据未执行，预算尚未冻结。
