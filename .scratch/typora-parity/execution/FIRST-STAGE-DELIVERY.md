@@ -154,3 +154,13 @@ main仍48258a9；M0有界门槛保持通过。V1最终IME发布未闭合，V3/V4
 054 可视查找替换契约/独立 golden 已推送到 task/INK-SPEC-054-visual-search-acceptance（主产物88f1dee）。14 对 input/expected、132 项标准库 SHA/字节推导校验、28 个暂存 Git blob SHA 一致，含跨 marks、链接同字目标/标题排除、实体/转义、代码定界符、表格/任务、保护片段邻接、140 个全替换、Unicode/no-op/epoch。它们是实施前判据，不是已执行的产品测试；后续 V6 必须真实 SearchPanel/PM 入口和整批单历史事务通过，不许把“只计数/不可定位替换”当最终状态。
 
 050与053各确切handle在本轮核对仍running、无pending permissions/attention，没有重启或新增第3名Agent。Native的7个skips已逐项核对为5项PerformanceBaselineTests和2项PerformanceWebViewTests的按需基准，不能称121全过或最低OS/性能已验。
+
+## 当前：原生回归收敛与图片正式实施
+
+053@8c973626018e5dd5a858e043ce4c3b44ed2b897b 候选已交付。根检查修改：CRLF源码走真实入口/input/apply/snapshot，mixed可视与bareCR只读分开，composition迁至真实PM DOM且保持revision/recovery/blur/selection/UndoRedo强断言，reload要求新页面token与版本化snapshot；未改产品。实际候选Native xcresult 114通过/0失败/7跳过，Bridge9通过；Agent先归档，299个tracked文件及Git bundle与实际xcresult/log备份后workspace回收，累计58。
+
+整合分支合入053后根独立 make test-native 同样121项114通过/0失败/7性能跳过，强断言保留。Release离线检查、完整BSD副本、严格签名、CSP/脚本及14部署目标通过；本地UITesting Release有get-task-allow，仅是CI资源构建，不是DeveloperID可分发产物，不将其冒称发布签名通过。证据及当前任务状态在047@93a3b5933b8ca2ae221681bb5afc480e83bb247d，main仍48258a9。
+
+055本地图片生产实现已正式启动：基线7d20ed4，task/INK-M1-055-local-images-production，agent 6ce1aa7e-d799-4a97-a40a-f63fd80c52aa / workspace wks_28e2b6ca347d9098，Sol5.6/high/default，无配置profile。必须真实插入/图片投影/拖放/粘贴/未命名持久恢复/首次保存路径内容事务/资源先发布Markdown后提交/SaveAs原引用不改/Sandbox broker及失败负例；不能整目录搬原型或只交模块。禁止GUI和新Agent；与050表格/任务两名执行者并行，完成后逐项验收回收。
+
+已通过GitHub连接器建立草稿 PR #71：https://github.com/huruizhi/Inkora/pull/71 ，head93a3b59、base最新main48258a9（fetch和祖先验证已执行）。内容为V1/V5/导航与其证据，不把V3/V4/V6规格当实现，也不解除用户暂缓的物理IME步骤。默认CI手动触发中（ui-tests=false，full-bench=false）；仍需CI/独立审查，不启用自动合并、不提前宣告首阶段完成。
