@@ -113,3 +113,5 @@ Status: open
 最新覆盖：main `0edb13d59532cd19a0fb7afa71e2aab7cf6573a4` 含PR71核心与PR72表格/任务，485/default CI通过。V6 [PR73](https://github.com/huruizhi/Inkora/pull/73) draft：552/552及精确c0 CI成功，072文档说明已c9e247d同步；073发现旧epoch runtime结果及嵌套marks两项，交075修复后再跑最终CI，不提前合入。图片067五修已接入070/core/V3/V6，最新a58b8ba产品代码与受检9e952ff相同；root独立570 editor、159 Native中152pass/0fail/7skip、lint、Release/offline、test-ci全部通过。074/076正对固定c9...a58图片overlay独立双轴复审，075为唯一实施者。067/072/073完成会话均校验备份回收，累计70；不保留空闲Agent。细节与真实handle见 [首阶段交付总表](execution/FIRST-STAGE-DELIVERY.md)。新生产物理验收按用户“稍后”保留，目标 active。
 
 最新覆盖：074 Standards无hard，076 Spec四项图片缺口已交077；两轴[原文分列](execution/V4-INTEGRATION-REVIEW.md)，不以570/Native152绿灯代替规格验收。074/076完成会话均381文件tar/bundle校验备份后两层回收，累计72。活跃实施为075(epoch/嵌套marks)与077(图片首存重试/pending发现/括号URI/scope lease)，真实handle见交付总表；root补核性能票15，旧Node bench不能代表新生产内核。main0edb13d未变、PR73仍draft，物理验收按稍后。
+
+最新覆盖：PR73 head ca797b8经568/568、lint/build与精确默认CI42636348772 success已merge，当前main **0f93c4ab52dc55da786c925c5bb135f8188e0933**，整树与受检head一致。075接回及root“编辑→Undo同字节旧结果”额外内容版本修正均保留。075完成会话备份回收，累计73；仅077继续图片四项，root078在独立分支补生产路径性能覆盖，旧WK专项真实失败仍在诊断，不填预算绿灯。物理验收继续按稍后，不启动App/UI。
