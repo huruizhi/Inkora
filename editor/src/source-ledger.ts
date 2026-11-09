@@ -871,8 +871,15 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       const state: ScanState = { spans: [], atoms: [], expectations: [], references, ownerSerial };
       if (range.kind === 'table') {
         const table = pmDoc.nodeAt(range.pos);
-        const tableToken = tokens.find(token => token.type === 'table_open' && token.map &&
-          lines[token.map[0]]?.start >= range.start && lines[token.map[0]]!.start < range.end);
+        const tableToken = tokens.find(token => {
+          if (token.type !== 'table_open' || !token.map) return false;
+          const tokenStart = lines[token.map[0]]?.start;
+          const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
+          // A BOF table starts after the BOM in the model range, while its
+          // physical token line starts at zero. Match its owning overlap.
+          return tokenStart !== undefined && tokenEnd !== undefined &&
+            tokenEnd > range.start && tokenStart < range.end;
+        });
         if (!table || !tableToken?.map) throw Error('顶层 table 缺少 source token 或 PM 节点');
         mapTableNode(source, lines.slice(tableToken.map[0], tableToken.map[1]), table, range.pos, pmDoc, state);
         const projectionError = assignVisualPositions(state.atoms, projectionUnitsFor(pmDoc, range), state.expectations);

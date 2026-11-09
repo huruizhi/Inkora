@@ -76,7 +76,9 @@ function rebuildTable(context: TableContext, command: TableCommandType): PMNode 
   let nextHead = head;
   let nextBody = [...bodyRows];
   if (command === "add_row_before" || command === "add_row_after") {
-    const bodyIndex = Math.max(0, rowIndex - 1) + (command === "add_row_after" ? 1 : 0);
+    // The header is outside bodyRows; either adjacent data-row insertion
+    // starts at the first body slot rather than after its existing row.
+    const bodyIndex = rowIndex === 0 ? 0 : rowIndex - 1 + (command === "add_row_after" ? 1 : 0);
     nextBody.splice(Math.min(bodyIndex, nextBody.length), 0, makeDataRow());
   } else if (command === "delete_row") {
     if (rowIndex === 0) return null;

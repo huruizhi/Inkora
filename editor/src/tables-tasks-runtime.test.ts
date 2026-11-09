@@ -58,6 +58,45 @@ function clickTableCommand(dom: JSDOM, parent: HTMLElement, command: string): vo
 }
 
 describe("tables and tasks production runtime", () => {
+  it.each([
+    {
+      name: "LF after header",
+      command: "add_row_after",
+      raw: "| Header |\n| --- |\n| first |\n| second |\n",
+      expected: "| Header |\n| --- |\n|  |\n| first |\n| second |\n",
+      rows: ["", "first", "second"],
+    },
+    {
+      name: "BOM CRLF before header",
+      command: "add_row_before",
+      raw: "\uFEFF| Header |\r\n| --- |\r\n| first |\r\n| second |",
+      expected: "\uFEFF| Header |\r\n| --- |\r\n|  |\r\n| first |\r\n| second |",
+      rows: ["", "first", "second"],
+    },
+    {
+      name: "header-only without trailing newline",
+      command: "add_row_after",
+      raw: "| Header |\n| --- |",
+      expected: "| Header |\n| --- |\n|  |",
+      rows: [""],
+    },
+  ])("inserts a data row adjacent to the selected header: $name", ({ raw, expected, rows, command }) => {
+    const { dom, parent, runtime, view } = runtimeFor(raw);
+    const selected = textPositionIn(view, "table_header", (node) => node.textContent === "Header");
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, selected)));
+
+    clickTableCommand(dom, parent, command);
+
+    expect(runtime.snapshotText()).toEqual({ ok: true, value: expected });
+    expect(Array.from(parent.querySelectorAll("tbody tr"), (row) => row.textContent)).toEqual(rows);
+    expect(runtime.status).toMatchObject({ dirty: true, canUndo: true, saveEligible: true });
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(expected);
+    runtime.destroy();
+  });
+
   it("edits a CRLF table cell through the real EditorView and preserves source history", () => {
     const input = fixture("01-cell-crlf", "input");
     const expected = fixture("01-cell-crlf", "expected");
