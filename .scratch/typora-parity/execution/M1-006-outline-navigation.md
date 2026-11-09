@@ -23,3 +23,7 @@
 先覆盖真实runtime/PM及main DOM接缝，不只mock返回值。至少：重复同名标题点击第二处；ATX/Setext、嵌套quote/list、marks/entity/emoji；BOM/CRLF/mixed/bareCR源码偏移；编辑后旧面板/跨doc同revision拒绝；保护块含伪标题映射拒绝；composition拒绝无选区/焦点/内容变化；导航前后dirty/revision/history/future/保存点及Bridge消息数不变，成功焦点正文；拒绝load不清面板；收起root布局状态和窄窗CSS规则。jsdom不冒充实际布局/WK/IME。
 
 只复用主仓锁定pnpm与依赖，不安装包，临时链接结束清理。不运行GUI/App/浏览器/UI测试。实际运行新专项、完整editor非UI、editor lint/build和git diff --check；符合条件可用make lint PNPM=主仓锁定路径。测试失败必须如实记录，不删有效测试或改固定oracle。提交英文Conventional subject<=72，push同名分支核对origin/clean。回报完成内容、文件、命令/结果、未完成、风险、branch/fullcommit。不开PR、不合main、不改Issue；管理者独立复核及实际UI点验，完成立即归档Agent，备份后归档workspace。
+
+## 调度指针
+
+Agent 9ffcff58-b404-49c2-b741-f8e11bfa75d0，workspace wks_c7660dc7053626f9，host srv_MEqRNkRW6fSx，分支task/INK-M1-006-outline-navigation，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-006-outline-navigation。profiles为空，provider核实GPT-5.6-Sol，medium/full-access/default速度。已取得running回执，notifyOnFinish=true，不轮询催促。

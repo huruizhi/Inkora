@@ -67,3 +67,5 @@ Status: open
 001大纲/统计与002查找替换纯模块已完成独立反例复核，组合分支task/INK-M1-003-module-verification的editor lint及179项非UI测试通过。尚未连接UI或合main，不是M1整体验收。两个执行workspace已备份回收，累计36；031真人验收已恢复，当前等待用户单独取消输入结果，M0门槛保持。
 
 用户表示测试正确并要求继续。031部分真实WK/中文历史与普通源码检查已结束，自有宿主停止、锁释放，原始501条记录冻结于031分支；取消事件均为确认上屏、源码物理中文未执行等未证项保留，不宣布M0通过。下一步实施[004大纲/统计只读面板](execution/M1-004-analysis-panel.md)，不采纳新内核、不提前接可视替换或改写既有门槛。
+
+用户授权开始下一批开发：004补正已通过200项干净非UI、lint/build及真实App计数/UndoRedo点验；005记录daec0f6，004代码3047c55，仍未合main。004的Agent/workspace已备份回收，累计37。当前并行仅两项：[006大纲定位与折叠空间](execution/M1-006-outline-navigation.md)实施、[007查找界面接入契约](execution/M1-007-search-integration-design.md)文档设计，均从005固定起点独立worktree，不启动UI、不改实验内核。M0当前仅H1/H2/H3剩余物理证据，U1已关闭，详见[当前收尾清单](execution/M0-CLOSURE-CHECKLIST.md)，不以地图上方历史暂缓记录覆盖当前状态。

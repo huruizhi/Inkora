@@ -9,3 +9,7 @@
 明确分开可先交付的查找UI/结果列表与下一步安全替换；单/全部替换必须在一个事务原子应用完整计划，重验raw+revision+文档，失败保留用户意图且不部分应用。不能为了可视查找或替换自动整篇切源码。未找到可靠映射的结果应明确不可定位/替换，不渲染虚假按钮；若这导致达不到产品目标，清楚列为前置接口任务而非宣布功能完成。
 
 输出有界推荐，不扩到跨文件/正则/云/原型迁移，不改变M0门槛。仅文档git diff --check及引用核准，不必跑产品测试；未运行如实说明。英文Conventional commit<=72，push同名分支核对origin/clean，回报文件/证据/未完成风险/完整SHA。不开PR、不合main、不改Issue；完成即管理者回收Agent/workspace。
+
+## 调度指针
+
+Agent 79e898f7-a957-4aef-80d0-8886f46a2eee，workspace wks_088d366288e2e630，host srv_MEqRNkRW6fSx，分支task/INK-M1-007-search-integration-design，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-007-search-integration-design。profiles再次为空，provider核实OMP zhipu-coding-plan/glm-5.3，low/full；已取得running回执，notifyOnFinish=true，不轮询催促。
