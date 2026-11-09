@@ -706,10 +706,18 @@ describe("production source authority runtime", () => {
     const task = createRuntime("- [ ] 中文任务\r\n");
     let taskPosition = -1;
     task.session.state.doc.descendants((node, pos) => {
-      if (node.isText && node.text?.includes("[ ]")) taskPosition = pos + 1;
+      if (node.type.name === "list_item" && node.attrs.task) {
+        taskPosition = pos;
+      }
     });
+    const taskNode = task.session.state.doc.nodeAt(taskPosition);
+    if (!taskNode) throw new Error("Missing task list item");
     expect(task.session.dispatch(
-      task.session.state.tr.insertText("x", taskPosition, taskPosition + 1),
+      task.session.state.tr.setNodeMarkup(taskPosition, undefined, {
+        ...taskNode.attrs,
+        checked: true,
+        stateChar: "x",
+      }).setMeta("inkoraTaskToggle", { pos: taskPosition, checked: true }),
     ) as unknown as boolean).toBe(true);
     expect(task.runtime.getText()).toBe("- [x] 中文任务\r\n");
     task.runtime.destroy();

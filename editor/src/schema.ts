@@ -23,6 +23,12 @@ export type InkoraNodeName =
   | "horizontal_rule"
   | "blockquote"
   | "code_block"
+  | "table"
+  | "table_head"
+  | "table_body"
+  | "table_row"
+  | "table_header"
+  | "table_cell"
   | "ordered_list"
   | "bullet_list"
   | "list_item";
@@ -85,6 +91,7 @@ const validateHeadingStyle = validateOneOf("Heading style", ["atx", "setext"]);
 const validateCodeStyle = validateOneOf("Code block style", ["fenced", "indented"]);
 const validateOrderedDelimiter = validateOneOf("Ordered list delimiter", [".", ")"]);
 const validateBullet = validateOneOf("Bullet marker", ["-", "+", "*"]);
+const validateTableAlignment = validateOneOf("Table alignment", ["none", "left", "center", "right"]);
 
 function linkAttrsFromDOM(dom: Node | string): false | { href: string; title: string | null } {
   if (typeof dom === "string") return false;
@@ -101,6 +108,33 @@ function codeBlockAttrsFromDOM(dom: Node | string): { language: string | null } 
   if (typeof dom === "string") return { language: null };
   const code = (dom as HTMLElement).querySelector?.("code");
   return { language: code?.getAttribute("data-language") ?? null };
+}
+
+function tableAlignmentFromStyle(value: string | null): "none" | "left" | "center" | "right" {
+  const match = value?.match(/(?:^|;)\s*text-align\s*:\s*(left|center|right)\s*(?:;|$)/i);
+  return (match?.[1]?.toLowerCase() as "left" | "center" | "right" | undefined) ?? "none";
+}
+
+function tableCellAttrsFromDOM(dom: Node | string): { alignment: string } {
+  return {
+    alignment: typeof dom === "string"
+      ? "none"
+      : tableAlignmentFromStyle((dom as HTMLElement).getAttribute("style")),
+  };
+}
+
+function tableCellDOM(tag: "th" | "td", node: ProseMirrorNode): DOMOutputSpec {
+  const alignment = node.attrs.alignment;
+  validateTableAlignment(alignment);
+  return [tag, alignment === "none" ? {} : { style: `text-align: ${alignment}` }, 0];
+}
+
+function tableHeaderToDOM(node: ProseMirrorNode): DOMOutputSpec {
+  return tableCellDOM("th", node);
+}
+
+function tableCellToDOM(node: ProseMirrorNode): DOMOutputSpec {
+  return tableCellDOM("td", node);
 }
 
 const headingParseRules: TagParseRule[] = headingLevels.map((level) => ({
@@ -191,6 +225,44 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
       ],
     ],
   },
+  table: {
+    content: "table_head table_body?",
+    group: "block",
+    isolating: true,
+    parseDOM: [{ tag: "table" }],
+    toDOM: (): DOMOutputSpec => ["table", { class: "inkora-table" }, 0],
+  },
+  table_head: {
+    content: "table_row",
+    parseDOM: [{ tag: "thead" }],
+    toDOM: (): DOMOutputSpec => ["thead", 0],
+  },
+  table_body: {
+    content: "table_row*",
+    parseDOM: [{ tag: "tbody" }],
+    toDOM: (): DOMOutputSpec => ["tbody", 0],
+  },
+  table_row: {
+    content: "(table_header | table_cell)+",
+    parseDOM: [{ tag: "tr" }],
+    toDOM: (): DOMOutputSpec => ["tr", 0],
+  },
+  table_header: {
+    attrs: { alignment: { default: "none", validate: validateTableAlignment } },
+    content: "inline*",
+    isolating: true,
+    marks: "_",
+    parseDOM: [{ tag: "th", getAttrs: tableCellAttrsFromDOM }],
+    toDOM: tableHeaderToDOM,
+  },
+  table_cell: {
+    attrs: { alignment: { default: "none", validate: validateTableAlignment } },
+    content: "inline*",
+    isolating: true,
+    marks: "_",
+    parseDOM: [{ tag: "td", getAttrs: tableCellAttrsFromDOM }],
+    toDOM: tableCellToDOM,
+  },
   ordered_list: {
     ...baseOrderedList,
     attrs: {
@@ -212,7 +284,26 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
   },
   list_item: {
     ...baseListItem,
+    attrs: {
+      task: { default: false, validate: "boolean" },
+      checked: { default: false, validate: "boolean" },
+      stateChar: { default: " ", validate: "string" },
+    },
     content: "paragraph block*",
+    parseDOM: [{
+      tag: "li",
+      getAttrs: (dom) => {
+        const state = (dom as HTMLElement).dataset.taskState;
+        return state === undefined
+          ? { task: false, checked: false, stateChar: " " }
+          : { task: true, checked: state.toLowerCase() === "x", stateChar: state };
+      },
+    }],
+    toDOM: (node): DOMOutputSpec => [
+      "li",
+      node.attrs.task ? { "data-task-state": node.attrs.stateChar } : {},
+      0,
+    ],
   },
   protected_block: {
     group: "block",
