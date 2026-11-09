@@ -1,0 +1,30 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (15 tests | 1 failed | 14 skipped) 6ms
+   × lets earlier complete links own their labels while footnotes win reference collisions 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > lets earlier complete links own their labels while footnotes win reference collisions
+AssertionError: expected 'protected_block' to be 'paragraph' // Object.is equality
+
+Expected: "paragraph"
+Received: "protected_block"
+
+ ❯ src/protected-source-runtime.test.ts:213:51
+    211|   const raw = '[label [^note]](/target) outside [^note].\n\n[^note]: /…
+    212|   const session = new SourceAuthoritySession(raw);
+    213|   expect(session.state.doc.firstChild?.type.name).toBe('paragraph');
+       |                                                   ^
+    214|   const atoms: string[] = [];
+    215|   const links: Array<{text: string; href: string}> = [];
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 14 skipped (15)
+   Start at  03:31:25
+   Duration  246ms (import 83%, transform 13%, tests 4%, worker 1%)
+

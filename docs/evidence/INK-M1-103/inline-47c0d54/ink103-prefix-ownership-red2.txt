@@ -1,0 +1,35 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (16 tests | 1 failed | 15 skipped) 7ms
+   × owns physical quote prefixes inside a multiline opaque comment exactly once 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > owns physical quote prefixes inside a multiline opaque comment exactly once
+AssertionError: expected [ 'protected', 'block-prefix' ] to deeply equal [ 'protected' ]
+
+- Expected
++ Received
+
+  [
+    "protected",
++   "block-prefix",
+  ]
+
+ ❯ src/protected-source-runtime.test.ts:237:30
+    235|   if (!ledger.ok) throw Error(ledger.reason);
+    236|   expect(ledger.ledger.spans.filter(span => span.sourceStart < 38 && s…
+    237|     .map(span => span.role)).toEqual(['protected']);
+       |                              ^
+    238|   expect(session.saveEligible, session.diagnostic).toBe(true);
+    239|   expect(session.setRawSelection(2)).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 skipped (16)
+   Start at  03:36:12
+   Duration  246ms (import 81%, transform 15%, tests 4%, worker 1%)
+

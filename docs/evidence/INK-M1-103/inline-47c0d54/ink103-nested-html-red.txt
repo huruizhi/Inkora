@@ -1,0 +1,32 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (17 tests | 1 failed | 16 skipped) 5ms
+   × keeps a parser-owned HTML block inside a quote beside editable paragraphs 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > keeps a parser-owned HTML block inside a quote beside editable paragraphs
+Error: Token type `inkora_protected_block` not supported by Markdown parser
+ ❯ MarkdownParseState.parseTokens ../../../editor/node_modules/.pnpm/prosemirror-markdown@1.13.9/node_modules/prosemirror-markdown/dist/index.js:190:23
+ ❯ MarkdownParser.parse ../../../editor/node_modules/.pnpm/prosemirror-markdown@1.13.9/node_modules/prosemirror-markdown/dist/index.js:331:15
+ ❯ parseAcceptedMarkdownTokens src/markdown-codec.ts:218:25
+    216| const acceptedParser = new MarkdownParser(inkoraSchema, acceptedTokeni…
+    217| export function parseAcceptedMarkdownTokens(tokens: readonly Token[]):…
+    218|   return acceptedParser.parse("", { inkoraAcceptedTokens: tokens });
+       |                         ^
+    219| }
+    220|
+ ❯ parse src/source-document.ts:118:26
+ ❯ SourceAuthoritySession.parseSource src/source-authority.ts:634:20
+ ❯ new SourceAuthoritySession src/source-authority.ts:574:25
+ ❯ src/protected-source-runtime.test.ts:248:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 skipped (17)
+   Start at  03:40:58
+   Duration  254ms (import 81%, transform 15%, tests 3%, worker 1%)
+

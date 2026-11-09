@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (11 tests | 1 failed | 10 skipped) 8ms
+   × rejects full visual deletion of a read-only inline atom and retains the intent 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > rejects full visual deletion of a read-only inline atom and retains the intent
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/protected-source-runtime.test.ts:147:57
+    145|   expect(session.setRawSelection(7, 17)).toBe(true);
+    146|   const before = session.state;
+    147|   expect(session.dispatch(before.tr.deleteSelection())).toBe(false);
+       |                                                         ^
+    148|   expect(session.currentRaw).toBe(raw);
+    149|   expect(session.state.doc.eq(before.doc)).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 skipped (11)
+   Start at  03:28:09
+   Duration  255ms (import 79%, transform 16%, tests 5%, worker 1%)
+

@@ -1,0 +1,41 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (19 tests | 1 failed | 18 skipped) 7ms
+   × never pairs a low-priority U marker through a complete higher-priority owner 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > never pairs a low-priority U marker through a complete higher-priority owner
+AssertionError: $before https://example.org/$x after
+: expected [ { code: 'math', start: +0, …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "code": "math",
++     "end": 29,
++     "message": "无法证明该扩展语法的结构化边界；已保留原文并开放源码提交",
++     "start": 0,
++   },
++ ]
+
+ ❯ src/protected-source-runtime.test.ts:277:33
+    275|   for (const raw of ['^before `literal^` after\n', '^before [literal^]…
+    276|     const session = new SourceAuthoritySession(raw);
+    277|     expect(session.issues, raw).toEqual([]);
+       |                                 ^
+    278|     expect(session.saveEligible, raw + session.diagnostic).toBe(true);
+    279|     expect(session.saveMemory()).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 skipped (19)
+   Start at  03:46:32
+   Duration  251ms (import 81%, transform 14%, tests 4%, worker 1%)
+

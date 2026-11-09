@@ -1,0 +1,327 @@
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/.tools/node_modules/.bin/pnpm --dir editor build
+$ tsc --noEmit && vite build
+vite v8.3.6 building client environment for production...
+transforming...
+✓ 143 modules transformed.
+rendering chunks...
+computing gzip size...
+../build/editor/index.html                  0.62 kB │ gzip:   0.36 kB
+../build/editor/assets/index-C4HcyP97.js  653.81 kB │ gzip: 215.19 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 72ms
+xcodegen generate
+⚙️  Generating plists...
+⚙️  Generating project...
+⚙️  Writing project...
+Created project at /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/Inkora.xcodeproj
+mkdir -p "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/logs" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/failures" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/screenshots" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/markdown-snapshots"
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh bridge-editor \
+		/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/bridge.test.ts
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  03:50:19
+   Duration  90ms (import 37%, tests 33%, transform 18%, worker 11%)
+
+rm -rf "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/bridge-native.xcresult"
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" INKORA_XCRESULT_PATH="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/bridge-native.xcresult" \
+		/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh bridge-native \
+		xcodebuild -quiet -project Inkora.xcodeproj -scheme Inkora \
+		-destination 'platform=macOS' -derivedDataPath /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/DerivedData \
+		-resultBundlePath "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/bridge-native.xcresult" \
+		-only-testing:InkoraTests/BridgeProtocolTests test
+Writing result bundle at path:
+	/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/bridge-native.xcresult
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+error: the following command failed with exit code 0 but produced no further output
+SwiftCompile normal arm64 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift (in target 'Inkora' from project 'Inkora')
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:437:5: warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+  60 | 
+  61 |   private(set) var bridgeDocumentID = UUID().uuidString
+  62 |   private var diskVersion: DocumentDiskVersion?
+     |               `- note: mutation of this property is only permitted within the actor
+  63 |   private var missingOriginal = false
+  64 |   private(set) var fileState: DocumentFileState = .current
+     :
+ 435 |     let version = try DocumentDiskVersion(url: url)
+ 436 |     try read(from: version.data, ofType: typeName)
+ 437 |     diskVersion = version
+     |     `- warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+ 438 |     fileModificationDate = version.modified
+ 439 |     MainActor.assumeIsolated {
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:472:11: warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 470 |       let original = absoluteOriginalContentsURL, original == fileURL
+ 471 |     {
+ 472 |       try validateOriginalForSaving()
+     |           `- warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 473 |     }
+ 474 |     try dataWriter.write(encodedDocumentData(), to: url)
+     :
+ 797 |   }
+ 798 | 
+ 799 |   private func validateOriginalForSaving() throws {
+     |                |- note: calls to instance method 'validateOriginalForSaving()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 800 |     if let encodingError { throw encodingError }
+ 801 |     if isBareCRReadOnly { throw DocumentFileState.bareCR }
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:474:26: warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 472 |       try validateOriginalForSaving()
+ 473 |     }
+ 474 |     try dataWriter.write(encodedDocumentData(), to: url)
+     |                          `- warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 475 |   }
+ 476 | 
+ 477 |   private func encodedDocumentData() -> Data {
+     |                |- note: calls to instance method 'encodedDocumentData()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 478 |     let body = Data(textStorage.get().utf8)
+ 479 |     guard bomStorage.get() else { return body }
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:577:34: warning: expression implicitly coerced from 'Any?' to 'Any'
+ 575 |     withDelegate delegate: Any?, shouldClose: Selector?, contextInfo: UnsafeMutableRawPointer?
+ 576 |   ) {
+ 577 |     super.canClose(withDelegate: delegate, shouldClose: shouldClose, contextInfo: contextInfo)
+     |                                  |- warning: expression implicitly coerced from 'Any?' to 'Any'
+     |                                  |- note: provide a default value to avoid this warning
+     |                                  |- note: force-unwrap the value to avoid this warning
+     |                                  `- note: explicitly cast to 'Any' with 'as Any' to silence this warning
+ 578 |   }
+ 579 | 
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+error: the following command failed with exit code 0 but produced no further output
+SwiftCompile normal arm64 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift (in target 'InkoraTests' from project 'Inkora')
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:437:5: warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+  60 | 
+  61 |   private(set) var bridgeDocumentID = UUID().uuidString
+  62 |   private var diskVersion: DocumentDiskVersion?
+     |               `- note: mutation of this property is only permitted within the actor
+  63 |   private var missingOriginal = false
+  64 |   private(set) var fileState: DocumentFileState = .current
+     :
+ 435 |     let version = try DocumentDiskVersion(url: url)
+ 436 |     try read(from: version.data, ofType: typeName)
+ 437 |     diskVersion = version
+     |     `- warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+ 438 |     fileModificationDate = version.modified
+ 439 |     MainActor.assumeIsolated {
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:472:11: warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 470 |       let original = absoluteOriginalContentsURL, original == fileURL
+ 471 |     {
+ 472 |       try validateOriginalForSaving()
+     |           `- warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 473 |     }
+ 474 |     try dataWriter.write(encodedDocumentData(), to: url)
+     :
+ 797 |   }
+ 798 | 
+ 799 |   private func validateOriginalForSaving() throws {
+     |                |- note: calls to instance method 'validateOriginalForSaving()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 800 |     if let encodingError { throw encodingError }
+ 801 |     if isBareCRReadOnly { throw DocumentFileState.bareCR }
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:474:26: warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 472 |       try validateOriginalForSaving()
+ 473 |     }
+ 474 |     try dataWriter.write(encodedDocumentData(), to: url)
+     |                          `- warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 475 |   }
+ 476 | 
+ 477 |   private func encodedDocumentData() -> Data {
+     |                |- note: calls to instance method 'encodedDocumentData()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 478 |     let body = Data(textStorage.get().utf8)
+ 479 |     guard bomStorage.get() else { return body }
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:577:34: warning: expression implicitly coerced from 'Any?' to 'Any'
+ 575 |     withDelegate delegate: Any?, shouldClose: Selector?, contextInfo: UnsafeMutableRawPointer?
+ 576 |   ) {
+ 577 |     super.canClose(withDelegate: delegate, shouldClose: shouldClose, contextInfo: contextInfo)
+     |                                  |- warning: expression implicitly coerced from 'Any?' to 'Any'
+     |                                  |- note: provide a default value to avoid this warning
+     |                                  |- note: force-unwrap the value to avoid this warning
+     |                                  `- note: explicitly cast to 'Any' with 'as Any' to silence this warning
+ 578 |   }
+ 579 | 
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+note: Disabling hardened runtime with ad-hoc codesigning. (in target 'Inkora' from project 'Inkora')
+note: Run script build phase 'Build Editor' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Inkora' from project 'Inkora')
+2026-11-10 03:50:28.223 xcodebuild[47845:12826721]  DVTAssertions: Warning in IDEFrameworks/IDEFoundation/Execution/LaunchSystem/IDELaunchSession.m:395
+Details:  setRunnablePIDWithDiagnostics:logSection:andCompletionHandler: called without a completion handler - blocking until diagnostics setup completes. Callers should migrate to using a completion handler for better performance.
+Object:   <IDELaunchSession: 0x7a0db21200>
+Method:   -setRunnablePIDWithDiagnostics:logSection:andCompletionHandler:
+Thread:   <NSThread: 0x7a0f2aa6c0>{number = 3, name = (null)}
+Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
+2026-11-10 03:50:29.652 xcodebuild[47845:12826719] [MT] IDETestOperationsObserverDebug: 1.449 elapsed -- Testing started completed.
+2026-11-10 03:50:29.652 xcodebuild[47845:12826719] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-10 03:50:29.652 xcodebuild[47845:12826719] [MT] IDETestOperationsObserverDebug: 1.449 sec, +1.449 sec -- end
+Testing started
+rm -rf "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/native.xcresult"
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" INKORA_XCRESULT_PATH="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/native.xcresult" \
+		/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh native \
+		xcodebuild -quiet -project Inkora.xcodeproj -scheme Inkora \
+		-destination 'platform=macOS' -derivedDataPath /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/DerivedData \
+		-resultBundlePath "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/native.xcresult" -only-testing:InkoraTests test
+Writing result bundle at path:
+	/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts/test-results/native.xcresult
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+2026-11-10 03:50:31.299 xcodebuild[48028:12827867]  DVTAssertions: Warning in IDEFrameworks/IDEFoundation/Execution/LaunchSystem/IDELaunchSession.m:395
+Details:  setRunnablePIDWithDiagnostics:logSection:andCompletionHandler: called without a completion handler - blocking until diagnostics setup completes. Callers should migrate to using a completion handler for better performance.
+Object:   <IDELaunchSession: 0x7adbb35200>
+Method:   -setRunnablePIDWithDiagnostics:logSection:andCompletionHandler:
+Thread:   <NSThread: 0x7ade48ac00>{number = 7, name = (null)}
+Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
+2026-11-10 03:50:54.395 xcodebuild[48028:12827851] [MT] IDETestOperationsObserverDebug: 23.117 elapsed -- Testing started completed.
+2026-11-10 03:50:54.395 xcodebuild[48028:12827851] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-10 03:50:54.395 xcodebuild[48028:12827851] [MT] IDETestOperationsObserverDebug: 23.117 sec, +23.117 sec -- end
+Testing started
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh build-release \
+		xcodebuild -quiet -project Inkora.xcodeproj -scheme Inkora \
+		INKORA_BUNDLE_IDENTIFIER=com.huruizhi.Inkora.UITesting \
+		-configuration Release -derivedDataPath /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/DerivedData build
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, name:Any Mac }
+error: the following command failed with exit code 0 but produced no further output
+SwiftCompile normal x86_64 (in target 'Inkora' from project 'Inkora')
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:437:5: warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+  60 | 
+  61 |   private(set) var bridgeDocumentID = UUID().uuidString
+  62 |   private var diskVersion: DocumentDiskVersion?
+     |               `- note: mutation of this property is only permitted within the actor
+  63 |   private var missingOriginal = false
+  64 |   private(set) var fileState: DocumentFileState = .current
+     :
+ 435 |     let version = try DocumentDiskVersion(url: url)
+ 436 |     try read(from: version.data, ofType: typeName)
+ 437 |     diskVersion = version
+     |     `- warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+ 438 |     fileModificationDate = version.modified
+ 439 |     MainActor.assumeIsolated {
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:472:11: warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 470 |       let original = absoluteOriginalContentsURL, original == fileURL
+ 471 |     {
+ 472 |       try validateOriginalForSaving()
+     |           `- warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 473 |     }
+ 474 |     try dataWriter.write(encodedDocumentData(), to: url)
+     :
+ 797 |   }
+ 798 | 
+ 799 |   private func validateOriginalForSaving() throws {
+     |                |- note: calls to instance method 'validateOriginalForSaving()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 800 |     if let encodingError { throw encodingError }
+ 801 |     if isBareCRReadOnly { throw DocumentFileState.bareCR }
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:474:26: warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 472 |       try validateOriginalForSaving()
+ 473 |     }
+ 474 |     try dataWriter.write(encodedDocumentData(), to: url)
+     |                          `- warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 475 |   }
+ 476 | 
+ 477 |   private func encodedDocumentData() -> Data {
+     |                |- note: calls to instance method 'encodedDocumentData()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 478 |     let body = Data(textStorage.get().utf8)
+ 479 |     guard bomStorage.get() else { return body }
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:577:34: warning: expression implicitly coerced from 'Any?' to 'Any'
+ 575 |     withDelegate delegate: Any?, shouldClose: Selector?, contextInfo: UnsafeMutableRawPointer?
+ 576 |   ) {
+ 577 |     super.canClose(withDelegate: delegate, shouldClose: shouldClose, contextInfo: contextInfo)
+     |                                  |- warning: expression implicitly coerced from 'Any?' to 'Any'
+     |                                  |- note: provide a default value to avoid this warning
+     |                                  |- note: force-unwrap the value to avoid this warning
+     |                                  `- note: explicitly cast to 'Any' with 'as Any' to silence this warning
+ 578 |   }
+ 579 | 
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+error: the following command failed with exit code 0 but produced no further output
+SwiftCompile normal arm64 (in target 'Inkora' from project 'Inkora')
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:437:5: warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+  60 | 
+  61 |   private(set) var bridgeDocumentID = UUID().uuidString
+  62 |   private var diskVersion: DocumentDiskVersion?
+     |               `- note: mutation of this property is only permitted within the actor
+  63 |   private var missingOriginal = false
+  64 |   private(set) var fileState: DocumentFileState = .current
+     :
+ 435 |     let version = try DocumentDiskVersion(url: url)
+ 436 |     try read(from: version.data, ofType: typeName)
+ 437 |     diskVersion = version
+     |     `- warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+ 438 |     fileModificationDate = version.modified
+ 439 |     MainActor.assumeIsolated {
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:472:11: warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 470 |       let original = absoluteOriginalContentsURL, original == fileURL
+ 471 |     {
+ 472 |       try validateOriginalForSaving()
+     |           `- warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 473 |     }
+ 474 |     try dataWriter.write(encodedDocumentData(), to: url)
+     :
+ 797 |   }
+ 798 | 
+ 799 |   private func validateOriginalForSaving() throws {
+     |                |- note: calls to instance method 'validateOriginalForSaving()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 800 |     if let encodingError { throw encodingError }
+ 801 |     if isBareCRReadOnly { throw DocumentFileState.bareCR }
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:474:26: warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 472 |       try validateOriginalForSaving()
+ 473 |     }
+ 474 |     try dataWriter.write(encodedDocumentData(), to: url)
+     |                          `- warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 475 |   }
+ 476 | 
+ 477 |   private func encodedDocumentData() -> Data {
+     |                |- note: calls to instance method 'encodedDocumentData()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 478 |     let body = Data(textStorage.get().utf8)
+ 479 |     guard bomStorage.get() else { return body }
+
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/app/Sources/InkoraDocument.swift:577:34: warning: expression implicitly coerced from 'Any?' to 'Any'
+ 575 |     withDelegate delegate: Any?, shouldClose: Selector?, contextInfo: UnsafeMutableRawPointer?
+ 576 |   ) {
+ 577 |     super.canClose(withDelegate: delegate, shouldClose: shouldClose, contextInfo: contextInfo)
+     |                                  |- warning: expression implicitly coerced from 'Any?' to 'Any'
+     |                                  |- note: provide a default value to avoid this warning
+     |                                  |- note: force-unwrap the value to avoid this warning
+     |                                  `- note: explicitly cast to 'Any' with 'as Any' to silence this warning
+ 578 |   }
+ 579 | 
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+note: Run script build phase 'Build Editor' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Inkora' from project 'Inkora')
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/artifacts" /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/scripts/ci/run-and-capture.sh release-bundle \
+		tests/ci/editor-bundle-smoke.sh \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/build/DerivedData/Build/Products/Release/Inkora.app"
+Offline editor bundle smoke passed (assets/index-C4HcyP97.js)

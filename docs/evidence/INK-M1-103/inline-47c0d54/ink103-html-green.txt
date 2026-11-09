@@ -1,0 +1,170 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-oracles.test.ts (18 tests | 18 failed) 10ms
+   × V2-001 frozen production source/opaque/edit oracle 2ms
+   × V2-002 frozen production source/opaque/edit oracle 0ms
+   × V2-003 frozen production source/opaque/edit oracle 0ms
+   × V2-004 frozen production source/opaque/edit oracle 3ms
+   × V2-005 frozen production source/opaque/edit oracle 0ms
+   × V2-006 frozen production source/opaque/edit oracle 0ms
+   × V2-007 frozen production source/opaque/edit oracle 0ms
+   × V2-008 frozen production source/opaque/edit oracle 0ms
+   × V2-009 frozen production source/opaque/edit oracle 0ms
+   × V2-010 frozen production source/opaque/edit oracle 0ms
+   × V2-011 frozen production source/opaque/edit oracle 0ms
+   × V2-012 frozen production source/opaque/edit oracle 0ms
+   × V2-013 frozen production source/opaque/edit oracle 0ms
+   × V2-014 frozen production source/opaque/edit oracle 0ms
+   × V2-015 frozen production source/opaque/edit oracle 0ms
+   × V2-016 frozen production source/opaque/edit oracle 0ms
+   × V2-017 frozen production source/opaque/edit oracle 0ms
+   × V2-018 frozen production source/opaque/edit oracle 0ms
+ ❯ src/protected-source-runtime.test.ts (15 tests | 13 failed) 35ms
+   × renders accepted footnote and callout source in a read-only EditorView atom 26ms
+   × assigns footnote bytes only to their accepted opaque block 0ms
+   × requires a matching TOML closing fence and treats its contents as opaque 3ms
+   × keeps malformed callout and footnote definitions behind the unsafe gate 0ms
+   × retains a canonical footnote definition as visible opaque source 0ms
+   × blocks an unclosed opening front matter candidate and permits source repair 0ms
+   × ends a callout before a non-quote lazy continuation line 0ms
+   × keeps ordinary text beside an opaque wiki fragment directly editable 0ms
+   × rejects full visual deletion of a read-only inline atom and retains the intent 0ms
+   × keeps emphasis outside a wiki atom independent of its opaque delimiters 0ms
+   × preserves exact repeated and container wiki atoms through adjacent edits and history 0ms
+   × indexes editable text on each side without searching through opaque preview text 0ms
+   × lets earlier complete links own their labels while footnotes win reference collisions 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 31 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-oracles.test.ts > V2-001 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-002 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-003 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-005 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-006 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-007 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-008 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-009 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-010 frozen production source/opaque/edit oracle
+ FAIL  src/protected-source-runtime.test.ts > renders accepted footnote and callout source in a read-only EditorView atom
+ FAIL  src/protected-source-runtime.test.ts > keeps malformed callout and footnote definitions behind the unsafe gate
+ FAIL  src/protected-source-runtime.test.ts > retains a canonical footnote definition as visible opaque source
+ FAIL  src/protected-source-runtime.test.ts > ends a callout before a non-quote lazy continuation line
+ FAIL  src/protected-source-runtime.test.ts > keeps ordinary text beside an opaque wiki fragment directly editable
+ FAIL  src/protected-source-runtime.test.ts > rejects full visual deletion of a read-only inline atom and retains the intent
+ FAIL  src/protected-source-runtime.test.ts > keeps emphasis outside a wiki atom independent of its opaque delimiters
+ FAIL  src/protected-source-runtime.test.ts > preserves exact repeated and container wiki atoms through adjacent edits and history
+ FAIL  src/protected-source-runtime.test.ts > indexes editable text on each side without searching through opaque preview text
+ FAIL  src/protected-source-runtime.test.ts > lets earlier complete links own their labels while footnotes win reference collisions
+RangeError: Maximum call stack size exceeded
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:59:26
+     57|   if (!htmlBlock) throw Error('markdown-it HTML block rule unavailable…
+     58|   blockRuler.at('html_block', (state, start, end, silent) => {
+     59|     const before = state.tokens.length;
+       |                          ^
+     60|     const accepted = htmlBlock.fn(state, start, end, silent);
+     61|     if (!accepted || silent) return accepted;
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/31]⎯
+
+ FAIL  src/protected-oracles.test.ts > V2-004 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-015 frozen production source/opaque/edit oracle
+AssertionError: Maximum call stack size exceeded: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/protected-oracles.test.ts:50:55
+     48|     expect(session.beginSource()).toBe(true);
+     49|     expect(session.updateDraft(oracle.repairRaw, { anchor: 0, head: 0,…
+     50|     expect(session.applySource(), session.diagnostic).toBe(true);
+       |                                                       ^
+     51|     expect(session.currentRaw).toBe(oracle.repairRaw);
+     52|     expect(session.saveEligible, session.diagnostic).toBe(oracle.repai…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/31]⎯
+
+ FAIL  src/protected-oracles.test.ts > V2-011 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-012 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-013 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-014 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-016 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-017 frozen production source/opaque/edit oracle
+ FAIL  src/protected-oracles.test.ts > V2-018 frozen production source/opaque/edit oracle
+ FAIL  src/protected-source-runtime.test.ts > assigns footnote bytes only to their accepted opaque block
+RangeError: Maximum call stack size exceeded
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+     58|   blockRuler.at('html_block', (state, start, end, silent) => {
+     59|     const before = state.tokens.length;
+     60|     const accepted = htmlBlock.fn(state, start, end, silent);
+       |                                ^
+     61|     if (!accepted || silent) return accepted;
+     62|     const token = state.tokens.slice(before).find(item => item.type ==…
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+ ❯ Object.blockRuler.at.alt [as fn] src/protected-syntax.ts:60:32
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/31]⎯
+
+ FAIL  src/protected-source-runtime.test.ts > requires a matching TOML closing fence and treats its contents as opaque
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/protected-source-runtime.test.ts:55:33
+     53|   expect(session.beginSource()).toBe(true);
+     54|   expect(session.updateDraft("+++\nx = 1\n+++\n\nAfter.\n")).toBe(true…
+     55|   expect(session.applySource()).toBe(true);
+       |                                 ^
+     56|   expect(session.issues).toEqual([]);
+     57|   expect(session.saveEligible).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/31]⎯
+
+ FAIL  src/protected-source-runtime.test.ts > blocks an unclosed opening front matter candidate and permits source repair
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/protected-source-runtime.test.ts:118:33
+    116|   expect(session.beginSource()).toBe(true);
+    117|   expect(session.updateDraft("---\ntitle: bad\n---\n\nBody.\n")).toBe(…
+    118|   expect(session.applySource()).toBe(true);
+       |                                 ^
+    119|   expect(session.saveEligible, session.diagnostic).toBe(true);
+    120| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/31]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  31 failed | 2 passed (33)
+   Start at  03:33:41
+   Duration  293ms (import 64%, transform 19%, tests 16%, worker 1%)
+

@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-103/editor
+
+ ❯ src/protected-source-runtime.test.ts (10 tests | 1 failed | 9 skipped) 6ms
+   × keeps ordinary text beside an opaque wiki fragment directly editable 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/protected-source-runtime.test.ts > keeps ordinary text beside an opaque wiki fragment directly editable
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/protected-source-runtime.test.ts:136:38
+    134|   const raw = "Before [[target]] after.\n";
+    135|   const session = new SourceAuthoritySession(raw);
+    136|   expect(session.setRawSelection(0)).toBe(true);
+       |                                      ^
+    137|   expect(session.nativeType("New "), session.diagnostic).toBe(true);
+    138|   expect(session.currentRaw).toBe("New Before [[target]] after.\n");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 skipped (10)
+   Start at  03:25:37
+   Duration  237ms (import 87%, transform 8%, tests 4%, worker 1%)
+
