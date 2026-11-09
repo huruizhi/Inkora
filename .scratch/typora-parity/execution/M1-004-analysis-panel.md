@@ -37,3 +37,7 @@
 先建立真实接缝测试：真实analysis模块+真实DOM组件，以及实际main/Bridge/runtime路径的集成测试，不只mock返回值。覆盖初始加载、真实编辑/粘贴、原生Undo/Redo命令、markSaved、快速跨文档、同revision异docID、source/structured模式、composition守卫、恶意标题、解析错误隔离、收起展开的文本/焦点/selection/history不变。分析失败可在单独组件seam注入，但主集成要走真实实现。
 
 运行新专项、editor lint、完整editor非UI测试和editor build；实际命令/结果及失败要记录。禁止桌面/App/UI测试、安装依赖或更改M0门槛。依赖只读复用主仓锁定工具链，临时自建链接/文件清理。完成commit/push核对远端/clean，不PR不合main不改Issue；管理者独立复核、再决定实际WK检查与回收。
+
+## 调度
+
+profiles为空，核实OMP provider可用且实际模型为zhipu-coding-plan/glm-5.3后，采用medium/full。执行Agent `a8507558-5fa9-4f0e-8be8-b38af7ff05f2`，workspace `wks_0c68cfedb19731f3`，host `srv_MEqRNkRW6fSx`，分支 `task/INK-M1-004-analysis-panel`，目录 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-004-analysis-panel`。已取得running回执，notifyOnFinish=true。当前仅此一项执行任务；完成后独立验收、备份与Agent/workspace两层回收。

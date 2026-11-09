@@ -165,3 +165,5 @@ B层仍未执行：实际选择Sogou后，Computer Use逐键pressKey只产生ins
 030补正7cedafc的原3项缺陷及页面11组独立通过；另有末次composition事务晚于compositionend时Undo暴露中间拼音的自动重放红，已限定接续。030/M0尚未通过，尚未新bundle真机验收。
 
 030最终493e2b7的4条原始红回归、页面11组及集成10域由管理者独立重跑通过，冻结范围自动层接收。031已固定新宿主bundle并验证签名/哈希，但desktop preflight锁屏退出78，尚未启动App，真实WK/物理搜狗未执行。执行Agent和030工作区已完整回收（累计34），本地031目录保留运行验证。M0/架构采纳仍未通过。
+
+031解锁后实际运行已收尾，证据冻结031分支5822429。普通WK的空格停住保存、源码no-op、重开续写/UndoRedo通过；物理最后两个中文提交加普通Space的历史往返通过且未露拼音；保护块与安全保存资格保持。源码ASCII草稿拒绝Undo、提交/跨模式UndoRedo/内存保存点通过，最后revision77/past18/dirty=false。源物理中文未执行；两次取消均实际确认文字“取消”，不能算取消成功；选区替换前另有删除历史，原子替换仍未证明。用户确认体验并要求继续开发，不据此伪写缺失证据或宣布M0通过。自有宿主PID31436已停止，session43410退出143，锁释放；501条原始记录及分层摘要在native-host/INK-PROT-031-{runtime.txt,summary.json}，raw SHA953c52efe3d95705b6984fa3e6a2fd876168f41d8d2baff33a7faa5a68db7a48。
