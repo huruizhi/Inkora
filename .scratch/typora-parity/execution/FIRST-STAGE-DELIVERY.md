@@ -178,3 +178,11 @@ CI 42611845164 已实际 completed/success，受检 head 为93a3b5933b8ca2ae2216
 当前实施Agent仅055图片（原handle保持）与059链接/代码块补正：task/INK-M1-059-link-code-commands，基线93a3b59，Sol5.6/high/default，无配置profile，agent6c42e3f5-fd39-4682-854a-d3b669f3e1b1 / workspace wks_95b8e9310529800a。059须真实生产DOM/keydown入口、过期与composition守卫、局部补丁、字节/选区/UndoRedo，不开GUI、不改055/050、不新建Agent。用户物理输入继续按“稍后”保留，main仍48258a9，总目标active。
 
 056本轮已完成非UI集成：修正1a8fbb5、最终9e169500d57c64d5d60a7c8f8ab2f592897d794c已推送，local/origin一致且clean。完整459、lint、Release离线资源通过；实际根Native xcresult为121 total/114 passed/0 failed/7按需性能skipped，含Native Bridge9，Web Bridge12在全量editor内。临时.tools链接已删除，未占桌面；正式表格/任务文件保存重开和物理/UI仍未验。056保留独立，等待059修正后再次组合；PR71仍受原两项Spec阻断，不把独立V3绿灯混入旧PR受检head。
+
+## 当前覆盖：链接补正再审与可视搜索实施
+
+059@4a76ce61379484f88e70d21d1a262fee0a1a3a65已交付414项非UI候选，但管理者真实DOM/Bridge复核另造4红：collapsed caret更新现有href无实际修改；链接框composition点击Cancel毁候选；链接框持焦Native Undo撤销正文；flag-only composing Cmd-Z被消费。冻结main-red.test.ts/RED.log在root-m1-checks/INK-M1-061，SHA分别5eafd7c359ea2532099043fe64d12fd6ee48cb8c77f9dae2c69895cf08246e87与137904850fc7b5a036a2372c3fe8b6a074c3f3ad9ab3ec83f4428253147cd029。059 Agent归档、303tracked文件/bundle/tar校验备份后workspace回收（累计62），候选尚未合PR71/main。
+
+061在实际059树上先提交根四红70b586f，再由Sol5.6/high/default接续限定修复；无配置profile。task/INK-M1-061-link-input-guards，agent adc30f4a-c0e6-4572-aa0f-ebf1c3e5d47e / workspace wks_0576bc8f76bbce80。要求真实ledger link-owner而非同href盲合并、原子选区恢复，以及链接字段/候选/Native命令/跨load/导航统一守卫。禁止GUI、新Agent和依赖；与055图片保持两实施者并行。
+
+根060在独立.worktrees/INK-M1-060、task/INK-M1-060-visual-search-replacement接回054冻结判据并实施前两个切片：真实SearchPanel改搜PM可编辑内容，准确排除href/title/info/工具栏，跨marks连续但不跨paragraph/cell；索引定位真实PM选区且query持焦、源码精确原文选区、零Bridge/history变更。旧6vs3计数和无定位按钮均先红后绿；全量26文件477 passed，lint/build及冻结132检查通过。仍未实现原子替换，不能宣告V6；详细进行中清单docs/tasks/INK-M1-060.md。14例现在只核对input内容计数，不冒称expected替换字节已过。物理/UI继续按用户稍后，main48258a9、PR71 draft。
