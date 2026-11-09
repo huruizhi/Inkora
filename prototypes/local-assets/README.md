@@ -124,4 +124,8 @@ make clean   # 只删本目录 .build/ 与 scratch/
 5. 整目录迁移、单文件移动、缺失/无权限占位的实际 UI 流程。
 6. 生产化规格：NSDocument/NSFileCoordinator 集成（本原型刻意不做）。
 
+## INK-PROT-032 原生授权/WK 宿主入口
+
+后续隔离宿主位于 [`native-host/`](native-host/README.md)：它补充真实签名 App 的 `NSOpenPanel`、security-scoped bookmark 跨启动与离线 WK 资源 broker 验证链。`make -C prototypes/local-assets/native-host check` 仅验证构建/签名和纯模型；实际 GUI 授权证据必须由管理者在解锁桌面后按该目录 README 持 UI 锁执行。本入口不表示父票 14、M0、M1 或正式图片功能已完成。
+
 执行上述实验须按 `docs/testing.md` 使用 `scripts/ci/with-ui-lock.sh` 与 `ui-preflight.sh`，避免占用桌面。

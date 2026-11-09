@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src inkora-host:; style-src inkora-host:; img-src inkora-asset:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="inkora-host://bundle/app.css">
+  <title>本地图片 broker 状态</title>
+</head>
+<body>
+  <main>
+    <h1>离线 WK 本地图片 broker</h1>
+    <p>Web 内容只会收到不可预测的资源 token，不接收磁盘路径。只有原生层持有已授权目录并通过白名单、SHA、类型与逐组件检查后才返回图片。</p>
+    <section class="state">
+      <div><strong>逻辑文档</strong><span id="document">尚未授权</span></div>
+      <div><strong>epoch</strong><span id="epoch">—</span></div>
+      <div><strong>图片状态</strong><span id="image-state">等待显式目录授权</span></div>
+    </section>
+    <figure><img id="fixture-image" alt="白名单 fixture 图片，尚未加载"></figure>
+    <details><summary>最近原生事件</summary><pre id="events"></pre></details>
+  </main>
+  <script src="inkora-host://bundle/app.js"></script>
+</body>
+</html>

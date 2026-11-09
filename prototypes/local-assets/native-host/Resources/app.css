@@ -1,0 +1,12 @@
+:root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+body { margin: 0; background: Canvas; color: CanvasText; }
+main { padding: 16px; }
+h1 { margin: 0 0 8px; font-size: 20px; }
+p { margin: 0 0 12px; line-height: 1.45; color: GrayText; }
+.state { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.state div { border: 1px solid color-mix(in srgb, CanvasText 20%, transparent); border-radius: 7px; padding: 8px; min-width: 0; }
+.state strong, .state span { display: block; }
+.state span { margin-top: 4px; overflow-wrap: anywhere; font-size: 12px; }
+figure { min-height: 60px; margin: 12px 0; display: grid; place-items: center; border: 1px dashed GrayText; border-radius: 7px; }
+img { width: 48px; height: 48px; image-rendering: pixelated; }
+pre { max-height: 120px; overflow: auto; white-space: pre-wrap; font-size: 10px; }
