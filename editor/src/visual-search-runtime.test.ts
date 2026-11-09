@@ -78,3 +78,55 @@ it("replaces a complete link and adjacent plain text without inheriting its targ
   expect(runtime.undo()).toBe(true);
   expect(runtime.getText()).toBe(raw);
 });
+
+it("root066: single code replacement keeps the source caret after its inserted text", () => {
+  const raw = "使用 `alpha`。\n";
+  const expected = "使用 ``beta ` x``。\n";
+  const { runtime } = boot(raw);
+  const result = runtime.search("alpha", 0);
+  expect(runtime.navigateVisualSearch(raw, result, {kind:"index",matchIndex:0}).ok).toBe(true);
+  expect(runtime.replaceVisualSearch(raw, result, "replace-one", "beta ` x").ok).toBe(true);
+  expect(runtime.getText()).toBe(expected);
+  expect(runtime.enterSourceMode()).toBe(true);
+  const caret = expected.indexOf("beta ` x") + "beta ` x".length;
+  expect(runtime.getSourceSelection(expected)).toEqual({ok:true,value:{anchor:caret,head:caret}});
+});
+
+it.each([
+  ["**alpha** omega\n", "**beta**\n"],
+  ["alpha **omega**\n", "beta\n"],
+  ["[**alpha**](./x) omega\n", "**beta**\n"],
+])("root066: replaces cross-format words using the start marks in %j", (raw, expected) => {
+  const { runtime } = boot(raw);
+  expect(runtime.replaceVisualSearch(raw, runtime.search("alpha omega",0), "replace-all", "beta").ok).toBe(true);
+  expect(runtime.getText()).toBe(expected);
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(raw);
+});
+
+it("root066: replacement punctuation is literal editable text", () => {
+  const { runtime, parent } = boot("alpha\n");
+  expect(runtime.replaceVisualSearch("alpha\n",runtime.search("alpha",0),"replace-all","**beta**").ok).toBe(true);
+  expect(runtime.getText()).toBe("\\*\\*beta\\*\\*\n");
+  expect(parent.querySelector(".ProseMirror p")?.textContent).toBe("**beta**");
+  expect(parent.querySelector(".ProseMirror strong")).toBeNull();
+});
+
+it("root066: no-op preserves the existing Redo branch and savepoint", () => {
+  const { runtime } = boot("alpha\n");
+  expect(runtime.replaceVisualSearch("alpha\n",runtime.search("alpha",0),"replace-all","beta").ok).toBe(true);
+  expect(runtime.undo()).toBe(true);
+  const before = runtime.status;
+  expect(runtime.replaceVisualSearch("alpha\n",runtime.search("alpha",0),"replace-all","alpha"))
+    .toEqual({ok:true,value:{changed:false,replacedCount:0}});
+  expect(runtime.status).toEqual(before);
+  expect(runtime.redo()).toBe(true);
+  expect(runtime.getText()).toBe("beta\n");
+});
+
+it("root066: partial link ownership remains local during a cross-boundary match", () => {
+  const raw = '[alpha](./x "keep") omega\n';
+  const { runtime } = boot(raw);
+  expect(runtime.replaceVisualSearch(raw,runtime.search("pha omega",0),"replace-all","beta").ok).toBe(true);
+  expect(runtime.getText()).toBe('[albeta](./x "keep")\n');
+});
