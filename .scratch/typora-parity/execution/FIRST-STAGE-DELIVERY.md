@@ -2,7 +2,7 @@
 
 用户已将当前目标设为“完成首阶段基础功能”。范围以03写作闭环票为准；不能用辅助模块合并、原型或非UI测试代替完整闭环。
 
-当前生产 main：`0f93c4ab52dc55da786c925c5bb135f8188e0933`。PR #71 核心、#72 表格/任务和 #73 可视查找替换均已 merge；main 整树与受检 `ca797b8` 一致，完整 editor 568/568，默认 CI 42636348772 success。下方按时间累积的旧“当前/执行中”段落均为历史，以本节和紧接的执行指针为准。
+当前生产 main：`15687430b7f2e5272975cc469e9c6ff30f0324f9`。PR #71核心、#72表格/任务、#73可视查找替换、#74本地图片生命周期均已merge；main整树与受检PR74 head `0bc5e2772a0bdd879509bce46998f1da309b4d99`一致，完整editor682/682、默认[CI42666505028](https://github.com/huruizhi/Inkora/actions/runs/42666505028) success。物理/最低系统/AX/性能预算与093自动链接缺口仍未完成；下述旧“当前/执行中”均为历史，以本节与最新执行状态为准。
 
 | 能力 | 当前状态 | 交付前剩余事项 |
 | --- | --- | --- |
@@ -11,7 +11,7 @@
 | 大纲/统计/章节定位 | 已合main | 新内核兼容、真实滚动/键盘/辅助功能点验 |
 | 当前文档查找替换 | PR #73已合main；075及root内容版本补正、568/568/精确CI通过 | 真实UI、物理IME、文件闭环验收 |
 | 可编辑表格/任务列表 | PR #72 已合 main，完整 editor 485/485、精确 CI success | 真实控件/物理输入/文件生命周期与 AX 验收 |
-| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 083统一owner已形成候选并独立回归；089两项Spec缺陷交090补正，最终CI/物理验收 |
+| 本地图片 | PR #74已合main；canonical proof、恢复receipt、资源发布/迁移与真实hostless WK PNG解码均已回归 | 最新系统面板/跨启动bookmark/拖放粘贴/物理输入/文件窗口与最低系统验收 |
 | 代码高亮/语言选择 | 已合 main；有真实 WK 语言选择、字节及正式保存重开证据 | 新组合回归与最终集中验收 |
 | 高级语法保护混排/异常安全 | 生产接线已合 main | 新组合保护块邻接、含混阻断和主动源码修复回归 |
 
@@ -19,7 +19,7 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 
 ## 最新执行状态（2026-11-10，覆盖下述历史）
 
-当前 main 仍 `0f93c4ab52dc55da786c925c5bb135f8188e0933`。图片组合070已推送 **49440e1b3bd7ea70974a5d671680c34f5b5c75d1**（含087）；root独立完整editor **679/679**（含Bridge）、Native **177total/169passed/0fail/8性能skip**。图片PR尚未创建，089发现两项Spec wrong，已交090修复；绿灯不替代审查通过。
+当前 main为 **1568743**，PR74已合；root验证其整树与精确CI受检head **0bc5e27**一致。root组合完整editor **682/682**（含Bridge）、Native **186total/178passed/0fail/8skip**、Bridge双侧14/15、lint/Release-offline/test-ci通过。另新真实hostless WK PNG scheme→NodeView解码专项1/1；最终默认CI覆盖新增测试后精确head并success。UI/full-bench按政策skip，未据此宣称首阶段通过。
 
 - **079**：1e63a505，owner/range索引与严格raw/doc/projection上下文缓存，已接回/独立回归/两层回收。旧1MB整组超时、优化后约1.25s输入等分阶段数据原样保留。
 - **080**：3ef26139，生产恢复/稍后/放弃、fresh selection确认、snapshot→持久handoff、schema3审计与安全放弃已接回；386文件tar SHA `79312a4b6403697a1b9b423c7c42acf01c96ea8d109ee3c41dc0f3e1a92b4b54`，实际日志/xcresult备份，workspace removedDirectory=true。累计managed workspace回收 **76**。
@@ -31,11 +31,12 @@ M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代
 
 **083/088/089均已备份并两层回收，managed累计79。** 083最终d6c159b，423文件tar SHA `216a2e42f85ab8593460d26eabded06dad9bdd7479983b8f56c6299dd2635e1a`；088最终56f0b24，425文件tar SHA `4a2739c96e448c83eb6be6ab010cc96d795f879fdc9c09f88672ec1a878a0eb3`；089最终17f41a3，425文件tar SHA `b26f46c9579dfdebcbb81f25ef4f66da6d414fd60b1e6b81689f57bcaa3ba036`。实际083测试产物另存。两轴原文分开保留于 [Owner proof审查](V4-OWNER-PROOF-REVIEW.md)：Standards hard0/judgement1；Spec wrong2，不跨轴重评。
 
-**唯一Paseo实施者090**：Agent `8eb608e4-1973-4175-8ad7-4624e82c5217` / workspace `wks_f242a3ab4bf54ec3` / branch `task/INK-M1-090-owner-proof-recovery-barrier`，固定d6c159b。修复stale proof在capability注册前及Web exact raw/URI消费点的验证，以及080恢复草稿未实际写入仍accepted的问题；必须真实红绿、明确持久写入结果、失败保留pending/旧草稿/资源。禁止GUI，不改root087语法范围。
-
+**090已接回并回收**：`33a0085708364a7109b977ea9b712bb6105eb69f`，root合并eb84ae2、消费路径测试/证据0bc5e27。完整proof在Native构建provider前与Web消费点复验；capability provisional/commit/rollback与真实草稿回读receipt闭合089两项。root实读diff并重跑公共回归；无新鲜第三轮双轴审查的冒称。425文件tar SHA `620b1a1e61cde8ac3345041374df37bb5463bbcd190df5d278bd73847c3c6ff5`，真实artifacts tar SHA `cd96a5d27f6c791a9d5b8521db4a5cffb5d46ad0d9384c52e8bf2ab7a97b0183`。执行者遗漏远端推送，root发现后代推并成功保留同SHA，再归档Agent/workspace。
 **root087已提交/推送/接回070**：`49440e1b3bd7ea70974a5d671680c34f5b5c75d1`，原始起点d6c159b。实际单变量证据依次为多行合法定义被gap拒绝、仅修gap后正文引用降为字面量、修语义后ledger保存资格失败；现已接入parser接受时的字段provenance。起点新36项实际19红/17绿，修后全绿；新增官方CommonMark 0.31.2引用定义27例（26例各LF/BOM+CRLF语义比较+1既有HTML保护策略）、9项字段/历史/图片owner回归及真实main表单no-op保真。BOM+CRLF例193又捕获BOM被当成缩进空格，修后完整679/679、Bridge双侧14/14、Native169passed/0fail/8skip、lint通过。440文件tar SHA `bab8be237eec5a3e62c921d22f7222e864ce98174d77c1720548cee372c1a389`，真实测试产物另存sha `5d2d5e50be11919ac13325389c69cc1b0ea1305c8645f231dc0b542e56c2fb08`；本地worktree已清临时symlink，不增加managed回收数。
 
-**087独立双轴复核091/092执行中**：固定d6c159b...49440e1。091 Luna5.6 medium/default，Agent `712daa28-7a30-41b8-90d6-36ec4d0e93c5` / workspace `wks_985d72b1c302f022`；092 Sol5.6 high/default，Agent `1cd9c699-d9b3-4710-8128-6d2ea3230cd7` / workspace `wks_1a60b13095c50fd6`。实时profiles仍为空，经provider核实选用。只审不修，独立新上下文；完成即时备份/两层回收。090仍是唯一实施worker，不因评审新增产品任务。
+**087双轴091/092均完成且两层回收**：固定d6...494；[两轴原文](REFERENCE-REVIEW.md)。Standards hard0/judgement0，Spec缺失/范围扩张/wrong均0。091 `03b9c18`，442文件tar SHA `b88e3d94e9b583781739dc431345aab061189afff6e6cda834b6f1c925f1542d`；092 `b48ccbd`，442文件tar SHA `7746c87a48462bbfef1ae84f879e7fb3a4c8eb8edb34957bd6cd8ba05f70230c`。连同090，managed回收累计 **82**，当前无活动Paseo执行/评审Agent。
+
+**root093实施中**：独立 `task/INK-M1-093-gfm-autolinks`，起点494，现已组合当前main1568743；需求审计发现SYN-S016仍为plain text，公共生产接缝真实红例已记录。正在以同一词法匹配器贯通parser/ledger/大纲统计、bare owner与字段编辑/替换/历史；官方GFM6.9的14例离线oracle通过，按垂直红绿补公共操作。未提交/未宣称完成。不是降低S级支持，也不延伸导出/文件树等后置范围。
 
 物理验收仍按用户“稍后”，不启动App/窗口/系统面板、不反复催问。hostless WK、普通DOM文本、synthetic composition、scratch与真实SIGKILL分别结算，不代替物理中文、当前Sandbox/bookmark/系统拖放粘贴、真实AX、窗口文件生命周期或macOS14。总目标active，main未因本轮变化。
 
