@@ -14,7 +14,7 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 ## Revision 不变量
 
 1. `revision` 属于一个 `documentID`，从原生加载值开始，只能单调递增。
-2. 每次已经提交的用户编辑或 history transaction 恰好增加一次 revision；IME composition 中间态不增加。
+2. 每次已经提交的用户编辑或 history transaction 恰好增加一次 revision；IME composition 中间态及 DOM end 后尚未稳定的 PM final 不增加，稳定边界只增加一次。
 3. 相同文档的旧 `stateChanged` 不得覆盖较新状态；不同 `documentID` 的事件不得改变当前文档。
 4. `createSnapshot.revision` 是原生已确认的最低 revision；编辑器原子捕获不低于该值的当前 revision 与文本。文档不一致或请求 revision 超前时返回 `stale_revision`。
 5. `snapshotReady` 固定表示编辑器处理请求时捕获的 revision。之后发生的新编辑不会改变该 snapshot，也不得被旧 snapshot 反向覆盖。
@@ -49,7 +49,7 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 }
 ```
 
-请求不可变 Markdown snapshot。`revision` 表示调用方已知的最低版本；成功响应可携带相同或更高的当前 revision。文档不一致或请求版本高于编辑器当前版本时返回 `stale_revision`。
+请求不可变 Markdown snapshot。`revision` 表示调用方已知的最低版本；成功响应可携带相同或更高的当前 revision。文档不一致或请求版本高于编辑器当前版本时返回 `stale_revision`。composition 尚未到稳定发布边界时不得返回候选中间态；编辑器在有界 drain 后捕获最终值，超时或跨 load/destroy 返回可重试 `editor_not_ready`。
 
 ### `executeCommand`
 

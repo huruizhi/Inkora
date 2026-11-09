@@ -52,6 +52,7 @@ export interface EditorRuntime {
   applySourceDraft(): boolean;
   cancelSourceDraft(): boolean;
   snapshotText(): SourceNavigationResult<string>;
+  whenCompositionStable(): Promise<boolean>;
   markSaved(text: string): void;
   undo(): boolean;
   redo(): boolean;
@@ -66,11 +67,18 @@ export type RuntimeChangeListener = (
 ) => void;
 
 class SourceAuthorityEditorRuntime implements EditorRuntime {
+  private readonly ownerWindow: Window;
   private view: EditorView | undefined;
   private textArea: HTMLTextAreaElement | undefined;
   private sourceKernel: TextAreaEditorKernel | undefined;
-  private compositionTimer: number | undefined;
-  private compositionStartRaw: string | undefined;
+  private compositionQuietTimer: number | undefined;
+  private compositionPhase: "idle" | "active" | "settling" = "idle";
+  private compositionID: unknown;
+  private sourceCompositionUnsubscribe: (() => void) | undefined;
+  private readonly stabilityWaiters = new Set<{
+    resolve: (stable: boolean) => void;
+    timer: number;
+  }>();
   private publishedLogicalRevision = 0;
   private readonly session: SourceAuthoritySession;
 
@@ -79,6 +87,9 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     text: string,
     private readonly onChange: RuntimeChangeListener,
   ) {
+    const ownerWindow = parent.ownerDocument.defaultView;
+    if (!ownerWindow) throw new Error("Editor runtime requires an attached window");
+    this.ownerWindow = ownerWindow;
     this.session = new SourceAuthoritySession(text);
     this.renderVisual();
   }
@@ -128,6 +139,20 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     return { ok: true, value: this.session.currentRaw };
   }
 
+  whenCompositionStable(): Promise<boolean> {
+    if (!this.composing) return Promise.resolve(true);
+    return new Promise(resolve => {
+      const waiter = {
+        resolve,
+        timer: this.ownerWindow.setTimeout(() => {
+          this.stabilityWaiters.delete(waiter);
+          resolve(false);
+        }, COMPOSITION_STABILITY_TIMEOUT_MS),
+      };
+      this.stabilityWaiters.add(waiter);
+    });
+  }
+
   enterSourceMode(): boolean {
     if (this.composing || !this.session.beginSource()) return false;
     this.renderSource();
@@ -154,7 +179,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     this.session.beginSource();
     kernel.setText(this.session.currentRaw);
     this.applySourceSelection(this.session.currentRaw, this.session.rawSelection);
-    this.onChange(this.status, before === this.session.currentRaw ? "status" : "document");
+    this.notifyChange(before === this.session.currentRaw ? "status" : "document");
     return true;
   }
 
@@ -249,7 +274,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     this.session.beginSource();
     this.sourceKernel?.setText(this.session.currentRaw);
     this.applySourceSelection(plan.resultRaw, plan.selection);
-    this.onChange(this.status, before === this.session.currentRaw ? "status" : "document");
+    this.notifyChange(before === this.session.currentRaw ? "status" : "document");
     return { ok: true, value: { changed: true, replacedCount: plan.replacedCount } };
   }
 
@@ -261,6 +286,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   undo(): boolean {
     if (this.composing) return false;
     if (!this.session.undo()) return false;
+    this.publishedLogicalRevision = this.session.status.revision;
     this.renderCurrentMode();
     return true;
   }
@@ -268,6 +294,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   redo(): boolean {
     if (this.composing) return false;
     if (!this.session.redo()) return false;
+    this.publishedLogicalRevision = this.session.status.revision;
     this.renderCurrentMode();
     return true;
   }
@@ -319,7 +346,8 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }
 
   destroy(): void {
-    if (this.compositionTimer !== undefined) window.clearTimeout(this.compositionTimer);
+    this.cancelCompositionQuietTimer();
+    this.resolveStabilityWaiters(false);
     this.destroySurface();
   }
 
@@ -366,10 +394,24 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       decorations: codeDecorations,
       nodeViews: { code_block: codeBlockNodeView },
       dispatchTransaction: (transaction) => {
+        const compositionID = transaction.getMeta("composition");
+        if (this.compositionPhase === "settling" &&
+            (compositionID === undefined ||
+              (this.compositionID !== undefined && compositionID !== this.compositionID))) {
+          this.settleComposition(true);
+        }
+        if (this.compositionPhase !== "idle" && compositionID !== undefined &&
+            this.compositionID === undefined) {
+          this.compositionID = compositionID;
+        }
         const before = this.session.currentRaw;
         const accepted = this.session.dispatch(transaction);
         lastDispatchAccepted = accepted;
         view.updateState(this.session.state);
+        if (accepted && this.compositionPhase === "settling" &&
+            compositionID !== undefined && compositionID === this.compositionID) {
+          this.scheduleCompositionSettlement();
+        }
         if (!accepted || before === this.session.currentRaw || this.session.composing) return;
         if (this.session.status.revision > this.publishedLogicalRevision) {
           this.publishedLogicalRevision = this.session.status.revision;
@@ -412,6 +454,9 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       this.session.updateDraft(text, rawSelection);
       this.onChange(this.status, "status");
     });
+    this.sourceCompositionUnsubscribe = kernel.onCompositionChange(composing => {
+      if (!composing) this.resolveStabilityWaiters(true);
+    });
     this.textArea = area;
     this.sourceKernel = kernel;
     const selection = this.session.draft?.selection ?? this.session.rawSelection;
@@ -434,6 +479,8 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }
 
   private destroySurface(): void {
+    this.sourceCompositionUnsubscribe?.();
+    this.sourceCompositionUnsubscribe = undefined;
     if (this.view) {
       this.view.dom.removeEventListener("compositionstart", this.handleCompositionStart);
       this.view.dom.removeEventListener("compositionend", this.handleCompositionEnd);
@@ -446,28 +493,74 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }
 
   private readonly handleCompositionStart = (): void => {
-    if (this.compositionTimer !== undefined) window.clearTimeout(this.compositionTimer);
-    this.compositionTimer = undefined;
-    this.compositionStartRaw = this.session.currentRaw;
+    if (this.compositionPhase === "settling") this.settleComposition(true);
+    this.cancelCompositionQuietTimer();
+    this.compositionPhase = "active";
+    this.compositionID = undefined;
     this.session.startComposition();
   };
 
   private readonly handleCompositionEnd = (): void => {
-    if (this.compositionTimer !== undefined) window.clearTimeout(this.compositionTimer);
-    this.compositionTimer = window.setTimeout(() => {
-      this.compositionTimer = undefined;
-      const before = this.compositionStartRaw;
-      this.compositionStartRaw = undefined;
-      this.session.endComposition();
-      this.view?.updateState(this.session.state);
-      if (before !== undefined && before !== this.session.currentRaw &&
-          this.session.status.revision > this.publishedLogicalRevision) {
-        this.publishedLogicalRevision = this.session.status.revision;
-        this.onChange(this.status, "document");
-      }
-    }, 0);
+    if (this.compositionPhase !== "active") return;
+    this.compositionPhase = "settling";
+    this.scheduleCompositionSettlement();
   };
+
+  private scheduleCompositionSettlement(): void {
+    this.cancelCompositionQuietTimer();
+    // prosemirror-view exposes `composing`, but deliberately does not expose
+    // its pending DOM observer. A quiet window, reset by each accepted final
+    // transaction, is the public seam that covers its microtask/20ms cleanup
+    // without calling private domObserver APIs.
+    this.compositionQuietTimer = this.ownerWindow.setTimeout(
+      () => this.settleComposition(),
+      COMPOSITION_QUIET_WINDOW_MS,
+    );
+  }
+
+  private settleComposition(force = false): void {
+    if (this.compositionPhase === "idle") return;
+    if (!force && this.view?.composing) {
+      this.scheduleCompositionSettlement();
+      return;
+    }
+    this.cancelCompositionQuietTimer();
+    this.compositionPhase = "idle";
+    this.compositionID = undefined;
+    this.session.endComposition();
+    this.view?.updateState(this.session.state);
+    if (this.session.status.revision > this.publishedLogicalRevision) {
+      this.publishedLogicalRevision = this.session.status.revision;
+      this.onChange(this.status, "document");
+    }
+    this.resolveStabilityWaiters(true);
+  }
+
+  private notifyChange(kind: RuntimeChangeKind): void {
+    if (kind === "document") {
+      this.publishedLogicalRevision = this.session.status.revision;
+    }
+    this.onChange(this.status, kind);
+  }
+
+  private cancelCompositionQuietTimer(): void {
+    if (this.compositionQuietTimer !== undefined) {
+      this.ownerWindow.clearTimeout(this.compositionQuietTimer);
+      this.compositionQuietTimer = undefined;
+    }
+  }
+
+  private resolveStabilityWaiters(stable: boolean): void {
+    for (const waiter of this.stabilityWaiters) {
+      this.ownerWindow.clearTimeout(waiter.timer);
+      waiter.resolve(stable);
+    }
+    this.stabilityWaiters.clear();
+  }
 }
+
+const COMPOSITION_QUIET_WINDOW_MS = 24;
+const COMPOSITION_STABILITY_TIMEOUT_MS = 120;
 
 // EOL-003: keep exact bytes independent of textarea's LF normalization.
 class ReadOnlyEditorRuntime implements EditorRuntime {
@@ -499,6 +592,7 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   applySourceDraft(): boolean { return false; }
   cancelSourceDraft(): boolean { return false; }
   snapshotText(): SourceNavigationResult<string> { return { ok: true, value: this.text }; }
+  whenCompositionStable(): Promise<boolean> { return Promise.resolve(true); }
   getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
     if (this.text !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
     return readRawSelection(

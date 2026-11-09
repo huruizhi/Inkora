@@ -35,7 +35,6 @@ type CompositionGroup = {
   before: Snapshot;
   past: Snapshot[];
   future: Snapshot[];
-  ended: boolean;
 };
 
 type ProjectionContext = {
@@ -521,7 +520,6 @@ export class SourceAuthoritySession {
       before: this.snapshot(),
       past: [...this.past],
       future: [...this.future],
-      ended: false,
     };
   }
 
@@ -545,7 +543,6 @@ export class SourceAuthoritySession {
   }
 
   startComposition(): void {
-    if (!this.composing && this.compositionGroup?.ended) this.finishComposition();
     this.composing = true;
     this.compositionStartRaw = this.currentRaw;
   }
@@ -563,11 +560,8 @@ export class SourceAuthoritySession {
       if (changed) this.logicalRevision++;
       return;
     }
-    // WebKit may dispatch the final PM transaction after DOM compositionend.
-    // Keep the ended session addressable by its transaction ID; a different
-    // ID, an untagged transaction, or an explicit command seals it.
-    this.compositionGroup.ended = true;
     this.compactComposition();
+    this.finishComposition();
     if (changed) this.logicalRevision++;
   }
 
@@ -631,10 +625,12 @@ export class SourceAuthoritySession {
 
   dispatch(transaction: Transaction): boolean {
     const before = this.currentRaw;
-    const compositionId = transaction.getMeta('composition');
     const accepted = this.dispatchTransaction(transaction);
-    if (accepted && before !== this.currentRaw &&
-        compositionId === undefined && !this.composing) {
+    if (accepted && before !== this.currentRaw && !this.composing) {
+      // A composition-tagged transaction outside an active UI composition is
+      // a new logical edit, not permission to reopen an already published
+      // composition group.
+      this.finishComposition();
       this.logicalRevision++;
     }
     return accepted;

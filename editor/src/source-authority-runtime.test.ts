@@ -217,7 +217,7 @@ describe("production source authority runtime", () => {
     view.dom.dispatchEvent(new dom.window.Event("compositionstart", { bubbles: true }));
     view.dispatch(view.state.tr.insertText("中文").setMeta("composition", 81));
     view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubbles: true }));
-    await new Promise(resolve => dom.window.setTimeout(resolve, 10));
+    expect(await runtime.whenCompositionStable()).toBe(true);
     expect(runtime.getText()).toBe("中文\n");
     expect(changes).toEqual(["中文\n"]);
 
@@ -229,7 +229,7 @@ describe("production source authority runtime", () => {
     view.dispatch(view.state.tr.insertText("x").setMeta("composition", 82));
     view.dispatch(view.state.tr.delete(2, 3).setMeta("composition", 82));
     view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubbles: true }));
-    await new Promise(resolve => dom.window.setTimeout(resolve, 10));
+    expect(await runtime.whenCompositionStable()).toBe(true);
     expect(runtime.getText()).toBe("ab\n");
     expect(changes).toEqual(["中文\n"]);
     expect(runtime.redo()).toBe(true);
@@ -276,8 +276,16 @@ describe("production source authority runtime", () => {
     view.dispatch(view.state.tr.insertText("zh").setMeta("composition", 71));
     view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubbles: true }));
     await new Promise(resolve => dom.window.setTimeout(resolve, 10));
+    expect(runtime.composing).toBe(true);
+    expect(runtime.snapshotText()).toEqual({
+      ok: false,
+      message: "当前输入尚未形成可安全保存的原文",
+    });
+    expect(changes).toEqual([]);
     view.dispatch(view.state.tr.insertText("中文", 2, 4).setMeta("composition", 71));
+    expect(await runtime.whenCompositionStable()).toBe(true);
     expect(changes).toHaveLength(1);
+    expect(changes).toEqual(["a中文\n"]);
     expect(runtime.getText()).toBe("a中文\n");
     expect(runtime.snapshotText()).toEqual({ ok: true, value: "a中文\n" });
     expect(view.state.doc.textContent).toBe("a中文");
@@ -285,6 +293,60 @@ describe("production source authority runtime", () => {
     expect(runtime.getText()).toBe("a\n");
     runtime.destroy();
     dom.window.close();
+  });
+
+  it("seals consecutive compositions and the next ordinary edit as distinct publications", async () => {
+    const dom = new JSDOM("<!doctype html><main></main>", { pretendToBeVisual: true });
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
+    const changes: string[] = [];
+    const runtime = createEditorRuntime(dom.window.document.querySelector("main")!, "ab\n", (_status, kind) => {
+      if (kind === "document") changes.push(runtime.getText());
+    });
+    const view = (runtime as unknown as { view: EditorView }).view;
+
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 3)));
+    view.dom.dispatchEvent(new dom.window.Event("compositionstart", { bubbles: true }));
+    view.dispatch(view.state.tr.insertText("中文").setMeta("composition", 91));
+    view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubbles: true }));
+    // 下一真实 compositionstart 是明确边界，即使前一 quiet window 尚未到达。
+    view.dom.dispatchEvent(new dom.window.Event("compositionstart", { bubbles: true }));
+    expect(changes).toEqual(["中文\n"]);
+    view.dispatch(view.state.tr.insertText("输入").setMeta("composition", 92));
+    view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubbles: true }));
+    expect(await runtime.whenCompositionStable()).toBe(true);
+
+    view.dispatch(view.state.tr.insertText("!"));
+    expect(changes).toEqual(["中文\n", "中文输入\n", "中文输入!\n"]);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("中文输入\n");
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("中文\n");
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("ab\n");
+    runtime.destroy();
+    dom.window.close();
+  });
+
+  it("rejects an unended composition drain and resolves pending drains on destroy", async () => {
+    const first = createRuntime("a\n");
+    const firstView = (first.runtime as unknown as { view: EditorView }).view;
+    firstView.dom.dispatchEvent(new first.dom.window.Event("compositionstart", { bubbles: true }));
+    expect(await first.runtime.whenCompositionStable()).toBe(false);
+    expect(first.runtime.snapshotText().ok).toBe(false);
+    firstView.dom.dispatchEvent(new first.dom.window.Event("compositionend", { bubbles: true }));
+    expect(await first.runtime.whenCompositionStable()).toBe(true);
+    expect(first.runtime.snapshotText()).toEqual({ ok: true, value: "a\n" });
+    first.runtime.destroy();
+    first.dom.window.close();
+
+    const second = createRuntime("b\n");
+    const secondView = (second.runtime as unknown as { view: EditorView }).view;
+    secondView.dom.dispatchEvent(new second.dom.window.Event("compositionstart", { bubbles: true }));
+    const pending = second.runtime.whenCompositionStable();
+    second.runtime.destroy();
+    expect(await pending).toBe(false);
+    second.dom.window.close();
   });
 
   it("patches only the edited source range in a BOM CRLF document", () => {
