@@ -11,24 +11,25 @@
 | 大纲/统计/章节定位 | 已合main | 新内核兼容、真实滚动/键盘/辅助功能点验 |
 | 当前文档查找替换 | PR #73已合main；075及root内容版本补正、568/568/精确CI通过 | 真实UI、物理IME、文件闭环验收 |
 | 可编辑表格/任务列表 | PR #72 已合 main，完整 editor 485/485、精确 CI success | 真实控件/物理输入/文件生命周期与 AX 验收 |
-| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 077四修已组合589/Native158；080补可达恢复确认，最终CI/物理验收 |
+| 本地图片 | 067五修已组合core/V3/V6，570 editor/152 Native及Release离线通过 | 077/080/084已组合，原生171通过；083统一owner证明，最终CI/物理验收 |
 | 代码高亮/语言选择 | 已合 main；有真实 WK 语言选择、字节及正式保存重开证据 | 新组合回归与最终集中验收 |
 | 高级语法保护混排/异常安全 | 生产接线已合 main | 新组合保护块邻接、含混阻断和主动源码修复回归 |
 
 M0 有界可行性门槛已按 038 裁定通过，ADR-0004 已采纳；这不代替新生产组合的真实 WK/中文输入、文件与资源生命周期、键盘/AX及发布门槛。物理验收按用户“稍后”暂缓，不启动 GUI、不反复催促。导出、文件树、跨文件、主题及高级完整渲染仍后置。总目标保持 active。
 
-## 最新执行状态（覆盖下述历史）
+## 最新执行状态（2026-11-10，覆盖下述历史）
 
-需求级覆盖和剩余真实验收见[需求对照](FIRST-STAGE-REQUIREMENTS.md)，不以总测试数代替能力。077@48e397b已接回070并手工保留075/main searchIdentity、contentVersion与图片registry/只读接口；最新组合 **c4513213f2620c60ed6f3b91a11bdf030a68275a**，root独立 **589/589**、Native **165 total/158 passed/0 failed/7 skip**、lint通过。图片PR尚未创建，恢复确认入口尚待080；075和077已备份回收，累计完成managed workspace **74**（077为381文件，tar SHA eb34f4f498c3769a6d8520cfc2b0d406d07ee959ebfd3cbc49e6fab3a8a18dae）。
+当前 main 仍为 `0f93c4ab52dc55da786c925c5bb135f8188e0933`。图片组合070已推至 **cb54a96f3edeea86e16f1b42db669fd776f23146**，与独立受检084整树相同。组合先后接回077、main/075内容版本、081引用目标、079性能、080恢复确认与084容器范围；图片PR尚未创建，不能把集成分支视为已发布。
 
-078测量代码c339d32、接回当前组合后 **4de28e9d21d7c9fe92de7622c786118cb6c7d455** 已推送。原始a58候选：medium Node select+input626ms，真实离屏WK输入ack974.75ms/source往返1771.77ms；两个1MB模型vector各60秒整组采集超时，未计通过。源码1MB旧WK专项改真实source/input/apply后1/1通过但快照median4234.69ms，不能视为达标。新WK small/medium一专项1/1全字节通过并记录输入/bundle SHA；CPU profile确认owner全表扫描是主要热点。独立root分支/392文件tar/bundle/原始xcresult与profile均已备份，旧基线不改绿。
+- **079已完成/接回/两层回收**：1e63a50508fc1a6e60b4c5e49adfd33051d38309。root在070实跑完整591/591、lint与五组模型全部通过；作者真实离屏WK medium input→snapshot由945.95降到179.05ms，1MB约1245.51ms，仍未达方向性1秒目标，非物理paint/IME预算。索引与缓存失效另有root公共行为2/2控制。全部作者原始数据/xcresult与源码tar/bundle已保留。
+- **080已完成/接回/两层回收**：3ef26139300bdcda3ff4fa6638533c71246fb18b。生产恢复/稍后/放弃、fresh selection确认、snapshot→持久handoff、schema3审计与安全放弃闭环；root组合实跑Native179 total/171 passed/0 failed/8性能skip。386文件tar SHA `79312a4b6403697a1b9b423c7c42acf01c96ea8d109ee3c41dc0f3e1a92b4b54`，实际日志/xcresult备份，workspace removedDirectory=true。累计managed workspace回收 **76**。
+- **081 root修正已接回**：3ef716fe622492c15f23bae5da0eb3be21f16ab3，引用定义first-wins、destination escape/entity解码；真实Native18/18及NSDocument保存控制2/2，保留首存资源先发布、Markdown原字节与SHA断言。
+- **082 root独立反例已冻结**：ac2c757bde3e15dffccec640f5e57e92a50e0db7。Native扫描把缩进代码/保护公式内图片字面量当owner（这两类Core可保存）；另有引用围栏与列表续段Core账本拒绝，已由084修复。Native3红1绿/Web2红2绿及PM JSON/日志/xcresult原件保留，不误归因为079回归。
+- **084 root限定修正已接回**：cb54a96f3edeea86e16f1b42db669fd776f23146。block parser接受时捕获容器前缀、按源码顺序映射容器code；reference通过parser env传入，删除对slice附加空行的副作用。固定c21原始字节10/10红→修后10/10绿；`make test-editor`587（不含Bridge）+Bridge14，Native171/0/8、lint、五模型全部通过。未放宽等价或新增依赖。404文件校验tar SHA `70973e88fccee15ab8da4fcaa0fa54701bda3e05ab159254a34b28020ece4089`，root worktree干净保留。
 
-当前仅两名Paseo实施者（无配置profile，均经provider核实Sol5.6 high/full-access/default）：
+**当前唯一Paseo实施者083**（实时profile为空，provider/model已核实，Sol5.6 high/full-access/default）：Agent `3db9e649-4fc0-4725-93dc-ae894fc1aa2f` / workspace `wks_535ded871f085c1e` / branch `task/INK-M1-083-canonical-image-ownership`，固定c21，已通知接回084。统一编辑器接受的raw/文档版本与图片owner证明，Native继续负责实际授权、安全路径、字节验证与发布；snapshot、descriptor、首存/SaveAs、恢复handoff同源，不用Native正则继续猜Markdown，不把无证明当空图片集。包含纯文字SaveAs不弹图片资源授权、删图但保留recovery资产等实际接缝检查。禁止GUI及额外Agent；先真red再green、严格版本与失败保留。
 
-- **079性能**：Agent `9dc96cac-2359-431c-9da5-f13e698cc777` / workspace `wks_88c4e579006f8ab2` / branch `task/INK-M1-079-ledger-performance`，固定4de28e9。公共模型/真实离屏WK先基线再索引/缓存优化，保持owner/provenance/anchors和严格等价、全部589；不删慢样本或冻结前承诺预算，不触碰080恢复。
-- **080可达恢复**：Agent `73de5b8f-8e58-4187-88ea-c5d7cbc37bac` / workspace `wks_1dd1219ba2131a81` / branch `task/INK-M1-080-pending-image-recovery`，固定c451321。实际生产恢复协调器需给pending资源可操作的确认/副本通路；仅manifest时不能虚构旧正文或重投当前光标，取消/失败保留资源。UI选择适配可注入，生产存储/文档操作必须真实；禁止启动窗口/系统面板。不是另做一套恢复模型。
-
-main仍0f93c4a；物理步骤保持稍后。079/080完成即独立接收、实际组合测试、精确CI与两层回收。
+物理验收继续遵循用户“稍后”，不启动App/窗口/系统面板、不反复询问。离屏WK、hostless Native、真实scratch文件与SIGKILL证据不替代实际Sandbox/bookmark/拖放/粘贴、物理IME、AX、正式窗口保存关闭重开和macOS14。总目标仍active；083独立验收、组合复核与精确默认CI通过后才推进图片PR。
 
 ## 最新交付（覆盖下述历史）
 

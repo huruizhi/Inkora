@@ -29,3 +29,7 @@ root本次实际：main受检head ca797b8的完整568/568、lint/build和精确�
 - 078给出实际慢路径和失败样本；没有为make bench旧指标改绿或缩减首阶段功能。079目标是消除已定位扫描热点，预算和最低系统承诺仍需真实分层测量。
 - 物理/桌面验收按用户“稍后”暂缓，不启动App/UI、不重新催促。自动composition、jsdom、hostlessWK、scratch和真实授权/物理输入分别结算。
 - 正式DeveloperID签名、公证和直接分发另属发布门槛；无Mac App Store路线。它们不替代上述功能/数据完整性/真实用户闭环。
+
+## 2026-11-10增量证据
+
+070/084当前cb54a96：容器引用代码、列表续段真实图片、BOM/CRLF/no-EOL经过公共编辑/source/history/savepoint往返10/10；原c21源码10/10红。组合Native179 total/171 passed/0fail/8perfskip；非Bridge587+Bridge14。080生产恢复确认已接回且两层回收。083仍在实现统一图片owner证明，原生扫描误读代码/公式不是已完成项。079中型响应改善已复现，1MB方向性<1s仍未达到。真实物理/最低系统门槛按用户稍后保留。上述均为集成候选，main仍0f93c4a，不据测试总数标记首阶段通过。
