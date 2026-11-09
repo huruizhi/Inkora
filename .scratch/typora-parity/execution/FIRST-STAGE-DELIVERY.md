@@ -176,3 +176,5 @@ CI 42611845164 已实际 completed/success，受检 head 为93a3b5933b8ca2ae2216
 050@eb703563ea1e7367e5446a1ff62a021600114804已交付表格/任务候选，291 tracked文件及实际Bridge Native9证据备份后两层回收。根在独立task/INK-M1-056-tables-tasks-integration（.worktrees/INK-M1-056）合入050并保留049/051封口逻辑；组合基线451测试通过。真实input.click()检查又复现取消默认激活使checked与raw不一致、状态字符补丁误绑正文anchor导致第二次切换失败，以及isComposing Space/Tab被消费；单变量修复后8项新接缝和完整459测试通过。原12例100字节/8语义oracle保持，native/lint/build仍在本轮验证。不是WK/物理IME/完整阶段验收。
 
 当前实施Agent仅055图片（原handle保持）与059链接/代码块补正：task/INK-M1-059-link-code-commands，基线93a3b59，Sol5.6/high/default，无配置profile，agent6c42e3f5-fd39-4682-854a-d3b669f3e1b1 / workspace wks_95b8e9310529800a。059须真实生产DOM/keydown入口、过期与composition守卫、局部补丁、字节/选区/UndoRedo，不开GUI、不改055/050、不新建Agent。用户物理输入继续按“稍后”保留，main仍48258a9，总目标active。
+
+056本轮已完成非UI集成：修正1a8fbb5、最终9e169500d57c64d5d60a7c8f8ab2f592897d794c已推送，local/origin一致且clean。完整459、lint、Release离线资源通过；实际根Native xcresult为121 total/114 passed/0 failed/7按需性能skipped，含Native Bridge9，Web Bridge12在全量editor内。临时.tools链接已删除，未占桌面；正式表格/任务文件保存重开和物理/UI仍未验。056保留独立，等待059修正后再次组合；PR71仍受原两项Spec阻断，不把独立V3绿灯混入旧PR受检head。
