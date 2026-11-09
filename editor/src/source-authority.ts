@@ -6,7 +6,9 @@ import {
   sourceToVisual,
   visualToSource,
   type LedgerSpan,
+  type SourceLinkOwner,
   type SourceLedger,
+  type SourceRange,
 } from "./source-ledger";
 import { applyNativePatches, planNativeTransaction, type NativePatch, type NativePlan } from "./source-transaction";
 import { createInkoraProjectionState, type EditorStateOptions } from "./editor-session";
@@ -90,6 +92,10 @@ function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger
     visible: false,
     detail: 'CommonMark 语义隐藏；字节仍由当前原文权威持有',
   }));
+  const translateRange = (range: SourceRange): SourceRange => ({
+    from: shadow.shadowToRaw[range.from] ?? raw.length,
+    to: shadow.shadowToRaw[range.to] ?? raw.length,
+  });
   return {
     ...fallback.ledger,
     sourceLength: raw.length,
@@ -98,6 +104,28 @@ function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger
       ...block,
       range: parsed.ranges[index] ?? block.range,
       spans: block.spans.map(span => translated[fallback.ledger.spans.indexOf(span)] ?? span),
+    })),
+    links: fallback.ledger.links.map(link => ({
+      ...link,
+      source: translateRange(link.source),
+      labelSource: translateRange(link.labelSource),
+      labelMarkupSource: translateRange(link.labelMarkupSource),
+      hrefSource: link.hrefSource ? translateRange(link.hrefSource) : undefined,
+      titleSource: link.titleSource ? translateRange(link.titleSource) : undefined,
+      titleSeparatorSource: link.titleSeparatorSource
+        ? translateRange(link.titleSeparatorSource)
+        : undefined,
+      trailingSource: link.trailingSource ? translateRange(link.trailingSource) : undefined,
+      definition: link.definition ? {
+        source: translateRange(link.definition.source),
+        hrefSource: translateRange(link.definition.hrefSource),
+        titleSource: link.definition.titleSource
+          ? translateRange(link.definition.titleSource)
+          : undefined,
+        titleSeparatorSource: link.definition.titleSeparatorSource
+          ? translateRange(link.definition.titleSeparatorSource)
+          : undefined,
+      } : undefined,
     })),
     diagnostics: [...fallback.ledger.diagnostics, {
       code: 'legal_single_trailing_space_projection',
@@ -279,6 +307,148 @@ function dedupeAnchors(anchors: ProjectionAnchor[]): ProjectionAnchor[] {
     candidate.visual === anchor.visual && candidate.raw === anchor.raw) === index);
 }
 
+function cloneRange(range: SourceRange): SourceRange {
+  return { ...range };
+}
+
+function cloneLinkOwner(owner: SourceLinkOwner): SourceLinkOwner {
+  return {
+    ...owner,
+    source: cloneRange(owner.source),
+    labelSource: cloneRange(owner.labelSource),
+    labelMarkupSource: cloneRange(owner.labelMarkupSource),
+    visual: cloneRange(owner.visual),
+    hrefSource: owner.hrefSource ? cloneRange(owner.hrefSource) : undefined,
+    titleSource: owner.titleSource ? cloneRange(owner.titleSource) : undefined,
+    titleSeparatorSource: owner.titleSeparatorSource
+      ? cloneRange(owner.titleSeparatorSource)
+      : undefined,
+    trailingSource: owner.trailingSource ? cloneRange(owner.trailingSource) : undefined,
+    definition: owner.definition ? {
+      source: cloneRange(owner.definition.source),
+      hrefSource: cloneRange(owner.definition.hrefSource),
+      titleSource: owner.definition.titleSource
+        ? cloneRange(owner.definition.titleSource)
+        : undefined,
+      titleSeparatorSource: owner.definition.titleSeparatorSource
+        ? cloneRange(owner.definition.titleSeparatorSource)
+        : undefined,
+    } : undefined,
+  };
+}
+
+function sameLinkOwner(left: SourceLinkOwner, right: SourceLinkOwner): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function escapedTitle(value: string, delimiter: string): string {
+  const escapedBackslashes = value.replace(/\\/g, '\\\\');
+  return escapedBackslashes.replace(new RegExp(`\\${delimiter}`, 'g'), `\\${delimiter}`);
+}
+
+function titleToken(value: string, current?: string): string {
+  const open = current?.[0];
+  const close = current?.at(-1);
+  if ((open === '"' && close === '"') || (open === "'" && close === "'") ||
+      (open === '(' && close === ')')) {
+    return `${open}${escapedTitle(value, close)}${close}`;
+  }
+  return `"${escapedTitle(value, '"')}"`;
+}
+
+function destinationToken(raw: string, range: SourceRange, href: string): string {
+  const current = raw.slice(range.from, range.to);
+  return current.startsWith('<') && current.endsWith('>') ? `<${href}>` : href;
+}
+
+function linkTail(href: string, title: string | null): string {
+  return `](${href}${title === null ? '' : ` ${titleToken(title)}`})`;
+}
+
+function planOwnedLinkPatches(
+  raw: string,
+  owner: SourceLinkOwner,
+  attrs: { href: string; title: string | null } | null,
+): NativePatch[] {
+  if (!attrs) {
+    return [
+      { from: owner.source.from, to: owner.labelMarkupSource.from, insert: '' },
+      { from: owner.labelMarkupSource.to, to: owner.source.to, insert: '' },
+    ];
+  }
+  if (owner.kind === 'autolink') {
+    const label = raw.slice(owner.labelMarkupSource.from, owner.labelMarkupSource.to);
+    return [{
+      from: owner.source.from,
+      to: owner.source.to,
+      insert: `[${label}${linkTail(attrs.href, attrs.title)}`,
+    }];
+  }
+  if (owner.kind === 'reference' &&
+      (owner.referenceUsageCount !== 1 || !owner.definition)) {
+    return [{
+      from: owner.labelMarkupSource.to,
+      to: owner.source.to,
+      insert: linkTail(attrs.href, attrs.title),
+    }];
+  }
+
+  const hrefSource = owner.kind === 'reference'
+    ? owner.definition!.hrefSource
+    : owner.hrefSource;
+  if (!hrefSource) throw Error('链接 owner 缺少 href 原文范围');
+  const patches: NativePatch[] = [{
+    from: hrefSource.from,
+    to: hrefSource.to,
+    insert: destinationToken(raw, hrefSource, attrs.href),
+  }];
+  const currentTitleSource = owner.kind === 'reference'
+    ? owner.definition!.titleSource
+    : owner.titleSource;
+  const titleSeparator = owner.kind === 'reference'
+    ? owner.definition!.titleSeparatorSource
+    : owner.titleSeparatorSource;
+  if (currentTitleSource && attrs.title === null) {
+    if (owner.kind === 'reference') {
+      const opening = currentTitleSource.from - 1;
+      const closing = currentTitleSource.to + 1;
+      patches.push({
+        from: titleSeparator?.from ?? opening,
+        to: closing,
+        insert: '',
+      });
+    } else {
+      patches.push({
+        from: titleSeparator?.from ?? currentTitleSource.from,
+        to: currentTitleSource.to,
+        insert: '',
+      });
+    }
+  } else if (currentTitleSource && attrs.title !== null) {
+    if (owner.kind === 'reference') {
+      const delimiter = raw[currentTitleSource.from - 1] ?? '"';
+      patches.push({
+        from: currentTitleSource.from,
+        to: currentTitleSource.to,
+        insert: escapedTitle(attrs.title, delimiter === '(' ? ')' : delimiter),
+      });
+    } else {
+      patches.push({
+        from: currentTitleSource.from,
+        to: currentTitleSource.to,
+        insert: titleToken(attrs.title, raw.slice(currentTitleSource.from, currentTitleSource.to)),
+      });
+    }
+  } else if (attrs.title !== null) {
+    patches.push({
+      from: hrefSource.to,
+      to: hrefSource.to,
+      insert: ` ${titleToken(attrs.title)}`,
+    });
+  }
+  return patches;
+}
+
 function sameSnapshot(a: Snapshot, b: Snapshot): boolean {
   return a.raw === b.raw && a.state.doc.eq(b.state.doc)
     && a.rawSelection.anchor === b.rawSelection.anchor
@@ -422,6 +592,14 @@ export class SourceAuthoritySession {
         range: ranges[index] ?? block.range,
         spans: block.spans.map(span => translatedSpans[base.spans.indexOf(span)] ?? span),
       })),
+      links: base.links.map(link => {
+        const sourceIndex = parsed.ranges.findIndex(range =>
+          link.visual.from >= range.pos && link.visual.to <= range.pos + range.size);
+        const shift = sourceIndex < 0 ? undefined : shifts[sourceIndex];
+        return shift === undefined
+          ? { ...link }
+          : { ...link, visual: { from: link.visual.from + shift, to: link.visual.to + shift } };
+      }),
     };
     return { ledger, ranges, parsedDoc: parsed.doc };
   }
@@ -472,6 +650,105 @@ export class SourceAuthoritySession {
     const adjacent = sourceToVisual(ledger, offset, offset, { collapsedAffinity: affinity, snap: 'adjacent-gap' });
     if (adjacent.ok) return { visual: adjacent.anchor, note: adjacent.snapped.join('; ') };
     throw Error(direct.reason);
+  }
+
+  linkOwnerAtSelection(): SourceLinkOwner | null {
+    const { ledger } = this.projectionContext();
+    const visualAnchor = this.state.selection.anchor;
+    const visualHead = this.state.selection.head;
+    const visualFrom = Math.min(visualAnchor, visualHead);
+    const visualTo = Math.max(visualAnchor, visualHead);
+    let candidates: SourceLinkOwner[];
+    if (visualFrom !== visualTo) {
+      candidates = ledger.links.filter(link =>
+        visualFrom >= link.visual.from && visualTo <= link.visual.to);
+    } else {
+      const strict = ledger.links.filter(link =>
+        visualFrom > link.visual.from && visualFrom < link.visual.to);
+      if (strict.length) candidates = strict;
+      else {
+        const raw = this.rawSelection.head;
+        candidates = ledger.links.filter(link =>
+          raw >= link.labelMarkupSource.from && raw <= link.labelMarkupSource.to &&
+          visualFrom >= link.visual.from && visualFrom <= link.visual.to);
+      }
+    }
+    return candidates.length === 1 ? cloneLinkOwner(candidates[0]) : null;
+  }
+
+  applyLinkOwnerEdit(
+    expected: SourceLinkOwner,
+    attrs: { href: string; title: string | null } | null,
+  ): boolean {
+    if (this.composing) return this.guard('link_edit');
+    const current = this.linkOwnerAtSelection();
+    if (!current || !sameLinkOwner(current, expected)) {
+      this.diagnostic = '链接 owner 或选区已变化，请重新执行 Mod-K';
+      return false;
+    }
+    const patches = planOwnedLinkPatches(this.currentRaw, current, attrs);
+    const candidate = applyNativePatches(this.currentRaw, patches);
+    if (candidate === this.currentRaw) return true;
+    const before = this.snapshot();
+    const selection = cloneSelection(this.rawSelection);
+    const forward = selection.anchor <= selection.head;
+    const mappedSelection: RawSelection = {
+      anchor: mapRawOffset(
+        selection.anchor,
+        patches,
+        selection.anchor === selection.head
+          ? (selection.affinity === 'right' ? 1 : -1)
+          : (forward ? -1 : 1),
+      ),
+      head: mapRawOffset(
+        selection.head,
+        patches,
+        selection.anchor === selection.head
+          ? (selection.affinity === 'right' ? 1 : -1)
+          : (forward ? 1 : -1),
+      ),
+      affinity: selection.affinity,
+    };
+    try {
+      const parsed = parse(candidate);
+      if (parsed.issues.length) throw Error(parsed.issues[0].message);
+      this.currentRaw = candidate;
+      this.state = createInkoraProjectionState(parsed.doc, this.options);
+      this.issues = parsed.issues;
+      this.projection = {
+        kind: 'exact',
+        reason: 'source-ledger owner 链接编辑',
+        anchors: [],
+        provenance: patches.map(patch =>
+          `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`),
+      };
+      this.rawSelection = mappedSelection;
+      if (!this.setRawSelection(
+        mappedSelection.anchor,
+        mappedSelection.head,
+        mappedSelection.affinity,
+      )) throw Error(`链接编辑后的选区无法恢复：${this.diagnostic}`);
+      const acceptedOwner = this.linkOwnerAtSelection();
+      if (attrs) {
+        if (!acceptedOwner || acceptedOwner.href !== attrs.href ||
+            acceptedOwner.title !== attrs.title) {
+          throw Error('链接编辑后的 source-ledger owner 与请求属性不一致');
+        }
+      } else if (acceptedOwner) {
+        throw Error('移除链接后选区仍由 link owner 持有');
+      }
+      this.past.push(before);
+      this.future = [];
+      this.version++;
+      this.logicalRevision++;
+      this.unresolvedIntent = null;
+      this.diagnostic = '';
+      return true;
+    } catch (error) {
+      this.restore(before);
+      this.diagnostic = error instanceof Error ? error.message : String(error);
+      return false;
+    }
   }
 
   setRawSelection(anchor: number, head = anchor, affinity: Affinity = 'right'): boolean {

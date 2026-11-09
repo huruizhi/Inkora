@@ -46,7 +46,33 @@ export type SourceLedger = {
   docSize: number;
   blocks: LedgerBlock[];
   spans: LedgerSpan[];
+  links: SourceLinkOwner[];
   diagnostics: LedgerDiagnostic[];
+};
+
+export type SourceRange = { from: number; to: number };
+
+export type SourceLinkOwner = {
+  owner: string;
+  kind: 'inline' | 'reference' | 'autolink';
+  href: string;
+  title: string | null;
+  source: SourceRange;
+  labelSource: SourceRange;
+  labelMarkupSource: SourceRange;
+  visual: SourceRange;
+  hrefSource?: SourceRange;
+  titleSource?: SourceRange;
+  titleSeparatorSource?: SourceRange;
+  trailingSource?: SourceRange;
+  referenceKey?: string;
+  referenceUsageCount?: number;
+  definition?: {
+    source: SourceRange;
+    hrefSource: SourceRange;
+    titleSource?: SourceRange;
+    titleSeparatorSource?: SourceRange;
+  };
 };
 
 export type BuildLedgerResult =
@@ -74,8 +100,10 @@ type ReferenceDefinition = {
 type LinkExpectation = {
   owner: string;
   mark: 'link' | 'image_ref';
+  kind: 'inline' | 'reference' | 'autolink';
   href: string;
   title: string | null;
+  referenceKey?: string;
 };
 type ScanState = {
   spans: LedgerSpan[];
@@ -307,6 +335,7 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
         let resolved = false;
         let referenceStart: number | undefined;
         let referenceEnd: number | undefined;
+        let referenceKey: string | undefined;
         const tail = scanLinkTail(text, end);
         if (tail && tail.end <= to) {
           end = tail.end;
@@ -326,7 +355,8 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
           } else {
             rawReference = text.slice(bracket + 1, labelEnd);
           }
-          const definition = rawReference === undefined ? undefined : state.references.get(normalizeReference(rawReference));
+          referenceKey = rawReference === undefined ? undefined : normalizeReference(rawReference);
+          const definition = referenceKey === undefined ? undefined : state.references.get(referenceKey);
           if (definition) {
             href = definition.href;
             title = definition.title;
@@ -335,7 +365,14 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
         }
         if (resolved) {
           const linkOwner = `inline-${++state.ownerSerial}`;
-          state.expectations.push({ owner: linkOwner, mark: image ? 'image_ref' : 'link', href, title });
+          state.expectations.push({
+            owner: linkOwner,
+            mark: image ? 'image_ref' : 'link',
+            kind: tail ? 'inline' : 'reference',
+            href,
+            title,
+            referenceKey,
+          });
           if (image) addHidden(state, input, i, i + 1, 'delimiter', 'image-marker', linkOwner);
           addHidden(state, input, bracket, bracket + 1, 'delimiter', image ? 'image-alt-open' : 'link-label-open', linkOwner);
           scanInline(state, input, bracket + 1, labelEnd, image ? 'image-alt' : 'link-label', linkOwner);
@@ -371,7 +408,7 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
           const href = markdown.normalizeLink(value.includes('@') && !value.includes(':') ? `mailto:${value}` : value);
           const visible = markdown.normalizeLinkText(value);
           const linkOwner = `inline-${++state.ownerSerial}`;
-          state.expectations.push({ owner: linkOwner, mark: 'link', href, title: null });
+          state.expectations.push({ owner: linkOwner, mark: 'link', kind: 'autolink', href, title: null });
           addHidden(state, input, i, i + 1, 'delimiter', 'autolink-open', linkOwner);
           if (visible !== value) throw Error(`尖括号链接 ${JSON.stringify(value)} 发生显示规范化，当前账本明确拒绝`);
           scanPlain(state, input, i + 1, close, 'autolink-text', 'autolink', linkOwner);
@@ -820,6 +857,10 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
     const references = parseDefinitions(source, lines, referenceLineRanges(env));
     const blocks: LedgerBlock[] = [];
     const allSpans: LedgerSpan[] = [];
+    const allExpectations: Array<{
+      expectation: LinkExpectation;
+      blockSource: SourceRange;
+    }> = [];
     let ownerSerial = 0;
     for (const range of ranges) {
       if (range.kind === 'protected_block') {
@@ -858,6 +899,10 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         const block = { range: range as Range, spans: state.spans, visualText, inlineCount: 0 };
         blocks.push(block);
         allSpans.push(...state.spans);
+        allExpectations.push(...state.expectations.map(expectation => ({
+          expectation,
+          blockSource: { from: range.start, to: range.end },
+        })));
         ownerSerial = state.ownerSerial;
         continue;
       }
@@ -926,6 +971,10 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       const block = { range: range as Range, spans: state.spans, visualText, inlineCount: inlineTokens.length };
       blocks.push(block);
       allSpans.push(...state.spans);
+      allExpectations.push(...state.expectations.map(expectation => ({
+        expectation,
+        blockSource: { from: range.start, to: range.end },
+      })));
       ownerSerial = state.ownerSerial;
     }
     for (const definition of references.values()) allSpans.push(...definition.spans);
@@ -952,7 +1001,89 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       });
     }
     const spans = fillGaps(source, allSpans, ranges as Range[]);
-    return { ok: true, ledger: { sourceLength: source.length, docSize: pmDoc.content.size, blocks, spans, diagnostics } };
+    const links = allExpectations.filter(({ expectation }) => expectation.mark === 'link')
+      .map(({ expectation, blockSource }) => {
+      const owned = spans.filter(span => span.owner === expectation.owner &&
+        span.sourceStart >= blockSource.from && span.sourceEnd <= blockSource.to);
+      const visible = owned.filter((span): span is LedgerSpan & {
+        visualStart: number;
+        visualEnd: number;
+      } => span.visible && span.visualStart !== undefined && span.visualEnd !== undefined);
+      if (!owned.length || !visible.length) throw Error(`链接 owner ${expectation.owner} 缺少可审计范围`);
+      const find = (role: SourceRole, syntax?: string): LedgerSpan | undefined =>
+        owned.find(span => span.role === role && (syntax === undefined || span.syntax === syntax));
+      const inlineHref = find('href', 'inline-href');
+      const inlineTitle = find('title', 'inline-title');
+      const inlineSeparator = find('delimiter', 'inline-link-separator');
+      const inlineTrailing = find('delimiter', 'inline-link-space');
+      const labelOpen = owned.find(span =>
+        span.syntax === 'link-label-open' || span.syntax === 'autolink-open');
+      const labelClose = owned.find(span =>
+        span.syntax === 'link-label-close' || span.syntax === 'autolink-close');
+      if (!labelOpen || !labelClose) throw Error(`链接 owner ${expectation.owner} 缺少 label 边界`);
+      const definition = expectation.referenceKey === undefined
+        ? undefined
+        : references.get(expectation.referenceKey);
+      const definitionHrefs = definition?.spans.filter(span => span.role === 'definition-href') ?? [];
+      const definitionTitles = definition?.spans.filter(span => span.role === 'definition-title') ?? [];
+      const definitionSeparators = definition?.spans.filter(span => span.syntax === 'definition-title-separator') ?? [];
+      const definitionRange = definition && definitionHrefs.length === 1
+        ? {
+            source: {
+              from: Math.min(...definition.spans.map(span => span.sourceStart)),
+              to: Math.max(...definition.spans.map(span => span.sourceEnd)),
+            },
+            hrefSource: { from: definitionHrefs[0].sourceStart, to: definitionHrefs[0].sourceEnd },
+            titleSource: definitionTitles.length === 1
+              ? { from: definitionTitles[0].sourceStart, to: definitionTitles[0].sourceEnd }
+              : undefined,
+            titleSeparatorSource: definitionSeparators.length === 1
+              ? { from: definitionSeparators[0].sourceStart, to: definitionSeparators[0].sourceEnd }
+              : undefined,
+          }
+        : undefined;
+      return {
+        owner: expectation.owner,
+        kind: expectation.kind,
+        href: expectation.href,
+        title: expectation.title,
+        source: {
+          from: Math.min(...owned.map(span => span.sourceStart)),
+          to: Math.max(...owned.map(span => span.sourceEnd)),
+        },
+        labelSource: {
+          from: Math.min(...visible.map(span => span.sourceStart)),
+          to: Math.max(...visible.map(span => span.sourceEnd)),
+        },
+        labelMarkupSource: { from: labelOpen.sourceEnd, to: labelClose.sourceStart },
+        visual: {
+          from: Math.min(...visible.map(span => span.visualStart)),
+          to: Math.max(...visible.map(span => span.visualEnd)),
+        },
+        hrefSource: inlineHref
+          ? { from: inlineHref.sourceStart, to: inlineHref.sourceEnd }
+          : undefined,
+        titleSource: inlineTitle
+          ? { from: inlineTitle.sourceStart, to: inlineTitle.sourceEnd }
+          : undefined,
+        titleSeparatorSource: inlineSeparator
+          ? { from: inlineSeparator.sourceStart, to: inlineSeparator.sourceEnd }
+          : undefined,
+        trailingSource: inlineTrailing
+          ? { from: inlineTrailing.sourceStart, to: inlineTrailing.sourceEnd }
+          : undefined,
+        referenceKey: expectation.referenceKey,
+        referenceUsageCount: expectation.referenceKey === undefined
+          ? undefined
+          : allExpectations.filter(candidate =>
+              candidate.expectation.referenceKey === expectation.referenceKey).length,
+        definition: definitionRange,
+      } satisfies SourceLinkOwner;
+    });
+    return {
+      ok: true,
+      ledger: { sourceLength: source.length, docSize: pmDoc.content.size, blocks, spans, links, diagnostics },
+    };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     diagnostics.push(diagnostic('unsupported_or_ambiguous_syntax', reason));

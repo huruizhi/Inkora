@@ -10,7 +10,13 @@ interface SentMessage {
   protocolVersion: number;
   type: string;
   requestID?: string;
-  state?: { documentID: string; revision: number; dirty: boolean };
+  state?: {
+    documentID: string;
+    revision: number;
+    dirty: boolean;
+    canUndo?: boolean;
+    canRedo?: boolean;
+  };
   [key: string]: unknown;
 }
 
@@ -43,6 +49,7 @@ interface Harness {
   sourceApply(): HTMLButtonElement;
   sourceCancel(): HTMLButtonElement;
   insertTable(): HTMLButtonElement;
+  linkEditor(): HTMLFormElement | null;
  }
 
 // prosemirror-view 在 jsdom 下还需要这些全局（MutationObserver、raf、
@@ -172,6 +179,7 @@ async function bootMain(): Promise<Harness> {
     sourceApply: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-apply")!,
     sourceCancel: () => dom.window.document.querySelector<HTMLButtonElement>(".source-draft-cancel")!,
     insertTable: () => dom.window.document.querySelector<HTMLButtonElement>(".insert-table")!,
+    linkEditor: () => dom.window.document.querySelector<HTMLFormElement>(".link-editor"),
   };
 }
 
@@ -261,6 +269,197 @@ it("可视全部替换超过显示上限仍完整提交且只需一次Undo", asy
   expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:expected});
 });
 
+function openLinkEditorAtCaret(h: Harness, offset = 1): HTMLFormElement {
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const label = editor.querySelector("a")!.firstChild!;
+  const range = h.dom.window.document.createRange();
+  range.setStart(label, offset);
+  range.collapse(true);
+  h.dom.window.getSelection()!.removeAllRanges();
+  h.dom.window.getSelection()!.addRange(range);
+  h.dom.window.document.dispatchEvent(new h.dom.window.Event("selectionchange"));
+  editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }));
+  const form = h.linkEditor();
+  if (!form) throw new Error("Expected link editor");
+  return form;
+}
+
+async function rootLinkHarness(
+  withHistory = false,
+  text = "[alpha](./old)\n\nbody\n",
+): Promise<Harness> {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "root-link-load", documentID: "root-link", revision: 0,
+    text });
+  if (withHistory) {
+    h.sourceMode().click();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+    area.value = text.replace(/\n$/, "!\n");
+    area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.sourceApply().click();
+    h.visualMode().click();
+  }
+  await settle();
+  openLinkEditorAtCaret(h);
+  return h;
+}
+
+it("root062: link action pointerdown keeps an active candidate field focused", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  href.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", {bubbles:true}));
+  href.value = "zhong";
+  const cancel = form.querySelector<HTMLButtonElement>(".link-editor-cancel")!;
+  const pointer = new h.dom.window.MouseEvent("pointerdown", {bubbles:true,cancelable:true});
+  cancel.dispatchEvent(pointer);
+  expect(pointer.defaultPrevented).toBe(true);
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(href);
+  expect(href.value).toBe("zhong");
+});
+
+it("root062: link submit blocks form navigation without consuming an IME Enter key", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  href.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", {bubbles:true}));
+  const before = h.sent.length;
+  const enter = new h.dom.window.KeyboardEvent("keydown", {key:"Enter",isComposing:true,bubbles:true,cancelable:true});
+  href.dispatchEvent(enter);
+  expect(enter.defaultPrevented).toBe(false);
+  const submit = new h.dom.window.Event("submit", {bubbles:true,cancelable:true});
+  form.dispatchEvent(submit);
+  expect(submit.defaultPrevented).toBe(true);
+  expect(form.isConnected).toBe(true);
+  expect(h.sent).toHaveLength(before);
+});
+
+it("root061: caret inside a link edits its existing target", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  expect(href.value).toBe("./old");
+  href.value = "./new";
+  form.dispatchEvent(new h.dom.window.Event("submit", {bubbles:true,cancelable:true}));
+  h.receive({type:"createSnapshot",requestID:"root-link-snapshot",documentID:"root-link",revision:h.lastRevision()});
+  expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:"[alpha](./new)\n\nbody\n"});
+});
+
+it("root061: link input composition keeps the form and candidate on Cancel", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  href.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart",{bubbles:true}));
+  href.value = "zhong";
+  href.dispatchEvent(new h.dom.window.InputEvent("input",{bubbles:true,isComposing:true}));
+  const before = h.sent.length;
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(href);
+  expect(href.value).toBe("zhong");
+  expect(h.sent).toHaveLength(before);
+});
+
+it("链接输入 composition 守卫表单动作、外部导航与跨 load 候选", async () => {
+  const h = await rootLinkHarness(false, "# [alpha](./old)\n\nbody\n");
+  const form = h.linkEditor()!;
+  const title = form.querySelector<HTMLInputElement>(".link-editor-title")!;
+  title.focus();
+  title.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  title.value = "zhong";
+  title.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, isComposing: true }));
+  const revision = h.lastRevision();
+  const messages = h.stateMessages().length;
+
+  // submit 取消的是表单导航；下方键盘 Esc 的输入法默认行为仍保留。
+  expect(form.dispatchEvent(new h.dom.window.Event("submit", {
+    bubbles: true, cancelable: true,
+  }))).toBe(false);
+  form.querySelector<HTMLButtonElement>(".link-editor-remove")!.click();
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  expect(form.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "Escape", isComposing: true, bubbles: true, cancelable: true,
+  }))).toBe(true);
+  h.sourceMode().click();
+  h.searchButton().click();
+  h.headingButtons()[0]!.click();
+
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(title);
+  expect(title.value).toBe("zhong");
+  expect(h.editorHost().querySelector(".ProseMirror")).not.toBeNull();
+  expect(h.findBar().classList.contains("is-open")).toBe(false);
+  expect(h.stateMessages()).toHaveLength(messages);
+  expect(h.lastRevision()).toBe(revision);
+
+  h.receive({
+    type: "loadDocument", requestID: "root-link-next", documentID: "root-link-next", revision: 0,
+    text: "next\n",
+  });
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(title);
+  expect(title.value).toBe("zhong");
+  title.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  expect(form.isConnected).toBe(false);
+  form.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(form.querySelector(".link-editor-status")?.textContent).toContain("过期");
+  h.receive({
+    type: "createSnapshot", requestID: "root-link-next-snapshot",
+    documentID: "root-link-next", revision: 0,
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: "next\n" });
+});
+
+it("root061: Native document Undo is refused while a link field holds focus", async () => {
+  const h = await rootLinkHarness(true);
+  const revision = h.lastRevision();
+  const messages = h.stateMessages().length;
+  h.receive({type:"executeCommand",requestID:"root-link-undo",documentID:"root-link",revision,command:"undo"});
+  expect(h.sent.at(-1)).toMatchObject({type:"editorError",code:"command_rejected"});
+  expect(h.stateMessages()).toHaveLength(messages);
+  expect(h.lastRevision()).toBe(revision);
+});
+
+it("链接取消和 no-op 不清除 future，回正文后 Native Redo 仍可用", async () => {
+  const h = await rootLinkHarness(true);
+  h.linkEditor()!.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  h.receive({
+    type: "executeCommand", requestID: "root-link-future-undo", documentID: "root-link",
+    revision: h.lastRevision(), command: "undo",
+  });
+  expect(h.stateMessages().at(-1)?.state?.canRedo).toBe(true);
+
+  let form = openLinkEditorAtCaret(h);
+  const afterUndoMessages = h.stateMessages().length;
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  expect(h.stateMessages()).toHaveLength(afterUndoMessages);
+  expect(h.stateMessages().at(-1)?.state?.canRedo).toBe(true);
+
+  form = openLinkEditorAtCaret(h);
+  form.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.stateMessages()).toHaveLength(afterUndoMessages);
+  expect(h.stateMessages().at(-1)?.state?.canRedo).toBe(true);
+  h.receive({
+    type: "executeCommand", requestID: "root-link-future-redo", documentID: "root-link",
+    revision: h.lastRevision(), command: "redo",
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { canRedo: false } });
+});
+
+it("root061: flag-only composing document Cmd-Z does not consume the key", async () => {
+  const h = await rootLinkHarness(true);
+  h.linkEditor()!.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  const revision = h.lastRevision();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const event = new h.dom.window.KeyboardEvent("keydown",{key:"z",metaKey:true,isComposing:true,bubbles:true,cancelable:true});
+  editor.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(false);
+  expect(h.lastRevision()).toBe(revision);
+});
+
 it("提供键盘可达的可视/源码切换和草稿提交取消入口", async () => {
   const h = await bootMain();
   h.receive({
@@ -332,6 +531,157 @@ it("生产 main 任务 checkbox 通过 Bridge 发布单字符切换与历史", a
   });
   expect(h.sent.find((message) => message.type === "snapshotReady" &&
     message.requestID === "snapshot-task-undo")).toMatchObject({ text: input });
+});
+
+it("Mod-K 通过生产 DOM 入口创建链接，取消不改变文档", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-link", documentID: "doc-link", revision: 0,
+    text: "正文\n",
+  });
+  await settle();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const paragraphText = editor.querySelector("p")!.firstChild!;
+  const range = h.dom.window.document.createRange();
+  range.setStart(paragraphText, 0);
+  range.setEnd(paragraphText, 2);
+  const selection = h.dom.window.getSelection()!;
+  selection.removeAllRanges();
+  selection.addRange(range);
+  h.dom.window.document.dispatchEvent(new h.dom.window.Event("selectionchange"));
+
+  const shortcut = new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  });
+  expect(editor.dispatchEvent(shortcut)).toBe(false);
+  const form = h.linkEditor();
+  expect(form).not.toBeNull();
+  const href = form!.querySelector<HTMLInputElement>(".link-editor-href")!;
+  expect(h.dom.window.document.activeElement).toBe(href);
+  expect(form!.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "Escape", bubbles: true, cancelable: true,
+  }))).toBe(false);
+  expect(h.linkEditor()).toBeNull();
+  expect(h.lastRevision()).toBe(0);
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const createForm = h.linkEditor()!;
+  createForm.querySelector<HTMLInputElement>(".link-editor-href")!.value = "./target";
+  createForm.querySelector<HTMLInputElement>(".link-editor-title")!.value = "标题";
+  createForm.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await settle();
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link", documentID: "doc-link", revision: 1,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link", text: '[正文](./target "标题")\n',
+  });
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const noOpForm = h.linkEditor()!;
+  expect(noOpForm.querySelector<HTMLInputElement>(".link-editor-href")!.value).toBe("./target");
+  expect(noOpForm.querySelector<HTMLInputElement>(".link-editor-title")!.value).toBe("标题");
+  noOpForm.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.lastRevision()).toBe(1);
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const editForm = h.linkEditor()!;
+  editForm.querySelector<HTMLInputElement>(".link-editor-href")!.value = "./edited";
+  editForm.querySelector<HTMLInputElement>(".link-editor-title")!.value = "";
+  editForm.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(editForm.querySelector(".link-editor-status")?.textContent).toBe("");
+  expect(h.linkEditor()).toBeNull();
+  expect(h.lastRevision()).toBe(2);
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const removeForm = h.linkEditor()!;
+  removeForm.querySelector<HTMLButtonElement>(".link-editor-remove")!.click();
+  expect(h.lastRevision()).toBe(3);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-unlinked", documentID: "doc-link", revision: 3,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-unlinked", text: "正文\n",
+  });
+
+  let activeEditor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  expect(activeEditor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "z", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  expect(h.lastRevision()).toBe(4);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link-undo", documentID: "doc-link", revision: 4,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link-undo", text: "[正文](./edited)\n",
+  });
+  activeEditor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  expect(activeEditor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "z", metaKey: true, shiftKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  expect(h.lastRevision()).toBe(5);
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link-redo", documentID: "doc-link", revision: 5,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link-redo", text: "正文\n",
+  });
+});
+
+it("链接表单拒绝 composition、危险 href 与跨 load 的旧快照", async () => {
+  const h = await bootMain();
+  h.receive({
+    type: "loadDocument", requestID: "load-link-a", documentID: "link-a", revision: 0,
+    text: "alpha\n",
+  });
+  await settle();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.dispatchEvent(new h.dom.window.Event("compositionstart", { bubbles: true }));
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(true);
+  expect(h.linkEditor()).toBeNull();
+  editor.dispatchEvent(new h.dom.window.Event("compositionend", { bubbles: true }));
+  await settle();
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const unsafe = h.linkEditor()!;
+  unsafe.querySelector<HTMLInputElement>(".link-editor-href")!.value = "bad target";
+  unsafe.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(unsafe.querySelector(".link-editor-status")?.textContent).toContain("safe Markdown");
+  expect(h.lastRevision()).toBe(0);
+  expect(h.stateMessages().at(-1)?.state).toMatchObject({ dirty: false, canUndo: false });
+  unsafe.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+
+  expect(editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+    key: "k", metaKey: true, bubbles: true, cancelable: true,
+  }))).toBe(false);
+  const stale = h.linkEditor()!;
+  stale.querySelector<HTMLInputElement>(".link-editor-href")!.value = "./stale";
+  h.receive({
+    type: "loadDocument", requestID: "load-link-b", documentID: "link-b", revision: 0,
+    text: "bravo\n",
+  });
+  await settle();
+  expect(h.linkEditor()).toBeNull();
+  stale.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(stale.querySelector(".link-editor-status")?.textContent).toContain("过期");
+  h.receive({
+    type: "createSnapshot", requestID: "snapshot-link-b", documentID: "link-b", revision: 0,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", requestID: "snapshot-link-b", text: "bravo\n",
+  });
 });
 
 it("拒绝错误文档的保存回执且不污染 dirty 保存基线", async () => {

@@ -10,7 +10,7 @@ export type NativeAnchor = { pmPos: number; sourceOffset: number };
 export type NativePlan = {
   patches: NativePatch[];
   candidate: string;
-  kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'inline-mark' | 'block-structure' | 'table-text' | 'table-structure' | 'task-toggle' | 'projection-sync' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join';
+  kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'inline-mark' | 'block-structure' | 'table-text' | 'table-structure' | 'task-toggle' | 'projection-sync' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join' | 'code-exit';
   /** A Markdown source cannot represent a newly-created empty paragraph. */
   mayStage?: boolean;
   /** Proven source caret in candidate coordinates after a text/input-rule edit. */
@@ -437,10 +437,20 @@ function structuralPlan(
     }
   }
 
-  const targetTop = tr.doc.childCount === 1 ? tr.doc.firstChild : null;
+  const targetPosition = active.length === 1
+    ? tr.mapping.map(active[0].pos, -1)
+    : -1;
+  const targetTop = targetPosition >= 0 ? tr.doc.nodeAt(targetPosition) : null;
   if (active.length === 1 && targetTop?.type.name === 'code_block') {
     const language = targetTop.attrs.language ? String(targetTop.attrs.language) : '';
-    const fence = String(targetTop.attrs.fence || '```');
+    const preferredFence = String(targetTop.attrs.fence || '```');
+    const marker = preferredFence[0] === '~' ? '~' : '`';
+    const closingCandidate = new RegExp(`^ {0,3}(${marker === '`' ? '`' : '~'}+)[\\t ]*\\r?$`, 'gm');
+    let longestClosingCandidate = 0;
+    for (const match of raw.matchAll(closingCandidate)) {
+      longestClosingCandidate = Math.max(longestClosingCandidate, match[1].length);
+    }
+    const fence = marker.repeat(Math.max(3, preferredFence.length, longestClosingCandidate + 1));
     add([
       { from: to, to, insert: `${eol}${fence}` },
       { from, to: from, insert: `${fence}${language}${eol}` },
@@ -456,6 +466,43 @@ function structuralPlan(
     ], 'code block to paragraph');
   }
   return matchingStructuralPlan(source, tr.doc, candidates);
+}
+
+function codeExitPlan(
+  source: string,
+  state: EditorState,
+  tr: Transaction,
+  ranges: readonly NativeRange[],
+  fallbackEol: '\r\n' | '\n',
+): NativePlan | null {
+  if (!state.selection.empty || state.selection.$from.parent.type.name !== 'code_block') return null;
+  const step = tr.steps[0]?.toJSON() as Record<string, any> | undefined;
+  const content = step?.slice?.content;
+  if (tr.steps.length !== 1 || step?.stepType !== 'replace' || step.from !== step.to ||
+      !Array.isArray(content) || content.length !== 1 || content[0]?.type !== 'paragraph' ||
+      content[0]?.content !== undefined) return null;
+  const activeIndex = ranges.findIndex(range =>
+    range.kind === 'code_block' && state.selection.from > range.pos &&
+    state.selection.from < range.pos + range.size);
+  if (activeIndex < 0) return null;
+  const range = ranges[activeIndex];
+  if (step.from !== range.pos + range.size || tr.doc.childCount !== state.doc.childCount + 1) return null;
+  for (let index = 0; index < state.doc.childCount; index++) {
+    const before = state.doc.child(index);
+    const afterIndex = index <= activeIndex ? index : index + 1;
+    if (!before.eq(tr.doc.child(afterIndex))) return null;
+  }
+  const inserted = tr.doc.child(activeIndex + 1);
+  if (inserted.type.name !== 'paragraph' || inserted.content.size !== 0) return null;
+  const eol = eolForLine(source, range.end, fallbackEol);
+  const patches = [{ from: range.end, to: range.end, insert: eol }];
+  return {
+    patches,
+    candidate: applyNativePatches(source, patches),
+    kind: 'code-exit',
+    mayStage: true,
+    sourceCaret: range.end + eol.length,
+  };
 }
 
 function countType(doc: PMNode, type: string): number {
@@ -835,6 +882,9 @@ export function planNativeTransaction(
   if (attrs) return attrs;
   const structure = structuralPlan(source, state, tr, ranges, position, fallbackEol);
   if (structure) return structure;
+
+  const codeExit = codeExitPlan(source, state, tr, ranges, fallbackEol);
+  if (codeExit) return codeExit;
 
   const insert = textSlice(step);
   if (insert !== null) {
