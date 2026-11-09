@@ -1,0 +1,38 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-100/editor
+
+ ❯ src/main.test.ts (97 tests | 1 failed | 96 skipped) 126ms
+   × 显式源码提交保留未知语法诊断并按完整原文快照与撤销重做 126ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/main.test.ts > 显式源码提交保留未知语法诊断并按完整原文快照与撤销重做
+AssertionError: expected { protocolVersion: 1, …(6) } to match object { type: 'snapshotReady', …(1) }
+(9 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "text": "﻿Before $y$ after.
++   "text": "Before $y$ after.
+  ",
+    "type": "snapshotReady",
+  }
+
+ ❯ src/main.test.ts:226:25
+    224|   h.sourceApply().click();
+    225|   h.receive({ type: "createSnapshot", requestID: "explicit-snapshot", …
+    226|   expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: c…
+       |                         ^
+    227|   expect(h.dom.window.document.querySelector(".editor-mode-status")?.t…
+    228|   const revision = h.lastRevision();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 96 skipped (97)
+   Start at  02:37:06
+   Duration  473ms (import 57%, tests 32%, transform 11%)
+

@@ -1,0 +1,10 @@
+$ vitest run
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-100/editor
+
+
+ Test Files  35 passed (35)
+      Tests  720 passed (720)
+   Start at  02:41:32
+   Duration  14.00s (tests 72%, import 25%, transform 3%)
+

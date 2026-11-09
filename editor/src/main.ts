@@ -269,11 +269,16 @@ function updateModeControls(): void {
     activeRuntime.composing;
   sourceApplyButton.hidden = mode !== "source";
   sourceCancelButton.hidden = mode !== "source";
-  sourceApplyButton.disabled = !activeRuntime?.status.draftDirty || activeRuntime.composing;
+  const needsSourceConfirmation = activeRuntime?.status.unresolved &&
+    !activeRuntime.status.saveEligible;
+  sourceApplyButton.disabled = (!activeRuntime?.status.draftDirty && !needsSourceConfirmation) ||
+    !activeRuntime || activeRuntime.composing;
   sourceCancelButton.disabled = !activeRuntime || activeRuntime.composing;
   insertTableButton.disabled = !activeRuntime || mode !== "visual" || activeRuntime.composing;
   modeStatus.textContent = activeRuntime?.status.unresolved
-    ? "当前原文需要源码修复，保存已阻断"
+    ? activeRuntime.status.saveEligible
+      ? "源码已提交；未识别的语法只读保留，可按原文保存"
+      : "当前原文需要源码修复，保存已阻断"
     : activeRuntime?.status.draftDirty
       ? "源码草稿尚未提交"
       : "";

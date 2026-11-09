@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-100/editor
+
+ ❯ src/main.test.ts (98 tests | 1 failed | 97 skipped) 75ms
+   × 允许明确提交未改动的未知源码且不制造文档历史 75ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/main.test.ts > 允许明确提交未改动的未知源码且不制造文档历史
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/main.test.ts:248:36
+    246|   const states = h.stateMessages().length;
+    247|   h.sourceMode().click();
+    248|   expect(h.sourceApply().disabled).toBe(false);
+       |                                    ^
+    249|   h.sourceApply().click();
+    250|   expect(h.stateMessages()).toHaveLength(states);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 97 skipped (98)
+   Start at  02:38:06
+   Duration  311ms (import 52%, tests 33%, transform 15%)
+

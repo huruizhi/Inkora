@@ -1,0 +1,30 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-M1-100/editor
+
+ ❯ src/main.test.ts (97 tests | 1 failed | 96 skipped) 88ms
+   × 显式源码提交保留未知语法诊断并按完整原文快照与撤销重做 88ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/main.test.ts > 显式源码提交保留未知语法诊断并按完整原文快照与撤销重做
+AssertionError: expected '当前原文需要源码修复，保存已阻断' not to contain '保存已阻断'
+
+Expected: "保存已阻断"
+Received: "当前原文需要源码修复，保存已阻断"
+
+ ❯ src/main.test.ts:227:87
+    225|   h.receive({ type: "createSnapshot", requestID: "explicit-snapshot", …
+    226|   expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: c…
+    227|   expect(h.dom.window.document.querySelector(".editor-mode-status")?.t…
+       |                                                                                       ^
+    228|   const revision = h.lastRevision();
+    229|   h.receive({ type: "markSaved", requestID: "explicit-saved", document…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 96 skipped (97)
+   Start at  02:37:20
+   Duration  389ms (import 60%, tests 29%, transform 11%)
+
