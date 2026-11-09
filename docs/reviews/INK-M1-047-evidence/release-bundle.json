@@ -1,0 +1,25 @@
+{
+  "buildHead": "00cce96489fb50558ca014c3a4d74e112ea22b52",
+  "result": "OFFLINE_RESOURCES_PASS",
+  "applicationStarted": false,
+  "codeSignatureStrict": true,
+  "reviewedEntitlementValuesMatch": true,
+  "additionalLocalBuildEntitlements": {
+    "com.apple.security.get-task-allow": true
+  },
+  "deploymentMinOS": [
+    "14.0",
+    "14.0"
+  ],
+  "actualBuildHostOS": "27.2",
+  "noticeSHA256": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+  "licenseIsExactSuffix": true,
+  "script": "assets/index-Bkn-1wgl.js",
+  "scriptSHA256": "e0652e007e0b4540c26a3d30410e33f955cd05ab6deb026ad357e7795094e245",
+  "scriptBytes": 564670,
+  "limitations": [
+    "local ad-hoc UITesting Release configuration; get-task-allow is present",
+    "not the Developer ID archive/export pipeline; distribution verification rejects this test bundle",
+    "not macOS14 runtime or physical IME"
+  ]
+}
