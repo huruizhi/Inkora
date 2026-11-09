@@ -13,3 +13,5 @@
 | 网络/导航 | `navigation-rejected` 记录被拒 scheme/host；任何 http/https/file 主导航均应拒绝。 |
 
 判断目录移动：先看 `bookmark-restored` 的 stale 字段，再看 `manifest-read` 与图片 `native-read-result`；stale、可解析和实际可读是三件不同的事。
+
+040管理者复核：openat errno在查询元数据前捕获；model16/handler49/path9为非GUI接缝证据。WK适配器强持有task到取消回调收口，由3个生命周期断言覆盖；不把替身可伪造的identity碰撞视为系统可达事件。详见evidence/INK-PROT-040-review/。

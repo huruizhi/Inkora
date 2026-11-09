@@ -87,6 +87,8 @@ make -C prototypes/local-assets/native-host handler-check  # rc=0（×5 稳定�
 
 ## 未完成事项与风险
 
+管理者复核补充：候选7a48160独立check通过。永久PathCheck对037旧Support先复现唯一中间symlink分类失败；当前model16/handler49/path9通过，handler/path连续三轮通过。新增3项真实WKSchemeTaskOutlet强持有与收口释放断言，原报告同址复用风险在默认适配器路径未证实。openat原errno在元数据查询前捕获；读取收口等待5秒上限，退出前显式清理唯一scratch。日志及SHA manifest位于native-host/evidence/INK-PROT-040-review/。执行者Agent/workspace已253文件及bundle校验备份后两层回收。未执行新GUI/OS授权，不改037冻结证据，不宣告父14/M1完成。
+
 - handler-check 为纯 CLI 非沙盒执行：`scope-start active=true` 是进程外 no-op，只作 lease 对称断言，不是 OS 授权证据；WKWebView/面板/书签真实运行仍以 037 冻结证据与管理者 UI 验收为准。
-- identity 键仍为 ObjectIdentifier：“旧回调在途 + 地址复用 + 新任务同址启动”三者同时发生时的语义歧义未消除（需 token 键控重设计，超出本任务边界）；本次仅修复已完成任务的残留路径，已在 README 声明。
+- identity 键仍为 ObjectIdentifier；默认适配器的在途task强持有已补证，不能据可伪造identity的替身推定系统同址碰撞可达；对任意外部同步callback的重入安全未证明。
 - 铁律级声明：父票 14 / M0 / M1 / 首阶段不因本任务完成；本任务仅为候选，等管理者独立复核。

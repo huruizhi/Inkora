@@ -92,4 +92,12 @@ make -C prototypes/local-assets/native-host fixture-clean
 
 真实handler并发接缝已建：`AssetSchemeHandler`的start/stop公共内部路径提取为`AssetSchemeTaskCore`，WK适配器与`handler-check`的fake outlet共同调用同一实现；`ResourceBroker`的读取调度与回调交付是显式受限接缝（默认即真实工作队列/主队列）。红例先证明：任务完成后晚到的stop会把已完成的任务identity残留进canceled集合，系统task对象地址复用后无关新任务被永久误抑制；修复为只有仍active的任务才标记canceled。035担心的“回调在broker state.sync内重入死锁”经在途epoch/revoke场景实际执行未复现（completion只异步入队，不同步重入broker状态队列），保留原实现未改。
 
-未验证边界：`handler-check`是纯CLI非UI执行，不是WKWebView/面板/OS授权运行证据；037冻结的runtime证据未动。identity键仍为ObjectIdentifier，“旧回调在途+地址复用+新任务同址启动”三者同时发生时的语义歧义未消除（需token键控重设计），当前仅修复已完成任务的残留路径。父票14/M1保持未完成。
+未验证边界：`handler-check`是纯CLI非UI执行，不是WKWebView/面板/OS授权运行证据；037冻结的runtime证据未动。identity键仍为ObjectIdentifier。管理者通过真实WKSchemeTaskOutlet适配器证明底层task在读取、取消后的待交付阶段均被强持有，收口后才释放；原候选所列“在途对象已释放并同址复用”在默认适配器路径未被证实，不能直接据此要求token重设计。父票14/M1保持未完成。
+
+## INK-PROT-040 管理者独立补正
+
+最终 `make check` 为 model 16 + handler 49 + path 9，签名与静态离线验证通过；handler/path 再连续三轮通过。当前实际计数取代上文候选的46项历史记录。
+
+新增路径回归对037原Support.swift先复现唯一中间symlink分类失败，当前实现9/9绿。`openat`失败后立即捕获errno，再查询元数据，避免后续系统调用污染诊断。新增3个真实WKSchemeTaskOutlet生命周期断言，验证上述强持有边界。读取收口等待有5秒上限；handler退出前显式清理唯一scratch，因为exit不执行顶层defer。`path-check`可独立运行，也纳入默认check。
+
+证据位于 `evidence/INK-PROT-040-review/`。这些为真实处理器/文件描述符接缝，不是WKWebView或OS授权运行。默认completion只异步交付，相关重入未复现；不据此证明任意外部同步回调重入安全。037原始运行证据保持不变；父票14仍缺拖放/粘贴、保存迁移、生产集成和最低OS实机。

@@ -1,0 +1,91 @@
+swiftc -swift-version 5 -target arm64-apple-macos14.0 -framework WebKit -framework CryptoKit -o /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/.build/handler-check /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/Sources/HandlerCheck/main.swift /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/Sources/Host/Support.swift /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/Sources/Host/ResourceBroker.swift /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/Sources/Host/SchemeHandlers.swift /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/Sources/Shared/BrokerPolicy.swift
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/.build/model-check
+PASS percent-decode-exactly-once
+PASS reject-dot-dot [path-traversal]
+PASS reject-absolute [absolute-path]
+PASS reject-other-scheme [other-scheme]
+PASS reject-svg-active-content [unsupported-extension]
+PASS reject-malformed-percent [malformed-percent-encoding]
+PASS resolve-current-document-token
+PASS reject-cross-document-token [cross-document-token]
+PASS reject-old-epoch-token [stale-epoch-token]
+PASS reject-unknown-token [unknown-token]
+PASS reject-after-revoke [authorization-revoked]
+PASS callback-task-start
+PASS cancel-prevents-completion-callback
+PASS second-callback-task-start
+PASS completion-delivered-once
+PASS duplicate-completion-rejected
+MODEL CHECK PASSED: 16 assertions; no NSOpenPanel/bookmark/WK runtime claim
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/.build/handler-check
+PASS s1-no-callback-before-read-done
+PASS s1-scope-start-once-while-inflight
+PASS s1-lease-held-while-read-parked
+PASS s1-lease-count-held-while-read-parked
+PASS s1-native-read-start-logged
+PASS s1-scope-stop-after-read-end
+PASS s1-lease-count-released-after-read
+PASS s1-completion-queued-once
+PASS s1-delivery-executes
+PASS s1-single-completion-sequence
+PASS s1-exactly-one-terminal
+PASS s1-wk-request-logged
+PASS s1-wk-complete-logged
+PASS s1-no-suppression
+PASS s2-completion-queued-once
+PASS s2-stop-before-completion-no-task-callback
+PASS s2-no-terminal-callback
+PASS s2-suppression-logged
+PASS s2-no-complete-after-cancel
+PASS s2-lease-released-after-cancelled-read
+PASS s3-completion-pending-before-stop
+PASS s3-stop-before-delivery-execution-suppresses
+PASS s3-suppression-logged
+PASS s3-identity-clean-after-suppressed
+PASS s4-completion-first
+PASS s4-late-stop-no-duplicate-terminal
+PASS s4-late-stop-leaves-no-identity-residue
+PASS s5-epoch-rotation-single-409
+PASS s5-broker-stale-result-logged
+PASS s5-handler-stale-rejected-logged
+PASS s5-no-complete-for-stale-generation
+PASS s5-lease-released-for-stale-read
+PASS s6-revoke-inflight-single-409
+PASS s6-stale-rejected-logged
+PASS s6-lease-released-after-revoke
+PASS s7-sync-error-queued-once
+PASS s7-revoked-token-single-409
+PASS s8-unknown-token-single-409
+PASS s9-sha-mismatch-single-403
+PASS s9-error-completion-logged
+PASS s10-malformed-request-immediate-400
+PASS s10-no-async-delivery
+PASS s10-no-broker-read-for-bad-request
+PASS s11-both-completions-queued
+PASS s11-independent-single-terminals
+PASS s11-both-delivered
+PASS s12-wk-system-task-retained-during-read
+PASS s12-wk-system-task-retained-until-delivery
+PASS s12-wk-system-task-released-after-suppressed-delivery
+HANDLER CHECK PASSED: 49 assertions; real AssetSchemeTaskCore/ResourceBroker path, no WKWebView/panel/OS-auth claim
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/.build/path-check
+PASS unicode-percent-exact-bytes
+PASS component-symlink-original-enotdir
+PASS ordinary-nondirectory-not-symlink
+PASS final-symlink-eloop
+PASS missing-component-distinct
+PASS missing-final-distinct
+PASS final-directory-rejected
+PASS size-limit-before-data
+PASS outside-fixture-unmodified
+PATH CHECK PASSED: 9 assertions; non-sandbox CLI, no OS-authorization claim
+/Applications/Xcode.app/Contents/Developer/usr/bin/make --no-print-directory verify
+bash /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/scripts/verify.sh /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/Resources/InkoraLocalAssetHost.entitlements
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/.build/InkoraLocalAssetHost.app/Contents/Info.plist: OK
+/var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/tmp.c4WubWPftm: OK
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-PROT-040-VERIFY/prototypes/local-assets/native-host/Resources/InkoraLocalAssetHost.entitlements: OK
+index.html: OK
+app.js: OK
+app.css: OK
+verify ok: signature, exact entitlements, deployment target, resource manifest, offline policy
+check ok: pure model + real handler/broker seam + build/signature/static verification; no panel/bookmark/WK-webview/OS-auth runtime claim

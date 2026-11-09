@@ -1,0 +1,10 @@
+PATH CHECK FAILED: component-symlink-original-enotdir
+PASS unicode-percent-exact-bytes
+FAIL component-symlink-original-enotdir status=io-error errno=20
+PASS ordinary-nondirectory-not-symlink
+PASS final-symlink-eloop
+PASS missing-component-distinct
+PASS missing-final-distinct
+PASS final-directory-rejected
+PASS size-limit-before-data
+PASS outside-fixture-unmodified
