@@ -19,7 +19,8 @@ import {
   textareaProjection,
   type SourceNavigationResult,
 } from "./source-navigation";
-import type { DirectedSelection } from "./source-search";
+import type { DirectedSelection, SourceReplacementPlan } from "./source-search";
+import { validateSourceReplacementPlan } from "./source-replacement";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
@@ -30,9 +31,14 @@ export interface EditorRuntimeStatus {
 export interface EditorRuntime {
   readonly status: EditorRuntimeStatus;
   readonly sourceNavigation: boolean;
+  readonly sourceReplacement: boolean;
   getText(): string;
   getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection>;
   selectSourceRange(raw: string, selection: DirectedSelection): SourceNavigationResult;
+  applySourceReplacement(plan: SourceReplacementPlan): SourceNavigationResult<{
+    readonly changed: boolean;
+    readonly replacedCount: number;
+  }>;
   readonly composing: boolean;
   markSaved(text: string): void;
   undo(): boolean;
@@ -44,8 +50,15 @@ export interface EditorRuntime {
 
 export type RuntimeChangeListener = (status: EditorRuntimeStatus) => void;
 
+interface SourceHistorySnapshot {
+  readonly raw: string;
+  /** 仅替换链承诺精确有向选区；普通输入沿用既有 textarea 行为。 */
+  readonly selection?: DirectedSelection;
+}
+
 class StructuredEditorRuntime implements EditorRuntime {
   readonly sourceNavigation = false;
+  readonly sourceReplacement = false;
   private readonly session: InkoraEditorSession;
   private readonly view: EditorView;
   private compositionTimer: number | undefined;
@@ -102,6 +115,10 @@ class StructuredEditorRuntime implements EditorRuntime {
 
   selectSourceRange(_raw: string, _selection: DirectedSelection): SourceNavigationResult {
     return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
+  }
+
+  applySourceReplacement(_plan: SourceReplacementPlan): SourceNavigationResult<never> {
+    return { ok: false, message: "结构化编辑模式不支持原文替换" };
   }
 
   markSaved(text: string): void {
@@ -183,10 +200,11 @@ class StructuredEditorRuntime implements EditorRuntime {
 
 class SourceEditorRuntime implements EditorRuntime {
   readonly sourceNavigation = true;
+  readonly sourceReplacement = true;
   private readonly textArea: HTMLTextAreaElement;
   private readonly kernel: TextAreaEditorKernel;
-  private readonly undoStack: string[] = [];
-  private readonly redoStack: string[] = [];
+  private readonly undoStack: SourceHistorySnapshot[] = [];
+  private readonly redoStack: SourceHistorySnapshot[] = [];
   private currentText: string;
 
   constructor(
@@ -205,7 +223,7 @@ class SourceEditorRuntime implements EditorRuntime {
     this.kernel.setText(savedText);
     this.currentText = savedText;
     this.kernel.onChange((text) => {
-      this.undoStack.push(this.currentText);
+      this.undoStack.push({ raw: this.currentText });
       this.redoStack.length = 0;
       this.currentText = text;
       this.onChange(this.status);
@@ -255,6 +273,34 @@ class SourceEditorRuntime implements EditorRuntime {
     return { ok: true, value: undefined };
   }
 
+  applySourceReplacement(plan: SourceReplacementPlan): SourceNavigationResult<{
+    readonly changed: boolean;
+    readonly replacedCount: number;
+  }> {
+    if (this.composing) return { ok: false, message: "请先完成中文输入，再执行替换" };
+    const validation = validateSourceReplacementPlan(plan, this.currentText, this.textArea.value);
+    if (!validation.ok) return validation;
+    const currentSelection = readRawSelection(
+      this.currentText,
+      this.textArea.value,
+      this.textArea.selectionStart,
+      this.textArea.selectionEnd,
+      this.textArea.selectionDirection,
+    );
+    if (!currentSelection.ok) return currentSelection;
+    if (!plan.changed) {
+      return { ok: true, value: { changed: false, replacedCount: 0 } };
+    }
+    const before = { raw: this.currentText, selection: currentSelection.value };
+    this.undoStack.push(before);
+    this.redoStack.length = 0;
+    this.currentText = plan.resultRaw;
+    this.kernel.setText(plan.resultRaw);
+    this.applySelection(plan.resultRaw, plan.selection);
+    this.onChange(this.status);
+    return { ok: true, value: { changed: true, replacedCount: plan.replacedCount } };
+  }
+
   markSaved(text: string): void {
     this.savedText = text;
     this.onChange(this.status);
@@ -264,8 +310,10 @@ class SourceEditorRuntime implements EditorRuntime {
     if (this.kernel.composing) return false;
     const previous = this.undoStack.pop();
     if (previous === undefined) return false;
-    this.redoStack.push(this.currentText);
-    this.replaceText(previous);
+    this.redoStack.push(previous.selection
+      ? { raw: this.currentText, selection: this.safeSelection(this.currentText) }
+      : { raw: this.currentText });
+    this.replaceSnapshot(previous);
     return true;
   }
 
@@ -273,8 +321,10 @@ class SourceEditorRuntime implements EditorRuntime {
     if (this.kernel.composing) return false;
     const next = this.redoStack.pop();
     if (next === undefined) return false;
-    this.undoStack.push(this.currentText);
-    this.replaceText(next);
+    this.undoStack.push(next.selection
+      ? { raw: this.currentText, selection: this.safeSelection(this.currentText) }
+      : { raw: this.currentText });
+    this.replaceSnapshot(next);
     return true;
   }
 
@@ -305,9 +355,26 @@ class SourceEditorRuntime implements EditorRuntime {
     this.textArea.remove();
   }
 
-  private replaceText(text: string): void {
-    this.currentText = text;
-    this.kernel.setText(text);
+  private safeSelection(raw: string): DirectedSelection {
+    const selection = readRawSelection(raw, this.textArea.value, this.textArea.selectionStart,
+      this.textArea.selectionEnd, this.textArea.selectionDirection);
+    return selection.ok ? selection.value : { anchor: 0, head: 0 };
+  }
+
+  private applySelection(raw: string, selection: DirectedSelection): void {
+    const mapped = mapRawRangeToTextarea(raw, this.textArea.value, {
+      from: Math.min(selection.anchor, selection.head),
+      to: Math.max(selection.anchor, selection.head),
+    });
+    if (!mapped.ok) throw new Error(mapped.message);
+    this.textArea.setSelectionRange(mapped.value.start, mapped.value.end,
+      selection.anchor > selection.head ? "backward" : "forward");
+  }
+
+  private replaceSnapshot(snapshot: SourceHistorySnapshot): void {
+    this.currentText = snapshot.raw;
+    this.kernel.setText(snapshot.raw);
+    if (snapshot.selection) this.applySelection(snapshot.raw, snapshot.selection);
     this.onChange(this.status);
   }
 }
@@ -315,6 +382,7 @@ class SourceEditorRuntime implements EditorRuntime {
 // EOL-003: keep exact bytes independent of textarea's LF normalization.
 class ReadOnlyEditorRuntime implements EditorRuntime {
   readonly sourceNavigation = true;
+  readonly sourceReplacement = false;
   private readonly textArea: HTMLTextAreaElement;
   readonly status = { dirty: false, canUndo: false, canRedo: false };
   readonly composing = false;
@@ -351,6 +419,9 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
       selection.anchor > selection.head ? "backward" : "forward",
     );
     return { ok: true, value: undefined };
+  }
+  applySourceReplacement(_plan: SourceReplacementPlan): SourceNavigationResult<never> {
+    return { ok: false, message: "裸 CR 文档为只读，不能替换" };
   }
   markSaved(_text: string): void {}
   undo(): boolean { return false; }

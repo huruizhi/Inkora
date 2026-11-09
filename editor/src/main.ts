@@ -17,9 +17,13 @@ import {
   SearchPanel,
   type SearchNavigationOutcome,
   type SearchNavigationRequest,
+  type SearchReplacementOutcome,
+  type SearchReplacementRequest,
 } from "./search-panel";
 import {
   findSourceMatch,
+  planSourceReplaceAll,
+  planSourceReplacement,
   searchSource,
   type DirectedSelection,
   type SourceSearchResult,
@@ -66,7 +70,7 @@ const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
   const activeRuntime = runtime;
   if (!activeRuntime) return { ok: false, message: "尚未打开文档" };
   if (activeRuntime.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
-  if (searchPanel.isQueryComposing) {
+  if (searchPanel.isInputComposing) {
     return { ok: false, message: "请先完成查找输入，再定位标题" };
   }
   if (snapshot.epoch !== loadEpoch) {
@@ -92,6 +96,7 @@ const searchPanel = new SearchPanel(findBar, {
   isEditorComposing: () => runtime?.composing ?? false,
   onFocusEditor: () => runtime?.focus(),
   onNavigate: (request) => performSearchNavigation(request),
+  onReplace: (request) => performSearchReplacement(request),
 });
 
 function sameSearchResult(left: SourceSearchResult, right: SourceSearchResult): boolean {
@@ -114,7 +119,7 @@ function performSearchNavigation(request: SearchNavigationRequest): SearchNaviga
   if (!activeRuntime || !activeRuntime.sourceNavigation) {
     return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
   }
-  if (activeRuntime.composing || searchPanel.isQueryComposing) {
+  if (activeRuntime.composing || searchPanel.isInputComposing) {
     return { ok: false, message: "请先完成中文输入，再定位查找结果" };
   }
   if (request.binding.documentID !== activeDocumentID ||
@@ -171,6 +176,64 @@ function performSearchNavigation(request: SearchNavigationRequest): SearchNaviga
   const applied = activeRuntime.selectSourceRange(raw, targetSelection);
   if (!applied.ok) return applied;
   return { ok: true, matchIndex, wrapped };
+}
+
+function performSearchReplacement(request: SearchReplacementRequest): SearchReplacementOutcome {
+  const activeRuntime = runtime;
+  if (!activeRuntime?.sourceReplacement) {
+    return { ok: false, message: "当前编辑模式不支持原文替换" };
+  }
+  if (activeRuntime.composing || searchPanel.isInputComposing) {
+    return { ok: false, message: "请先完成中文输入，再执行替换" };
+  }
+  if (request.binding.documentID !== activeDocumentID ||
+      request.binding.revision !== activeRevision || request.binding.epoch !== loadEpoch) {
+    return { ok: false, message: "替换请求已过期，请等待刷新" };
+  }
+  if (!searchPanel.isOpen || searchPanel.query !== request.result.query ||
+      searchPanel.caseSensitive !== request.result.caseSensitive ||
+      searchPanel.replacement !== request.replacement) {
+    return { ok: false, message: "查询或替换文本已变化，请重新执行" };
+  }
+  const raw = activeRuntime.getText();
+  if (raw !== request.binding.raw || raw !== request.result.source.raw ||
+      request.result.source.revision !== activeRevision) {
+    return { ok: false, message: "文档已变化，请等待查找刷新" };
+  }
+
+  let current: SourceSearchResult;
+  try {
+    current = searchSource({ raw, revision: activeRevision }, searchPanel.query, {
+      caseSensitive: searchPanel.caseSensitive, maxResults: SEARCH_MAX_RESULTS,
+    });
+  } catch {
+    return { ok: false, message: "无法重新校验当前查找结果" };
+  }
+  if (!sameSearchResult(current, request.result)) {
+    return { ok: false, message: "查找结果已过期，请等待刷新" };
+  }
+  if (request.kind === "replace-all" && current.truncated) {
+    return { ok: false, message: "全部替换需要完整结果；当前结果已截断" };
+  }
+
+  const selection = activeRuntime.getSourceSelection(raw);
+  if (!selection.ok) return selection;
+  let planned;
+  if (request.kind === "replace-one") {
+    const from = Math.min(selection.value.anchor, selection.value.head);
+    const to = Math.max(selection.value.anchor, selection.value.head);
+    const matchIndex = current.matches.findIndex((match) => match.from === from && match.to === to);
+    if (matchIndex < 0) return { ok: false, message: "请先选择一个完整的查找结果" };
+    planned = planSourceReplacement(current, { raw, revision: activeRevision }, matchIndex,
+      request.replacement, selection.value);
+  } else {
+    planned = planSourceReplaceAll(current, { raw, revision: activeRevision },
+      request.replacement, selection.value);
+  }
+  if (!planned.ok) return { ok: false, message: planned.failure.message };
+  const applied = activeRuntime.applySourceReplacement(planned.plan);
+  if (!applied.ok) return applied;
+  return { ok: true, changed: applied.value.changed, replacedCount: applied.value.replacedCount };
 }
 
 // ---------------------------------------------------------------------------
@@ -267,6 +330,11 @@ function scheduleSearch(documentID: string, revision: number): void {
         navigation: activeRuntime.sourceNavigation
           ? { available: true }
           : { available: false, reason: "结构化编辑模式暂不支持原文范围定位" },
+        replacement: activeRuntime.sourceReplacement
+          ? { available: true }
+          : { available: false, reason: activeRuntime.sourceNavigation
+              ? "当前文档只读，不能替换"
+              : "结构化编辑模式不支持原文替换" },
       });
     } catch (error) {
       searchPanel.update({
@@ -315,7 +383,7 @@ window.inkora = {
             // 取消旧任务并进入"正在打开文档"过渡态。
             const response = session.loadDocument(command);
             if (response.type === "stateChanged") {
-              const queryWasComposing = searchPanel.isQueryComposing;
+              const queryWasComposing = searchPanel.isInputComposing;
               cancelPendingSearch();
               // 接受新 load：立即清旧查找结果与绑定（查询/大小写回到默认，
               // 面板开关保留）。被拒 load 不走这里，查找状态原样保留。
@@ -374,7 +442,7 @@ window.inkora = {
             // 正在 composition 时，明确拒绝文档 Undo/Redo，避免越过查询框
             // 修改正文；正文重新拥有焦点后仍走既有文档历史。
             const documentCommandBlocked =
-              searchPanel.ownsFocus || searchPanel.isQueryComposing;
+              searchPanel.ownsFocus || searchPanel.isInputComposing;
             postToNative(
               session.executeCommand(
                 command,

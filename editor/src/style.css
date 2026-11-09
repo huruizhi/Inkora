@@ -289,6 +289,27 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   font-size: 12px;
   padding: 2px 8px;
 }
+.search-panel-replacement-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.search-panel-replacement {
+  box-sizing: border-box;
+  width: min(200px, 28vw);
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 8px;
+}
+.search-panel-replacement-controls button {
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
 .search-panel-case {
   display: inline-flex;
   align-items: center;

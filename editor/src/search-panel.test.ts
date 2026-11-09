@@ -30,6 +30,7 @@ function setup(): { panel: SearchPanel; handlers: SearchPanelHandlers } {
     isEditorComposing: vi.fn((): boolean => false),
     onFocusEditor: vi.fn(),
     onNavigate: vi.fn(() => ({ ok: false as const, message: "unsupported" })),
+    onReplace: vi.fn(() => ({ ok: false as const, message: "unsupported" })),
   };
   const parent = dom.window.document.querySelector<HTMLElement>("#app")!;
   const panel = new SearchPanel(parent, handlers);
@@ -50,6 +51,10 @@ function queryInput(): HTMLInputElement {
 
 function caseInput(): HTMLInputElement {
   return doc().querySelector<HTMLInputElement>(".search-panel-case input")!;
+}
+
+function replacementInput(): HTMLInputElement {
+  return doc().querySelector<HTMLInputElement>(".search-panel-replacement")!;
 }
 
 function closeButton(): HTMLButtonElement {
@@ -130,6 +135,80 @@ describe("SearchPanel：打开/关闭与焦点", () => {
 });
 
 describe("SearchPanel：查询输入与 composition", () => {
+  it("替换输入只记录单行字面意图，显式按钮提交且 composition Enter/Esc 不被消费", () => {
+    const { panel, handlers } = setup();
+    findButton().click();
+    typeQuery("one");
+    const raw = "one one";
+    panel.update({
+      kind: "document", binding: { documentID: "d", revision: 1, epoch: 1, raw },
+      result: searchSource({ raw, revision: 1 }, "one", { maxResults: SEARCH_MAX_RESULTS }),
+      navigation: { available: true }, replacement: { available: true },
+    });
+    const input = replacementInput();
+    input.value = "$&-$1";
+    input.dispatchEvent(new dom.window.InputEvent("input", { bubbles: true }));
+    expect(handlers.onReplace).not.toHaveBeenCalled();
+    input.dispatchEvent(new dom.window.Event("compositionstart"));
+    const enter = new dom.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    const escape = new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    input.dispatchEvent(enter);
+    input.dispatchEvent(escape);
+    expect(enter.defaultPrevented).toBe(false);
+    expect(escape.defaultPrevented).toBe(false);
+    expect(handlers.onReplace).not.toHaveBeenCalled();
+    input.dispatchEvent(new dom.window.Event("compositionend"));
+    doc().querySelector<HTMLButtonElement>(".search-panel-replace-selected")!.click();
+    expect(handlers.onReplace).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "replace-one", replacement: "$&-$1",
+    }));
+  });
+
+  it("只读/PM 不渲染替换控件，截断结果禁用全部替换", () => {
+    const { panel } = setup();
+    findButton().click();
+    typeQuery("a");
+    const raw = "a ".repeat(SEARCH_MAX_RESULTS + 1);
+    panel.update({
+      kind: "document", binding: { documentID: "d", revision: 1, epoch: 1, raw },
+      result: searchSource({ raw, revision: 1 }, "a", { maxResults: SEARCH_MAX_RESULTS }),
+      navigation: { available: true }, replacement: { available: true },
+    });
+    expect(doc().querySelector<HTMLButtonElement>(".search-panel-replace-all")!.disabled).toBe(true);
+    expect(resultsText()).toContain("完整结果");
+    panel.update({
+      kind: "document", binding: { documentID: "d", revision: 1, epoch: 1, raw: "a" },
+      result: searchSource({ raw: "a", revision: 1 }, "a", { maxResults: SEARCH_MAX_RESULTS }),
+      replacement: { available: false, reason: "结构化编辑模式不支持原文替换" },
+    });
+    expect(doc().querySelector(".search-panel-replacement")).toBeNull();
+    expect(resultsText()).toContain("不支持原文替换");
+  });
+
+  it("替换输入 composition 跨 load 保留候选，收口清空并忽略晚到 final input", async () => {
+    const { panel } = setup();
+    findButton().click();
+    typeQuery("a");
+    const raw = "a";
+    panel.update({
+      kind: "document", binding: { documentID: "d", revision: 1, epoch: 1, raw },
+      result: searchSource({ raw, revision: 1 }, "a", { maxResults: SEARCH_MAX_RESULTS }),
+      replacement: { available: true },
+    });
+    const input = replacementInput();
+    input.value = "稳定";
+    input.dispatchEvent(new dom.window.InputEvent("input", { bubbles: true }));
+    input.dispatchEvent(new dom.window.Event("compositionstart"));
+    input.value = "候选草稿";
+    panel.resetForNewDocument();
+    expect(input.value).toBe("候选草稿");
+    input.dispatchEvent(new dom.window.Event("compositionend"));
+    input.value = "晚到终态";
+    input.dispatchEvent(new dom.window.InputEvent("input", { bubbles: true }));
+    expect(input.value).toBe("");
+    expect(panel.replacement).toBe("");
+    await new Promise((resolve) => dom.window.setTimeout(resolve, 0));
+  });
   it("输入触发重算请求；半拼音（composition/isComposing）不触发", () => {
     const { handlers } = setup();
     findButton().click();

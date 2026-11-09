@@ -31,6 +31,7 @@ export type SearchPanelState =
       binding: SearchSnapshotBinding;
       result: SourceSearchResult;
       navigation?: { readonly available: boolean; readonly reason?: string };
+      replacement?: { readonly available: boolean; readonly reason?: string };
     }
   | { kind: "error"; message: string };
 
@@ -43,7 +44,20 @@ export interface SearchPanelHandlers {
   onFocusEditor(): void;
   /** 请求调用方按完整快照重新校验并定位，不由面板直接操作编辑器。 */
   onNavigate(request: SearchNavigationRequest): SearchNavigationOutcome;
+  /** 请求调用方重验完整快照并执行原子替换。 */
+  onReplace(request: SearchReplacementRequest): SearchReplacementOutcome;
 }
+
+export interface SearchReplacementRequest {
+  readonly kind: "replace-one" | "replace-all";
+  readonly replacement: string;
+  readonly binding: SearchSnapshotBinding;
+  readonly result: SourceSearchResult;
+}
+
+export type SearchReplacementOutcome =
+  | { readonly ok: true; readonly changed: boolean; readonly replacedCount: number }
+  | { readonly ok: false; readonly message: string };
 
 export type SearchNavigationRequest =
   | {
@@ -190,6 +204,10 @@ export class SearchPanel {
   private readonly panelBody: HTMLElement;
   private readonly queryInput: HTMLInputElement;
   private readonly caseInput: HTMLInputElement;
+  private readonly replacementControls: HTMLElement;
+  private readonly replacementInput: HTMLInputElement;
+  private readonly replaceSelectedButton: HTMLButtonElement;
+  private readonly replaceAllButton: HTMLButtonElement;
   private readonly closeButton: HTMLButtonElement;
   private readonly statusLine: HTMLElement;
   private readonly resultsBody: HTMLElement;
@@ -198,9 +216,14 @@ export class SearchPanel {
   private caseValue = true;
   private openValue = false;
   private queryComposing = false;
+  private replacementValue = "";
+  private replacementComposing = false;
   private resetQueryAfterComposition = false;
+  private resetReplacementAfterComposition = false;
   private ignoreLateCompositionInput = false;
+  private ignoreLateReplacementInput = false;
   private lateCompositionInputTimer: number | undefined;
+  private lateReplacementInputTimer: number | undefined;
   private state: SearchPanelState = { kind: "idle" };
 
   constructor(
@@ -324,6 +347,75 @@ export class SearchPanel {
     caseText.textContent = "区分大小写";
     caseLabel.append(caseInput, caseText);
 
+    const replacementControls = document.createElement("div");
+    replacementControls.className = "search-panel-replacement-controls";
+    const replacementInput = document.createElement("input");
+    replacementInput.type = "text";
+    replacementInput.className = "search-panel-replacement";
+    replacementInput.placeholder = "替换为（单行字面文本）";
+    replacementInput.setAttribute("aria-label", "替换文本");
+    replacementInput.autocapitalize = "off";
+    replacementInput.autocomplete = "off";
+    replacementInput.spellcheck = false;
+    replacementInput.addEventListener("compositionstart", () => {
+      this.replacementComposing = true;
+    });
+    replacementInput.addEventListener("input", (event) => {
+      if (this.replacementComposing || (event as InputEvent).isComposing) return;
+      if (this.ignoreLateReplacementInput) {
+        replacementInput.value = "";
+        this.replacementValue = "";
+        return;
+      }
+      this.replacementValue = replacementInput.value.replace(/[\r\n]/g, "");
+      if (replacementInput.value !== this.replacementValue) replacementInput.value = this.replacementValue;
+    });
+    replacementInput.addEventListener("compositionend", () => {
+      this.replacementComposing = false;
+      if (this.resetReplacementAfterComposition) {
+        this.resetReplacementAfterComposition = false;
+        this.ignoreLateReplacementInput = true;
+        this.replacementValue = "";
+        replacementInput.value = "";
+        if (this.lateReplacementInputTimer !== undefined) {
+          window.clearTimeout(this.lateReplacementInputTimer);
+        }
+        this.lateReplacementInputTimer = window.setTimeout(() => {
+          this.ignoreLateReplacementInput = false;
+          this.lateReplacementInputTimer = undefined;
+        }, 0);
+        return;
+      }
+      this.replacementValue = replacementInput.value.replace(/[\r\n]/g, "");
+      replacementInput.value = this.replacementValue;
+    });
+    replacementInput.addEventListener("keydown", (event) => {
+      if (this.replacementComposing || event.isComposing) return;
+      if (event.key === "Enter" || event.key === "Escape") return;
+    });
+
+    const replaceSelectedButton = document.createElement("button");
+    replaceSelectedButton.type = "button";
+    replaceSelectedButton.className = "search-panel-replace-selected";
+    replaceSelectedButton.textContent = "替换选中匹配";
+    const replaceAllButton = document.createElement("button");
+    replaceAllButton.type = "button";
+    replaceAllButton.className = "search-panel-replace-all";
+    replaceAllButton.textContent = "全部替换";
+    for (const [button, kind] of [
+      [replaceSelectedButton, "replace-one"],
+      [replaceAllButton, "replace-all"],
+    ] as const) {
+      button.addEventListener("pointerdown", (event) => {
+        if (this.isInteractionBlocked()) {
+          event.preventDefault();
+          this.showStatus("请先完成中文输入，再执行替换");
+        }
+      });
+      button.addEventListener("click", () => this.requestReplacement(kind));
+    }
+    replacementControls.append(replacementInput, replaceSelectedButton, replaceAllButton);
+
     const closeButton = document.createElement("button");
     closeButton.type = "button";
     closeButton.className = "search-panel-close";
@@ -357,6 +449,10 @@ export class SearchPanel {
     this.panelBody = panel;
     this.queryInput = queryInput;
     this.caseInput = caseInput;
+    this.replacementControls = replacementControls;
+    this.replacementInput = replacementInput;
+    this.replaceSelectedButton = replaceSelectedButton;
+    this.replaceAllButton = replaceAllButton;
     this.closeButton = closeButton;
     this.statusLine = statusLine;
     this.resultsBody = resultsBody;
@@ -386,6 +482,14 @@ export class SearchPanel {
 
   get isQueryComposing(): boolean {
     return this.queryComposing;
+  }
+
+  get isInputComposing(): boolean {
+    return this.queryComposing || this.replacementComposing;
+  }
+
+  get replacement(): string {
+    return this.replacementValue;
   }
 
   /** 查询区域是否拥有当前 DOM 焦点；只读派生，不保存第二份焦点状态。 */
@@ -438,6 +542,11 @@ export class SearchPanel {
     } else {
       this.clearQuery();
     }
+    if (this.replacementComposing) this.resetReplacementAfterComposition = true;
+    else {
+      this.replacementValue = "";
+      this.replacementInput.value = "";
+    }
     this.render();
   }
 
@@ -445,6 +554,10 @@ export class SearchPanel {
     if (this.lateCompositionInputTimer !== undefined) {
       window.clearTimeout(this.lateCompositionInputTimer);
       this.lateCompositionInputTimer = undefined;
+    }
+    if (this.lateReplacementInputTimer !== undefined) {
+      window.clearTimeout(this.lateReplacementInputTimer);
+      this.lateReplacementInputTimer = undefined;
     }
     this.root.remove();
   }
@@ -465,7 +578,35 @@ export class SearchPanel {
   }
 
   private isInteractionBlocked(): boolean {
-    return this.queryComposing || this.handlers.isEditorComposing();
+    return this.queryComposing || this.replacementComposing || this.handlers.isEditorComposing();
+  }
+
+  private requestReplacement(kind: "replace-one" | "replace-all"): void {
+    if (this.isInteractionBlocked()) {
+      this.showStatus("请先完成中文输入，再执行替换");
+      return;
+    }
+    const state = this.state;
+    if (state.kind !== "document" || !state.replacement?.available) {
+      this.showStatus(state.kind === "document"
+        ? state.replacement?.reason ?? "当前编辑模式不支持原文替换"
+        : "查找结果尚未就绪");
+      return;
+    }
+    if (state.result.query.length === 0) {
+      this.showStatus("请输入查询内容后再替换");
+      return;
+    }
+    if (kind === "replace-all" && state.result.truncated) {
+      this.showStatus("全部替换需要完整结果；当前结果已截断");
+      return;
+    }
+    const outcome = this.handlers.onReplace({
+      kind, replacement: this.replacementValue, binding: state.binding, result: state.result,
+    });
+    if (!outcome.ok) this.showStatus(outcome.message);
+    else if (!outcome.changed) this.showStatus("未产生更改");
+    else this.showStatus(`已替换 ${outcome.replacedCount} 处`);
   }
 
   private navigateRelative(direction: SearchDirection): void {
@@ -511,6 +652,18 @@ export class SearchPanel {
     this.resultsBody.replaceChildren();
     const state = this.state;
 
+    const replacementAvailable = state.kind === "document" && state.replacement?.available === true;
+    if (replacementAvailable && !this.replacementControls.isConnected) {
+      this.panelBody.querySelector(".search-panel-controls")?.append(this.replacementControls);
+    } else if (!replacementAvailable && this.replacementControls.isConnected) {
+      this.replacementControls.remove();
+    }
+    if (replacementAvailable && state.kind === "document") {
+      const empty = state.result.query.length === 0 || state.result.matches.length === 0;
+      this.replaceSelectedButton.disabled = empty;
+      this.replaceAllButton.disabled = empty || state.result.truncated;
+    }
+
     if (state.kind === "error") {
       const note = document.createElement("p");
       note.className = "search-panel-note search-panel-error";
@@ -541,6 +694,23 @@ export class SearchPanel {
       rejected.className = "search-panel-note";
       rejected.textContent = `另有 ${state.result.rejected.length} 处候选命中因字素或换行边界校验被跳过，未计入。`;
       this.resultsBody.append(rejected);
+    }
+
+    if (state.replacement?.available && state.result.truncated) {
+      const replaceNote = document.createElement("p");
+      replaceNote.className = "search-panel-note";
+      replaceNote.textContent = "全部替换需要完整结果；当前结果已截断，操作已禁用。";
+      this.resultsBody.append(replaceNote);
+    } else if (state.replacement && !state.replacement.available) {
+      const replaceNote = document.createElement("p");
+      replaceNote.className = "search-panel-note";
+      replaceNote.textContent = state.replacement.reason ?? "当前编辑模式不支持原文替换";
+      this.resultsBody.append(replaceNote);
+    } else if (!state.replacement) {
+      const replaceNote = document.createElement("p");
+      replaceNote.className = "search-panel-note";
+      replaceNote.textContent = "替换尚未开放。";
+      this.resultsBody.append(replaceNote);
     }
 
     if (state.navigation?.available && state.result.matches.length > 0) {
@@ -617,8 +787,8 @@ export class SearchPanel {
     const hint = document.createElement("p");
     hint.className = "search-panel-hint";
     hint.textContent = state.navigation?.available
-      ? `结果基于 Markdown 原文；Enter/Shift-Enter 或结果按钮仅在显示的 ${state.result.matches.length} 处内定位${state.result.truncated ? "，未显示部分不参与循环" : ""}；替换尚未开放。`
-      : `结果基于 Markdown 原文；${state.navigation?.reason ?? "当前编辑模式不支持原文定位"}；替换尚未开放。`;
+      ? `结果基于 Markdown 原文；Enter/Shift-Enter 或结果按钮仅在显示的 ${state.result.matches.length} 处内定位${state.result.truncated ? "，未显示部分不参与循环" : ""}。`
+      : `结果基于 Markdown 原文；${state.navigation?.reason ?? "当前编辑模式不支持原文定位"}。`;
     this.resultsBody.append(hint);
   }
 }

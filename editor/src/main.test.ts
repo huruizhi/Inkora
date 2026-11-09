@@ -35,6 +35,9 @@ interface Harness {
   searchResultsText(): string;
   searchMatches(): HTMLElement[];
   typeSearchQuery(value: string): void;
+  replacement(): HTMLInputElement;
+  replaceSelected(): HTMLButtonElement;
+  replaceAll(): HTMLButtonElement;
  }
 
 // prosemirror-view 在 jsdom 下还需要这些全局（MutationObserver、raf、
@@ -143,6 +146,9 @@ async function bootMain(): Promise<Harness> {
       input.value = value;
       input.dispatchEvent(new dom.window.InputEvent("input", { bubbles: true }));
     },
+    replacement: () => dom.window.document.querySelector<HTMLInputElement>(".search-panel-replacement")!,
+    replaceSelected: () => dom.window.document.querySelector<HTMLButtonElement>(".search-panel-replace-selected")!,
+    replaceAll: () => dom.window.document.querySelector<HTMLButtonElement>(".search-panel-replace-all")!,
   };
 }
 
@@ -170,6 +176,56 @@ afterEach(() => {
 });
 
 describe("main：真实 main/Bridge/runtime 面板集成", () => {
+  it("源码模式只替换正文精确选中匹配，单次 revision 且 Undo/Redo 精确", async () => {
+    const h = await bootMain();
+    const raw = "<x>one one</x>\r\n";
+    h.receive({ type: "loadDocument", requestID: "load", documentID: "doc", revision: 4, text: raw });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("one");
+    await settle();
+    h.searchMatches()[1]!.querySelector<HTMLButtonElement>("button")!.click();
+    h.replacement().value = "$&-$1";
+    h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+    h.replacement().focus();
+    const before = h.stateMessages().length;
+    h.replaceSelected().click();
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+    expect(area.value).toBe("<x>one $&-$1</x>\n");
+    expect(h.lastRevision()).toBe(5);
+    expect(h.stateMessages()).toHaveLength(before + 1);
+    expect(h.dom.window.document.activeElement).toBe(h.replacement());
+    h.searchClose().click();
+    h.receive({ type: "executeCommand", requestID: "undo", documentID: "doc", revision: 5, command: "undo" });
+    await settle();
+    expect(area.value).toBe(raw.replace("\r\n", "\n"));
+    h.receive({ type: "executeCommand", requestID: "redo", documentID: "doc", revision: 6, command: "redo" });
+    await settle();
+    expect(area.value).toBe("<x>one $&-$1</x>\n");
+  });
+
+  it("全部替换为一个原子变更；PM 与 bare-CR 不开放替换", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "load", documentID: "source", revision: 0, text: "<x>中 中</x>\n" });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("中");
+    await settle();
+    h.replacement().value = "👩‍💻";
+    h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+    h.replaceAll().click();
+    await settle();
+    expect(h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("<x>👩‍💻 👩‍💻</x>\n");
+    expect(h.lastRevision()).toBe(1);
+
+    h.receive({ type: "loadDocument", requestID: "pm", documentID: "pm", revision: 0, text: "# Safe\n" });
+    await settle();
+    expect(h.dom.window.document.querySelector(".search-panel-replacement")).toBeNull();
+    h.receive({ type: "loadDocument", requestID: "cr", documentID: "cr", revision: 0, text: "a\rb" });
+    await settle();
+    expect(h.dom.window.document.querySelector(".search-panel-replacement")).toBeNull();
+  });
   it("点击第二个重复标题经真实 DOM/runtime 精确定位且不发 Bridge 消息", async () => {
     const h = await bootMain();
     const raw = "# 同名\n\n正文\n\n# 同名\n";

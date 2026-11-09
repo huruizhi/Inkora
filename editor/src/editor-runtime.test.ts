@@ -8,6 +8,7 @@ import { createEditorRuntime } from "./editor-runtime";
 import type { EditorRuntime } from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
 import { analyzeDocument } from "./document-analysis";
+import { planSourceReplaceAll, searchSource } from "./source-search";
 
 const originalDocument = globalThis.document;
 const originalWindow = globalThis.window;
@@ -42,6 +43,84 @@ function stubBrowserEnvironment(html = "<!doctype html><main id='app'></main>"):
 }
 
 describe("editor runtime", () => {
+  it("applies a source replacement atomically with one directed-selection undo/redo unit", () => {
+    const { parent } = stubBrowserEnvironment();
+    const raw = "<x>one one</x>\r\n";
+    const states: unknown[] = [];
+    const runtime = createEditorRuntime(parent, raw, (state) => states.push(state));
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.setSelectionRange(7, 4, "backward");
+    const beforeSelection = runtime.getSourceSelection(raw);
+    expect(beforeSelection.ok).toBe(true);
+    const planned = planSourceReplaceAll(searchSource({ raw, revision: 4 }, "one"), { raw, revision: 4 }, "$&-$1", beforeSelection.ok ? beforeSelection.value : undefined);
+    if (!planned.ok) throw new Error(planned.failure.message);
+    expect(runtime.sourceReplacement).toBe(true);
+    expect(runtime.applySourceReplacement(planned.plan)).toEqual({ ok: true, value: { changed: true, replacedCount: 2 } });
+    expect(runtime.getText()).toBe("<x>$&-$1 $&-$1</x>\r\n");
+    expect(states).toHaveLength(1);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.getSourceSelection(raw)).toEqual(beforeSelection);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("<x>$&-$1 $&-$1</x>\r\n");
+    runtime.destroy();
+  });
+
+  it("does not expose replacement for structured or bare-CR runtimes", () => {
+    const structured = createEditorRuntime(stubBrowserEnvironment().parent, "# Heading\n", () => {});
+    expect(structured.sourceReplacement).toBe(false);
+    structured.destroy();
+    const readOnly = createEditorRuntime(stubBrowserEnvironment().parent, "a\rb", () => {});
+    expect(readOnly.sourceNavigation).toBe(true);
+    expect(readOnly.sourceReplacement).toBe(false);
+    readOnly.destroy();
+  });
+
+  it("keeps selection, notifications and redo future unchanged for a no-op replacement", () => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const original = "<x>same</x>\n";
+    const edited = "<x>same edited</x>\n";
+    const states: unknown[] = [];
+    const runtime = createEditorRuntime(parent, original, (state) => states.push(state));
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.value = edited;
+    area.dispatchEvent(new dom.window.Event("input"));
+    expect(runtime.undo()).toBe(true);
+    area.setSelectionRange(3, 7, "backward");
+    const selection = runtime.getSourceSelection(original);
+    const planned = planSourceReplaceAll(searchSource({ raw: original, revision: 2 }, "same"),
+      { raw: original, revision: 2 }, "same", selection.ok ? selection.value : undefined);
+    if (!planned.ok) throw new Error(planned.failure.message);
+    const notifications = states.length;
+    expect(runtime.applySourceReplacement(planned.plan)).toEqual({
+      ok: true, value: { changed: false, replacedCount: 0 },
+    });
+    expect(runtime.getSourceSelection(original)).toEqual(selection);
+    expect(states).toHaveLength(notifications);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(edited);
+    runtime.destroy();
+  });
+
+  it("rejects composition and forged result plans atomically", () => {
+    const { dom, parent } = stubBrowserEnvironment();
+    const raw = "<x>a a</x>\n";
+    const states: unknown[] = [];
+    const runtime = createEditorRuntime(parent, raw, (state) => states.push(state));
+    const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.setSelectionRange(3, 4);
+    const planned = planSourceReplaceAll(searchSource({ raw, revision: 1 }, "a"),
+      { raw, revision: 1 }, "b");
+    if (!planned.ok) throw new Error(planned.failure.message);
+    const before = { value: area.value, selection: [area.selectionStart, area.selectionEnd], status: runtime.status };
+    area.dispatchEvent(new dom.window.Event("compositionstart"));
+    expect(runtime.applySourceReplacement(planned.plan).ok).toBe(false);
+    area.dispatchEvent(new dom.window.Event("compositionend"));
+    expect(runtime.applySourceReplacement({ ...planned.plan, resultRaw: "forged" }).ok).toBe(false);
+    expect({ value: area.value, selection: [area.selectionStart, area.selectionEnd], status: runtime.status }).toEqual(before);
+    expect(states).toHaveLength(0);
+    runtime.destroy();
+  });
   it("explicitly exposes source navigation only for source and bare-CR runtimes", () => {
     const structured = createEditorRuntime(stubBrowserEnvironment().parent, "# Heading\n", () => {});
     expect(structured.sourceNavigation).toBe(false);
