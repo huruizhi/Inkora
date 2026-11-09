@@ -12,8 +12,18 @@ import {
 } from "./editor-runtime";
 import { analyzeDocument } from "./document-analysis";
 import { DocumentAnalysisPanel } from "./document-analysis-panel";
-import { SEARCH_MAX_RESULTS, SearchPanel } from "./search-panel";
-import { searchSource } from "./source-search";
+import {
+  SEARCH_MAX_RESULTS,
+  SearchPanel,
+  type SearchNavigationOutcome,
+  type SearchNavigationRequest,
+} from "./search-panel";
+import {
+  findSourceMatch,
+  searchSource,
+  type DirectedSelection,
+  type SourceSearchResult,
+} from "./source-search";
 import "./style.css";
 
 declare global {
@@ -81,7 +91,87 @@ const searchPanel = new SearchPanel(findBar, {
   },
   isEditorComposing: () => runtime?.composing ?? false,
   onFocusEditor: () => runtime?.focus(),
+  onNavigate: (request) => performSearchNavigation(request),
 });
+
+function sameSearchResult(left: SourceSearchResult, right: SourceSearchResult): boolean {
+  return left.source.raw === right.source.raw &&
+    left.source.revision === right.source.revision &&
+    left.query === right.query &&
+    left.caseSensitive === right.caseSensitive &&
+    left.maxResults === right.maxResults &&
+    left.truncated === right.truncated &&
+    left.matches.length === right.matches.length &&
+    left.matches.every((match, index) => {
+      const other = right.matches[index];
+      return other !== undefined && match.from === other.from && match.to === other.to &&
+        match.text === other.text;
+    });
+}
+
+function performSearchNavigation(request: SearchNavigationRequest): SearchNavigationOutcome {
+  const activeRuntime = runtime;
+  if (!activeRuntime || !activeRuntime.sourceNavigation) {
+    return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
+  }
+  if (activeRuntime.composing || searchPanel.isQueryComposing) {
+    return { ok: false, message: "请先完成中文输入，再定位查找结果" };
+  }
+  if (request.binding.documentID !== activeDocumentID ||
+      request.binding.revision !== activeRevision || request.binding.epoch !== loadEpoch) {
+    return { ok: false, message: "查找结果已过期，请等待刷新" };
+  }
+  if (!searchPanel.isOpen || searchPanel.query !== request.result.query ||
+      searchPanel.caseSensitive !== request.result.caseSensitive) {
+    return { ok: false, message: "查询已变化，请等待查找刷新" };
+  }
+  const raw = activeRuntime.getText();
+  if (raw !== request.binding.raw || raw !== request.result.source.raw ||
+      request.result.source.revision !== activeRevision) {
+    return { ok: false, message: "文档已变化，请等待查找刷新" };
+  }
+
+  let current: SourceSearchResult;
+  try {
+    current = searchSource(
+      { raw, revision: activeRevision },
+      searchPanel.query,
+      { caseSensitive: searchPanel.caseSensitive, maxResults: SEARCH_MAX_RESULTS },
+    );
+  } catch {
+    return { ok: false, message: "无法重新校验当前查找结果" };
+  }
+  if (!sameSearchResult(current, request.result)) {
+    return { ok: false, message: "查找结果已过期，请等待刷新" };
+  }
+
+  const selection = activeRuntime.getSourceSelection(raw);
+  if (!selection.ok) return selection;
+  let matchIndex: number;
+  let wrapped = false;
+  let targetSelection: DirectedSelection;
+  if (request.kind === "relative") {
+    try {
+      const located = findSourceMatch(current, selection.value, request.direction, true);
+      if (!located) return { ok: false, message: "当前查询没有可定位的匹配" };
+      matchIndex = located.matchIndex;
+      wrapped = located.wrapped;
+      targetSelection = located.selection;
+    } catch {
+      return { ok: false, message: "当前选区不在安全的原文边界上" };
+    }
+  } else {
+    const match = current.matches[request.matchIndex];
+    if (!match) return { ok: false, message: "所选查找结果已过期" };
+    matchIndex = request.matchIndex;
+    targetSelection = selection.value.anchor > selection.value.head
+      ? { anchor: match.to, head: match.from }
+      : { anchor: match.from, head: match.to };
+  }
+  const applied = activeRuntime.selectSourceRange(raw, targetSelection);
+  if (!applied.ok) return applied;
+  return { ok: true, matchIndex, wrapped };
+}
 
 // ---------------------------------------------------------------------------
 // 面板分析调度：只由真实 stateChanged 消息驱动，documentID/revision 来自
@@ -174,6 +264,9 @@ function scheduleSearch(documentID: string, revision: number): void {
         kind: "document",
         binding: { documentID, revision, epoch, raw },
         result,
+        navigation: activeRuntime.sourceNavigation
+          ? { available: true }
+          : { available: false, reason: "结构化编辑模式暂不支持原文范围定位" },
       });
     } catch (error) {
       searchPanel.update({

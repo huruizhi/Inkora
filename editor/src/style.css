@@ -201,6 +201,34 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   font-weight: 600;
 }
 
+.search-panel-match-button {
+  display: block;
+  width: 100%;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.search-panel-navigation {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0;
+}
+.search-panel-navigation button {
+  font: inherit;
+}
+.search-panel-match-button:hover {
+  background: color-mix(in srgb, AccentColor 10%, transparent);
+}
+.search-panel-match-button:focus-visible {
+  outline: 2px solid AccentColor;
+  outline-offset: -2px;
+}
+
 /* 窄窗：面板改为底部条带，仍内层滚动，不遮挡正文控制。 */
 @media (max-width: 640px) {
   #app {

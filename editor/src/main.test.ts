@@ -588,7 +588,153 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.searchResultsText()).toContain("匹配至少 100 处，仅显示前 100 处");
     expect(h.searchMatches()).toHaveLength(100);
     expect(h.searchResultsText()).toContain("结果基于 Markdown 原文");
-    expect(h.searchResultsText()).toContain("尚未开放");
+    expect(h.searchResultsText()).toContain("未显示部分不参与循环");
+  });
+
+  it("源码查找支持 Enter/Shift-Enter、回绕与条目选择并保持查询焦点", async () => {
+    const h = await bootMain();
+    const raw = "<x>one one one</x>\r\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "source", revision: 4, text: raw });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("one");
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+    const input = h.searchQuery();
+    const stateCount = h.stateMessages().length;
+
+    const press = (shiftKey = false): void => {
+      input.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+        key: "Enter", shiftKey, bubbles: true, cancelable: true,
+      }));
+    };
+    press();
+    expect(area.value.slice(area.selectionStart, area.selectionEnd)).toBe("one");
+    expect(area.selectionStart).toBe(area.value.indexOf("one"));
+    expect(h.dom.window.document.activeElement).toBe(input);
+    press();
+    expect(area.selectionStart).toBe(area.value.indexOf("one", area.value.indexOf("one") + 1));
+    press();
+    press();
+    expect(h.dom.window.document.querySelector(".search-panel-status")?.textContent).toContain("已回绕");
+    press(true);
+    expect(area.selectionStart).toBe(area.value.lastIndexOf("one"));
+
+    const buttons = h.dom.window.document.querySelectorAll<HTMLButtonElement>(".search-panel-match-button");
+    buttons[1]!.focus();
+    buttons[1]!.click();
+    expect(area.selectionStart).toBe(area.value.indexOf("one", area.value.indexOf("one") + 1));
+    expect(h.dom.window.document.activeElement).toBe(buttons[1]);
+    expect(h.stateMessages()).toHaveLength(stateCount);
+    expect(h.lastRevision()).toBe(4);
+  });
+
+  it("bare-CR 只读模式可定位，结构化模式只显示计数与不支持原因", async () => {
+    const readOnly = await bootMain();
+    readOnly.receive({ type: "loadDocument", requestID: "r1", documentID: "ro", revision: 0, text: "one\rone" });
+    await settle();
+    readOnly.searchButton().click();
+    readOnly.typeSearchQuery("one");
+    await settle();
+    readOnly.searchQuery().dispatchEvent(new readOnly.dom.window.KeyboardEvent("keydown", {
+      key: "Enter", bubbles: true, cancelable: true,
+    }));
+    const area = readOnly.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+    expect(area.readOnly).toBe(true);
+    expect([area.selectionStart, area.selectionEnd]).toEqual([0, 3]);
+
+    const structured = await bootMain();
+    structured.receive({ type: "loadDocument", requestID: "r2", documentID: "pm", revision: 0, text: "one one\n" });
+    await settle();
+    structured.searchButton().click();
+    structured.typeSearchQuery("one");
+    await settle();
+    expect(structured.searchResultsText()).toContain("2 处匹配");
+    expect(structured.searchResultsText()).toContain("结构化编辑模式暂不支持原文范围定位");
+    expect(structured.dom.window.document.querySelector(".search-panel-match-button")).toBeNull();
+    expect(structured.dom.window.document.querySelector(".search-panel-navigation")).toBeNull();
+  });
+
+  it("旧结果按钮与 composition 导航请求均拒绝且不改变正文选区", async () => {
+    const h = await bootMain();
+    const raw = "<x>one one</x>\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "source", revision: 0, text: raw });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("one");
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+    const oldButton = h.dom.window.document.querySelector<HTMLButtonElement>(".search-panel-match-button")!;
+    area.setSelectionRange(1, 2);
+    area.value = "<x>two two</x>\n";
+    const staleSelection = [area.selectionStart, area.selectionEnd];
+    oldButton.click();
+    expect([area.selectionStart, area.selectionEnd]).toEqual(staleSelection);
+
+    area.value = raw;
+    area.setSelectionRange(2, 3);
+    area.dispatchEvent(new h.dom.window.Event("compositionstart"));
+    h.searchQuery().focus();
+    const event = new h.dom.window.KeyboardEvent("keydown", {
+      key: "Enter", bubbles: true, cancelable: true,
+    });
+    Object.defineProperty(event, "isComposing", { value: true });
+    h.searchQuery().dispatchEvent(event);
+    expect([area.selectionStart, area.selectionEnd]).toEqual([2, 3]);
+    expect(h.dom.window.document.activeElement).toBe(h.searchQuery());
+  });
+
+  it("重复 load 更新 epoch 后旧上一/下一按钮失效", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "same", revision: 2, text: "<x>one one</x>\n" });
+    await settle();
+    h.searchButton().click();
+    h.typeSearchQuery("one");
+    await settle();
+    const oldNext = h.dom.window.document.querySelector<HTMLButtonElement>(".search-panel-next")!;
+
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "same", revision: 2, text: "<x>one one</x>\n" });
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+    area.setSelectionRange(1, 3);
+    oldNext.click();
+    expect([area.selectionStart, area.selectionEnd]).toEqual([1, 3]);
+    expect(h.dom.window.document.querySelector(".search-panel-status")?.textContent).toContain("过期");
+  });
+
+  it("导航不清除正文 past/future，关闭查找后 Undo/Redo 仍正常", async () => {
+    const h = await bootMain();
+    const original = "<x>one original</x>\n";
+    const edited = "<x>one edited</x>\n";
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "history", revision: 0, text: original });
+    await settle();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+    area.value = edited;
+    area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    await settle();
+    area.focus();
+    h.receive({
+      type: "executeCommand", requestID: "undo", documentID: "history",
+      revision: h.lastRevision(), command: "undo",
+    });
+    await settle();
+    expect(area.value).toBe(original);
+
+    h.searchButton().click();
+    h.typeSearchQuery("one");
+    await settle();
+    h.searchQuery().dispatchEvent(new h.dom.window.KeyboardEvent("keydown", {
+      key: "Enter", bubbles: true, cancelable: true,
+    }));
+    const revisionAfterNavigation = h.lastRevision();
+    expect(area.value.slice(area.selectionStart, area.selectionEnd)).toBe("one");
+    h.searchClose().click();
+    h.receive({
+      type: "executeCommand", requestID: "redo", documentID: "history",
+      revision: revisionAfterNavigation, command: "redo",
+    });
+    await settle();
+    expect(area.value).toBe(edited);
   });
 
   it("查找面板：编辑/Undo/Redo 后按最新 stateChanged 重算", async () => {

@@ -8,12 +8,18 @@ import { analyzeMarkdownSafety } from "./markdown-safety";
 import { TextSelection } from "prosemirror-state";
 import { analyzeDocument } from "./document-analysis";
 import {
-  rawOffsetToTextareaOffset,
   sameHeading,
-  textareaProjection,
   type HeadingNavigationResult,
   type HeadingNavigationTarget,
 } from "./heading-navigation";
+import {
+  mapRawRangeToTextarea,
+  rawOffsetToTextareaOffset,
+  readRawSelection,
+  textareaProjection,
+  type SourceNavigationResult,
+} from "./source-navigation";
+import type { DirectedSelection } from "./source-search";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
@@ -23,7 +29,10 @@ export interface EditorRuntimeStatus {
 
 export interface EditorRuntime {
   readonly status: EditorRuntimeStatus;
+  readonly sourceNavigation: boolean;
   getText(): string;
+  getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection>;
+  selectSourceRange(raw: string, selection: DirectedSelection): SourceNavigationResult;
   readonly composing: boolean;
   markSaved(text: string): void;
   undo(): boolean;
@@ -36,6 +45,7 @@ export interface EditorRuntime {
 export type RuntimeChangeListener = (status: EditorRuntimeStatus) => void;
 
 class StructuredEditorRuntime implements EditorRuntime {
+  readonly sourceNavigation = false;
   private readonly session: InkoraEditorSession;
   private readonly view: EditorView;
   private compositionTimer: number | undefined;
@@ -84,6 +94,14 @@ class StructuredEditorRuntime implements EditorRuntime {
       return this.savedText;
     }
     return structuredOutput(serializeMarkdown(this.session.state.doc), this.savedText, this.lineEndings);
+  }
+
+  getSourceSelection(_raw: string): SourceNavigationResult<DirectedSelection> {
+    return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
+  }
+
+  selectSourceRange(_raw: string, _selection: DirectedSelection): SourceNavigationResult {
+    return { ok: false, message: "结构化编辑模式暂不支持原文范围定位" };
   }
 
   markSaved(text: string): void {
@@ -164,6 +182,7 @@ class StructuredEditorRuntime implements EditorRuntime {
 }
 
 class SourceEditorRuntime implements EditorRuntime {
+  readonly sourceNavigation = true;
   private readonly textArea: HTMLTextAreaElement;
   private readonly kernel: TextAreaEditorKernel;
   private readonly undoStack: string[] = [];
@@ -207,6 +226,33 @@ class SourceEditorRuntime implements EditorRuntime {
 
   getText(): string {
     return this.currentText;
+  }
+
+  getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
+    if (this.composing) return { ok: false, message: "请先完成中文输入，再定位查找结果" };
+    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
+    return readRawSelection(
+      raw,
+      this.textArea.value,
+      this.textArea.selectionStart,
+      this.textArea.selectionEnd,
+      this.textArea.selectionDirection,
+    );
+  }
+
+  selectSourceRange(raw: string, selection: DirectedSelection): SourceNavigationResult {
+    if (this.composing) return { ok: false, message: "请先完成中文输入，再定位查找结果" };
+    if (this.getText() !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
+    const from = Math.min(selection.anchor, selection.head);
+    const to = Math.max(selection.anchor, selection.head);
+    const mapped = mapRawRangeToTextarea(raw, this.textArea.value, { from, to });
+    if (!mapped.ok) return mapped;
+    this.textArea.setSelectionRange(
+      mapped.value.start,
+      mapped.value.end,
+      selection.anchor > selection.head ? "backward" : "forward",
+    );
+    return { ok: true, value: undefined };
   }
 
   markSaved(text: string): void {
@@ -268,6 +314,7 @@ class SourceEditorRuntime implements EditorRuntime {
 
 // EOL-003: keep exact bytes independent of textarea's LF normalization.
 class ReadOnlyEditorRuntime implements EditorRuntime {
+  readonly sourceNavigation = true;
   private readonly textArea: HTMLTextAreaElement;
   readonly status = { dirty: false, canUndo: false, canRedo: false };
   readonly composing = false;
@@ -282,6 +329,29 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   }
 
   getText(): string { return this.text; }
+  getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
+    if (this.text !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
+    return readRawSelection(
+      raw,
+      this.textArea.value,
+      this.textArea.selectionStart,
+      this.textArea.selectionEnd,
+      this.textArea.selectionDirection,
+    );
+  }
+  selectSourceRange(raw: string, selection: DirectedSelection): SourceNavigationResult {
+    if (this.text !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };
+    const from = Math.min(selection.anchor, selection.head);
+    const to = Math.max(selection.anchor, selection.head);
+    const mapped = mapRawRangeToTextarea(raw, this.textArea.value, { from, to });
+    if (!mapped.ok) return mapped;
+    this.textArea.setSelectionRange(
+      mapped.value.start,
+      mapped.value.end,
+      selection.anchor > selection.head ? "backward" : "forward",
+    );
+    return { ok: true, value: undefined };
+  }
   markSaved(_text: string): void {}
   undo(): boolean { return false; }
   redo(): boolean { return false; }

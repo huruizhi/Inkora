@@ -29,6 +29,7 @@ function setup(): { panel: SearchPanel; handlers: SearchPanelHandlers } {
     onSearchRequest: vi.fn(),
     isEditorComposing: vi.fn((): boolean => false),
     onFocusEditor: vi.fn(),
+    onNavigate: vi.fn(() => ({ ok: false as const, message: "unsupported" })),
   };
   const parent = dom.window.document.querySelector<HTMLElement>("#app")!;
   const panel = new SearchPanel(parent, handlers);
@@ -278,6 +279,74 @@ describe("SearchPanel：编辑器 composition 守卫", () => {
 });
 
 describe("SearchPanel：结果渲染（真实 searchSource 结果）", () => {
+  it("显式能力开启时渲染结果按钮并处理 Enter/Shift-Enter", () => {
+    const { panel, handlers } = setup();
+    const raw = "one one";
+    findButton().click();
+    typeQuery("one");
+    const result = searchSource({ raw, revision: 0 }, "one", { maxResults: SEARCH_MAX_RESULTS });
+    panel.update({
+      kind: "document",
+      binding: { documentID: "d", revision: 0, epoch: 1, raw },
+      result,
+      navigation: { available: true },
+    });
+    vi.mocked(handlers.onNavigate)
+      .mockReturnValueOnce({ ok: true, matchIndex: 0, wrapped: false })
+      .mockReturnValueOnce({ ok: true, matchIndex: 1, wrapped: true })
+      .mockReturnValueOnce({ ok: true, matchIndex: 1, wrapped: false })
+      .mockReturnValueOnce({ ok: true, matchIndex: 0, wrapped: true });
+
+    queryInput().dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "Enter", bubbles: true, cancelable: true,
+    }));
+    expect(queryInput()).toBe(doc().activeElement);
+    expect(doc().querySelector(".search-panel-status")?.textContent).toContain("当前第 1/2 处");
+
+    queryInput().dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "Enter", shiftKey: true, bubbles: true, cancelable: true,
+    }));
+    expect(doc().querySelector(".search-panel-status")?.textContent).toContain("已回绕");
+    expect(vi.mocked(handlers.onNavigate).mock.calls[1]?.[0]).toMatchObject({
+      kind: "relative", direction: "backward",
+    });
+
+    const buttons = doc().querySelectorAll<HTMLButtonElement>(".search-panel-match-button");
+    expect(buttons).toHaveLength(2);
+    buttons[1]!.click();
+    expect(vi.mocked(handlers.onNavigate).mock.calls[2]?.[0]).toMatchObject({
+      kind: "index", matchIndex: 1,
+    });
+    const previous = doc().querySelector<HTMLButtonElement>(".search-panel-previous")!;
+    previous.focus();
+    previous.click();
+    expect(vi.mocked(handlers.onNavigate).mock.calls[3]?.[0]).toMatchObject({
+      kind: "relative", direction: "backward",
+    });
+    expect(doc().activeElement).toBe(previous);
+  });
+
+  it("组合期 Enter 拒绝导航且不改变查询焦点", () => {
+    const { panel, handlers } = setup();
+    const raw = "one";
+    findButton().click();
+    typeQuery("one");
+    panel.update({
+      kind: "document",
+      binding: { documentID: "d", revision: 0, epoch: 0, raw },
+      result: searchSource({ raw, revision: 0 }, "one", { maxResults: SEARCH_MAX_RESULTS }),
+      navigation: { available: true },
+    });
+    queryInput().dispatchEvent(new dom.window.Event("compositionstart"));
+    const event = new dom.window.KeyboardEvent("keydown", {
+      key: "Enter", bubbles: true, cancelable: true,
+    });
+    Object.defineProperty(event, "isComposing", { value: true });
+    queryInput().dispatchEvent(event);
+    expect(handlers.onNavigate).not.toHaveBeenCalled();
+    expect(doc().activeElement).toBe(queryInput());
+  });
+
   it("计数与条目来自真实 searchSource；大小写一致", () => {
     const { panel } = setup();
     const raw = "Foo bar foo BAR\nsecond foo\n";

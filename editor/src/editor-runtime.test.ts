@@ -42,6 +42,41 @@ function stubBrowserEnvironment(html = "<!doctype html><main id='app'></main>"):
 }
 
 describe("editor runtime", () => {
+  it("explicitly exposes source navigation only for source and bare-CR runtimes", () => {
+    const structured = createEditorRuntime(stubBrowserEnvironment().parent, "# Heading\n", () => {});
+    expect(structured.sourceNavigation).toBe(false);
+    expect(structured.getSourceSelection("# Heading\n").ok).toBe(false);
+    structured.destroy();
+
+    const source = createEditorRuntime(stubBrowserEnvironment().parent, "<x>same same</x>\r\n", () => {});
+    expect(source.sourceNavigation).toBe(true);
+    source.destroy();
+
+    const readOnly = createEditorRuntime(stubBrowserEnvironment().parent, "same\rsame", () => {});
+    expect(readOnly.sourceNavigation).toBe(true);
+    readOnly.destroy();
+  });
+
+  it.each(["<x>same same</x>\r\n", "same\rsame"])(
+    "reads and applies directed source selections without changing state: %j",
+    (raw) => {
+      const { parent } = stubBrowserEnvironment();
+      const runtime = createEditorRuntime(parent, raw, () => {});
+      const area = parent.querySelector<HTMLTextAreaElement>("textarea")!;
+      const first = area.value.indexOf("same");
+      area.setSelectionRange(first, first + 4, "backward");
+      const before = { text: runtime.getText(), status: runtime.status };
+      const selection = runtime.getSourceSelection(raw);
+      expect(selection.ok && selection.value.anchor > selection.value.head).toBe(true);
+      expect(runtime.selectSourceRange(raw, { anchor: raw.lastIndexOf("same") + 4, head: raw.lastIndexOf("same") }))
+        .toEqual({ ok: true, value: undefined });
+      expect(area.selectionDirection).toBe("backward");
+      expect(runtime.getText()).toBe(before.text);
+      expect(runtime.status).toEqual(before.status);
+      runtime.destroy();
+    },
+  );
+
   it("navigates the second duplicate structured heading without changing document state", () => {
     const raw = "Setext *标题*\n====\n\n# **同名** &amp; 👩‍💻\n\n> ## 引用\n\n- ### 同名\n";
     const { runtime, session } = structuredRuntimeWithSession(raw);

@@ -1,8 +1,8 @@
-import type { SourceSearchResult } from "./source-search";
+import type { SearchDirection, SourceSearchResult } from "./source-search";
 
 /**
- * 当前文档查找面板（阶段 A）：复用 source-search 纯函数的结果列表，
- * 只负责安全的 DOM 呈现与查询输入，不做定位/替换。
+ * 当前文档查找面板（阶段 B）：复用 source-search 纯函数的结果列表，
+ * 安全呈现查询，并把显式源码导航意图交给调用方复核；不做替换。
  *
  * 组件约束（INK-M1-009）：
  * - 全部内容经 createElement/textContent 渲染，无 HTML 注入、无资源加载。
@@ -30,6 +30,7 @@ export type SearchPanelState =
       kind: "document";
       binding: SearchSnapshotBinding;
       result: SourceSearchResult;
+      navigation?: { readonly available: boolean; readonly reason?: string };
     }
   | { kind: "error"; message: string };
 
@@ -40,7 +41,27 @@ export interface SearchPanelHandlers {
   isEditorComposing(): boolean;
   /** 面板正常关闭后，把焦点交还正文编辑器。 */
   onFocusEditor(): void;
+  /** 请求调用方按完整快照重新校验并定位，不由面板直接操作编辑器。 */
+  onNavigate(request: SearchNavigationRequest): SearchNavigationOutcome;
 }
+
+export type SearchNavigationRequest =
+  | {
+      readonly kind: "relative";
+      readonly direction: SearchDirection;
+      readonly binding: SearchSnapshotBinding;
+      readonly result: SourceSearchResult;
+    }
+  | {
+      readonly kind: "index";
+      readonly matchIndex: number;
+      readonly binding: SearchSnapshotBinding;
+      readonly result: SourceSearchResult;
+    };
+
+export type SearchNavigationOutcome =
+  | { readonly ok: true; readonly matchIndex: number; readonly wrapped: boolean }
+  | { readonly ok: false; readonly message: string };
 
 const graphemeSegmenter = new Intl.Segmenter(undefined, {
   granularity: "grapheme",
@@ -262,10 +283,19 @@ export class SearchPanel {
       this.handlers.onSearchRequest();
     });
     queryInput.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-      if (this.queryComposing || event.isComposing) return;
+      if (event.key === "Escape") {
+        if (this.queryComposing || event.isComposing) return;
+        event.preventDefault();
+        this.close();
+        return;
+      }
+      if (event.key !== "Enter") return;
       event.preventDefault();
-      this.close();
+      if (this.queryComposing || event.isComposing || this.handlers.isEditorComposing()) {
+        this.showStatus("请先完成中文输入，再定位查找结果");
+        return;
+      }
+      this.navigateRelative(event.shiftKey ? "backward" : "forward");
     });
 
     const caseLabel = document.createElement("label");
@@ -391,6 +421,7 @@ export class SearchPanel {
   /** 只重绘结果内容；不触碰焦点、选区或编辑器状态。 */
   update(state: SearchPanelState): void {
     this.state = state;
+    this.hideStatus();
     this.render();
   }
 
@@ -435,6 +466,45 @@ export class SearchPanel {
     return this.queryComposing || this.handlers.isEditorComposing();
   }
 
+  private navigateRelative(direction: SearchDirection): void {
+    const state = this.state;
+    if (state.kind !== "document" || !state.navigation?.available) {
+      this.showStatus(state.kind === "document"
+        ? state.navigation?.reason ?? "当前编辑模式不支持原文定位"
+        : "查找结果尚未就绪");
+      return;
+    }
+    this.reportNavigation(this.handlers.onNavigate({
+      kind: "relative",
+      direction,
+      binding: state.binding,
+      result: state.result,
+    }), state.result.matches.length);
+  }
+
+  private navigateIndex(matchIndex: number, state: Extract<SearchPanelState, { kind: "document" }>): void {
+    if (this.isInteractionBlocked()) {
+      this.showStatus("请先完成中文输入，再定位查找结果");
+      return;
+    }
+    this.reportNavigation(this.handlers.onNavigate({
+      kind: "index",
+      matchIndex,
+      binding: state.binding,
+      result: state.result,
+    }), state.result.matches.length);
+  }
+
+  private reportNavigation(outcome: SearchNavigationOutcome, count: number): void {
+    if (!outcome.ok) {
+      this.showStatus(outcome.message);
+      return;
+    }
+    this.showStatus(
+      `当前第 ${outcome.matchIndex + 1}/${count} 处${outcome.wrapped ? "（已回绕）" : ""}`,
+    );
+  }
+
   private render(): void {
     this.resultsBody.replaceChildren();
     const state = this.state;
@@ -471,25 +541,82 @@ export class SearchPanel {
       this.resultsBody.append(rejected);
     }
 
+    if (state.navigation?.available && state.result.matches.length > 0) {
+      const navigation = document.createElement("div");
+      navigation.className = "search-panel-navigation";
+      const previous = document.createElement("button");
+      previous.type = "button";
+      previous.className = "search-panel-previous";
+      previous.textContent = "上一处";
+      const next = document.createElement("button");
+      next.type = "button";
+      next.className = "search-panel-next";
+      next.textContent = "下一处";
+      for (const [button, direction] of [
+        [previous, "backward"],
+        [next, "forward"],
+      ] as const) {
+        button.addEventListener("pointerdown", (event) => {
+          if (this.isInteractionBlocked()) {
+            event.preventDefault();
+            this.showStatus("请先完成中文输入，再定位查找结果");
+          }
+        });
+        button.addEventListener("click", () => {
+          if (this.isInteractionBlocked()) {
+            this.showStatus("请先完成中文输入，再定位查找结果");
+            return;
+          }
+          this.reportNavigation(this.handlers.onNavigate({
+            kind: "relative",
+            direction,
+            binding: state.binding,
+            result: state.result,
+          }), state.result.matches.length);
+        });
+      }
+      navigation.append(previous, next);
+      this.resultsBody.append(navigation);
+    }
+
     const list = document.createElement("ul");
     list.className = "search-panel-matches";
     const graphemes = segmentGraphemes(state.binding.raw);
-    for (const match of state.result.matches) {
+    state.result.matches.forEach((match, matchIndex) => {
       const item = document.createElement("li");
       item.className = "search-panel-match";
+      const navigable = state.navigation?.available === true;
+      const content = navigable
+        ? document.createElement("button")
+        : document.createElement("span");
+      if (navigable) {
+        const button = content as HTMLButtonElement;
+        button.type = "button";
+        button.className = "search-panel-match-button";
+        button.setAttribute("aria-label", `定位到第 ${matchIndex + 1} 处匹配`);
+        button.addEventListener("pointerdown", (event) => {
+          if (this.isInteractionBlocked()) {
+            event.preventDefault();
+            this.showStatus("请先完成中文输入，再定位查找结果");
+          }
+        });
+        button.addEventListener("click", () => this.navigateIndex(matchIndex, state));
+      }
       const snippet = buildSnippet(state.binding.raw, graphemes, match.from, match.to);
-      item.append(document.createTextNode(snippet.before));
+      content.append(document.createTextNode(snippet.before));
       const hit = document.createElement("mark");
       hit.textContent = snippet.hit;
-      item.append(hit, document.createTextNode(snippet.after));
+      content.append(hit, document.createTextNode(snippet.after));
+      item.append(content);
       list.append(item);
-    }
+    });
     this.resultsBody.append(list);
 
     const hint = document.createElement("p");
     hint.className = "search-panel-hint";
-    hint.textContent =
-      "结果基于 Markdown 原文；点击定位与替换尚未开放。";
+    hint.textContent = state.navigation?.available
+      ? `结果基于 Markdown 原文；Enter/Shift-Enter 或结果按钮仅在显示的 ${state.result.matches.length} 处内定位${state.result.truncated ? "，未显示部分不参与循环" : ""}；替换尚未开放。`
+      : `结果基于 Markdown 原文；${state.navigation?.reason ?? "当前编辑模式不支持原文定位"}；替换尚未开放。`;
     this.resultsBody.append(hint);
   }
 }
