@@ -1,0 +1,346 @@
+{
+  "schema": 1,
+  "baseline": "00cce96489fb50558ca014c3a4d74e112ea22b52",
+  "evidenceLevel": "independent byte oracle only, not product execution",
+  "cases": [
+    {
+      "id": 1,
+      "name": "bom-crlf",
+      "kind": "replace-all",
+      "query": "alpha",
+      "replacement": "beta",
+      "visibleBefore": "Keep\n前 alpha 后",
+      "safeVisibleMatches": 1,
+      "input": "cases/01-bom-crlf/input.md",
+      "expected": "cases/01-bom-crlf/expected.md",
+      "inputBytes": 28,
+      "expectedBytes": 27,
+      "inputSHA256": "a26ef16215b6716441dba21d508f6ed928a52cd6331d08beddbbbe7d941b09a0",
+      "expectedSHA256": "75ba20c9548e90353b4e639b40fe925a059451c93d50763884a465e6d1c1b859",
+      "derivation": [
+        {
+          "fromByte": 17,
+          "toByte": 22,
+          "expectedHex": "616c706861",
+          "insertHex": "62657461"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": 2,
+      "name": "link-ownership",
+      "kind": "replace-all",
+      "query": "alpha",
+      "replacement": "beta",
+      "visibleBefore": "alpha alpha",
+      "safeVisibleMatches": 2,
+      "input": "cases/02-link-ownership/input.md",
+      "expected": "cases/02-link-ownership/expected.md",
+      "inputBytes": 31,
+      "expectedBytes": 29,
+      "inputSHA256": "7a152983cac7a0909c07a12b0f4466038a98e18dd9e5ca6106ab09a2eac73822",
+      "expectedSHA256": "f146a9ac0c6255b172f295c1f87ca14e8b591f9d2a0c445e64a1dc91ae9630ab",
+      "derivation": [
+        {
+          "fromByte": 0,
+          "toByte": 7,
+          "expectedHex": "5b616c7068615d",
+          "insertHex": "5b626574615d"
+        },
+        {
+          "fromByte": 22,
+          "toByte": 29,
+          "expectedHex": "2920616c706861",
+          "insertHex": "292062657461"
+        }
+      ],
+      "note": "href/title are not visual matches"
+    },
+    {
+      "id": 3,
+      "name": "original-mark-delimiters",
+      "kind": "replace-all",
+      "query": "alpha",
+      "replacement": "beta",
+      "visibleBefore": "alpha 与 alpha",
+      "safeVisibleMatches": 2,
+      "input": "cases/03-original-mark-delimiters/input.md",
+      "expected": "cases/03-original-mark-delimiters/expected.md",
+      "inputBytes": 23,
+      "expectedBytes": 21,
+      "inputSHA256": "8b83143dfb6bc8378eda5392c69030c5028831bde32309502f8043674d5efbda",
+      "expectedSHA256": "f89749952179850034906734bd102ece3f026d84776590d2e9e3e9c259268351",
+      "derivation": [
+        {
+          "fromByte": 0,
+          "toByte": 9,
+          "expectedHex": "5f5f616c7068615f5f",
+          "insertHex": "5f5f626574615f5f"
+        },
+        {
+          "fromByte": 13,
+          "toByte": 20,
+          "expectedHex": "2a616c7068612a",
+          "insertHex": "2a626574612a"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": 4,
+      "name": "across-marks",
+      "kind": "replace-all",
+      "query": "alpha",
+      "replacement": "beta",
+      "visibleBefore": "前 alpha 后",
+      "safeVisibleMatches": 1,
+      "input": "cases/04-across-marks/input.md",
+      "expected": "cases/04-across-marks/expected.md",
+      "inputBytes": 18,
+      "expectedBytes": 13,
+      "inputSHA256": "645d354f509b8b0c288e94232b7159a2a317546305eb25e450eca6eebdcbc17c",
+      "expectedSHA256": "f3edfd64479b56cc97369b1a4dd342b189808d07f0c24bd3ec09753ca9f42dad",
+      "derivation": [
+        {
+          "fromByte": 4,
+          "toByte": 13,
+          "expectedHex": "612a2a6c702a2a6861",
+          "insertHex": "62657461"
+        }
+      ],
+      "note": "replacement inherits unmarked first character; selected strong content removed"
+    },
+    {
+      "id": 5,
+      "name": "entity-and-escape",
+      "kind": "replace-all",
+      "query": "& B*",
+      "replacement": "✓",
+      "visibleBefore": "A & B*",
+      "safeVisibleMatches": 1,
+      "input": "cases/05-entity-and-escape/input.md",
+      "expected": "cases/05-entity-and-escape/expected.md",
+      "inputBytes": 13,
+      "expectedBytes": 7,
+      "inputSHA256": "b726f68e4080528758a588452aef83160bc75ddea77b935965891efa8261fd28",
+      "expectedSHA256": "a253d0d951502e4938a84c08ccd8813fe4772afc27aa59889f3b6f02bb15299e",
+      "derivation": [
+        {
+          "fromByte": 2,
+          "toByte": 11,
+          "expectedHex": "26616d703b20425c2a",
+          "insertHex": "e29c93"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": 6,
+      "name": "inline-code-growth",
+      "kind": "replace-all",
+      "query": "alpha",
+      "replacement": "beta ` x",
+      "visibleBefore": "使用 alpha。",
+      "safeVisibleMatches": 1,
+      "input": "cases/06-inline-code-growth/input.md",
+      "expected": "cases/06-inline-code-growth/expected.md",
+      "inputBytes": 18,
+      "expectedBytes": 23,
+      "inputSHA256": "3c8bc3d490bd942acf7b307f578ed915c6222da0a759be7ab7a6949a841a14de",
+      "expectedSHA256": "6828a100b58096876ffa85cc414b598d916f8da898be9b71ba1c6d918f5196f3",
+      "derivation": [
+        {
+          "fromByte": 7,
+          "toByte": 14,
+          "expectedHex": "60616c70686160",
+          "insertHex": "606062657461206020786060"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": 7,
+      "name": "fence-body-only",
+      "kind": "replace-all",
+      "query": "alpha",
+      "replacement": "beta",
+      "visibleBefore": "print(\"alpha\")",
+      "safeVisibleMatches": 1,
+      "input": "cases/07-fence-body-only/input.md",
+      "expected": "cases/07-fence-body-only/expected.md",
+      "inputBytes": 39,
+      "expectedBytes": 38,
+      "inputSHA256": "325a52f4e532e758e660a2f7387f38d23d11762e0754fa34f06787ab24a905f4",
+      "expectedSHA256": "d9a6d5aebc41336f58e859215c94b250e23f79b80f21ca95e3dc65be71d68b42",
+      "derivation": [
+        {
+          "fromByte": 20,
+          "toByte": 34,
+          "expectedHex": "7072696e742822616c7068612229",
+          "insertHex": "7072696e742822626574612229"
+        }
+      ],
+      "note": "fence/info are hidden metadata"
+    },
+    {
+      "id": 8,
+      "name": "whole-grapheme",
+      "kind": "replace-all",
+      "query": "👩‍💻",
+      "replacement": "🧑‍💻",
+      "visibleBefore": "中文 👩‍💻 é",
+      "safeVisibleMatches": 1,
+      "input": "cases/08-whole-grapheme/input.md",
+      "expected": "cases/08-whole-grapheme/expected.md",
+      "inputBytes": 27,
+      "expectedBytes": 27,
+      "inputSHA256": "264098390504f5bda04aa7c268cb6d895a47cb9a159431a0763869a97f266638",
+      "expectedSHA256": "e9e238795de97085fd1c2e314293976e550dc64225a31fa20a4d4dcf071a3396",
+      "derivation": [
+        {
+          "fromByte": 10,
+          "toByte": 21,
+          "expectedHex": "f09f91a9e2808df09f92bb",
+          "insertHex": "f09fa791e2808df09f92bb"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": 9,
+      "name": "table-and-task",
+      "kind": "replace-all",
+      "query": "alpha",
+      "replacement": "beta",
+      "visibleBefore": "alpha\tB\nalpha\talpha\nalpha",
+      "safeVisibleMatches": 4,
+      "input": "cases/09-table-and-task/input.md",
+      "expected": "cases/09-table-and-task/expected.md",
+      "inputBytes": 66,
+      "expectedBytes": 62,
+      "inputSHA256": "476fed62c66278e769bbeb932ae875f3cf2f162b5fb1b88e539e12de51ec52c2",
+      "expectedSHA256": "4721d32ad248a51e7adefcb65dbcd29c2b20bd0eb41558d07d1807d2622a40e5",
+      "derivation": [
+        {
+          "fromByte": 0,
+          "toByte": 13,
+          "expectedHex": "7c20616c706861207c2042207c",
+          "insertHex": "7c2062657461207c2042207c"
+        },
+        {
+          "fromByte": 31,
+          "toByte": 48,
+          "expectedHex": "7c20616c706861207c20616c706861207c",
+          "insertHex": "7c2062657461207c2062657461207c"
+        },
+        {
+          "fromByte": 50,
+          "toByte": 61,
+          "expectedHex": "2d205b785d20616c706861",
+          "insertHex": "2d205b785d2062657461"
+        }
+      ],
+      "note": "requires production V3; delimiters/checkbox are not visible text"
+    },
+    {
+      "id": 10,
+      "name": "protected-neighbor",
+      "kind": "replace-all",
+      "query": "alpha",
+      "replacement": "beta",
+      "visibleBefore": "正文 alpha\n结尾",
+      "safeVisibleMatches": 1,
+      "input": "cases/10-protected-neighbor/input.md",
+      "expected": "cases/10-protected-neighbor/expected.md",
+      "inputBytes": 36,
+      "expectedBytes": 35,
+      "inputSHA256": "fcba3cd954a8edc21dfc09aaa61e3752aa4f048f003c1f2b26d95fc6d227103b",
+      "expectedSHA256": "4ec287d3c1ee835340657bee34bbf3b5600fbef5c760f7a616a049fe9645c33c",
+      "derivation": [
+        {
+          "fromByte": 0,
+          "toByte": 12,
+          "expectedHex": "e6ada3e6968720616c706861",
+          "insertHex": "e6ada3e696872062657461"
+        }
+      ],
+      "note": "protected raw is separate source-only result class; never change it in body replacement batch"
+    },
+    {
+      "id": 11,
+      "name": "beyond-result-display",
+      "kind": "replace-all",
+      "query": "alpha",
+      "replacement": "beta",
+      "visibleBefore": "alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha alpha",
+      "safeVisibleMatches": 140,
+      "input": "cases/11-beyond-result-display/input.md",
+      "expected": "cases/11-beyond-result-display/expected.md",
+      "inputBytes": 839,
+      "expectedBytes": 699,
+      "inputSHA256": "b7dbd286c9d0c3e6f0a64e32add4a59ca4241fa12dc0139aacd1ea1a91c798bf",
+      "expectedSHA256": "44a0a883faaa497fb72b3a8e1cd74e57f64e8dd6bd4704fd95952ded7c455b64",
+      "derivation": [
+        {
+          "fromByte": 0,
+          "toByte": 839,
+          "expectedHex": "616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c70686120616c706861",
+          "insertHex": "626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461206265746120626574612062657461"
+        }
+      ],
+      "note": "UI display cap100 is not Replace All cap; no final newline"
+    },
+    {
+      "id": 12,
+      "name": "no-op-future",
+      "kind": "no-op",
+      "query": "alpha",
+      "replacement": "alpha",
+      "visibleBefore": "alpha",
+      "safeVisibleMatches": 1,
+      "input": "cases/12-no-op-future/input.md",
+      "expected": "cases/12-no-op-future/expected.md",
+      "inputBytes": 10,
+      "expectedBytes": 10,
+      "inputSHA256": "e779ba401a93d5309482f71b44556acef9037a36d4200d84c30dc53de0992a1b",
+      "expectedSHA256": "e779ba401a93d5309482f71b44556acef9037a36d4200d84c30dc53de0992a1b",
+      "derivation": [],
+      "note": "must preserve raw/revision/history/future/savepoint"
+    },
+    {
+      "id": 13,
+      "name": "reject-grapheme-interior",
+      "kind": "reject-partial-grapheme",
+      "query": "👩",
+      "replacement": "X",
+      "visibleBefore": "中文 👩‍💻",
+      "safeVisibleMatches": 0,
+      "input": "cases/13-reject-grapheme-interior/input.md",
+      "expected": "cases/13-reject-grapheme-interior/expected.md",
+      "inputBytes": 19,
+      "expectedBytes": 19,
+      "inputSHA256": "d2130b0360888077f2f02b44c7d6d99825c0b0e1b650ca737e179e21cbcca752",
+      "expectedSHA256": "d2130b0360888077f2f02b44c7d6d99825c0b0e1b650ca737e179e21cbcca752",
+      "derivation": [],
+      "note": "not a safe complete grapheme match; never split ZWJ"
+    },
+    {
+      "id": 14,
+      "name": "stale-epoch",
+      "kind": "reject-stale-epoch",
+      "query": "alpha",
+      "replacement": "beta",
+      "visibleBefore": "alpha alpha",
+      "safeVisibleMatches": 2,
+      "input": "cases/14-stale-epoch/input.md",
+      "expected": "cases/14-stale-epoch/expected.md",
+      "inputBytes": 13,
+      "expectedBytes": 13,
+      "inputSHA256": "1192a801f35653bcfa8d247319c4f6d2526f713b13db2bffc38ae88cfc2cf801",
+      "expectedSHA256": "1192a801f35653bcfa8d247319c4f6d2526f713b13db2bffc38ae88cfc2cf801",
+      "derivation": [],
+      "note": "same documentID/raw/revision reloaded in a new epoch; old result/plan must reject atomically"
+    }
+  ]
+}
