@@ -97,9 +97,9 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
 
 `applyImageImport` 携带 document/revision、`documentEpoch`、asset UUID、已确定 URI、alt、可空 title、导入意图采样的 `selectionAnchor/selectionHead` 与单个 `inkora-asset://resource/<uuid>` capability。selection 使用当前原文的 directed offsets；执行时 selection、document、revision 或 epoch 任一不匹配都拒绝，不迁移到当前光标。成功是一次正文/history/revision 事务；composition、源码 dirty draft、过期 revision 或无法证明 owner 时拒绝。
 
-`setImageDescriptors` 携带同一 document epoch 的 descriptor 数组。状态限定为 `ready/missing/denied/unsupported/error/pending`；只有 ready 必须且只能带 capability URL。Native 只能从当前 `imageOwnership` proof 生成 descriptor，并把命令固定到 proof 的 document/revision；迟到 proof 不得迁移到新 revision。它只刷新 NodeView，不改变正文、dirty、revision、selection 或 history。
+`setImageDescriptors` 携带同一 document epoch 的 descriptor 数组和完整 `imageOwnership` proof。状态限定为 `ready/missing/denied/unsupported/error/pending`；只有 ready 必须且只能带 capability URL。Native 在读取或注册前重新捕获当前 proof，且只生成 proof owner 中的 descriptor；命令固定到 proof 的 document/revision/raw/有序 URI。Web 在 ack 前再次核对当前 accepted raw、完整 owner 数组和 composition 状态，缺 proof 或任一不一致均拒绝。ready capability 先以不可读取的 provisional 状态注册，Web ack 入队后才提交为 live；拒绝、超时、跨 load/epoch 或迟到 ack 全部回滚。descriptor ack 先于 NodeView 副作用；命令不改变正文、dirty、revision、selection 或 history。
 
-`prepareImageSave` 携带非空 rewrite 数组，每项以 asset ID 绑定唯一 `from` owner 和确定 `to` URI。命令必须固定到产生 plan 的 `imageOwnership` document/revision；授权等待期间若 revision 前进，旧 plan 在资源或正文变化前以 `stale_revision` 拒绝。编辑器整体校验并作为一个内容事务接受或拒绝；该命令不能由 `markSaved` 替代，也不得改写已有非托管引用。
+`prepareImageSave` 携带非空 rewrite 数组、完整 `imageOwnership` proof，每项以 asset ID 绑定唯一 `from` owner 和确定 `to` URI。命令必须固定到产生 plan 的 document/revision/raw/有序 owner；Native 在授权返回后、建立 plan 前重新捕获并逐项比较 proof，Web 在执行前再比较当前 accepted raw/owners 并拒绝 composition。授权等待期间若版本或 owner 前进，旧 plan 在资源或正文变化前以 `stale_revision` 拒绝。编辑器整体校验并作为一个内容事务接受或拒绝；该命令不能由 `markSaved` 替代，也不得改写已有非托管引用。
 
 ## Editor → Native
 

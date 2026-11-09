@@ -4,6 +4,8 @@ import {
   EditorProtocolSession,
   encodeEditorMessage,
   recoveryActionFor,
+  type EditorMessage,
+  type NativeCommand,
 } from "./bridge";
 import {
   createEditorRuntime,
@@ -816,6 +818,11 @@ window.inkora = {
         case "prepareImageSave":
           executingCommand = true;
           try {
+            const proofError = validateCurrentImageOwnership(command);
+            if (proofError) {
+              postToNative(proofError);
+              break;
+            }
             const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
             const rawBefore = runtime?.getText();
             const response = session.executeMutation(
@@ -835,6 +842,11 @@ window.inkora = {
           break;
         case "setImageDescriptors":
           {
+            const proofError = validateCurrentImageOwnership(command);
+            if (proofError) {
+              postToNative(proofError);
+              break;
+            }
             const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
             const response = epochMatches
               ? session.acknowledge(
@@ -845,11 +857,13 @@ window.inkora = {
                 command, () => false,
                 () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
               );
+            // The acknowledgement is enqueued before a capability reaches a NodeView.
+            // Native commits provisional broker entries only from this response.
+            postToNative(response);
             if (response.type === "stateChanged") {
               runtime?.applyImageDescriptors(command.descriptors);
               assetEpoch = command.documentEpoch;
             }
-            postToNative(response);
           }
           break;
       }
@@ -869,5 +883,37 @@ window.inkora = {
     }
   },
 };
+
+function validateCurrentImageOwnership(
+  command: Extract<NativeCommand, { type: "setImageDescriptors" | "prepareImageSave" }>,
+): EditorMessage | undefined {
+  const proof = command.imageOwnership;
+  const composing = runtime?.composing || searchPanel.isInputComposing ||
+    !!activeLinkEditor && composingLinkEditors.has(activeLinkEditor);
+  if (composing) {
+    return {
+      protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+      requestID: command.requestID, documentID: command.documentID, revision: command.revision,
+      code: "editor_not_ready", action: "retry",
+      message: "Finish text composition before changing image resources",
+    };
+  }
+  const current = runtime?.captureImageOwnership();
+  const ownersMatch = current !== undefined &&
+    current.imageURIs.length === proof.imageURIs.length &&
+    current.imageURIs.every((uri, index) => uri === proof.imageURIs[index]);
+  if (
+    proof.documentID !== command.documentID || proof.revision !== command.revision ||
+    current?.raw !== proof.raw || !ownersMatch
+  ) {
+    return {
+      protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+      requestID: command.requestID, documentID: command.documentID, revision: command.revision,
+      code: "stale_revision", action: "retry",
+      message: "Image ownership proof no longer matches the current document",
+    };
+  }
+  return undefined;
+}
 
 postToNative({ protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "ready" });

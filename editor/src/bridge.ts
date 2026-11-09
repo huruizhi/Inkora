@@ -105,6 +105,7 @@ export type NativeCommand =
       documentID: string;
       revision: number;
       documentEpoch: string;
+      imageOwnership: BridgeImageOwnershipProof;
       descriptors: BridgeImageDescriptor[];
     }
   | {
@@ -114,6 +115,7 @@ export type NativeCommand =
       documentID: string;
       revision: number;
       documentEpoch: string;
+      imageOwnership: BridgeImageOwnershipProof;
       rewrites: Array<{ assetID: string; from: string; to: string }>;
     };
 
@@ -234,6 +236,7 @@ export function decodeNativeCommand(serialized: string): NativeCommand {
         documentID: requireString(value, "documentID"),
         revision: requireRevision(value),
         documentEpoch: requireString(value, "documentEpoch"),
+        imageOwnership: requireImageOwnership(value.imageOwnership),
         descriptors: requireImageDescriptors(value.descriptors),
       };
     case "prepareImageSave":
@@ -244,11 +247,26 @@ export function decodeNativeCommand(serialized: string): NativeCommand {
         documentID: requireString(value, "documentID"),
         revision: requireRevision(value),
         documentEpoch: requireString(value, "documentEpoch"),
+        imageOwnership: requireImageOwnership(value.imageOwnership),
         rewrites: requireImageRewrites(value.rewrites),
       };
     default:
       throw new Error(`Unsupported native command: ${value.type}`);
   }
+}
+
+function requireImageOwnership(value: unknown): BridgeImageOwnershipProof {
+  if (!isRecord(value)) throw new Error("Missing imageOwnership");
+  const imageURIs = value.imageURIs;
+  if (!Array.isArray(imageURIs) || imageURIs.some(uri => typeof uri !== "string" || uri === "")) {
+    throw new Error("Invalid imageOwnership.imageURIs");
+  }
+  return {
+    documentID: requireString(value, "documentID"),
+    revision: requireRevision(value),
+    raw: requireString(value, "raw", true),
+    imageURIs: imageURIs as string[],
+  };
 }
 
 export function encodeEditorMessage(message: EditorMessage): string {

@@ -83,6 +83,10 @@ describe("Bridge protocol v1 contracts", () => {
       documentID: "doc-1",
       revision: 4,
       documentEpoch: "epoch-1",
+      imageOwnership: {
+        documentID: "doc-1", revision: 4, raw: "![a](Note.assets/a.png)",
+        imageURIs: ["Note.assets/a.png"],
+      },
       descriptors: [{ href: "Note.assets/a.png", status: "missing", message: "图片缺失" }],
     }))).toMatchObject({ type: "setImageDescriptors", descriptors: [{ status: "missing" }] });
     expect(decodeNativeCommand(JSON.stringify({
@@ -92,6 +96,11 @@ describe("Bridge protocol v1 contracts", () => {
       documentID: "doc-1",
       revision: 4,
       documentEpoch: "epoch-1",
+      imageOwnership: {
+        documentID: "doc-1", revision: 4,
+        raw: "![a](inkora-draft://asset/asset-1)",
+        imageURIs: ["inkora-draft://asset/asset-1"],
+      },
       rewrites: [{
         assetID: "asset-1",
         from: "inkora-draft://asset/asset-1",
@@ -102,8 +111,15 @@ describe("Bridge protocol v1 contracts", () => {
     expect(() => decodeNativeCommand(JSON.stringify({
       protocolVersion: 1, type: "setImageDescriptors", requestID: "bad",
       documentID: "doc-1", revision: 4, documentEpoch: "epoch-1",
+      imageOwnership: {
+        documentID: "doc-1", revision: 4, raw: "![x](x)", imageURIs: ["x"],
+      },
       descriptors: [{ href: "x", status: "ready", displayURL: "file:///tmp/x" }],
     }))).toThrow("Invalid displayURL");
+    expect(() => decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1, type: "setImageDescriptors", requestID: "missing-proof",
+      documentID: "doc-1", revision: 4, documentEpoch: "epoch-1", descriptors: [],
+    }))).toThrow("Missing imageOwnership");
   });
 
   it("rejects unsupported versions, invalid revisions, and malformed commands", () => {

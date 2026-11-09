@@ -948,13 +948,20 @@ final class InkoraDocument: NSDocument {
     }
   }
 
-  func writeRecovery(_ snapshot: BridgeSnapshot) throws {
+  enum RecoveryPersistenceResult: Equatable {
+    case persisted(RecoveryStore.WriteReceipt)
+    case rejected
+  }
+
+  @discardableResult
+  func writeRecovery(
+    _ snapshot: BridgeSnapshot, requireExactReceipt: Bool = false
+  ) throws -> RecoveryPersistenceResult {
     guard !isBareCRReadOnly, !recoveryClosed, let recoveryStore,
       snapshot.documentID == bridgeDocumentID,
       snapshot.revision >= bridgeRevision, isDocumentEdited
-    else { return }
+    else { return .rejected }
     let data = (bomStorage.get() ? Self.utf8BOM : Data()) + Data(snapshot.text.utf8)
-    guard data != lastRecoveryData else { return }
     let source = fileURL ?? recoverySourceURL
     let fingerprint =
       diskVersion.map { RecoveryFingerprint(data: $0.data, modified: $0.modified) }
@@ -967,7 +974,11 @@ final class InkoraDocument: NSDocument {
     let draft = RecoveryDraft(
       id: recoveryID, revision: snapshot.revision, data: data,
       sourceURL: source, sourceFingerprint: fingerprint, bookmark: bookmark)
-    try recoveryStore.write(draft)
+    let receipt = try recoveryStore.write(
+      draft, requireExactRevision: requireExactReceipt)
+    guard receipt.draftID == recoveryID, receipt.revision == snapshot.revision,
+      receipt.payloadHash == draft.payloadHash
+    else { return .rejected }
     lastRecoveryData = data
     recoveryError = nil
     #if DEBUG
@@ -979,6 +990,7 @@ final class InkoraDocument: NSDocument {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { _exit(99) }
       }
     #endif
+    return .persisted(receipt)
   }
 
   func persistRecoveredImageHandoff(
@@ -992,7 +1004,9 @@ final class InkoraDocument: NSDocument {
       asset.recoveryIntent == freshIntent,
       try snapshot.requireImageOwnership().imageURIs.contains(asset.markdownURI)
     else { throw LocalImageError.unresolvedMarkdownOwner }
-    try writeRecovery(snapshot)
+    guard case .persisted = try writeRecovery(snapshot, requireExactReceipt: true) else {
+      throw LocalImageError.unresolvedMarkdownOwner
+    }
     try session.completeRecoveredInsertion(assetID: assetID, freshIntent: freshIntent)
   }
 

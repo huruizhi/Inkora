@@ -96,6 +96,7 @@ final class DocumentAssetBroker: @unchecked Sendable {
     let components: [String]
     let sha256: String
     let mimeType: String
+    var isLive: Bool
   }
 
   private let lock = NSLock()
@@ -147,6 +148,67 @@ final class DocumentAssetBroker: @unchecked Sendable {
     sha256: String,
     mimeType: String
   ) throws -> DocumentAssetCapability {
+    try createCapability(
+      documentID: documentID, epoch: epoch, rootURL: rootURL,
+      percentEncodedBasePath: percentEncodedBasePath,
+      percentEncodedRelativePath: percentEncodedRelativePath, sha256: sha256,
+      mimeType: mimeType, isLive: true)
+  }
+
+  func provision(
+    documentID: String,
+    epoch: UUID,
+    rootURL: URL,
+    percentEncodedBasePath: String = "",
+    percentEncodedRelativePath: String,
+    sha256: String,
+    mimeType: String
+  ) throws -> DocumentAssetCapability {
+    try createCapability(
+      documentID: documentID, epoch: epoch, rootURL: rootURL,
+      percentEncodedBasePath: percentEncodedBasePath,
+      percentEncodedRelativePath: percentEncodedRelativePath, sha256: sha256,
+      mimeType: mimeType, isLive: false)
+  }
+
+  func commitProvisional(tokens: [UUID]) throws {
+    try lock.withLock {
+      guard
+        tokens.allSatisfy({ token in
+          guard let entry = entries[token] else { return false }
+          return !entry.isLive && entry.documentID == currentDocumentID
+            && entry.epoch == currentEpoch
+        })
+      else { throw LocalImageError.corruptManifest }
+      for token in tokens { entries[token]?.isLive = true }
+    }
+  }
+
+  func discardProvisional(tokens: [UUID]) {
+    lock.withLock {
+      for token in tokens where entries[token]?.isLive == false {
+        entries.removeValue(forKey: token)
+        staleTokens.insert(token)
+      }
+    }
+  }
+
+  var capabilityCounts: (live: Int, provisional: Int) {
+    lock.withLock {
+      (entries.values.filter(\.isLive).count, entries.values.filter { !$0.isLive }.count)
+    }
+  }
+
+  private func createCapability(
+    documentID: String,
+    epoch: UUID,
+    rootURL: URL,
+    percentEncodedBasePath: String,
+    percentEncodedRelativePath: String,
+    sha256: String,
+    mimeType: String,
+    isLive: Bool
+  ) throws -> DocumentAssetCapability {
     guard sha256.count == 64, sha256.allSatisfy(\.isHexDigit),
       ["image/png", "image/jpeg", "image/gif", "image/webp"].contains(mimeType)
     else { throw LocalImageError.unsupportedFormat }
@@ -159,7 +221,8 @@ final class DocumentAssetBroker: @unchecked Sendable {
       }
       entries[token] = Entry(
         documentID: documentID, epoch: epoch, rootURL: rootURL.standardizedFileURL,
-        components: components, sha256: sha256.lowercased(), mimeType: mimeType)
+        components: components, sha256: sha256.lowercased(), mimeType: mimeType,
+        isLive: isLive)
       guard
         let url = URL(
           string: "\(DocumentAssetSchemeHandler.scheme)://resource/\(token.uuidString.lowercased())"
@@ -171,11 +234,30 @@ final class DocumentAssetBroker: @unchecked Sendable {
   }
 
   func read(token: UUID) -> DocumentAssetReadResult {
-    let root = lock.withLock { entries[token]?.rootURL }
+    let root: URL? = lock.withLock {
+      guard let entry = entries[token], entry.isLive else { return nil }
+      return entry.rootURL
+    }
     guard let root else { return readWithoutLease(token: token) }
     let lease = leaseFactory.lease(for: root)
     defer { lease.release() }
     return readWithoutLease(token: token)
+  }
+
+  func validateProvisional(token: UUID) -> DocumentAssetReadResult {
+    let entry = lock.withLock { entries[token] }
+    guard let entry, !entry.isLive else {
+      return .init(status: .unknownToken, data: nil, mimeType: nil, sha256: nil)
+    }
+    let current = lock.withLock {
+      entry.documentID == currentDocumentID && entry.epoch == currentEpoch
+    }
+    guard current else {
+      return .init(status: .stale, data: nil, mimeType: nil, sha256: nil)
+    }
+    let lease = leaseFactory.lease(for: entry.rootURL)
+    defer { lease.release() }
+    return Self.read(entry: entry, maximumBytes: maximumBytes)
   }
 
   private func readWithoutLease(token: UUID) -> DocumentAssetReadResult {
@@ -185,12 +267,15 @@ final class DocumentAssetBroker: @unchecked Sendable {
         guard let entry = entries[token] else {
           throw staleTokens.contains(token) ? BrokerLookup.stale : BrokerLookup.unknown
         }
+        guard entry.isLive else { throw BrokerLookup.provisional }
         guard entry.documentID == currentDocumentID, entry.epoch == currentEpoch else {
           throw BrokerLookup.stale
         }
         return entry
       }
     } catch BrokerLookup.stale {
+      return .init(status: .stale, data: nil, mimeType: nil, sha256: nil)
+    } catch BrokerLookup.provisional {
       return .init(status: .stale, data: nil, mimeType: nil, sha256: nil)
     } catch {
       return .init(status: .unknownToken, data: nil, mimeType: nil, sha256: nil)
@@ -202,7 +287,10 @@ final class DocumentAssetBroker: @unchecked Sendable {
     token: UUID,
     completion: @escaping @Sendable (DocumentAssetReadResult) -> Void
   ) {
-    let root = lock.withLock { entries[token]?.rootURL }
+    let root: URL? = lock.withLock {
+      guard let entry = entries[token], entry.isLive else { return nil }
+      return entry.rootURL
+    }
     guard let root else {
       completion(read(token: token))
       return
@@ -222,7 +310,7 @@ final class DocumentAssetBroker: @unchecked Sendable {
     }
   }
 
-  private enum BrokerLookup: Error { case stale, unknown }
+  private enum BrokerLookup: Error { case stale, provisional, unknown }
 
   private static func decodeRelativePath(
     _ encoded: String, baseEncodedPath: String
