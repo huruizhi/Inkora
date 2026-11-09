@@ -45,3 +45,17 @@ M0 与 M1 不能据 PR 合并宣布完成。M0 当前只剩 [收尾清单](M0-CL
 已接收 [规范审查](reviews/INK-M1-015-standards.md)：0 项书面规则硬违规，4 项判断类维护建议（3 中、1 低）。管理者已核对实现与引用，未将重复 helper 或理论 locale 风险误记为已证实产品故障。Agent `59543e3f-a946-436d-986f-151c464adfc9` 已及时归档；独立 worktree HEAD 仍为 6ad325b，clean。Spec 审查继续等待完成通知，不轮询，不提前合并 PR。
 
 Standards workspace 已备份并回收，archive_workspace 返回 removedDirectory=true。归档根 `/Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed` 下 `ink-m1-015-standards-review` 的 bundle 校验通过，tar 的 224 个文件逐字节 SHA 核对通过，报告和独立 backup.json 已保留；累计完成受管 workspace 回收 43 个。
+
+## Spec 已返回
+
+[规格审查](reviews/INK-M1-016-spec.md) 发现 1 项中等行为错误：HTML 标签被计入标题及内容统计，最小 Vitest 已 red；未发现其他可行动缺失或范围扩张。Agent 已归档，后续只修该确定问题，再执行受影响检查和新 HEAD 默认 CI。
+
+两轴各自结论：Standards 4 项维护判断，最高为中等重复映射/重验证；Spec 1 项中等 HTML 统计错误。两轴不相互抵消。维护建议先记录，当前不扩张到多模块重构。
+
+Spec workspace 已备份并回收，removedDirectory=true；bundle 验证和 tar 224 文件 SHA 核对通过，报告/backup.json 在归档根 ink-m1-016-spec-review 前缀，累计 44 个完成 workspace 已回收。
+
+## INK-M1-017 限定修正
+
+当前仅一位执行者：OMP GLM-5.3 / low，Agent `dedd2092-7197-4ce6-9489-68ff734d9c54`，workspace `wks_97b8c36c09ed8465`，host `srv_MEqRNkRW6fSx`，路径 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-017-html-analysis`，分支 `task/INK-M1-017-html-analysis-correction`，基线 6ad325b，notifyOnFinish=true。
+
+只允许 analysis 实现/测试、既有分析文档澄清与本任务记录四文件；先在实际 analyzeDocument 上复现 red，再做 HTML tokenization 与过滤的单变量诊断，覆盖 inline/block/comment/code/escape/entity/Unicode/EOL。不修改运行时、主界面或依赖，不把规范维护建议扩成此次重构。完成后独立复核、备份回收，再集成并对新 HEAD 运行默认 CI。
