@@ -78,3 +78,39 @@
 实际运行：`pnpm --dir editor exec vitest run src/protected-parser-review.test.ts`，1 file、3 tests passed。未重跑全 Web/Native/Release、lint 或 UI；其结果不由本审查声称。新文档本身不改变产品行为。
 
 106已核对origin/clean并逐文件603文件tar+bundle备份，tar SHA8e523f480eba4a12724bb83c3f2a5e6baedc1ff2ce56e0f2bf7303828f1c0e75；Agent/workspace两层归档，managed累计91。107 Spec（Agent bb828ae9-e894-4dd2-9734-25b511292b81 / workspace wks_99c1b502a4358654）仍执行，不能用Standards0代替其结论。
+
+## 限定修正：107 Spec首稿与根后验
+
+107首稿94165671e5d7723f0dca890b3d283d74a28642d8：missing/partial1 P1，scope creep0/wrong0。以下原文保留。
+
+# Spec
+
+受检范围：`47c0d54735c70b9e55268ad43f9f085f08ff4dd6...fab0bccc98dc62518af462fb97f54660d46b328a`。仅审 parser 补正；未作 Standards 判断。
+
+## Findings
+
+### P1 · missing/partial：未闭合 Mermaid 仍被错误降级
+
+`docs/markdown-support.md:77` 明确规定 `SYN-S005` 围栏代码块支持可选 info string，且文件末尾没有 closing fence 仍是合法块；`:142` 又要求这种块编辑时不得凭空补 closing fence。`docs/design/protected-syntax-production-v2.md:18` 要求代码高亮继续工作。
+
+但 `editor/src/protected-syntax.ts:271-275` 仍只把未闭合 `mermaid` 围栏改为 `protected_block` / `SYN-U002`。公共生产 Session 反例：` ```mermaid\nflowchart TD\n` 得到 `protected_block`、`issues=["mermaid"]`、`saveEligible=false`；同形 ` ```ts\nconst x = 1;\n` 得到 `code_block`、无 issue、可保存。闭合 Mermaid 虽已恢复为可编辑 `SYN-S005`，补正仍未覆盖 canonical 明定的无 closing fence 形态。
+
+建议：删除 Mermaid 专属的未闭合降级，并增加未闭合 Mermaid 的直接编辑、围栏不补全、Undo/Redo 与精确原文回归。
+
+## 其余分类
+
+- scope creep：0
+- wrong：0（除上述不完整实现外）
+
+## 独立验证
+
+- 新公开三例：3/3 passed。
+- `---` 真实 input-rule：1/1 passed，精确保留第三个 `-` 并进入 U 投影。
+- 水平线 `***`、`___`、`* * *`、`_ _ _`、非 BOF `---`：5/5 保持 `horizontal_rule`、可保存、原文精确。
+- GATE-004 显式源码保存及 no-op 不清除未解决意图：2/2 passed。
+
+未运行完整 Web、Native、Bridge、Release、lint、性能或 GUI；按审查限定留给根结算。
+
+根重放EOF Mermaid两种围栏/BOM/CRLF/无尾换行先红，7305b97161ff9173fb575ebf4014036dabdcd64b删除全部Mermaid hook与导入调用，公共22/22+tsc绿；107已收到fixed SHA并做有限独立后验，尚不能报Spec通过。
+
+PR77首轮CI42690666114 completed/failure，仅checkout失败（GitHub443超时），后续所有产品检查均未执行。根未改workflow/网络配置/测试。只读查证runner无proxy env，系统proxy127.0.0.1:7897；当前匿名curl直连和本地proxy均HTTP200，证据是传输暂时恢复，不是产品CI通过。最终head需新默认CI。
