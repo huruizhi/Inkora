@@ -1,4 +1,5 @@
 import Foundation
+import WebKit
 
 // INK-PROT-040 handler-check：直接驱动真实 AssetSchemeTaskCore + ResourceBroker 执行路径。
 // 替身仅限两类明确受限出口：AssetTaskOutlet（替系统 WKURLSchemeTask 出口）与调度接缝
@@ -101,7 +102,23 @@ final class GatedScheduling: ReadScheduling {
     }
 
     func releaseRead() { gate.signal() }
-    func waitReadDone() { done.wait() }
+    func waitReadDone() {
+        guard done.wait(timeout: .now() + 5) == .success else {
+            fputs("HANDLER CHECK TIMED OUT: read did not finish\n", stderr)
+            exit(1)
+        }
+        queue.sync(flags: .barrier) {}
+    }
+}
+
+// 验证真实WK适配器的持有关系；不实例化WKWebView或系统界面。
+private final class SystemTaskProbe: NSObject, WKURLSchemeTask {
+    let request: URLRequest
+    init(request: URLRequest) { self.request = request }
+    func didReceive(_ response: URLResponse) {}
+    func didReceive(_ data: Data) {}
+    func didFinish() {}
+    func didFailWithError(_ error: Error) {}
 }
 
 // MARK: - 内存事件记录
@@ -207,7 +224,6 @@ struct Harness {
 let scratch = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
     .appendingPathComponent("ink-prot-040-handler-check-\(UUID().uuidString)", isDirectory: true)
 try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
-defer { try? FileManager.default.removeItem(at: scratch) }
 let fixture = try HandlerFixture(directory: scratch)
 
 // S1 成功路径：单次完成 + lease 持有到读结束 + 真实数据返回
@@ -432,6 +448,38 @@ do {
 } catch {
     failures.append("s11-setup")
     print("FAIL s11-setup \(error)")
+}
+
+// S12 WKSchemeTaskOutlet强持有底层task，直至取消后的在途回调真正收口。
+// 这排除了原报告所称“旧回调在途但底层task已释放并被同址复用”的默认路径。
+do {
+    let h = Harness(fixture: fixture)
+    let token = try h.broker.register(encodedPath: fixture.goodEncoded).token
+    weak var retainedTask: SystemTaskProbe?
+    var identity: ObjectIdentifier?
+    autoreleasepool {
+        let task = SystemTaskProbe(request: URLRequest(url: URL(string: "inkora-asset://resource/\(token.uuidString)")!))
+        retainedTask = task
+        identity = ObjectIdentifier(task)
+        h.core.start(WKSchemeTaskOutlet(task))
+    }
+    expect(retainedTask != nil, "s12-wk-system-task-retained-during-read")
+    h.core.stop(identity: identity!)
+    h.gated.releaseRead()
+    h.gated.waitReadDone()
+    expect(retainedTask != nil, "s12-wk-system-task-retained-until-delivery")
+    h.delivery.runOne()
+    expect(retainedTask == nil, "s12-wk-system-task-released-after-suppressed-delivery")
+} catch {
+    failures.append("s12-setup")
+    print("FAIL s12-setup \(error)")
+}
+
+// exit() 不会执行顶层 defer，故在两个退出分支之前明确清理本轮唯一fixture。
+do { try FileManager.default.removeItem(at: scratch) }
+catch {
+    failures.append("scratch-cleanup")
+    print("FAIL scratch-cleanup \(error)")
 }
 
 if failures.isEmpty {

@@ -130,18 +130,19 @@ func readRelativeNoFollow(root: URL, components: [String], maximumBytes: Int = 1
     for component in components.dropLast() {
         let nextFD = openat(directoryFD, component, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
         guard nextFD >= 0 else {
+            let openError = errno
             // macOS 上中间组件为 symlink 时，O_DIRECTORY|O_NOFOLLOW 的 openat 返回 ENOTDIR 而非
             // ELOOP，与普通非目录组件不可靠 errno 区分。这里用 AT_SYMLINK_NOFOLLOW 的元数据证据
             // 分类：只读目录项 lstat，不跟随链接、不扩大权限；errno 保留原值（ENOTDIR）。
-            if errno == ENOTDIR, isSymlinkEntry(directoryFD: directoryFD, component: component) {
+            if openError == ENOTDIR, isSymlinkEntry(directoryFD: directoryFD, component: component) {
                 return NativeReadResult(
                     status: .symlink,
                     data: nil,
-                    errnoValue: errno,
-                    detail: "open-component:symlink:\(String(cString: strerror(errno)))"
+                    errnoValue: openError,
+                    detail: "open-component:symlink:\(String(cString: strerror(openError)))"
                 )
             }
-            return readFailure(errno, context: "open-component")
+            return readFailure(openError, context: "open-component")
         }
 
         close(directoryFD)

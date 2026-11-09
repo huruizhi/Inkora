@@ -18,10 +18,11 @@ HANDLER_SOURCES := $(ROOT)/Sources/HandlerCheck/main.swift \
 	$(ROOT)/Sources/Host/SchemeHandlers.swift \
 	$(SHARED_SOURCES)
 FIXTURE_SOURCES := $(ROOT)/Sources/FixtureControl/main.swift
+PATH_SOURCES := $(ROOT)/Sources/PathCheck/main.swift $(ROOT)/Sources/Host/Support.swift $(SHARED_SOURCES)
 
-build: $(MACOS)/InkoraLocalAssetHost $(BUILD)/model-check $(BUILD)/handler-check $(BUILD)/fixture-control
+build: $(MACOS)/InkoraLocalAssetHost $(BUILD)/model-check $(BUILD)/handler-check $(BUILD)/path-check $(BUILD)/fixture-control
 
-.PHONY: build verify check handler-check fixture fixture-clean run clean
+.PHONY: build verify check handler-check path-check fixture fixture-clean run clean
 
 $(BUILD):
 	mkdir -p $@
@@ -49,17 +50,24 @@ $(BUILD)/handler-check: $(HANDLER_SOURCES) | $(BUILD)
 $(BUILD)/fixture-control: $(FIXTURE_SOURCES) | $(BUILD)
 	swiftc -swift-version 5 -target $(TARGET) -framework CryptoKit -o $@ $(FIXTURE_SOURCES)
 
+$(BUILD)/path-check: $(PATH_SOURCES) | $(BUILD)
+	swiftc -swift-version 5 -target $(TARGET) -framework CryptoKit -o $@ $(PATH_SOURCES)
+
 verify: build
 	bash $(ROOT)/scripts/verify.sh $(APP) $(ROOT)/Resources/InkoraLocalAssetHost.entitlements
 
 check: build
 	$(BUILD)/model-check
 	$(BUILD)/handler-check
+	$(BUILD)/path-check
 	$(MAKE) --no-print-directory verify
 	@echo "check ok: pure model + real handler/broker seam + build/signature/static verification; no panel/bookmark/WK-webview/OS-auth runtime claim"
 
 handler-check: $(BUILD)/handler-check
 	$(BUILD)/handler-check
+
+path-check: $(BUILD)/path-check
+	$(BUILD)/path-check
 
 fixture: $(BUILD)/fixture-control
 	$(BUILD)/fixture-control prepare
