@@ -182,17 +182,22 @@ function buildParseCopy(raw: string, excluded: readonly SourceRange[]): ParseCop
   const bomLength = raw.charCodeAt(0) === 0xfeff ? 1 : 0;
   const body = bomLength === 0 ? raw : raw.slice(1);
 
-  const masked = excluded.length === 0
-    ? body
-    : Array.from(body, (ch, i) => {
-        const at = i + bomLength;
-        // EOL 字符保留以维持行结构；其余在排除范围内的字符替换为等长空格。
-        if (ch === "\n" || ch === "\r") return ch;
-        for (const { start, end } of excluded) {
-          if (at >= start && at < end) return " ";
-        }
-        return ch;
-      }).join("");
+  let masked = body;
+  if (excluded.length > 0) {
+    // 逐 UTF-16 单位等长替换：排除范围是原文偏移，代理对两半各替换为
+    // 一空格以保持总长与 toRaw 映射；EOL 字符保留以维持行结构。
+    const units: string[] = new Array(body.length);
+    for (let i = 0; i < body.length; i += 1) {
+      const ch = body[i];
+      if (ch === "\n" || ch === "\r") {
+        units[i] = ch;
+        continue;
+      }
+      const at = i + bomLength;
+      units[i] = excluded.some((r) => at >= r.start && at < r.end) ? " " : ch;
+    }
+    masked = units.join("");
+  }
 
   let text = "";
   const toRaw: number[] = [];
@@ -252,14 +257,8 @@ function inlineContentText(children: readonly Token[]): string {
   return out;
 }
 
-function fenceIsClosed(text: string, lineStarts: readonly number[], fence: Token): boolean {
-  const endLine = fence.map?.[1] ?? 0;
-  const closingLine = text
-    .slice(lineStarts[endLine - 1] ?? 0, (lineStarts[endLine] ?? text.length) - 1)
-    .replace(/\n$/, "");
-  const marker = fence.markup[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`^ {0,3}${marker}{${fence.markup.length},}[\\t ]*$`).test(closingLine);
-}
+// 围栏内容直接使用 token.content：markdown-it 已剥离围栏定界符、信息串、
+// 容器标记与围栏缩进；闭合与否（内容是否计到文末）也由其统一处理。
 
 // ---------------------------------------------------------------------------
 // 主入口
@@ -301,7 +300,7 @@ export function analyzeDocument(
       const rawNext = toRawOffset(copy, nextLineStart);
       const eolCut = raw.slice(rawNext - 2, rawNext) === "\r\n"
         ? 2
-        : raw[rawNext - 1] === "\n"
+        : raw[rawNext - 1] === "\n" || raw[rawNext - 1] === "\r"
           ? 1
           : 0;
       headings.push({
@@ -314,16 +313,9 @@ export function analyzeDocument(
       const inlineText = inlineContentText(token.children ?? []);
       if (inlineText.length > 0) contentSegments.push(inlineText);
     } else if (token.type === "fence") {
-      const [startLine, endLine] = token.map ?? [0, 0];
-      const closed = fenceIsClosed(copy.text, copy.lineStarts, token);
-      // 内容 = 围栏内部行：闭合时去掉首尾围栏行；信息串与围栏定界符不计。
-      const contentStart = copy.lineStarts[startLine + 1] ?? copy.text.length;
-      const contentEnd = closed
-        ? copy.lineStarts[endLine - 1] ?? copy.text.length
-        : copy.lineStarts[endLine] ?? copy.text.length;
-      if (contentEnd > contentStart) {
-        contentSegments.push(copy.text.slice(contentStart, contentEnd));
-      }
+      // token.content 即围栏内部内容（已剥定界符/信息串/容器标记/缩进；
+      // 不闭合时为到文末的全部行），无需手工切行判闭合。
+      if (token.content.length > 0) contentSegments.push(token.content);
     } else if (token.type === "code_block") {
       // 缩进代码块：token.content 已去掉每行 4 空格缩进，直接计内容。
       if (token.content.length > 0) contentSegments.push(token.content);

@@ -93,6 +93,65 @@ describe("大纲：标题识别与原文偏移", () => {
     expect(result.raw).toEqual({ characters: 0, writingUnits: 0 });
     expect(result.content).toEqual({ characters: 0, writingUnits: 0 });
   });
+
+describe("回归：UTF-16 排除偏移与围栏/CR 边界", () => {
+  it("排除 astral 字素后，后续标题的原文偏移不错位", () => {
+    const raw = "😀\n\n# 保留\n";
+    const result = analyzeDocument(snap(raw), { excludedRanges: [{ start: 0, end: 2 }] });
+    expect(result.headings.map((h) => raw.slice(h.start, h.end))).toEqual(["# 保留"]);
+  });
+
+  it("排除 astral 之后的标题：整段 UTF-16 范围屏蔽后标题消失", () => {
+    const raw = "😀\n\n# 隐藏\n\n# 保留\n";
+    const start = raw.indexOf("# 隐藏");
+    const result = analyzeDocument(snap(raw), { excludedRanges: [{ start, end: start + 4 }] });
+    expect(result.headings.map((h) => h.text)).toEqual(["保留"]);
+  });
+
+  it("排除范围落在 astral 字素前后（BOM/CRLF 混合）仍保持等长屏蔽", () => {
+    const raw = "\uFEFFa😀b\r\n# 标\r\n# c\r\n";
+    const start = raw.indexOf("b");
+    const result = analyzeDocument(snap(raw), { excludedRanges: [{ start, end: start + 1 }] });
+    expect(result.headings.map((h) => raw.slice(h.start, h.end))).toEqual(["# 标", "# c"]);
+  });
+
+  it("排除范围只含 astral 字素本体（BOM 不计入标题 slice 起点）", () => {
+    const raw = "\uFEFF#😀#\n";
+    const start = raw.indexOf("😀");
+    const result = analyzeDocument(snap(raw), { excludedRanges: [{ start, end: start + 2 }] });
+    expect(result.headings.map((h) => raw.slice(h.start, h.end))).toEqual(["#😀#"]);
+    expect(result.headings[0].text).toBe(""); // 😀 屏蔽后该 ATX 首标记为空标题
+  });
+
+  it("无尾换行的闭合围栏：closing fence 不计内容", () => {
+    expect(analyzeDocument(snap("```\nx\n```")).content.characters).toBe(1);
+  });
+
+  it("引用与列表内的围栏：容器标记与 closing fence 不计内容", () => {
+    expect(analyzeDocument(snap("> ```\n> x\n> ```\n")).content.characters).toBe(1);
+    expect(analyzeDocument(snap("- ```\n  x\n  ```\n")).content.characters).toBe(1);
+  });
+
+  it("缩进围栏：基准缩进剥离，额外缩进保留计入", () => {
+    expect(analyzeDocument(snap("  ```\n  x\n  ```\n")).content.characters).toBe(1);
+  });
+
+  it("不闭合围栏在引用内：内容计到引用块文末", () => {
+    expect(analyzeDocument(snap("> ```\n> x\n")).content.characters).toBe(1);
+  });
+
+  it("孤立 CR 行尾：标题 slice 不带尾部 CR", () => {
+    const raw = "# A\r# B\r";
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings.map((h) => raw.slice(h.start, h.end))).toEqual(["# A", "# B"]);
+  });
+
+  it("CR/CRLF 混合文档的标题偏移与切片", () => {
+    const raw = "# A\r\n# B\r# C\n";
+    const result = analyzeDocument(snap(raw));
+    expect(result.headings.map((h) => raw.slice(h.start, h.end))).toEqual(["# A", "# B", "# C"]);
+  });
+});
 });
 
 describe("统计规则", () => {
@@ -208,6 +267,13 @@ describe("excludedRanges", () => {
       excludedRanges: [{ start, end: start + 2 }],
     });
     expect(result.content.writingUnits).toBe(2); // aa + cc
+  });
+});
+
+describe("实体与文本边界（内容口径）", () => {
+  it("HTML 实体按解析后文本计入内容，不执行 HTML", () => {
+    const result = analyzeDocument(snap("a&amp;b\n"));
+    expect(result.content.characters).toBe(3); // 实体解码为解析文本 a&b
   });
 });
 

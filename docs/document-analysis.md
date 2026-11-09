@@ -31,7 +31,7 @@ analyzeDocument({ raw, revision }, { excludedRanges?: SourceRange[] })
 - 嵌套引用/列表中的标题照常识别；重复标题原样保留，不去重；
 - 代码围栏与缩进代码块中的 `#` 不是标题；不闭合围栏延伸到文末；
 - 显示文本来自 inline token：链接取 label、行内代码取内容、图片取 alt；换行位显示为空格；HTML token 不执行也不显示；
-- `start/end` 覆盖标题结构整行（ATX 含 `#` 行；Setext 含文本行与下划线行；均不含尾随 EOL），BOM 与 CRLF 已按原文长度折算。
+- 尾随 EOL 指 LF、CRLF 或孤立 CR；标题 `end` 均不含尾随 EOL，其余按原文折算。
 
 ## 统计口径
 
@@ -57,8 +57,8 @@ analyzeDocument({ raw, revision }, { excludedRanges?: SourceRange[] })
 
 只计可读文本：
 
-- 计入：普通文本、行内代码内容、代码块内容（围栏内部行；定界符与信息串不计）、图片 alt、链接 label、标题显示文本；
-- 不计：URL 与链接 title、引用定义、格式定界符（`*`、`#`、反引号等）、HTML 标签、排除范围（屏蔽后为空白，天然不计）。
+- 计入：普通文本、行内代码内容、代码块内容（围栏内部行；定界符、信息串、闭合围栏行与引用/列表容器标记不计，不闭合围栏计到文末）、图片 alt、链接 label、标题显示文本、HTML 实体按解码后的解析文本；
+- 不计：URL 与链接 title、引用定义、格式定界符（`*`、`#`、反引号等）、HTML 标签、排除范围（屏蔽为等长空白，UTF-16 偏移不变，天然不计）。
 
 不承诺是 Typora 所有语言计数口径的精确复刻；未提供 `excludedRanges` 时只承诺 CommonMark 可见内容，不理解公式/元数据方言。
 
