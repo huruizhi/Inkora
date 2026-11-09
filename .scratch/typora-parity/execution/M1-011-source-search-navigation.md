@@ -26,3 +26,11 @@
 ## 调度
 
 profiles为空，provider实际GPT-5.6-Sol已核，采用medium/full-access/default。Agent f274c383-6fb0-463a-a5e3-6c80cab1c2cd，workspace wks_55aee03ddbab0389，host srv_MEqRNkRW6fSx，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-011-source-search-navigation，分支task/INK-M1-011-source-search-navigation。已取得running回执，notifyOnFinish=true，不轮询或催促。当前仅此执行Agent；009三Agent及workspace均已回收。
+
+## 首稿独立复核
+
+首稿b31b69080dc402209fd6ee56120ef6d73e726bef，origin/clean核对、只改原11文件。Agent已立即归档。管理者独立重跑17文件274项通过；另冻结真实main/Bridge/search/runtime/DOM四项：普通Enter消费并导航、BOM/mixed-EOL/emoji第二命中精确定位为绿；query composition生命周期或仅event.isComposing标记两路径的Enter均被preventDefault消费，为2红。源码keydown先preventDefault后composition判断，不能把“不调用导航”当作“不拦截候选确认键”。仅事件接缝证据，不冒称真实搜狗输入失败。
+
+冻结root-m1-checks/source-navigation-review.test.ts与SOURCE-NAV-REVIEW-RED.txt。限定补正复用原workspace，调整组合守卫先于消费Enter，保留普通Enter导航、Esc与焦点/选区/历史不变量，不扩功能、不改原根档案。profiles/provider重核后用GLM-5.3/low/full；先复制红例复现，再补产品回归、原009九控制和干净全量/lint/build。
+
+补正Agent 32746dee-65eb-425e-8bc1-b6b1263a57ad已取得running回执，notifyOnFinish=true；原Sol已回收，当前仅这一执行Agent，workspace不变。不轮询催促；未启动GUI。
