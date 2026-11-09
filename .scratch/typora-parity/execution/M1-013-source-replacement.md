@@ -24,3 +24,7 @@
 先在真实plan/runtime/main/DOM接缝建立回归，再实现。至少：单个当前匹配+全部替换精确结果/一个UndoRedo；BOM+CRLF/mixed+无尾换行/中文emoji/重复文本/引用与$字面；替换前后有向选区、连续两替换、已有past/future、Undo后新分支；no-op保future/不发消息；truncated全部替换失败；过期raw/revision/epoch/query/case/替换意图/旧按钮；伪计划resultRaw与patch不符、expected错、重叠乱序、非法Unicode/结果caret、textarea投影不一致均原子失败；source/query/replacement composition、late final input、新doc重置、候选键默认行为；readonly/PM无替换控件；面板焦点不被提交/刷新夺走；006/009/011全部回归控制。
 
 只运行非UI，禁止GUI/App/浏览器/安装包或子Agent。只读复用主仓锁定pnpm和依赖，自动store生成目录如实记录，不改清单/锁。新专项、旧009根9与011根4只读控制（临时复制再删、不得改/追加root档案）、清临时文件后的完整editor非UI/lint/build/git diff --check，数量分列。Conventional英文subject<=72，push本任务分支核对origin/fullSHA/clean，不PR不合main不改Issue。回报完成/文件/实际命令结果/未验收/风险/分支提交；管理者独立复核，完成立即回收Agent，备份后回收workspace。
+
+## 调度
+
+profiles为空，provider实际GPT-5.6-Sol已核，medium/full-access/default。Agent 98793f65-95a2-4b75-9f2a-58a897c2243a，workspace wks_73b6aa7f9103452d，host srv_MEqRNkRW6fSx，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-013-source-replacement，分支task/INK-M1-013-source-replacement。已取得running回执，notifyOnFinish=true，不轮询催促。当前只有这一执行Agent；011两个完成Agent及workspace已备份回收。
