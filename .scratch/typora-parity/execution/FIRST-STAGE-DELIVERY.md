@@ -100,3 +100,20 @@ M0按原04/029限定门槛通过；11/12 resolved。ADR-0004、术语、M0逐门
 - INK-M1-045生产补正，基线0937615；Sol5.6/high/default，agent c3648b68-c0bf-44c0-a226-565548073ce3 / workspace wks_22cc6b61dc94c2ce，branch task/INK-M1-045-source-core-corrections。恢复原先已声明基本格式/结构命令，协调runtime/main/Bridge逻辑composition发布，不用整篇serialize或放宽保真守卫。根5红必须复现转绿并纳入真实生产回归。
 
 main仍48258a9，M0有界门槛保持通过；本轮新生产接线失败不回写旧真人材料或冒称原型无效。首阶段V1–V6范围不变，完整表格/任务/图片/高亮/视觉替换及NSDocument写作闭环继续推进。
+
+## 当前交付与接续（覆盖上方执行历史）
+
+043规格审查572f2bf另发现3项实际失败：无效markSaved在协议拒绝前污染保存点、::: note自动整篇源码、source no-op丢caret。报告已与044规范轴原样分开保存在root039复核分支c72d7eb，未以规范通过掩盖功能失败。043已239文件/bundle校验备份及两层回收。
+
+045候选e92b6f489721401ae9bf0dc3734fe1e1046e02b3恢复格式/结构命令、回执先校验再副作用、未知片段混排及source selection；执行者360测试通过。管理者原5条冻结反例独立5/5绿，但加“最后发布值=当前最终raw”断言后4绿1红：唯一document回调仍发布azh，而实际已是中文。故V1继续待验。045已239文件/bundle备份并两层回收，累计完成workspace回收55个。固定新红材料root-m1-checks/INK-M1-045不可更改；根报告task/INK-M1-045-core-review @d7b74ba。
+
+042从main48258a9真实WK已验：可视第二重复标题24定位、折叠释放空间、查找cap100/大小写、query持焦CmdZ正文不变、回正文Undo/Redo/future正常。源码大纲/查找视口不随setSelectionRange显露，保留真实失败记录5b9f353。只读/窄窗/VoiceOver未全验，不扩张通过结论。
+
+047由管理者实际生产修复（不是新原型）：task/INK-M1-047-source-range-visibility @206aeed，已merge045并保留其删除旧fallback；新增不可见排版镜像只计算textarea.scrollTop，4条真实导航接线；查找结果改正常流及有界内滚动，解决“目标已滚动但被浮层盖住”。8项几何/真实runtime接缝、完整368editor、make lint/build/codesign通过。最终二进制c92b3f28…289f6真实WK：只读首尾大纲、查找Start可见且query保焦、可编辑source首标题返回可见。源码查找最后输入遇CUA用户焦点变化，未计通过；窄窗/AX待集中复验。退出时自有只读样稿曾弹保存提示，未归因、不虚报该项；丢弃自有会话后进程已退，UI锁释放，三份fixture磁盘SHA不变。核心IME发布内容过早仍由049修复，047测试绿不替代它。
+
+当前仅两名执行者：
+
+- 049生产composition稳定发布/快照：基线e92b6f4，task/INK-M1-049-composition-publication，Sol5.6/high/default，agent a90f5416-8d9f-4c72-b714-1159be04d071 / workspace wks_064a4154f3aab7d5。根最终值红已复现，要求正确稳定边界而非压次数，中间拼音不得成为稳定快照，最终统计/查找必须更新。
+- 046生产离线高亮/语言选择：基线0937615，task/INK-M1-046-code-highlighting，workspace wks_b5798bc3c9c84636。GLM5.3因真实429额度终止，Agent已归档；8份未提交文件逐项SHA归档后同workspace由Sol5.6/medium/default接续，agent c5e42c80-33e8-469b-8ecf-a4a61bdf9441。唯一声明依赖highlight.js exact11.12.0（registry与官方源核实、BSD-3-Clause），静态离线语言、PM装饰与语言真实patch/undo，不改其它核心；许可证须随产物分发。
+
+main未变，下一整合点是047接回049/046后独立运行核心/辅助/代码体验与NSDocument闭环。V3表格/任务、V4图片和V6完整视觉替换仍必须实现，不因本轮UI或辅助交付缩减目标。
