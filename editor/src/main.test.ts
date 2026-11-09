@@ -187,6 +187,79 @@ async function bootMain(): Promise<Harness> {
 // （仓库 tsconfig 较低且不在本任务允许修改范围），沿用 executor 形式。
 const settle = (ms = 60): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+async function rootLinkHarness(withHistory = false): Promise<Harness> {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "root-link-load", documentID: "root-link", revision: 0,
+    text: "[alpha](./old)\n\nbody\n" });
+  if (withHistory) {
+    h.sourceMode().click();
+    const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea")!;
+    area.value = "[alpha](./old)\n\nbody!\n";
+    area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    h.sourceApply().click();
+    h.visualMode().click();
+  }
+  await settle();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const label = editor.querySelector("a")!.firstChild!;
+  const range = h.dom.window.document.createRange();
+  range.setStart(label, 1);
+  range.collapse(true);
+  h.dom.window.getSelection()!.removeAllRanges();
+  h.dom.window.getSelection()!.addRange(range);
+  h.dom.window.document.dispatchEvent(new h.dom.window.Event("selectionchange"));
+  editor.dispatchEvent(new h.dom.window.KeyboardEvent("keydown", { key:"k", metaKey:true, bubbles:true, cancelable:true }));
+  expect(h.linkEditor()).not.toBeNull();
+  return h;
+}
+
+it("root061: caret inside a link edits its existing target", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  expect(href.value).toBe("./old");
+  href.value = "./new";
+  form.dispatchEvent(new h.dom.window.Event("submit", {bubbles:true,cancelable:true}));
+  h.receive({type:"createSnapshot",requestID:"root-link-snapshot",documentID:"root-link",revision:h.lastRevision()});
+  expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:"[alpha](./new)\n\nbody\n"});
+});
+
+it("root061: link input composition keeps the form and candidate on Cancel", async () => {
+  const h = await rootLinkHarness();
+  const form = h.linkEditor()!;
+  const href = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  href.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart",{bubbles:true}));
+  href.value = "zhong";
+  href.dispatchEvent(new h.dom.window.InputEvent("input",{bubbles:true,isComposing:true}));
+  const before = h.sent.length;
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  expect(form.isConnected).toBe(true);
+  expect(h.dom.window.document.activeElement).toBe(href);
+  expect(href.value).toBe("zhong");
+  expect(h.sent).toHaveLength(before);
+});
+
+it("root061: Native document Undo is refused while a link field holds focus", async () => {
+  const h = await rootLinkHarness(true);
+  const revision = h.lastRevision();
+  const messages = h.stateMessages().length;
+  h.receive({type:"executeCommand",requestID:"root-link-undo",documentID:"root-link",revision,command:"undo"});
+  expect(h.sent.at(-1)).toMatchObject({type:"editorError",code:"command_rejected"});
+  expect(h.stateMessages()).toHaveLength(messages);
+  expect(h.lastRevision()).toBe(revision);
+});
+
+it("root061: flag-only composing document Cmd-Z does not consume the key", async () => {
+  const h = await rootLinkHarness(true);
+  h.linkEditor()!.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  const revision = h.lastRevision();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  const event = new h.dom.window.KeyboardEvent("keydown",{key:"z",metaKey:true,isComposing:true,bubbles:true,cancelable:true});
+  editor.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(false);
+  expect(h.lastRevision()).toBe(revision);
+});
+
 it("提供键盘可达的可视/源码切换和草稿提交取消入口", async () => {
   const h = await bootMain();
   h.receive({
