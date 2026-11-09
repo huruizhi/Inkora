@@ -6,6 +6,8 @@
 
 只有用户主动恢复配合时才开始以下批次。每批使用同一冻结bundle；开始前记录OS、输入法及版本、实体键盘来源、bundle/source SHA。上一轮原型或旧生产日志不外推到此bundle。记录“自动/合成、离屏WK、物理输入、正式文件”各自证据。
 
+PR78仅增加组合测试/记录，当前main 1e1e456与PR77的app/editor/project.yml生产源码无差异。verification-main-1e1e456.json另行记录精确CI42695919576通过、原manifest/App/九个fixture SHA保持不变；没有重标旧App或改变其准备状态。108新增四格式离屏WK和Save As重开证据，仍不填入下方物理动作的通过结果。
+
 ## A：输入与历史（约5–8分钟）
 
 打开隔离副本 `01-IME.md`，先核对manifest；管理者定位到 `Input here.` 后。用户用搜狗及Mac实体键盘连续确认两次中文，候选窗各停约3秒。管理者核对最终原文、revision及Bridge发布，再逐步Undo/Redo，不能出现中间拼音。接着选中“测试”直接中文替换，检查单历史与有向选区；候选Esc取消时同时检查屏幕与原始事件，不把上屏和取消混为一项。

@@ -1,8 +1,10 @@
 # 首阶段需求到实际证据的对照
 
-本次核对生产main **c4fd38e2de57c8721057ed7c320ac6d3c1a10db1**（PR71至77已合入），其整树与CI受检545e3a94620599cedb5a35446187fbb4b05e4258一致。范围来自03、07、V1–V6及canonical支持矩阵；M0可行性由038关闭，不把旧原型物理证据当新生产验收。
+本次核对生产main **1e1e4561c7c79b36bd081e04bc54b54e8beffc41**（PR71至78已合入），其整树与CI受检624a8652a0c8fe971b166dff7d5d4b241adb8279一致。范围来自03、07、V1–V6及canonical支持矩阵；M0可行性由038关闭，不把旧原型物理证据当新生产验收。
 
 最终产品代码7305b97实际editor766/766、Native179passed/0fail/8既有perf skip、Bridge双侧14/15、lint/Release-offline通过；精确最终head默认CI42692283984 success，non-UI/Release/offline/light基线通过，UI/full-bench按参数skip。SYN-S016已随PR75进入main；PR77完成本轮保护边界和源码资格生产接线。物理/最低系统/AX/正式性能预算未完成，测试数量不是整体完成证明。下方历史时点另有旧数字，不能用作当前状态。
+
+108仅新增生产组合验证和记录，未改产品源码。实际完整Native188total/180passed/0fail/8既有性能skip、lint通过；精确head624a865默认CI42695919576 success，UI/full-bench仍skip。真实离屏WK中四格式图片均加载，混排文章经正文/表格/任务/语言/替换/历史/源码no-op后Save As、新NSDocument与新WK重开，Markdown及图片逐字节核对通过；系统目录选择仅用公开注入，不能填入物理授权或真实显示验收。
 
 | 用户能力 | 已执行的生产接缝依据 | 仍需闭合的证据 |
 | --- | --- | --- |
@@ -15,18 +17,18 @@
 | 保护片段、U与邻接写作 | 冻结18例生产Session、真实main/EditorView/Bridge；脚注/callout精确块、Wiki/HTML/comment inline atom、nested quote、同次delimiter/range、S005含EOF Mermaid、旧epoch拒绝、GATE004与未解决意图控制；三轮红绿及双轴记录保留 | 最新WK真实选区/IME/键盘、整篇写作与文件闭环；不声称完整语法代数证明 |
 | 大纲/统计/章节定位 | main/panel真实DOM、load epoch/拒载保持、CRLF/Unicode边界；heading-navigation测试 | 当前组合真实滚动可见、VoiceOver/窄窗 |
 | 当前文档可视/源码查找替换 | 14例真实SearchPanel/main/runtime动作，完整owner/marks/字节；075/根内容版本旧结果拒绝，PR73已合 | 实际WK查询框原生Undo、焦点/候选、视口与文件保存 |
-| 图片导入/展示/描述/删除 | 当前组合的真实image NodeView/alt/title/history、linked BOM CRLF table；LocalImageStore PNG/JPEG/GIF/WebP实际解码 | 真实WK各格式、目录授权/跨启动bookmark、系统拖放/剪贴板 |
+| 图片导入/展示/描述/删除 | 当前组合的真实image NodeView/alt/title/history、linked BOM CRLF table；LocalImageStore四格式解码；108四格式真实离屏WK scheme/NodeView加载、迁移重开 | 可见窗口各格式、真实目录授权/跨启动bookmark、系统拖放/剪贴板 |
 | 首存/失败/重试/Save As资源 | InkoraDocumentTests.testFirstSavePublishesVerifiedImageBeforeMarkdownAndThenConfirmsManifest、testFirstSaveRejectsSnapshotThatStillOwnsDraftImageURI；runtime published retry/no-op；LocalImageMigrationTests平衡括号与reference迁移；canonical owner proof、provisional capability/ack rollback与精确receipt均已随PR74进入main | 最新系统面板取消/失败、实际授权、正式关闭重开 |
 | 崩溃与pending意图恢复 | LocalImageStoreTests.testIndependentProcessSIGKILLLeavesRecoverableProductionManifestAndBytes、RecoveryStore启动discovery；LocalImageMigrationTests.testSIGKILLAfterPublicationIsDiscoveredByIndependentProcessState | 080已通过真实协调器/资源-only/确认handoff/放弃回归；真实启动恢复UI仍待验 |
 | 资源授权与安全边界 | DocumentAssetBrokerTests.testSynchronousPreflightHoldsScopeLeaseAcrossDescriptorReadAndReleasesOnce/Failure、真实handler stop/generation/lease控制、非法路径/SHA/symlink拒绝 | 实际Sandbox面板、书签跨启动与当前受支持系统 |
-| 真实文件生命周期 | InkoraDocumentTests save/snapshot取消/serialized saves/删除/外改/first-save failures；EditorWebViewTests revision/replay/save barrier | DocumentOpenUITests菜单/关闭取消保存放弃/冲突/只读/最近文件/Finder集中跑；不能借旧UI结果填本次 |
+| 真实文件生命周期 | InkoraDocumentTests save/snapshot取消/serialized saves/删除/外改/first-save failures；EditorWebViewTests revision/replay/save barrier；108混排文章实际WK编辑→NSDocument迁移写盘→新文档/WK重开 | DocumentOpenUITests菜单/关闭取消保存放弃/冲突/只读/最近文件/Finder集中跑；不能借旧UI结果填本次 |
 | 性能与支持范围 | 最终默认CI/light基线通过；fab0bcc参考模型5组及离屏WK四向量有输入/源码/bundle与原始分布，WK input→snapshot median medium109.734ms/large877.365ms/CRLF868.752ms，不重标为最后7305测量 | 实际paint/物理IME/最低系统、最终统一输入与15正式预算未冻结 |
 | 键盘/AX/系统/显示 | 产品控件有真实DOM及AX名称控制；既有AcceptanceUITests测试入口保留 | AcceptanceUITests.testKeyboardOnlyOpenEditSaveCloseAndRecent/testEditorAccessibilityAudit、人工VoiceOver、深浅/放大字体、macOS14+实际运行 |
 
 ## 当前可以与不可以结算的事项
 
 - 原文权威核心、表格任务和可视查找替换已实际进入main，不再写“只有模块/原型”。图片代码已随PR74进入main，仍不能把682绿灯叫V4整体验收完成。
-- 077和080均已有root组合测试，实际恢复确认不再只是通知；083统一owner候选已独立回归；089捕获stale proof资源变更及静默拒写handoff两项，090正在补正。
+- 077和080均已有root组合测试，实际恢复确认不再只是通知；083统一owner与090的proof/落盘receipt补正已随PR74进入main。089原两项报告及修复证据分别保留，不再列为正在实施。
 - 078给出实际慢路径和失败样本；没有为make bench旧指标改绿或缩减首阶段功能。079/085已消除扫描热点并有重复分层数据，正式预算和最低系统承诺仍需后续验收。
 - 物理/桌面验收按用户“稍后”暂缓，不启动App/UI、不重新催促。自动composition、jsdom、hostlessWK、scratch和真实授权/物理输入分别结算。
 - 正式DeveloperID签名、公证和直接分发另属发布门槛；无Mac App Store路线。它们不替代上述功能/数据完整性/真实用户闭环。

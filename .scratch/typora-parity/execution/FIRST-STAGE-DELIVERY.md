@@ -1,6 +1,16 @@
 # 首阶段基础功能：交付总表
 
-## PR77已交付（最新状态）
+## PR78已交付（最新状态）
+
+生产 main `1e1e4561c7c79b36bd081e04bc54b54e8beffc41`，整树与精确 CI 受检 `624a8652a0c8fe971b166dff7d5d4b241adb8279` 无差异。默认 CI `42695919576` success，非UI/Release-offline/light基线通过，UI/full-bench按参数skip。108仅增加组合测试与验收记录，产品源码、协议、依赖和权限均无变化。
+
+新增 `WritingLifecycleTests` 用同一 BOM/CRLF/无尾换行文章串联正文输入、任务切换、表格单元格、代码语言、可视替换、Undo/Redo、源码no-op、NSDocument Save As和新文档/新WK重开；PNG/JPEG/GIF/WebP均经真实handler/NodeView解码，原文及图片迁移逐字节核对。完整Native188total/180pass/0fail/8旧性能skip、lint通过。初始两次失败只是测试误取代码许可链接，原始summary保留；不是产品红绿缺陷。OS目录选择是既有公共注入，不代表真实Sandbox授权。
+
+108分支/remote/clean与635文件tar/Git bundle已核验，tar SHA `1b39b6b612990f07f7f45d26e5e641c180452455c7a29a4ae83759ec09b5dd83`；实际xcresult/log另归档，3601文件逐项SHA核验，archive SHA `e675ca89b5a1bbd392cffe5c24da37892c0dfbe83d6aad7e33b32552745a1a86`。本轮没有新增Paseo Agent，managed计数仍92。真实输入法/系统文件窗口/授权/AX/macOS14/可见性能预算仍按用户“稍后”保留；新增组合证据不等于首阶段通过。
+
+108根worktree在以上校验后已回收，远端分支/commit、tracked tar/Git bundle与实际测试归档均保留。物理包的原manifest不改写；新增verification-main-1e1e456.json确认App/九个fixture SHA未变，PR78与PR77的app/editor/project.yml生产源码diff为空。没有将108新测试称为新bundle的物理验收。
+
+## PR77交付记录
 
 生产main c4fd38e2de57c8721057ed7c320ac6d3c1a10db1，PR77已在精确head545e3a94620599cedb5a35446187fbb4b05e4258默认CI42692283984 success后合并；root本地FF并整树diff为空、所有最后产品源码SHA与7305清单一致、main clean。checkout/setup/lint/non-UI/Release-offline/light基线通过，UI与full-bench明确skip。旧CI42690666114只是checkout443超时，失败记录未删除，工作流未改。
 
