@@ -341,4 +341,42 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.sent).toHaveLength(before);
     expect(h.panelHeadings()).toEqual(["甲"]);
   });
+
+
+  it("被拒的过期 revision load 保留当前有效大纲与统计", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc", revision: 5, text: "# Original\n" });
+    await settle();
+    expect(h.panelHeadings()).toEqual(["Original"]);
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "doc", revision: 4, text: "# Stale\n" });
+    await settle();
+    expect(h.sent.at(-1)?.type).toBe("editorError");
+    expect(h.sent.at(-1)?.code).toBe("stale_revision");
+    expect(h.panelHeadings()).toEqual(["Original"]);
+    expect(h.panelStat("字符数")).toBe(expectedStats("# Original\n").characters);
+  });
+
+  it("被拒的重复 requestID load 保留当前有效大纲与统计", async () => {
+    const h = await bootMain();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc", revision: 5, text: "# Original\n" });
+    await settle();
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "other", revision: 0, text: "# Rejected\n" });
+    await settle();
+    expect(h.sent.at(-1)?.type).toBe("editorError");
+    expect(h.sent.at(-1)?.code).toBe("request_conflict");
+    expect(h.panelHeadings()).toEqual(["Original"]);
+    expect(h.panelStat("字数")).toBe(expectedStats("# Original\n").writingUnits);
+  });
+
+  it("有效 load 的待执行分析不被紧随其后的拒绝请求取消", async () => {
+    const h = await bootMain();
+    // 同步连续两条：第一条已接受（分析计时器未触发），第二条被拒。
+    h.receive({ type: "loadDocument", requestID: "r1", documentID: "doc", revision: 5, text: "# Original\n" });
+    h.receive({ type: "loadDocument", requestID: "r2", documentID: "doc", revision: 4, text: "# Stale\n" });
+    await settle();
+    expect(h.sent.at(-1)?.code).toBe("stale_revision");
+    expect(h.panelHeadings()).toEqual(["Original"]);
+    expect(h.panelStat("字符数")).toBe(expectedStats("# Original\n").characters);
+    expect(h.editorHost().textContent).toContain("Original");
+  });
 });

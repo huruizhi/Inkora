@@ -11,7 +11,8 @@
 - `editor/src/main.ts`：接入调度。
   - `#app` 内创建稳定子宿主 `.editor-host`（活编辑器 DOM 只在 loadDocument 重建，分析更新绝不重建/移动）；面板挂在宿主之后。
   - 刷新信号唯一来源是既有 `stateChanged` 消息（loadDocument / runtime 编辑变更 / markSaved / executeCommand / queryState 响应），读取其中的 `documentID`/`revision`，文本来自 `runtime.getText()`。不产生额外协议查询或虚假 revision。
-  - `scheduleAnalysis`：`setTimeout(0)` 合并；`analysisGeneration` 代际计数 + `loadDocument` 时的 `cancelPendingAnalysis` 保证跨文档、重复 load、同 revision 异 documentID 时旧任务作废，旧结果不覆盖新文档。
+  - `scheduleAnalysis`：`setTimeout(0)` 合并；`analysisGeneration` 代际计数 + 已接受的 `loadDocument`（响应为 `stateChanged`）时的 `cancelPendingAnalysis` 保证跨文档、重复 load、同 revision 异 documentID 时旧任务作废，旧结果不覆盖新文档。
+  - 被 Bridge 拒绝的 `loadDocument`（`stale_revision`/`request_conflict`）不重置面板、不作废待执行分析：`main.ts` 先经 `session.loadDocument` 验证，只有真正接受的新 load 才清空面板并重建 runtime；拒绝请求保留当前有效大纲/统计与编辑器文本。
   - composition 进行中（`runtime.composing`）直接跳过调度，保留上一份稳定统计；组合结束且文本实际变化时由既有 stateChanged 链路自然刷新。
   - 分析异常被捕获并显示为面板错误态，绝不转发为 `editorError`、不阻断保存/编辑。
   - `recordRuntimeChange` 的 `executingCommand` 防重复规则原样保留：显式 `markSaved`/`executeCommand` 的响应本身即 stateChanged，面板据此刷新。

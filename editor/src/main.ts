@@ -113,10 +113,13 @@ window.inkora = {
       switch (command.type) {
         case "loadDocument":
           {
-            cancelPendingAnalysis();
-            panel.update({ kind: "empty", message: "正在打开文档" });
+            // 先验证再重置：被拒绝的 load（stale_revision/request_conflict）
+            // 保留当前有效面板与待执行分析，只有真正接受的新 load 才
+            // 取消旧任务并进入"正在打开文档"过渡态。
             const response = session.loadDocument(command);
             if (response.type === "stateChanged") {
+              cancelPendingAnalysis();
+              panel.update({ kind: "empty", message: "正在打开文档" });
               runtime?.destroy();
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange);
               runtime.focus();
