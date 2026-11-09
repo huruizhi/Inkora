@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "status": "frozen-input-expectations-not-product-results",
+  "canonical": "docs/markdown-support.md",
+  "scope": "V2 block and inline opaque source, adjacency and unsafe snapshot gates",
+  "cases": [
+    {
+      "id": "V2-001", "rules": ["SYN-D002", "FID-004"],
+      "raw": "Before.\n\n[^note]: definition\n    continuation\n\nAfter.\n",
+      "blockRaw": ["[^note]: definition\n    continuation"], "inlineRaw": [], "saveEligible": true,
+      "edit": {"at": 0, "insert": "New ", "expectedRaw": "New Before.\n\n[^note]: definition\n    continuation\n\nAfter.\n"}
+    },
+    {
+      "id": "V2-002", "rules": ["SYN-D007", "FID-002"],
+      "raw": "> [!NOTE]\n> opaque\nlazy continuation\n\nAfter.\n",
+      "blockRaw": ["> [!NOTE]\n> opaque"], "inlineRaw": [], "saveEligible": true,
+      "edit": {"at": 19, "insert": "New ", "expectedRaw": "> [!NOTE]\n> opaque\nNew lazy continuation\n\nAfter.\n"}
+    },
+    {
+      "id": "V2-003", "rules": ["SYN-D006", "FID-004"],
+      "raw": "Before [[target]] after.\n",
+      "blockRaw": [], "inlineRaw": ["[[target]]"], "saveEligible": true,
+      "edit": {"at": 0, "insert": "New ", "expectedRaw": "New Before [[target]] after.\n"}
+    },
+    {
+      "id": "V2-004", "rules": ["SYN-U002", "SYN-D001", "FID-005"],
+      "raw": "---\ntitle: bad\n\nBody.\n", "saveEligible": false,
+      "repairRaw": "---\ntitle: bad\n---\n\nBody.\n", "repairedSaveEligible": true,
+      "repairedBlockRaw": ["---\ntitle: bad\n---"]
+    },
+    {
+      "id": "V2-005", "rules": ["SYN-D002", "SYN-D006", "SYN-S006"],
+      "raw": "Before \\[^note] \\[[target]] `[^note] [[target]]` after.\n",
+      "blockRaw": [], "inlineRaw": [], "saveEligible": true
+    },
+    {
+      "id": "V2-006", "rules": ["SYN-D002", "SYN-S010"],
+      "raw": "[label [^note]](/target) outside [^note].\n\n[^note]: /definition\n",
+      "blockRaw": ["[^note]: /definition"], "inlineRaw": ["[^note]"], "saveEligible": true,
+      "links": [{"text": "label [^note]", "href": "/target"}]
+    },
+    {
+      "id": "V2-007", "rules": ["SYN-U002", "FID-005"],
+      "raw": "Before [^bad label] after.\n", "saveEligible": false,
+      "repairRaw": "Before [^valid_label] after.\n", "repairedSaveEligible": true,
+      "repairedInlineRaw": ["[^valid_label]"]
+    },
+    {
+      "id": "V2-008", "rules": ["SYN-D005", "SYN-D004", "SYN-D006", "SYN-U005"],
+      "raw": "Before <!-- [[bad {x} $y$ --> after.\n",
+      "blockRaw": [], "inlineRaw": ["<!-- [[bad {x} $y$ -->"], "saveEligible": true,
+      "edit": {"at": 0, "insert": "New ", "expectedRaw": "New Before <!-- [[bad {x} $y$ --> after.\n"}
+    },
+    {
+      "id": "V2-009", "rules": ["SYN-D006", "ENC-001", "EOL-001"],
+      "raw": "﻿Before [[目标]] after.\r\n\r\nTail.\n",
+      "blockRaw": [], "inlineRaw": ["[[目标]]"], "saveEligible": true,
+      "edit": {"at": 1, "insert": "中文 ", "expectedRaw": "﻿中文 Before [[目标]] after.\r\n\r\nTail.\n"}
+    },
+    {
+      "id": "V2-010", "rules": ["SYN-S005", "SYN-D002", "SYN-D007"],
+      "raw": "```md\n[^note]: literal\n> [!NOTE]\n[[target]]\n```\n\nAfter.\n",
+      "blockRaw": [], "inlineRaw": [], "saveEligible": true
+    },
+    {
+      "id": "V2-011", "rules": ["SYN-D001", "SYN-U001", "SYN-U005"],
+      "raw": "---\ntitle: '{x} [[bad $y$ <Component>'\n...\n\nAfter.\n",
+      "blockRaw": ["---\ntitle: '{x} [[bad $y$ <Component>'\n..."], "inlineRaw": [], "saveEligible": true
+    },
+    {
+      "id": "V2-012", "rules": ["SYN-U002", "FID-005"],
+      "raw": "Before [[bad after.\n", "saveEligible": false,
+      "repairRaw": "Before [[target]] after.\n", "repairedSaveEligible": true,
+      "repairedInlineRaw": ["[[target]]"]
+    },
+    {
+      "id": "V2-013", "rules": ["SYN-U002", "SYN-D007"],
+      "raw": "> [!BAD TYPE]\n> opaque\n\nAfter.\n", "saveEligible": false,
+      "repairRaw": "> [!NOTE]- title\n> opaque\n>\n> more\n\nAfter.\n", "repairedSaveEligible": true,
+      "repairedBlockRaw": ["> [!NOTE]- title\n> opaque\n>\n> more"]
+    },
+    {
+      "id": "V2-014", "rules": ["SYN-D002", "WSP-001"],
+      "raw": "[^n]: first\n\n\tcontinued\n  ordinary\n\nAfter.\n",
+      "blockRaw": ["[^n]: first\n\n\tcontinued"], "inlineRaw": [], "saveEligible": true
+    },
+    {
+      "id": "V2-015", "rules": ["SYN-U002", "SYN-D001"],
+      "raw": "+++\nx = 1\n...\n\nAfter.\n", "saveEligible": false,
+      "repairRaw": "+++\nx = 1\n+++\n\nAfter.\n", "repairedSaveEligible": true,
+      "repairedBlockRaw": ["+++\nx = 1\n+++"]
+    },
+    {
+      "id": "V2-016", "rules": ["SYN-D004", "SYN-U002", "SYN-U005"],
+      "raw": "Before <span data-x=\"[[bad $x$\"> after.\n",
+      "blockRaw": [], "inlineRaw": ["<span data-x=\"[[bad $x$\">"], "saveEligible": true,
+      "edit": {"at": 0, "insert": "New ", "expectedRaw": "New Before <span data-x=\"[[bad $x$\"> after.\n"}
+    }
+  ]
+}

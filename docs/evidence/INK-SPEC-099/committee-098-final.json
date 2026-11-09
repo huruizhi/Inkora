@@ -1,0 +1,8 @@
+{
+  "agentId": "f9965744-4295-47bb-a03a-784960adbb04",
+  "updateCount": 28,
+  "content": "Showing 1 of 28 activities (limited to 1)\n\n---\n\n结论：认可共同推荐；方案与 16 例 raw/span/edit 预期基本一致，但有三点需定稿。\n\n1. 必须固定顺序：BOM 后 front matter → 代码/转义字面 → callout、math、footnote definition（footnote 先于 reference）→ inline code/escape 与完整外层 link/image/autolink、合法 footnote 按“更早起点优先、同起点 footnote 优先”→ HTML comment/raw HTML/JSX → 畸形 footnote/Wiki → U。callout 在首个非 `>` 物理行结束，不接受 lazy continuation。\n\nV2-005 的 `SYN-S006` 与样本不符：样本是 inline code，应至少改为 `SYN-S004`。V2-008/010/011/016 的 `rules` 若是覆盖标签可以保留；若表示实际产出，则应分别只产出 comment、fence、front matter、raw HTML。建议把“负控制规则”单独命名，避免误读。\n\n2. 当前规范下，结构化模式删除整个保护 atom 仍应拒绝。`FID-004`要求 D 片段作为不透明原文保存，`GATE-002`要求 D 被改写即阻断；D 表也只授权主动源码草稿修改。若要允许“明确整段删除”，必须新增规范例外：只删除该精确 raw span，重新 parse，并证明剩余 coverage 无缺口/重叠/重排；不能由当前 GATE-002 推出。\n\n3. GATE-004 必须与结构化资格分离。最小状态是：\n\n`saveAuthority = structured | source`；源码显式提交后记录 `{epoch, revision, raw, explicit:true}`。\n\n结构化保存要求无 issues 且 ledger 可审计；源码保存只要求显式完整草稿、UTF-8 可无损编码、非 bare CR、无 composition/draft/unresolved，并且当前 raw 等于 source commit raw。`applySource` 即使 issues 仍在，也应清除“未提交意图”而保留诊断；`saveMemory` 按 source authority 写入完整 raw，不设语法白名单。当前重放的 1/1 red 正是缺少该状态。\n\n4. 可渐进迁移：canonical parse result 携带现有 S token/provenance，ledger 先复用现有 S 映射，只移除其 D/U 判断。失败线限定为：token↔raw、PM↔token、opaque coverage 任一无法证明，则返回 ledger diagnostic、阻断结构化保存并转源码修复；不得回退旧 scanner 或放宽 `doc.eq`。\n\n本轮未运行测试/构建/安装，未修改文件；以上关于 GATE-004 的 red 依据来自你提供的公共重放。",
+  "currentModeId": "full-access",
+  "serverId": "srv_MEqRNkRW6fSx"
+}
+
