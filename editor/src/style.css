@@ -281,8 +281,16 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   }
 }
 
-/* 当前文档查找（INK-M1-009 阶段 A）：只查询与列表，无定位/替换。 */
+/* 查找结果占据工具区布局空间，不能覆盖已定位到的正文。 */
+.search-root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
 .search-toggle {
+  align-self: flex-start;
   border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
   border-radius: 6px;
   background: transparent;
@@ -298,10 +306,11 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 }
 
 .search-panel {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 6px;
 }
 .search-panel[hidden] {
@@ -309,6 +318,7 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 }
 .search-panel-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
@@ -367,13 +377,10 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   color: color-mix(in srgb, CanvasText 65%, Canvas);
 }
 .search-panel-results {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 100%;
-  z-index: 10;
+  position: static;
   box-sizing: border-box;
-  max-height: min(240px, 40vh);
+  width: 100%;
+  max-height: min(200px, 28vh);
   overflow: auto;
   padding: 8px 10px;
   border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
