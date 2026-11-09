@@ -402,21 +402,56 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   private func beginImageImport(fileURL: URL) {
     withAuthorizedDocumentDirectory { [weak self] directory in
       guard let self, let document else { return }
-      do {
-        let asset = try document.importLocalImage(
-          fileURL: fileURL, authorizedDirectory: directory)
-        presentImportedImage(asset)
-      } catch { presentImageError(error) }
+      captureImportIntent(document: document) { [weak self, weak document] result in
+        guard let self, let document else { return }
+        do {
+          let asset = try document.importLocalImage(
+            fileURL: fileURL, authorizedDirectory: directory, importIntent: result.get())
+          presentImportedImage(asset)
+        } catch { presentImageError(error) }
+      }
     }
   }
 
   private func beginPastedImageImport(_ data: Data) {
     withAuthorizedDocumentDirectory { [weak self] directory in
       guard let self, let document else { return }
-      do {
-        let asset = try document.importPastedPNG(data, authorizedDirectory: directory)
-        presentImportedImage(asset)
-      } catch { presentImageError(error) }
+      captureImportIntent(document: document) { [weak self, weak document] result in
+        guard let self, let document else { return }
+        do {
+          let asset = try document.importPastedPNG(
+            data, authorizedDirectory: directory, importIntent: result.get())
+          presentImportedImage(asset)
+        } catch { presentImageError(error) }
+      }
+    }
+  }
+
+  private func captureImportIntent(
+    document: InkoraDocument,
+    completion: @escaping (Result<LocalImageAsset.ImportIntent, Error>) -> Void
+  ) {
+    guard let bridge else {
+      completion(.failure(EditorBridgeError.editorUnavailable))
+      return
+    }
+    bridge.requestState { [weak self, weak document] result in
+      guard let self, let document else { return }
+      completion(
+        Result {
+          let state = try result.get()
+          guard state.documentID == document.bridgeDocumentID,
+            let anchor = state.selectionAnchor, let head = state.selectionHead
+          else { throw EditorBridgeError.staleRevision }
+          return LocalImageAsset.ImportIntent(
+            documentID: state.documentID,
+            sessionID: try document.localImages().sessionID,
+            documentEpoch: documentEpoch,
+            revision: state.revision,
+            selectionAnchor: anchor,
+            selectionHead: head,
+            recoveryState: .active)
+        })
     }
   }
 
@@ -488,6 +523,9 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
 
   private func presentImportedImage(_ asset: LocalImageAsset) {
     do {
+      guard let anchor = asset.importIntent?.selectionAnchor,
+        let head = asset.importIntent?.selectionHead
+      else { throw LocalImageError.unresolvedMarkdownOwner }
       let capability = try register(asset)
       bridge?.applyImageImport(
         documentEpoch: documentEpoch,
@@ -495,7 +533,9 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
         uri: asset.markdownURI,
         alt: "",
         title: nil,
-        displayURL: capability.url
+        displayURL: capability.url,
+        selectionAnchor: anchor,
+        selectionHead: head
       ) { [weak self] error in
         if let error {
           self?.presentImageError(error)
@@ -516,17 +556,19 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       basePath = ""
       relativePath = Self.percentEncode(asset.storageURL.lastPathComponent)
     } else if let documentURL = document.fileURL {
-      root =
-        document.restoredImageDirectory(role: "document-directory", for: documentURL)
-        ?? document.restoredImageDirectory(role: "document-read-directory", for: documentURL)
-        ?? documentURL.deletingLastPathComponent()
+      guard
+        let authorizedRoot =
+          try document.resolveImageDirectory(role: "document-directory", for: documentURL)
+          ?? document.resolveImageDirectory(role: "document-read-directory", for: documentURL)
+      else { throw LocalImageError.unauthorizedDirectory }
+      root = authorizedRoot
       basePath = try Self.relativeEncodedPath(
         from: root, to: documentURL.deletingLastPathComponent())
       relativePath = asset.markdownURI
     } else {
       throw LocalImageError.corruptManifest
     }
-    return try assetBroker.register(
+    let capability = try assetBroker.register(
       documentID: document.bridgeDocumentID,
       epoch: documentEpoch,
       rootURL: root,
@@ -534,6 +576,10 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       percentEncodedRelativePath: relativePath,
       sha256: asset.sha256,
       mimeType: asset.mimeType)
+    guard assetBroker.read(token: capability.token).status == .ready else {
+      throw LocalImageError.unauthorizedDirectory
+    }
+    return capability
   }
 
   private func refreshImageDescriptors() {
@@ -543,6 +589,10 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
         return BridgeImageDescriptor(
           href: asset.markdownURI, status: .ready,
           displayURL: try register(asset).url.absoluteString, message: nil)
+      } catch LocalImageError.unauthorizedDirectory {
+        return BridgeImageDescriptor(
+          href: asset.markdownURI, status: .denied, displayURL: nil,
+          message: LocalImageError.unauthorizedDirectory.localizedDescription)
       } catch {
         return BridgeImageDescriptor(
           href: asset.markdownURI, status: .error, displayURL: nil,
@@ -550,12 +600,23 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       }
     }
     var known = Set(descriptors.map(\.href))
-    if let documentURL = document.fileURL,
+    if let documentURL = document.fileURL {
       let grant =
         document.restoredImageDirectory(role: "document-directory", for: documentURL)
-        ?? document.restoredImageDirectory(
-          role: "document-read-directory", for: documentURL)
-    {
+        ?? document.restoredImageDirectory(role: "document-read-directory", for: documentURL)
+      guard let grant else {
+        for href in LocalImageMigrationCoordinator.localImageURIs(in: document.text)
+        where known.insert(href).inserted {
+          descriptors.append(
+            BridgeImageDescriptor(
+              href: href, status: .denied, displayURL: nil,
+              message: LocalImageError.unauthorizedDirectory.localizedDescription))
+        }
+        if !descriptors.isEmpty {
+          bridge?.setImageDescriptors(documentEpoch: documentEpoch, descriptors: descriptors)
+        }
+        return
+      }
       let accessed = grant.startAccessingSecurityScopedResource()
       defer { if accessed { grant.stopAccessingSecurityScopedResource() } }
       for href in LocalImageMigrationCoordinator.localImageURIs(in: document.text)
@@ -569,11 +630,21 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     bridge?.setImageDescriptors(documentEpoch: documentEpoch, descriptors: descriptors) {
       [weak self] error in
       guard error == nil, let self else { return }
+      let owners = Set(LocalImageMigrationCoordinator.imageURIs(in: document.text))
       for asset in session.assets where asset.insertion == .pending {
-        if document.text.contains(asset.markdownURI) {
+        if owners.contains(asset.markdownURI) {
           try? session.markInsertionAccepted(assetID: asset.id)
-        } else {
+        } else if !session.wasRestored,
+          let intent = asset.importIntent,
+          intent.documentID == document.bridgeDocumentID,
+          intent.sessionID == session.sessionID,
+          intent.documentEpoch == documentEpoch,
+          intent.revision == editorState?.revision,
+          intent.recoveryState == .active
+        {
           presentImportedImage(asset)
+        } else {
+          try? session.requireInsertionConfirmation(assetID: asset.id)
         }
       }
     }
@@ -604,6 +675,9 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
         rootURL: authorizedDirectory, percentEncodedBasePath: basePath,
         percentEncodedRelativePath: relativePath, sha256: inspection.sha256,
         mimeType: inspection.mimeType)
+      guard assetBroker.read(token: capability.token).status == .ready else {
+        throw LocalImageError.unauthorizedDirectory
+      }
       return BridgeImageDescriptor(
         href: href, status: .ready, displayURL: capability.url.absoluteString,
         message: nil)

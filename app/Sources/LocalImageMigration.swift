@@ -1,3 +1,4 @@
+import AppKit
 import CryptoKit
 import Darwin
 import Foundation
@@ -24,10 +25,28 @@ struct LocalImageMigrationPlan: Equatable {
 /// A durable journal is retained after publication until NSDocument confirms
 /// the Markdown commit, so a crash or failed write is an explicit orphan state.
 final class LocalImageMigrationCoordinator {
+  struct RecoveryRecord: Equatable {
+    enum CurrentState: String { case prepared, awaitingMarkdown, markdownMatches, invalid }
+    let id: UUID
+    let journalState: String
+    let currentState: CurrentState
+    let targetDocumentURL: URL
+  }
+
+  struct RecoveryDiscovery: Equatable {
+    let records: [RecoveryRecord]
+    let rejected: [URL]
+  }
+
   private struct Journal: Codable {
     let schema: Int
     let id: UUID
     let state: String
+    let markdownSHA256: String
+    let sourceDocumentURL: URL
+    let targetDocumentURL: URL
+    let sourceAuthorizedDirectory: URL
+    let targetAuthorizedDirectory: URL
     let items: [LocalImageMigrationPlan.Item]
   }
 
@@ -151,9 +170,69 @@ final class LocalImageMigrationCoordinator {
     }
   }
 
+  func discoverRecovery() -> RecoveryDiscovery {
+    guard
+      let urls = try? FileManager.default.contentsOfDirectory(
+        at: journalRoot, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
+        options: [.skipsHiddenFiles])
+    else { return RecoveryDiscovery(records: [], rejected: []) }
+    var records: [RecoveryRecord] = []
+    var rejected: [URL] = []
+    for url in urls.sorted(by: { $0.lastPathComponent < $1.lastPathComponent })
+    where url.pathExtension == "json" {
+      do {
+        let values = try url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+        guard values.isRegularFile == true, values.isSymbolicLink != true else {
+          throw LocalImageError.unsafePath
+        }
+        let journal = try JSONDecoder().decode(Journal.self, from: Self.readRegularFile(url))
+        guard journal.schema == 2,
+          url.deletingPathExtension().lastPathComponent == journal.id.uuidString.lowercased(),
+          ["prepared", "published-awaiting-markdown", "failed-conservative"].contains(
+            journal.state)
+        else { throw LocalImageError.corruptManifest }
+        try Self.validateJournalPaths(journal)
+        let targetsMatch = try journal.items.allSatisfy { item in
+          guard FileManager.default.fileExists(atPath: item.targetURL.path) else { return false }
+          return Self.sha256(try Self.readRegularFile(item.targetURL)) == item.sha256
+        }
+        let markdownMatches: Bool
+        if FileManager.default.fileExists(atPath: journal.targetDocumentURL.path) {
+          markdownMatches =
+            Self.sha256(try Self.readRegularMarkdown(journal.targetDocumentURL))
+            == journal.markdownSHA256
+        } else {
+          markdownMatches = false
+        }
+        let current: RecoveryRecord.CurrentState
+        if markdownMatches && targetsMatch {
+          current = .markdownMatches
+        } else if journal.state == "prepared" && !targetsMatch {
+          current = .prepared
+        } else {
+          current = .awaitingMarkdown
+        }
+        records.append(
+          RecoveryRecord(
+            id: journal.id, journalState: journal.state, currentState: current,
+            targetDocumentURL: journal.targetDocumentURL))
+      } catch {
+        rejected.append(url)
+      }
+    }
+    return RecoveryDiscovery(records: records, rejected: rejected)
+  }
+
   private func writeJournal(_ plan: LocalImageMigrationPlan, state: String) throws {
     try FileManager.default.createDirectory(at: journalRoot, withIntermediateDirectories: true)
-    let journal = Journal(schema: 1, id: plan.id, state: state, items: plan.items)
+    let journal = Journal(
+      schema: 2, id: plan.id, state: state,
+      markdownSHA256: Self.sha256(Data(plan.markdown.utf8)),
+      sourceDocumentURL: plan.sourceDocumentURL,
+      targetDocumentURL: plan.targetDocumentURL,
+      sourceAuthorizedDirectory: plan.sourceAuthorizedDirectory,
+      targetAuthorizedDirectory: plan.targetAuthorizedDirectory,
+      items: plan.items)
     try JSONEncoder().encode(journal).write(to: journalURL(plan.id), options: .atomic)
   }
 
@@ -161,23 +240,80 @@ final class LocalImageMigrationCoordinator {
     journalRoot.appendingPathComponent("\(id.uuidString.lowercased()).json")
   }
 
-  private static func imageURIs(in markdown: String) -> [String] {
+  private static func validateJournalPaths(_ journal: Journal) throws {
+    let sourceGrant = journal.sourceAuthorizedDirectory.standardizedFileURL
+    let targetGrant = journal.targetAuthorizedDirectory.standardizedFileURL
+    guard isInside(journal.sourceDocumentURL, sourceGrant),
+      isInside(journal.targetDocumentURL, targetGrant),
+      journal.items.allSatisfy({
+        isInside($0.sourceURL, sourceGrant) && isInside($0.targetURL, targetGrant)
+      })
+    else { throw LocalImageError.unauthorizedDirectory }
+    for item in journal.items {
+      guard item.sourceURL.resolvingSymlinksInPath() == item.sourceURL.standardizedFileURL else {
+        throw LocalImageError.unsafePath
+      }
+      if FileManager.default.fileExists(atPath: item.targetURL.path),
+        item.targetURL.resolvingSymlinksInPath() != item.targetURL.standardizedFileURL
+      {
+        throw LocalImageError.unsafePath
+      }
+      guard Self.sha256(try Self.readRegularFile(item.sourceURL)) == item.sha256 else {
+        throw LocalImageError.checksumMismatch
+      }
+    }
+  }
+
+  private static func isInside(_ url: URL, _ root: URL) -> Bool {
+    let path = url.standardizedFileURL.path
+    return path == root.path || path.hasPrefix(root.path + "/")
+  }
+
+  private static func readRegularMarkdown(_ url: URL) throws -> Data {
+    let descriptor = open(url.path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
+    guard descriptor >= 0 else { throw LocalImageError.invalidSource }
+    defer { close(descriptor) }
+    var information = stat()
+    guard fstat(descriptor, &information) == 0,
+      (information.st_mode & S_IFMT) == S_IFREG,
+      information.st_size >= 0, information.st_size <= 64 * 1024 * 1024
+    else { throw LocalImageError.invalidSource }
+    var data = Data(count: Int(information.st_size))
+    let count = data.withUnsafeMutableBytes { bytes -> Int in
+      guard let base = bytes.baseAddress else { return 0 }
+      var offset = 0
+      while offset < bytes.count {
+        let amount = Darwin.read(descriptor, base.advanced(by: offset), bytes.count - offset)
+        if amount <= 0 { return -1 }
+        offset += amount
+      }
+      return offset
+    }
+    guard count == data.count else { throw LocalImageError.invalidSource }
+    return data
+  }
+
+  static func imageURIs(in markdown: String) -> [String] {
     var result: [String] = []
     let originalUnits = Array(markdown.utf16)
     let searchable = maskNonImageContexts(markdown)
     let full = NSRange(searchable.startIndex..<searchable.endIndex, in: searchable)
+    let labelAtom = #"\\[!-/:-@\[-`{-~]|[^\[\]\\\r\n]"#
+    let label = #"(?:\#(labelAtom))*(?:[ \t]*(?:\r\n|\r|\n)[ \t]*(?:\#(labelAtom))*)?"#
     let definitions = matches(
-      pattern: #"(?m)^ {0,3}\[([^\]\n]+)\]:[ \t]*(?:<([^>\n]+)>|([^ \t\n]+))"#,
+      pattern: #"(?m)^ {0,3}\[(\#(label))\]:[ \t]*(?:<([^>\r\n]+)>|([^ \t\r\n]+))"#,
       text: searchable, range: full
     )
     .reduce(into: [String: String]()) { definitions, match in
-      guard let label = capture(match, 1, searchable)?.lowercased(),
+      guard let rawLabel = capture(match, 1, searchable),
+        !rawLabel.isEmpty, rawLabel.unicodeScalars.count <= 999,
         let uri = capture(match, 2, searchable) ?? capture(match, 3, searchable)
       else { return }
+      let label = normalizeReferenceLabel(rawLabel)
       definitions[label] = uri
     }
     for match in matches(
-      pattern: #"!\[[^\]\n]*\]\([ \t]*(?:<([^>\n]+)>|([^ \t\n\)]+))"#,
+      pattern: #"!\[\#(label)\]\([ \t]*(?:<([^>\r\n]+)>|([^ \t\r\n\)]+))"#,
       text: searchable, range: full)
     {
       guard !isEscaped(at: match.range.location, units: originalUnits) else { continue }
@@ -186,15 +322,17 @@ final class LocalImageMigrationCoordinator {
       }
     }
     for match in matches(
-      pattern: #"!\[([^\]\n]*)\](?!\()[ \t]*(?:\[([^\]\n]*)\])?"#,
+      pattern: #"!\[(\#(label))\](?!\()[ \t]*(?:\[(\#(label))\])?"#,
       text: searchable, range: full)
     {
       guard !isEscaped(at: match.range.location, units: originalUnits),
         let alt = capture(match, 1, searchable)
       else { continue }
       let explicit = capture(match, 2, searchable)
-      let label = ((explicit?.isEmpty == false ? explicit : alt) ?? alt).lowercased()
-      if let uri = definitions[label] { result.append(uri) }
+      let rawLabel = (explicit?.isEmpty == false ? explicit : alt) ?? alt
+      guard !rawLabel.isEmpty, rawLabel.unicodeScalars.count <= 999 else { continue }
+      let normalizedLabel = normalizeReferenceLabel(rawLabel)
+      if let uri = definitions[normalizedLabel] { result.append(uri) }
     }
     var seen = Set<String>()
     return result.filter { seen.insert($0).inserted }
@@ -307,6 +445,55 @@ final class LocalImageMigrationCoordinator {
       index -= 1
     }
     return count % 2 == 1
+  }
+
+  private static func normalizeReferenceLabel(_ raw: String) -> String {
+    var unescaped = ""
+    var index = raw.startIndex
+    while index < raw.endIndex {
+      let character = raw[index]
+      let next = raw.index(after: index)
+      if character == "\\", next < raw.endIndex,
+        raw[next].isASCII, raw[next].isPunctuation
+      {
+        unescaped.append(raw[next])
+        index = raw.index(after: next)
+      } else {
+        unescaped.append(character)
+        index = next
+      }
+    }
+    let decoded = decodeCharacterReferences(in: unescaped)
+    let components = decoded.split(whereSeparator: {
+      $0 == " " || $0 == "\t" || $0 == "\n" || $0 == "\r"
+    })
+    return components.joined(separator: " ").folding(
+      options: [.caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+  }
+
+  private static func decodeCharacterReferences(in raw: String) -> String {
+    let full = NSRange(raw.startIndex..<raw.endIndex, in: raw)
+    let matches = matches(
+      pattern: #"&(?:#[xX][0-9A-Fa-f]{1,8}|#[0-9]{1,8}|[A-Za-z][A-Za-z0-9]{1,63});"#,
+      text: raw, range: full)
+    guard !matches.isEmpty else { return raw }
+    var decoded = raw
+    for match in matches.reversed() {
+      guard let range = Range(match.range, in: raw) else { continue }
+      let reference = String(raw[range])
+      guard
+        let attributed = try? NSAttributedString(
+          data: Data(reference.utf8),
+          options: [
+            .documentType: NSAttributedString.DocumentType.html,
+            .characterEncoding: String.Encoding.utf8.rawValue,
+          ], documentAttributes: nil),
+        attributed.string != reference,
+        let decodedRange = Range(match.range, in: decoded)
+      else { continue }
+      decoded.replaceSubrange(decodedRange, with: attributed.string)
+    }
+    return decoded
   }
 
   private static func matches(

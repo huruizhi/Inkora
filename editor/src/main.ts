@@ -587,15 +587,20 @@ window.inkora = {
           }
           break;
         case "queryState":
-          postToNative(session.queryState(command));
+          postToNative(session.queryState(
+            command,
+            runtime ? { ...runtime.status, ...runtime.directedSelection } : undefined,
+          ));
           break;
         case "applyImageImport":
           executingCommand = true;
           try {
             const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const selectionMatches = runtime?.directedSelection.selectionAnchor === command.selectionAnchor
+              && runtime?.directedSelection.selectionHead === command.selectionHead;
             const response = session.executeMutation(
               command,
-              () => epochMatches && (runtime?.insertImage({
+              () => epochMatches && selectionMatches && (runtime?.insertImage({
                 uri: command.uri, alt: command.alt, title: command.title,
               }) ?? false),
               () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },

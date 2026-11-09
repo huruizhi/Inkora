@@ -93,6 +93,32 @@ final class BridgeProtocolTests: XCTestCase {
     XCTAssertEqual(event.text, "正文")
   }
 
+  func testStateChangedValidatesAndRoundTripsDirectedSelection() throws {
+    let json = """
+      {
+        "protocolVersion": 1,
+        "type": "stateChanged",
+        "requestID": "state-selection",
+        "state": {
+          "documentID": "doc-1",
+          "revision": 7,
+          "dirty": true,
+          "canUndo": true,
+          "canRedo": false,
+          "selectionAnchor": 9,
+          "selectionHead": 3
+        }
+      }
+      """
+    let event = try JSONDecoder().decode(BridgeEditorEvent.self, from: Data(json.utf8))
+    try event.validate()
+    XCTAssertEqual(event.state?.selectionAnchor, 9)
+    XCTAssertEqual(event.state?.selectionHead, 3)
+    XCTAssertEqual(
+      try JSONDecoder().decode(
+        BridgeEditorEvent.self, from: JSONEncoder().encode(event)), event)
+  }
+
   func testMarkSavedCommandRoundTripsExactSnapshot() throws {
     let markdown = "# 已保存\r\n\r\n正文"
     let command = BridgeNativeCommand.markSaved(
@@ -135,7 +161,8 @@ final class BridgeProtocolTests: XCTestCase {
     let importCommand = BridgeNativeCommand.applyImageImport(
       requestID: "image-1", documentID: "doc-1", revision: 4,
       documentEpoch: "epoch-1", assetID: "asset-1", uri: "Note.assets/a.png",
-      alt: "图", title: nil, displayURL: descriptor.displayURL!)
+      alt: "图", title: nil, displayURL: descriptor.displayURL!,
+      selectionAnchor: 3, selectionHead: 1)
     let descriptors = BridgeNativeCommand.setImageDescriptors(
       requestID: "descriptors-1", documentID: "doc-1", revision: 4,
       documentEpoch: "epoch-1", descriptors: [descriptor])

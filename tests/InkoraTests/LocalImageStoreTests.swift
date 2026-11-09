@@ -151,6 +151,77 @@ final class LocalImageStoreTests: XCTestCase {
     XCTAssertEqual(session.assets, [asset])
   }
 
+  func testFailedFirstSaveKeepsDraftOwnerForUndoAndSameTargetRetry() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let root = scratch.appendingPathComponent("Recovery")
+    let targetDirectory = scratch.appendingPathComponent("Target")
+    try FileManager.default.createDirectory(at: targetDirectory, withIntermediateDirectories: true)
+    let target = targetDirectory.appendingPathComponent("Note.md")
+    let session = try LocalImageStore(root: root).begin(
+      documentID: "doc-1", sessionID: UUID())
+    let asset = try session.importBitmapPNG(
+      png, preferredName: "source.png", documentURL: nil, authorizedDirectory: nil)
+    try session.markInsertionAccepted(assetID: asset.id)
+
+    let first = try session.prepareFirstSave(
+      documentURL: target, authorizedDirectory: targetDirectory)
+    XCTAssertEqual(first.rewrites[asset.markdownURI], "Note.assets/source.png")
+    try session.publish(first)
+
+    XCTAssertEqual(
+      session.assets.first?.markdownURI, asset.markdownURI,
+      "Publishing bytes is not a Markdown commit receipt")
+    XCTAssertEqual(session.assets.first?.state, .awaitingMarkdown)
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
+
+    let retry = try session.prepareFirstSave(
+      documentURL: target, authorizedDirectory: targetDirectory)
+    XCTAssertEqual(retry.rewrites[asset.markdownURI], "Note.assets/source.png")
+    XCTAssertEqual(retry.items.first?.sourceURL, asset.storageURL)
+    XCTAssertEqual(retry.items.first?.sha256, asset.sha256)
+
+    let otherDirectory = scratch.appendingPathComponent("Other")
+    try FileManager.default.createDirectory(at: otherDirectory, withIntermediateDirectories: true)
+    let other = try session.prepareFirstSave(
+      documentURL: otherDirectory.appendingPathComponent("Renamed.md"),
+      authorizedDirectory: otherDirectory)
+    XCTAssertEqual(other.rewrites[asset.markdownURI], "Renamed.assets/source.png")
+    try session.publish(other)
+    try session.confirmMarkdownCommit(first)
+    XCTAssertEqual(session.assets.first?.markdownURI, asset.markdownURI, "Old receipt is stale")
+    XCTAssertEqual(session.assets.first?.state, .awaitingMarkdown)
+    try session.confirmMarkdownCommit(other)
+    XCTAssertEqual(session.assets.first?.markdownURI, "Renamed.assets/source.png")
+  }
+
+  func testPendingRestartPreservesImportIdentityAndRequiresConfirmation() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let root = scratch.appendingPathComponent("Recovery")
+    let sessionID = UUID()
+    let epoch = UUID()
+    let session = try LocalImageStore(root: root).begin(
+      documentID: "doc-1", sessionID: sessionID)
+    let intent = LocalImageAsset.ImportIntent(
+      documentID: "doc-1", sessionID: sessionID, documentEpoch: epoch,
+      revision: 7, selectionAnchor: 3, selectionHead: 1, recoveryState: .active)
+    let asset = try session.importBitmapPNG(
+      png, documentURL: nil, authorizedDirectory: nil, importIntent: intent)
+
+    let restored = try LocalImageStore(root: root).begin(
+      documentID: "doc-1", sessionID: sessionID)
+    XCTAssertTrue(restored.wasRestored)
+    XCTAssertEqual(restored.assets.first?.importIntent, intent)
+    try restored.requireInsertionConfirmation(assetID: asset.id)
+
+    let confirmed = try LocalImageStore(root: root).begin(
+      documentID: "doc-1", sessionID: sessionID)
+    XCTAssertEqual(
+      confirmed.assets.first?.importIntent?.recoveryState, .requiresConfirmation)
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
+  }
+
   func testImageIOActuallyDecodesJPEGGIFAndWebPWithoutReencodingSourceBytes() throws {
     let scratch = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: scratch) }
@@ -202,6 +273,7 @@ final class LocalImageStoreTests: XCTestCase {
     compiler.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
     compiler.arguments = [
       "swiftc", repository.appendingPathComponent("app/Sources/LocalImageStore.swift").path,
+      repository.appendingPathComponent("app/Sources/LocalImageMigration.swift").path,
       helperSource.path, "-o", helper.path,
     ]
     let compilerOutput = Pipe()

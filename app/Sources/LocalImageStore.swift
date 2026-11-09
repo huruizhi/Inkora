@@ -13,6 +13,7 @@ enum LocalImageError: LocalizedError, Equatable {
   case checksumMismatch
   case targetConflict
   case corruptManifest
+  case unresolvedMarkdownOwner
 
   var errorDescription: String? {
     switch self {
@@ -24,6 +25,7 @@ enum LocalImageError: LocalizedError, Equatable {
     case .checksumMismatch: "图片复制后的 SHA-256 校验失败。"
     case .targetConflict: "目标已有同名但内容不同的图片。"
     case .corruptManifest: "图片恢复清单损坏或与磁盘字节不一致。"
+    case .unresolvedMarkdownOwner: "图片引用未完成安全路径确认，已阻止保存。"
     }
   }
 }
@@ -32,6 +34,17 @@ struct LocalImageAsset: Codable, Equatable {
   enum Ownership: String, Codable { case session, operation, none }
   enum State: String, Codable { case draft, awaitingMarkdown, published, reused }
   enum Insertion: String, Codable { case pending, accepted }
+
+  struct ImportIntent: Codable, Equatable {
+    enum RecoveryState: String, Codable { case active, requiresConfirmation }
+    let documentID: String
+    let sessionID: UUID
+    let documentEpoch: UUID
+    let revision: Int
+    let selectionAnchor: Int?
+    let selectionHead: Int?
+    var recoveryState: RecoveryState
+  }
 
   let id: UUID
   let originalName: String
@@ -43,6 +56,8 @@ struct LocalImageAsset: Codable, Equatable {
   var ownership: Ownership
   var state: State
   var insertion: Insertion
+  var pendingSaveID: UUID?
+  var importIntent: ImportIntent?
 }
 
 struct LocalImageSavePlan: Equatable {
@@ -95,6 +110,7 @@ final class LocalImageSession {
   let documentID: String
   let sessionID: UUID
   private(set) var assets: [LocalImageAsset]
+  let wasRestored: Bool
 
   fileprivate init(root: URL, documentID: String, sessionID: UUID) throws {
     guard !documentID.isEmpty else { throw LocalImageError.corruptManifest }
@@ -104,6 +120,7 @@ final class LocalImageSession {
     directory = root.appendingPathComponent(sessionID.uuidString.lowercased(), isDirectory: true)
     manifestURL = directory.appendingPathComponent("manifest.json")
     if FileManager.default.fileExists(atPath: manifestURL.path) {
+      wasRestored = true
       do {
         let manifestData: Data
         do {
@@ -113,10 +130,17 @@ final class LocalImageSession {
         }
         let manifest = try JSONDecoder().decode(
           Manifest.self, from: manifestData)
-        guard manifest.schema == 1, manifest.sessionID == sessionID,
+        guard [1, 2].contains(manifest.schema), manifest.sessionID == sessionID,
           manifest.documentID == documentID
         else { throw LocalImageError.corruptManifest }
         for asset in manifest.assets {
+          if let intent = asset.importIntent {
+            guard intent.documentID == documentID, intent.sessionID == sessionID,
+              intent.revision >= 0,
+              (intent.selectionAnchor == nil) == (intent.selectionHead == nil),
+              (intent.selectionAnchor ?? 0) >= 0, (intent.selectionHead ?? 0) >= 0
+            else { throw LocalImageError.corruptManifest }
+          }
           try Self.validateStoredAsset(asset, inside: directory)
         }
         assets = manifest.assets
@@ -126,6 +150,7 @@ final class LocalImageSession {
         throw LocalImageError.corruptManifest
       }
     } else {
+      wasRestored = false
       assets = []
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
       try persist()
@@ -137,7 +162,8 @@ final class LocalImageSession {
     from sourceURL: URL,
     preferredName: String? = nil,
     documentURL: URL?,
-    authorizedDirectory: URL?
+    authorizedDirectory: URL?,
+    importIntent: LocalImageAsset.ImportIntent? = nil
   ) throws -> LocalImageAsset {
     let data = try Self.readRegularFile(sourceURL)
     return try importData(
@@ -145,7 +171,8 @@ final class LocalImageSession {
       sourceExtension: sourceURL.pathExtension,
       preferredName: preferredName ?? sourceURL.lastPathComponent,
       documentURL: documentURL,
-      authorizedDirectory: authorizedDirectory)
+      authorizedDirectory: authorizedDirectory,
+      importIntent: importIntent)
   }
 
   static func inspectExternalFile(_ url: URL) throws -> LocalImageInspection {
@@ -159,14 +186,16 @@ final class LocalImageSession {
     _ data: Data,
     preferredName: String = "Pasted Image.png",
     documentURL: URL?,
-    authorizedDirectory: URL?
+    authorizedDirectory: URL?,
+    importIntent: LocalImageAsset.ImportIntent? = nil
   ) throws -> LocalImageAsset {
     try importData(
       data,
       sourceExtension: "png",
       preferredName: preferredName,
       documentURL: documentURL,
-      authorizedDirectory: authorizedDirectory)
+      authorizedDirectory: authorizedDirectory,
+      importIntent: importIntent)
   }
 
   private func importData(
@@ -174,7 +203,8 @@ final class LocalImageSession {
     sourceExtension: String,
     preferredName: String,
     documentURL: URL?,
-    authorizedDirectory: URL?
+    authorizedDirectory: URL?,
+    importIntent: LocalImageAsset.ImportIntent?
   ) throws -> LocalImageAsset {
     guard data.count <= Self.maximumBytes else { throw LocalImageError.sizeLimit }
     let image = try Self.inspectImage(data, sourceExtension: sourceExtension)
@@ -209,7 +239,7 @@ final class LocalImageSession {
         mimeType: image.mime,
         ownership: allocated.reused ? .none : .operation,
         state: allocated.reused ? .reused : .published,
-        insertion: .pending)
+        insertion: .pending, pendingSaveID: nil, importIntent: importIntent)
     } else {
       let imports = directory.appendingPathComponent("imports", isDirectory: true)
       try FileManager.default.createDirectory(at: imports, withIntermediateDirectories: true)
@@ -229,7 +259,7 @@ final class LocalImageSession {
         mimeType: image.mime,
         ownership: .session,
         state: .draft,
-        insertion: .pending)
+        insertion: .pending, pendingSaveID: nil, importIntent: importIntent)
     }
     assets.append(asset)
     try persist()
@@ -241,6 +271,22 @@ final class LocalImageSession {
       throw LocalImageError.corruptManifest
     }
     assets[index].insertion = .accepted
+    try persist()
+  }
+
+  func requireInsertionConfirmation(assetID: UUID) throws {
+    guard let index = assets.firstIndex(where: { $0.id == assetID }),
+      assets[index].insertion == .pending
+    else { throw LocalImageError.corruptManifest }
+    var intent =
+      assets[index].importIntent
+      ?? LocalImageAsset.ImportIntent(
+        documentID: documentID, sessionID: sessionID,
+        documentEpoch: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!,
+        revision: 0, selectionAnchor: nil, selectionHead: nil,
+        recoveryState: .requiresConfirmation)
+    intent.recoveryState = .requiresConfirmation
+    assets[index].importIntent = intent
     try persist()
   }
 
@@ -309,9 +355,9 @@ final class LocalImageSession {
     }
     for index in assets.indices {
       guard let item = updates[assets[index].id] else { continue }
-      assets[index].markdownURI = item.targetURI
       assets[index].state = .awaitingMarkdown
       assets[index].ownership = item.reused ? .none : .operation
+      assets[index].pendingSaveID = plan.id
     }
     try persist()
   }
@@ -321,12 +367,26 @@ final class LocalImageSession {
     let updates = Dictionary(uniqueKeysWithValues: plan.items.map { ($0.assetID, $0) })
     for index in assets.indices {
       guard let item = updates[assets[index].id],
-        assets[index].markdownURI == item.targetURI,
-        assets[index].state == .awaitingMarkdown
+        assets[index].state == .awaitingMarkdown,
+        assets[index].pendingSaveID == plan.id
       else { continue }
+      assets[index].markdownURI = item.targetURI
       assets[index].state = item.reused ? .reused : .published
+      assets[index].pendingSaveID = nil
     }
     try persist()
+  }
+
+  func validateMarkdownSnapshot(_ markdown: String, for plan: LocalImageSavePlan) throws {
+    guard plan.sessionID == sessionID else { throw LocalImageError.corruptManifest }
+    let owners = Set(LocalImageMigrationCoordinator.imageURIs(in: markdown))
+    for item in plan.items {
+      guard let asset = assets.first(where: { $0.id == item.assetID }),
+        asset.sha256 == item.sha256,
+        !owners.contains(asset.markdownURI),
+        owners.contains(item.targetURI)
+      else { throw LocalImageError.unresolvedMarkdownOwner }
+    }
   }
 
   func retireTransferredStorageIfPossible() throws {
@@ -343,7 +403,7 @@ final class LocalImageSession {
 
   private func persist() throws {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    let manifest = Manifest(schema: 1, sessionID: sessionID, documentID: documentID, assets: assets)
+    let manifest = Manifest(schema: 2, sessionID: sessionID, documentID: documentID, assets: assets)
     try Self.atomicWrite(try JSONEncoder().encode(manifest), to: manifestURL)
   }
 

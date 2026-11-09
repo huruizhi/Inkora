@@ -17,12 +17,16 @@ export interface EditorState {
   dirty: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  selectionAnchor?: number;
+  selectionHead?: number;
 }
 
 export interface EditableState {
   dirty: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  selectionAnchor?: number;
+  selectionHead?: number;
 }
 
 export type ImageDescriptorStatus =
@@ -84,6 +88,8 @@ export type NativeCommand =
       alt: string;
       title: string | null;
       displayURL: string;
+      selectionAnchor: number;
+      selectionHead: number;
     }
   | {
       protocolVersion: 1;
@@ -208,6 +214,8 @@ export function decodeNativeCommand(serialized: string): NativeCommand {
         alt: requireString(value, "alt", true),
         title: requireNullableString(value, "title"),
         displayURL: requireCapabilityURL(value, "displayURL"),
+        selectionAnchor: requireSafePosition(value, "selectionAnchor"),
+        selectionHead: requireSafePosition(value, "selectionHead"),
       };
     case "setImageDescriptors":
       return {
@@ -366,12 +374,16 @@ export class EditorProtocolSession {
     return this.stateChanged(command.requestID);
   }
 
-  queryState(command: Extract<NativeCommand, { type: "queryState" }>): EditorMessage {
+  queryState(
+    command: Extract<NativeCommand, { type: "queryState" }>,
+    editable?: EditableState,
+  ): EditorMessage {
     const duplicate = this.claimRequest(command.requestID);
     if (duplicate) return duplicate;
     if (!this.state) {
       return this.error("editor_not_ready", command.requestID, "No document is loaded");
     }
+    if (editable) this.state = { ...this.state, ...editable };
     return this.stateChanged(command.requestID);
   }
 
@@ -468,6 +480,14 @@ function requireRevision(value: Record<string, unknown>): number {
     throw new Error("Invalid revision");
   }
   return revision as number;
+}
+
+function requireSafePosition(value: Record<string, unknown>, key: string): number {
+  const position = value[key];
+  if (!Number.isSafeInteger(position) || (position as number) < 0) {
+    throw new Error(`Invalid ${key}`);
+  }
+  return position as number;
 }
 
 function requireString(

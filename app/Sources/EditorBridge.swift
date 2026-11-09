@@ -101,7 +101,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     case history(BridgeEditorCommand)
     case imageImport(
       documentEpoch: String, assetID: String, uri: String, alt: String,
-      title: String?, displayURL: String)
+      title: String?, displayURL: String, selectionAnchor: Int, selectionHead: Int)
     case imageDescriptors(documentEpoch: String, descriptors: [BridgeImageDescriptor])
     case imageSave(documentEpoch: String, rewrites: [BridgeImageRewrite])
 
@@ -123,11 +123,13 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
           requestID: requestID, documentID: documentID, revision: revision,
           command: command)
       case .imageImport(
-        let documentEpoch, let assetID, let uri, let alt, let title, let displayURL):
+        let documentEpoch, let assetID, let uri, let alt, let title, let displayURL,
+        let selectionAnchor, let selectionHead):
         .applyImageImport(
           requestID: requestID, documentID: documentID, revision: revision,
           documentEpoch: documentEpoch, assetID: assetID, uri: uri, alt: alt,
-          title: title, displayURL: displayURL)
+          title: title, displayURL: displayURL,
+          selectionAnchor: selectionAnchor, selectionHead: selectionHead)
       case .imageDescriptors(let documentEpoch, let descriptors):
         .setImageDescriptors(
           requestID: requestID, documentID: documentID, revision: revision,
@@ -154,6 +156,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   private var currentDocument: LoadedDocument?
   private var revisionTracker = BridgeRevisionTracker()
   private var snapshotRequests: [String: SnapshotRequest] = [:]
+  private var stateRequests: [String: (Result<BridgeEditorState, Error>) -> Void] = [:]
   private var editorCommandQueue: [EditorCommandRequest] = []
   private var activeEditorCommand: ActiveEditorCommand?
   private let maximumSnapshotAttempts = 3
@@ -256,6 +259,27 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     }
   }
 
+  func requestState(
+    completion: @escaping (Result<BridgeEditorState, Error>) -> Void
+  ) {
+    guard lifecycle == .ready else {
+      completion(.failure(EditorBridgeError.editorNotReady))
+      return
+    }
+    let requestID = UUID().uuidString
+    stateRequests[requestID] = completion
+    sendImmediately(.queryState(requestID: requestID)) { [weak self] error in
+      guard let self, let error, let callback = self.stateRequests.removeValue(forKey: requestID)
+      else { return }
+      callback(.failure(error))
+    }
+    Task { @MainActor [weak self] in
+      try? await Task.sleep(for: self?.requestTimeout ?? .seconds(2))
+      guard let callback = self?.stateRequests.removeValue(forKey: requestID) else { return }
+      callback(.failure(EditorBridgeError.requestTimedOut))
+    }
+  }
+
   func executeEditorCommand(
     _ command: BridgeEditorCommand,
     completion: @escaping (Error?) -> Void = { _ in }
@@ -270,13 +294,16 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     alt: String,
     title: String?,
     displayURL: URL,
+    selectionAnchor: Int,
+    selectionHead: Int,
     completion: @escaping (Error?) -> Void
   ) {
     enqueueMutation(
       .imageImport(
         documentEpoch: documentEpoch.uuidString.lowercased(),
         assetID: assetID.uuidString.lowercased(), uri: uri, alt: alt,
-        title: title, displayURL: displayURL.absoluteString),
+        title: title, displayURL: displayURL.absoluteString,
+        selectionAnchor: selectionAnchor, selectionHead: selectionHead),
       completion: completion)
   }
 
@@ -389,6 +416,9 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     for request in requests {
       request.completion(.failure(error))
     }
+    let stateCallbacks = Array(stateRequests.values)
+    stateRequests.removeAll()
+    for callback in stateCallbacks { callback(.failure(error)) }
     failEditorCommands(error)
   }
 
@@ -413,8 +443,12 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     if revisionTracker.accept(state) {
       delegate?.editorBridge(self, didChangeState: state)
     }
+    guard let requestID = event.requestID else { return }
+    if let callback = stateRequests.removeValue(forKey: requestID) {
+      callback(.success(state))
+      return
+    }
     guard
-      let requestID = event.requestID,
       let activeEditorCommand,
       activeEditorCommand.requestID == requestID
     else { return }

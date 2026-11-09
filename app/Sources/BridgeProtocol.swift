@@ -84,6 +84,21 @@ struct BridgeEditorState: Codable, Equatable {
   let dirty: Bool
   let canUndo: Bool
   let canRedo: Bool
+  let selectionAnchor: Int?
+  let selectionHead: Int?
+
+  init(
+    documentID: String, revision: Int, dirty: Bool, canUndo: Bool, canRedo: Bool,
+    selectionAnchor: Int? = nil, selectionHead: Int? = nil
+  ) {
+    self.documentID = documentID
+    self.revision = revision
+    self.dirty = dirty
+    self.canUndo = canUndo
+    self.canRedo = canRedo
+    self.selectionAnchor = selectionAnchor
+    self.selectionHead = selectionHead
+  }
 }
 
 struct BridgeNativeCommand: Codable, Equatable {
@@ -100,6 +115,8 @@ struct BridgeNativeCommand: Codable, Equatable {
   let alt: String?
   let title: String?
   let displayURL: String?
+  let selectionAnchor: Int?
+  let selectionHead: Int?
   let descriptors: [BridgeImageDescriptor]?
   let rewrites: [BridgeImageRewrite]?
 
@@ -117,6 +134,8 @@ struct BridgeNativeCommand: Codable, Equatable {
     alt: String? = nil,
     title: String? = nil,
     displayURL: String? = nil,
+    selectionAnchor: Int? = nil,
+    selectionHead: Int? = nil,
     descriptors: [BridgeImageDescriptor]? = nil,
     rewrites: [BridgeImageRewrite]? = nil
   ) {
@@ -133,6 +152,8 @@ struct BridgeNativeCommand: Codable, Equatable {
     self.alt = alt
     self.title = title
     self.displayURL = displayURL
+    self.selectionAnchor = selectionAnchor
+    self.selectionHead = selectionHead
     self.descriptors = descriptors
     self.rewrites = rewrites
   }
@@ -261,7 +282,9 @@ struct BridgeNativeCommand: Codable, Equatable {
     uri: String,
     alt: String,
     title: String?,
-    displayURL: String
+    displayURL: String,
+    selectionAnchor: Int,
+    selectionHead: Int
   ) -> Self {
     Self(
       protocolVersion: BridgeProtocolV1.version,
@@ -277,6 +300,8 @@ struct BridgeNativeCommand: Codable, Equatable {
       alt: alt,
       title: title,
       displayURL: displayURL,
+      selectionAnchor: selectionAnchor,
+      selectionHead: selectionHead,
       descriptors: nil,
       rewrites: nil
     )
@@ -366,6 +391,12 @@ struct BridgeNativeCommand: Codable, Equatable {
         throw BridgeProtocolValidationError.missingField("uri")
       }
       guard alt != nil else { throw BridgeProtocolValidationError.missingField("alt") }
+      guard let selectionAnchor, let selectionHead else {
+        throw BridgeProtocolValidationError.missingField("selection")
+      }
+      guard selectionAnchor >= 0, selectionAnchor <= BridgeProtocolV1.maxSafeRevision,
+        selectionHead >= 0, selectionHead <= BridgeProtocolV1.maxSafeRevision
+      else { throw BridgeProtocolValidationError.invalidRevision }
       guard let displayURL, Self.isCapabilityURL(displayURL) else {
         throw BridgeProtocolValidationError.invalidCapabilityURL
       }
@@ -491,6 +522,12 @@ struct BridgeEditorEvent: Codable, Equatable {
         throw BridgeProtocolValidationError.missingField("state.documentID")
       }
       try Self.validateRevision(state.revision)
+      if let anchor = state.selectionAnchor, let head = state.selectionHead {
+        try Self.validateRevision(anchor)
+        try Self.validateRevision(head)
+      } else if state.selectionAnchor != nil || state.selectionHead != nil {
+        throw BridgeProtocolValidationError.missingField("state.selection")
+      }
     case .snapshotReady:
       guard let requestID, !requestID.isEmpty else {
         throw BridgeProtocolValidationError.missingField("requestID")

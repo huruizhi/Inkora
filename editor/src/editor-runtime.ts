@@ -43,6 +43,7 @@ export type RuntimeChangeKind = "document" | "status";
 
 export interface EditorRuntime {
   readonly status: EditorRuntimeStatus;
+  readonly directedSelection: { selectionAnchor: number; selectionHead: number };
   readonly mode: EditorMode;
   readonly sourceNavigation: boolean;
   readonly sourceReplacement: boolean;
@@ -132,6 +133,11 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       unresolved: this.session.unresolvedIntent !== null || this.session.issues.length > 0,
       saveEligible: this.session.saveEligible,
     };
+  }
+
+  get directedSelection(): { selectionAnchor: number; selectionHead: number } {
+    const selection = this.session.draft?.selection ?? this.session.rawSelection;
+    return { selectionAnchor: selection.anchor, selectionHead: selection.head };
   }
 
   getText(): string {
@@ -620,14 +626,22 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   readonly sourceNavigation = true;
   readonly sourceReplacement = false;
   private readonly textArea: HTMLTextAreaElement;
-  readonly status = {
-    dirty: false,
-    canUndo: false,
-    canRedo: false,
-    draftDirty: false,
-    unresolved: false,
-    saveEligible: true,
-  };
+  get status(): EditorRuntimeStatus {
+    return {
+      dirty: false,
+      canUndo: false,
+      canRedo: false,
+      draftDirty: false,
+      unresolved: false,
+      saveEligible: true,
+    };
+  }
+  get directedSelection(): { selectionAnchor: number; selectionHead: number } {
+    return {
+      selectionAnchor: this.textArea.selectionStart,
+      selectionHead: this.textArea.selectionEnd,
+    };
+  }
   readonly composing = false;
 
   applyImageDescriptors(_values: readonly ImageResourceDescriptor[]): void {}

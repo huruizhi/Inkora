@@ -6,7 +6,7 @@ INK-M1-055 将图片接入正式 source-authoritative 编辑器与 `NSDocument` 
 
 - 「插入图片…」、文件拖入和仅含位图的 Command-V 都进入同一个导入事务。普通文本剪贴板继续交给 WebKit。
 - 命名文档要求用户显式选择 Markdown 所在目录，原字节先复制并校验 SHA-256，再插入 `文档名.assets/文件名` 相对 URI。同名同字节复用，同名异字节在插入前分配 `-2` 等唯一名。
-- 未命名文档把原字节写入 Recovery 下的会话目录，以唯一 `inkora-draft://asset/<uuid>` 绑定正文 owner。清单为 atomic JSON，重启按会话 UUID、字节数和 SHA 恢复。
+- 未命名文档把原字节写入 Recovery 下的会话目录，以唯一 `inkora-draft://asset/<uuid>` 绑定正文 owner。schema 2 清单为 atomic JSON，同时记录 document/session/epoch/revision/directed selection；重启按会话 UUID、字节数和 SHA 恢复。无法证明原 selection 的旧记录或过期 pending 进入 `requiresConfirmation`，不在当前光标自动重投。
 - 首次保存先用一个显式 Bridge 内容事务把本会话的草稿 URI 改成确定目标 URI；再取得正式 snapshot，发布并复验全部资源，最后才允许 `NSDocument` 写 Markdown。取消授权、内容事务拒绝或资源失败均不进入 Markdown 写入。
 - Save As 不重写已有引用。相对图片按原 URI 从来源授权根复制到目标授权根；目标同字节复用，异字节拒绝且不覆盖。来源文档和资源不删除。
 - 缺失、拒权、不支持、外部 URL 和等待授权分别显示局部占位。定位按钮只更新 capability，不改 Markdown。外部 URL 离线保留，不下载。
@@ -22,8 +22,8 @@ PNG、JPEG、GIF、WebP 使用 ImageIO 做真实解码检查，保留源字节�
 
 ## 故障与恢复
 
-导入先以 `pending` 持久化，Bridge 确认后才记为 `accepted`；进程中断时，恢复正文若已有唯一 URI则确认，否则重放该导入意图。首存资源发布后、Markdown 提交前的状态为 `awaitingMarkdown`：草稿源和已发布孤儿都保留，重试相同目标复用，改目标则产生新的路径事务。
+导入先以 `pending` 和完整 source identity 持久化，Bridge 确认后才记为 `accepted`；`accepted` 只由真实图片语法 owner 判定，代码、普通正文与链接中的 URI 不计。进程中断时，恢复正文若已有唯一图片 owner 则确认；否则保留资源并要求用户重新确认，不重绑当前 revision/selection。首存资源发布后、Markdown 提交前的状态为 `awaitingMarkdown`：manifest 仍保留 draft owner，草稿源和已发布孤儿都保留，重试相同目标复用，改目标则产生新的路径事务。
 
-Save As 使用 UUID 私有 staging，并把 prepared、published-awaiting-markdown 或 failed-conservative journal 写在 Recovery。Markdown 成功后才删除 journal；失败只清本操作 staging，已发布资源保守保留。扫描覆盖行内、完整、折叠与快捷参考图，并排除 fenced/inline code、HTML 注释和转义图片示例。
+Save As 使用 UUID 私有 staging，并把 prepared、published-awaiting-markdown 或 failed-conservative schema 2 journal 写在 Recovery，记录 Markdown SHA、源/目标文档和授权根。启动只读枚举并分别报告历史 journal state 与当前 Markdown/资源 SHA 完整性；非法 schema/path/symlink 保留原记录并拒绝裁决。Markdown 成功后才删除 journal；失败只清本操作 staging，已发布资源保守保留。扫描覆盖行内、完整、折叠与快捷参考图，引用标签按 CommonMark escape/entity/case/whitespace 归一化，并排除普通链接、未使用定义、fenced/inline code、HTML 注释和转义图片示例。
 
 真实 Sandbox 面板、跨启动 bookmark、WK 图片显示、拖放/系统剪贴板、IME 与正式关闭重开由管理者集中物理验收；hostless 测试只证明生产接缝与注入的授权/调度模型，不外推系统权限已授予。

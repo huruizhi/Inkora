@@ -33,6 +33,6 @@ Hostless XCTest 默认禁用生产草稿目录，只使用注入的临时目录�
 
 ## 图片会话
 
-每个恢复 UUID 另有 `LocalImages/<session>/manifest.json`，记录 document/session/asset、原名、当前 URI、SHA-256、字节数、MIME、所有权、发布状态与插入确认状态。清单和图片字节均先持久化再允许正文引用。非法 schema、越界 storage URL、非普通文件、截断或 SHA 不符使该图片会话拒绝恢复；不会扫描文件名猜所有权或删除目录内其他数据。
+每个恢复 UUID 另有 `LocalImages/<session>/manifest.json`。schema 2 记录 document/session/asset、原名、当前 URI、SHA-256、字节数、MIME、所有权、发布状态、当前 save plan ID，以及导入时的 epoch/revision/directed selection 和插入确认状态。清单和图片字节均先持久化再允许正文引用。非法 schema、身份不一致、越界 storage URL、非普通文件、截断或 SHA 不符使该图片会话拒绝恢复；不会扫描文件名猜所有权或删除目录内其他数据。旧 schema 1 可读，但无法证明 selection 的 pending 意图只保留并要求重新确认。
 
-首次保存发布后的 `awaitingMarkdown` 与 Save As migration journal 是未确认状态，不等价于 saved。恢复时仍用实际字节和正文 URI 作保守判断；只有正式 Markdown 写入成功才确认 published 并退役相应 journal。取消、失败、外部修改或权限未知保留草稿与来源。
+首次保存发布后的 `awaitingMarkdown` 与 Save As migration journal 是未确认状态，不等价于 saved。资源发布不提前把 manifest owner 改成目标 URI；恢复时仍用实际字节、真实图片语法 owner、journal 的 Markdown SHA 与当前文件分别作保守判断。只有正式 Markdown 写入成功且 plan ID 匹配才确认 published 并退役相应 journal；旧回执不能确认新重试。取消、失败、外部修改或权限未知保留草稿与来源。

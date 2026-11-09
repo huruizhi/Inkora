@@ -42,6 +42,6 @@
 
 ## 图片资源前置屏障
 
-未命名图片首次保存时，目标目录授权不由 Save panel 文件权限替代。编辑器先以 `prepareImageSave` 完成草稿 URI 的精确 owner 重写，再采集正式 snapshot。原生按该 snapshot 重验资源来源 SHA 和目标冲突，资源全部发布并复验后才调用 `super.save`；Markdown 成功才发送 `markSaved` 和确认资源清单。
+未命名图片首次保存时，目标目录授权不由 Save panel 文件权限替代。编辑器先以 `prepareImageSave` 完成草稿 URI 的精确 owner 重写，再采集正式 snapshot。原生按真实图片语法 owner 验证 snapshot：本 plan 的每个目标 URI 必须存在，原 draft URI 必须消失；代码、HTML、普通正文或普通链接中的同字串不算 owner。验证失败直接拒绝，不调用 Markdown writer。随后原生重验资源来源 SHA 和目标冲突，资源全部发布并复验后才调用 `super.save`；Markdown 成功才发送 `markSaved` 和以匹配的 plan ID 确认资源清单。
 
-资源已发布而 Markdown 失败时不回滚或删除已发布孤儿：会话保持 `awaitingMarkdown`、草稿源与 journal，正文保持 dirty。下次保存可复用同字节目标，或对新目标执行新的显式路径事务。Save As 的已有引用字节不改，关联相对资源按原 URI 迁移；任一缺失、拒权或异字节冲突会阻止 Markdown 提交。
+资源已发布而 Markdown 失败时不回滚或删除已发布孤儿：会话保持 `awaitingMarkdown`，但 manifest owner 仍是 draft URI；草稿源与 journal 保留，正文保持 dirty。下次保存可从当前 snapshot 和同一真实 asset 身份复用同字节目标，或对新目标执行新的显式路径事务；旧 plan 回执不能确认新重试。Save As 的已有引用字节不改，关联相对资源按原 URI 迁移；任一缺失、拒权或异字节冲突会阻止 Markdown 提交。
