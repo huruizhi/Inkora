@@ -26,7 +26,12 @@ export type ProjectionAudit = {
   provenance: string[];
 };
 export type SourceDraft = { raw: string; selection: RawSelection };
-export type ManagedImageInsertion = { uri: string; alt: string; title: string | null };
+export type ManagedImageInsertion = {
+  assetID?: string;
+  uri: string;
+  alt: string;
+  title: string | null;
+};
 export type ManagedImageRewrite = { assetID: string; from: string; to: string };
 
 type Snapshot = {
@@ -35,6 +40,7 @@ type Snapshot = {
   rawSelection: RawSelection;
   projection: ProjectionAudit;
   issues: Issue[];
+  managedImageOwners: Map<string, string>;
 };
 
 type CompositionGroup = {
@@ -489,6 +495,7 @@ export class SourceAuthoritySession {
   private compositionGroup: CompositionGroup | null = null;
   private readonly options: EditorStateOptions;
   private preferredEol: '\r\n' | '\n';
+  private managedImageOwners = new Map<string, string>();
 
   constructor(
     raw: string,
@@ -531,6 +538,7 @@ export class SourceAuthoritySession {
       rawSelection: cloneSelection(this.rawSelection),
       projection: cloneProjection(this.projection),
       issues: this.issues.map(issue => ({ ...issue })),
+      managedImageOwners: new Map(this.managedImageOwners),
     };
   }
 
@@ -540,6 +548,7 @@ export class SourceAuthoritySession {
     this.rawSelection = cloneSelection(snapshot.rawSelection);
     this.projection = cloneProjection(snapshot.projection);
     this.issues = snapshot.issues.map(issue => ({ ...issue }));
+    this.managedImageOwners = new Map(snapshot.managedImageOwners);
     this.draft = null;
   }
 
@@ -1275,6 +1284,7 @@ export class SourceAuthoritySession {
       this.rawSelection = { anchor: caret, head: caret, affinity: 'right' };
       if (!this.setRawSelection(caret, caret, 'right')) throw Error(this.diagnostic);
       this.past.push(before);
+      if (value.assetID) this.managedImageOwners.set(value.assetID, value.uri);
       this.future = [];
       this.version++;
       this.logicalRevision++;
@@ -1298,18 +1308,20 @@ export class SourceAuthoritySession {
     const before = this.snapshot();
     try {
       const patches: NativePatch[] = [];
+      const acceptedOwners = new Map<string, string>();
       const seenAssets = new Set<string>();
       for (const rewrite of rewrites) {
         if (!rewrite.assetID || seenAssets.has(rewrite.assetID)) throw Error('图片保存映射包含重复 asset owner');
         seenAssets.add(rewrite.assetID);
         markdownImage({ uri: rewrite.to, alt: '', title: null });
+        const currentOwner = this.managedImageOwners.get(rewrite.assetID) ?? rewrite.from;
         const hits: number[] = [];
-        for (let at = this.currentRaw.indexOf(rewrite.from); at >= 0;
-          at = this.currentRaw.indexOf(rewrite.from, at + rewrite.from.length)) hits.push(at);
+        for (let at = this.currentRaw.indexOf(currentOwner); at >= 0;
+          at = this.currentRaw.indexOf(currentOwner, at + currentOwner.length)) hits.push(at);
         if (hits.length !== 1) throw Error(`图片草稿 owner ${rewrite.assetID} 不是唯一当前原文引用`);
         let imageAtoms = 0;
         this.state.doc.descendants(node => {
-          if (node.type.name === 'image' && node.attrs.href === rewrite.from) imageAtoms++;
+          if (node.type.name === 'image' && node.attrs.href === currentOwner) imageAtoms++;
         });
         if (imageAtoms !== 1) {
           throw Error(`图片草稿 owner ${rewrite.assetID} 不再对应唯一图片 atom`);
@@ -1318,7 +1330,15 @@ export class SourceAuthoritySession {
         if (this.currentRaw.slice(Math.max(0, from - 2), from) !== '](') {
           throw Error(`图片草稿 owner ${rewrite.assetID} 不在行内图片 destination 边界`);
         }
-        patches.push({ from, to: from + rewrite.from.length, insert: rewrite.to });
+        acceptedOwners.set(rewrite.assetID, rewrite.to);
+        if (currentOwner !== rewrite.to) {
+          patches.push({ from, to: from + currentOwner.length, insert: rewrite.to });
+        }
+      }
+      if (!patches.length) {
+        for (const [assetID, owner] of acceptedOwners) this.managedImageOwners.set(assetID, owner);
+        this.diagnostic = '';
+        return true;
       }
       const raw = applyNativePatches(this.currentRaw, patches);
       const parsed = parse(raw);
@@ -1339,6 +1359,7 @@ export class SourceAuthoritySession {
         throw Error(this.diagnostic);
       }
       this.past.push(before);
+      for (const [assetID, owner] of acceptedOwners) this.managedImageOwners.set(assetID, owner);
       this.future = [];
       this.version++;
       this.logicalRevision++;
@@ -1462,6 +1483,7 @@ export class SourceAuthoritySession {
     this.finishComposition();
     const parsed = parse(raw);
     this.currentRaw = raw; this.savedRaw = raw;
+    this.managedImageOwners.clear();
     this.preferredEol = raw.match(/\r\n|\n/)?.[0] === '\r\n' ? '\r\n' : '\n';
     this.state = createInkoraProjectionState(parsed.doc, this.options); this.issues = parsed.issues;
     this.projection = { kind: 'exact', reason: 'scratch UTF-8 重开新 epoch', anchors: [], provenance: ['new epoch'] };

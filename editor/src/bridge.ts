@@ -391,6 +391,7 @@ export class EditorProtocolSession {
     command: { requestID: string; documentID: string; revision: number },
     execute: () => boolean,
     getEditableState: () => EditableState,
+    didChange: () => boolean = () => true,
   ): EditorMessage {
     const duplicate = this.claimRequest(command.requestID);
     if (duplicate) return duplicate;
@@ -402,7 +403,11 @@ export class EditorProtocolSession {
     if (!execute()) {
       return this.error("command_rejected", command.requestID, "Image content transaction was rejected");
     }
-    this.state = { ...this.state, revision: this.state.revision + 1, ...getEditableState() };
+    this.state = {
+      ...this.state,
+      revision: this.state.revision + (didChange() ? 1 : 0),
+      ...getEditableState(),
+    };
     return this.stateChanged(command.requestID);
   }
 

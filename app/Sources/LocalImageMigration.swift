@@ -312,15 +312,7 @@ final class LocalImageMigrationCoordinator {
       let label = normalizeReferenceLabel(rawLabel)
       definitions[label] = uri
     }
-    for match in matches(
-      pattern: #"!\[\#(label)\]\([ \t]*(?:<([^>\r\n]+)>|([^ \t\r\n\)]+))"#,
-      text: searchable, range: full)
-    {
-      guard !isEscaped(at: match.range.location, units: originalUnits) else { continue }
-      if let uri = capture(match, 1, searchable) ?? capture(match, 2, searchable) {
-        result.append(uri)
-      }
-    }
+    result.append(contentsOf: inlineImageURIs(in: searchable, originalUnits: originalUnits))
     for match in matches(
       pattern: #"!\[(\#(label))\](?!\()[ \t]*(?:\[(\#(label))\])?"#,
       text: searchable, range: full)
@@ -336,6 +328,164 @@ final class LocalImageMigrationCoordinator {
     }
     var seen = Set<String>()
     return result.filter { seen.insert($0).inserted }
+  }
+
+  /// A bounded CommonMark image scanner. The masked source has the same UTF-16
+  /// offsets as the original, so code, comments and fences remain excluded.
+  private static func inlineImageURIs(
+    in searchable: String, originalUnits: [UInt16]
+  ) -> [String] {
+    let units = Array(searchable.utf16)
+    var result: [String] = []
+    var index = 0
+    while index + 3 < units.count {
+      guard units[index] == 33, units[index + 1] == 91,
+        !isEscaped(at: index, units: originalUnits)
+      else {
+        index += 1
+        continue
+      }
+
+      var cursor = index + 2
+      var labelDepth = 0
+      var labelEnd: Int?
+      while cursor < units.count {
+        if units[cursor] == 92, cursor + 1 < units.count {
+          cursor += 2
+          continue
+        }
+        if units[cursor] == 91 { labelDepth += 1 }
+        if units[cursor] == 93 {
+          if labelDepth == 0 {
+            labelEnd = cursor
+            break
+          }
+          labelDepth -= 1
+        }
+        if units[cursor] == 10 || units[cursor] == 13 { break }
+        cursor += 1
+      }
+      guard let labelEnd, labelEnd + 1 < units.count, units[labelEnd + 1] == 40 else {
+        index += 1
+        continue
+      }
+      cursor = labelEnd + 2
+      skipWhitespace(units, &cursor)
+      let destination: String
+      if cursor < units.count, units[cursor] == 60 {
+        let start = cursor + 1
+        cursor = start
+        while cursor < units.count, units[cursor] != 62,
+          units[cursor] != 10, units[cursor] != 13
+        {
+          if units[cursor] == 92, cursor + 1 < units.count { cursor += 2 } else { cursor += 1 }
+        }
+        guard cursor < units.count, units[cursor] == 62 else {
+          index += 1
+          continue
+        }
+        destination = decodeDestination(units[start..<cursor])
+        cursor += 1
+      } else {
+        var depth = 0
+        var decoded: [UInt16] = []
+        while cursor < units.count {
+          let unit = units[cursor]
+          if unit == 92, cursor + 1 < units.count, isASCIIPunctuation(units[cursor + 1]) {
+            decoded.append(units[cursor + 1])
+            cursor += 2
+            continue
+          }
+          if unit == 40 {
+            depth += 1
+            guard depth <= 32 else { break }
+            decoded.append(unit)
+            cursor += 1
+            continue
+          }
+          if unit == 41 {
+            if depth == 0 { break }
+            depth -= 1
+            decoded.append(unit)
+            cursor += 1
+            continue
+          }
+          if unit == 32 || unit == 9 || unit == 10 || unit == 13 { break }
+          decoded.append(unit)
+          cursor += 1
+        }
+        guard !decoded.isEmpty, depth == 0 else {
+          index += 1
+          continue
+        }
+        destination = decodeCharacterReferences(in: String(decoding: decoded, as: UTF16.self))
+      }
+      guard consumeInlineImageTail(units, &cursor) else {
+        index += 1
+        continue
+      }
+      result.append(destination)
+      index = cursor
+    }
+    return result
+  }
+
+  private static func consumeInlineImageTail(_ units: [UInt16], _ cursor: inout Int) -> Bool {
+    if cursor < units.count, units[cursor] == 41 {
+      cursor += 1
+      return true
+    }
+    let whitespaceStart = cursor
+    skipWhitespace(units, &cursor)
+    guard cursor > whitespaceStart, cursor < units.count else { return false }
+    let open = units[cursor]
+    let close: UInt16
+    switch open {
+    case 34: close = 34
+    case 39: close = 39
+    case 40: close = 41
+    default: return false
+    }
+    cursor += 1
+    while cursor < units.count, units[cursor] != close {
+      if units[cursor] == 10 || units[cursor] == 13 { return false }
+      if units[cursor] == 92, cursor + 1 < units.count { cursor += 2 } else { cursor += 1 }
+    }
+    guard cursor < units.count, units[cursor] == close else { return false }
+    cursor += 1
+    skipWhitespace(units, &cursor)
+    guard cursor < units.count, units[cursor] == 41 else { return false }
+    cursor += 1
+    return true
+  }
+
+  private static func skipWhitespace(_ units: [UInt16], _ cursor: inout Int) {
+    while cursor < units.count,
+      units[cursor] == 32 || units[cursor] == 9 || units[cursor] == 10 || units[cursor] == 13
+    { cursor += 1 }
+  }
+
+  private static func decodeDestination(_ units: ArraySlice<UInt16>) -> String {
+    var decoded: [UInt16] = []
+    var index = units.startIndex
+    while index < units.endIndex {
+      if units[index] == 92 {
+        let next = units.index(after: index)
+        if next < units.endIndex, isASCIIPunctuation(units[next]) {
+          decoded.append(units[next])
+          index = units.index(after: next)
+          continue
+        }
+      }
+      decoded.append(units[index])
+      index = units.index(after: index)
+    }
+    return decodeCharacterReferences(in: String(decoding: decoded, as: UTF16.self))
+  }
+
+  private static func isASCIIPunctuation(_ unit: UInt16) -> Bool {
+    (33...47).contains(unit) || (58...64).contains(unit)
+      || (91...96).contains(unit) || (123...126).contains(unit)
   }
 
   private static func maskNonImageContexts(_ markdown: String) -> String {

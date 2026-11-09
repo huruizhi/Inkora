@@ -640,6 +640,7 @@ window.inkora = {
               assetEpoch = undefined;
               runtime?.destroy();
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange, {
+                searchIdentity: { documentID: command.documentID, epoch: loadEpoch },
                 onLinkRequest: (binding) => {
                   const owner = runtime;
                   if (owner) openLinkEditor(owner, binding);
@@ -777,7 +778,7 @@ window.inkora = {
               () => epochMatches && selectionMatches && !searchPanel.isInputComposing &&
                 !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)) &&
                 (runtime?.insertImage({
-                uri: command.uri, alt: command.alt, title: command.title,
+                assetID: command.assetID, uri: command.uri, alt: command.alt, title: command.title,
               }) ?? false),
               () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
             );
@@ -797,12 +798,14 @@ window.inkora = {
           executingCommand = true;
           try {
             const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const rawBefore = runtime?.getText();
             const response = session.executeMutation(
               command,
               () => epochMatches && !searchPanel.isInputComposing &&
                 !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)) &&
                 (runtime?.rewriteManagedImages(command.rewrites) ?? false),
               () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+              () => runtime?.getText() !== rawBefore,
             );
             if (response.type === "stateChanged") assetEpoch = command.documentEpoch;
             postToNative(response);

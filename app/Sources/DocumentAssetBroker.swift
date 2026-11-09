@@ -171,6 +171,14 @@ final class DocumentAssetBroker: @unchecked Sendable {
   }
 
   func read(token: UUID) -> DocumentAssetReadResult {
+    let root = lock.withLock { entries[token]?.rootURL }
+    guard let root else { return readWithoutLease(token: token) }
+    let lease = leaseFactory.lease(for: root)
+    defer { lease.release() }
+    return readWithoutLease(token: token)
+  }
+
+  private func readWithoutLease(token: UUID) -> DocumentAssetReadResult {
     let entry: Entry
     do {
       entry = try lock.withLock {
@@ -201,7 +209,7 @@ final class DocumentAssetBroker: @unchecked Sendable {
     }
     let lease = leaseFactory.lease(for: root)
     scheduler.perform { [self] in
-      let result = read(token: token)
+      let result = readWithoutLease(token: token)
       lease.release()
       completion(result)
     }

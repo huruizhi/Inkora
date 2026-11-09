@@ -251,7 +251,7 @@ final class LocalImageStoreTests: XCTestCase {
     defer { try? FileManager.default.removeItem(at: scratch) }
     let source = scratch.appendingPathComponent("source.png")
     try png.write(to: source)
-    let root = scratch.appendingPathComponent("Recovery")
+    let root = scratch.appendingPathComponent("LocalImages")
     let sessionID = UUID()
     let helperSource = scratch.appendingPathComponent("main.swift")
     let helper = scratch.appendingPathComponent("image-helper")
@@ -263,7 +263,12 @@ final class LocalImageStoreTests: XCTestCase {
       let source = URL(fileURLWithPath: CommandLine.arguments[3])
       let session = try LocalImageStore(root: root).begin(
         documentID: "doc-child", sessionID: sessionID)
-      _ = try session.importFile(from: source, documentURL: nil, authorizedDirectory: nil)
+      let intent = LocalImageAsset.ImportIntent(
+        documentID: "doc-child", sessionID: sessionID,
+        documentEpoch: UUID(uuidString: "11111111-1111-4111-8111-111111111111")!,
+        revision: 7, selectionAnchor: 3, selectionHead: 1, recoveryState: .active)
+      _ = try session.importFile(
+        from: source, documentURL: nil, authorizedDirectory: nil, importIntent: intent)
       kill(getpid(), SIGKILL)
       """
     try Data(program.utf8).write(to: helperSource, options: .atomic)
@@ -297,6 +302,50 @@ final class LocalImageStoreTests: XCTestCase {
     XCTAssertEqual(recovered.assets.count, 1)
     XCTAssertEqual(try Data(contentsOf: try XCTUnwrap(recovered.assets.first?.storageURL)), png)
     XCTAssertEqual(recovered.assets.first?.sha256, RecoveryFingerprint.hash(png))
+
+    let startup = RecoveryStore(directory: scratch).discover()
+    XCTAssertEqual(startup.pendingImageSessions.map(\.sessionID), [sessionID])
+    let candidate = try XCTUnwrap(startup.pendingImageSessions.first)
+    XCTAssertEqual(candidate.documentID, "doc-child")
+    XCTAssertEqual(candidate.assets.first?.importIntent?.documentID, "doc-child")
+    XCTAssertEqual(candidate.assets.first?.importIntent?.sessionID, sessionID)
+    XCTAssertEqual(candidate.assets.first?.importIntent?.revision, 7)
+    XCTAssertEqual(candidate.assets.first?.importIntent?.selectionAnchor, 3)
+    XCTAssertEqual(candidate.assets.first?.importIntent?.selectionHead, 1)
+    XCTAssertEqual(
+      candidate.assets.first?.importIntent?.documentEpoch,
+      UUID(uuidString: "11111111-1111-4111-8111-111111111111"))
+    XCTAssertEqual(
+      candidate.assets.first?.importIntent?.recoveryState, .requiresConfirmation)
+    XCTAssertEqual(try Data(contentsOf: try XCTUnwrap(candidate.assets.first?.storageURL)), png)
+  }
+
+  func testStartupDiscoveryRejectsCorruptImageManifestWithoutDeletingEvidence() throws {
+    let scratch = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: scratch) }
+    let root = scratch.appendingPathComponent("LocalImages")
+    let sessionID = UUID()
+    let session = try LocalImageStore(root: root).begin(
+      documentID: "doc-corrupt", sessionID: sessionID)
+    let source = scratch.appendingPathComponent("source.png")
+    try png.write(to: source)
+    let asset = try session.importFile(from: source, documentURL: nil, authorizedDirectory: nil)
+    let manifest = root.appendingPathComponent(
+      "\(sessionID.uuidString.lowercased())/manifest.json")
+    try Data("{".utf8).write(to: manifest, options: .atomic)
+    let symlinkID = UUID()
+    let symlink = root.appendingPathComponent(symlinkID.uuidString.lowercased())
+    try FileManager.default.createSymbolicLink(
+      at: symlink, withDestinationURL: manifest.deletingLastPathComponent())
+
+    let startup = RecoveryStore(directory: scratch).discover()
+    XCTAssertTrue(startup.pendingImageSessions.isEmpty)
+    XCTAssertEqual(
+      Set(startup.rejectedImageSessions.map(\.lastPathComponent)),
+      [manifest.deletingLastPathComponent().lastPathComponent, symlink.lastPathComponent])
+    XCTAssertEqual(try Data(contentsOf: manifest), Data("{".utf8))
+    XCTAssertEqual(try Data(contentsOf: asset.storageURL), png)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: symlink.path))
   }
 
   func testTruncatedManifestFailsClosedWithoutDeletingEvidence() throws {

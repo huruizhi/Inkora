@@ -101,6 +101,8 @@ final class RecoveryStore {
   struct Discovery {
     var drafts: [RecoveryDraft] = []
     var corruptCount = 0
+    var pendingImageSessions: [LocalImageStore.RecoveryCandidate] = []
+    var rejectedImageSessions: [URL] = []
   }
 
   private struct Receipt: Codable, Equatable {
@@ -168,6 +170,11 @@ final class RecoveryStore {
 
   func discover() -> Discovery {
     var result = Discovery()
+    let imageDiscovery = LocalImageStore(
+      root: directory.appendingPathComponent("LocalImages", isDirectory: true)
+    ).discoverRecovery()
+    result.pendingImageSessions = imageDiscovery.pending
+    result.rejectedImageSessions = imageDiscovery.rejected
     let files =
       (try? FileManager.default.contentsOfDirectory(
         at: directory,
