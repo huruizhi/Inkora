@@ -41,3 +41,18 @@ Host均为 `srv_MEqRNkRW6fSx`，任务工作区均从固定36e6365创建，未�
 | INK-M1-002 | 87c4178e-305e-4029-ab3b-1bc78da6accb | wks_ac09438964adb924 | task/INK-M1-002-source-search | Codex GPT-5.6-Sol / medium / default / full-access |
 
 工作目录分别为 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-001-document-analysis` 和 `/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-002-source-search`。二者只改各自四个新文件，不共享可写文件。模块当前状态均为执行中，尚无验收或合并结论；完成后备份与回收遵循既有流程。
+
+## 首轮交付与独立退回
+
+001交付 `cd9cbaf85a70ccc41e8cec2e25cb424504d0680a`，002交付 `db736a90e02f9943664a1ef59cf698a3736eb9dc`；均只新增各自4文件、本地与origin一致。两位完成Agent已立即归档。管理者对001实际重跑editor lint和完整146项通过；002执行者报告19专项/141全量与make lint通过，管理者未把该报告当独立验收。
+
+管理者另建只读公共API反例，均实际退出1：
+
+- 001：5/5红。排除完整emoji导致后续UTF-16标题范围错位；emoji之后的排除范围未完整屏蔽标题；无尾换行的闭合围栏把3个反引号计入内容（4而非1）；引用内围栏计入容器和定界符（6而非1）；已承诺支持的孤立CR被包含在标题end范围。
+- 002：2/2红。search.source与调用方快照同对象，调用方原位改raw/revision后旧搜索的绑定值跟着变，替换过期校验误过；同revision异原文也误过。例：先搜a，再原对象更新a a，replaceAll仅给b a却报告成功。
+
+冻结根反例与输出在 `/Users/rayhu/.paseo/workspace-archives/inkora-20261109-completed/root-m1-checks/`，文件 `document-analysis-review.test.ts`、`DOCUMENT-ANALYSIS-RED.txt`、`source-search-review.test.ts`、`SOURCE-SEARCH-RED.txt`。复制到各自editor/test临时运行后已清理文件和自建依赖链接；不能改根预期反哺实现。
+
+在原两个workspace限定补正，无新workspace：001由Agent `15f15ff7-0dcc-4528-b37c-6138ca5453d0`（GLM-5.3/medium/full），002由 `0462a096-5d52-41bd-96bb-760482cde0b6`（GPT-5.6-Sol/low/default/full-access）。profiles再次为空、provider实际核实，notifyOnFinish=true，均取得running回执。保持原4文件范围、无UI、无新依赖、不合main；模块尚未验收。
+
+与此同时用户已解锁并恢复031真人验收，UI锁仅由管理者持有；以上执行者禁止GUI。后台修正不替代M0真机门槛，不干扰正在等待用户的选区替换/取消操作。
