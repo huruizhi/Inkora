@@ -69,3 +69,5 @@ Status: open
 用户表示测试正确并要求继续。031部分真实WK/中文历史与普通源码检查已结束，自有宿主停止、锁释放，原始501条记录冻结于031分支；取消事件均为确认上屏、源码物理中文未执行等未证项保留，不宣布M0通过。下一步实施[004大纲/统计只读面板](execution/M1-004-analysis-panel.md)，不采纳新内核、不提前接可视替换或改写既有门槛。
 
 用户授权开始下一批开发：004补正已通过200项干净非UI、lint/build及真实App计数/UndoRedo点验；005记录daec0f6，004代码3047c55，仍未合main。004的Agent/workspace已备份回收，累计37。当前并行仅两项：[006大纲定位与折叠空间](execution/M1-006-outline-navigation.md)实施、[007查找界面接入契约](execution/M1-007-search-integration-design.md)文档设计，均从005固定起点独立worktree，不启动UI、不改实验内核。M0当前仅H1/H2/H3剩余物理证据，U1已关闭，详见[当前收尾清单](execution/M0-CLOSURE-CHECKLIST.md)，不以地图上方历史暂缓记录覆盖当前状态。
+
+当前更新：007经独立纠正文档后10a6e33接收并回收；006两红反例修复6f1dd77，独立3/3及干净216/lint/build通过，隔离App已构建但桌面锁定预检exit78未启动，滚动/布局待验。008本地续验记录1e3b509保留最终代码，006 Agent/workspace已备份回收，累计39。继续[009当前文档查找面板](execution/M1-009-search-panel.md)非UI开发，只有查询/结果/计数，不开放未就绪的定位/替换，不解除M0或006真实窗口门槛。

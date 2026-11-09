@@ -21,3 +21,7 @@
 真实search模块+DOM组件、main/Bridge/runtime接缝验证：大小写/中文emoji/正则字面/空查询、截断提示/恶意文本安全、query composition、runtime source和PM composition、被拒load保留、快速切文档同revision、重复load epoch、编辑/UndoRedo后结果变化、面板动作零Bridge/dirty/history副作用、焦点/选区不被后台刷新打断。jsdom不冒充WK/IME或真实尺寸。既有006和004回归保持。
 
 只读复用主仓锁定pnpm/依赖；不得运行setup/install或安装包。若Paseo/运行环境已自动生成node_modules，如实记录，不修改清单或锁文件；临时自建链接清理。禁止GUI/原生App/浏览器。运行专项、完整干净editor非UI（含bridge）、lint/build/git diff --check，临时根反例另计。英文Conventional subject<=72，commit/push同分支核对origin/fullSHA/clean；不开PR不合main不改Issue。回报完成内容/文件/命令结果/未完风险/分支提交。管理者独立验收，完成立即归档Agent，备份后归档workspace。
+
+## 调度
+
+profiles为空，再核实OMP实际GLM-5.3后采用medium/full。Agent e83acc61-4f4a-452d-8286-b6d9cff4b01b，workspace wks_2dae5486f8fbab83，host srv_MEqRNkRW6fSx，cwd /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-m1-009-search-panel，分支task/INK-M1-009-search-panel。已取得running回执，notifyOnFinish=true，不轮询催促。当前仅这一执行任务；006的两个完成Agent及workspace已备份回收。
