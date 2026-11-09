@@ -1,0 +1,19 @@
+{
+  "baseline": "c4fd38e2de57c8721057ed7c320ac6d3c1a10db1",
+  "kind": "hostless-production-integration-evidence",
+  "testSourceSHA256": "70b3adff89253d571bf67e40a1b75682f4e86aa3fd3d24eb27a18ddfeb74d8c9",
+  "native": {
+    "total": 188,
+    "passed": 180,
+    "failed": 0,
+    "skipped": 8
+  },
+  "lint": "passed",
+  "productSourceDiff": "none",
+  "boundary": "No App/window/panel/physical IME/Sandbox authorization or AX acceptance; OS directory choice injected.",
+  "editorBundleFiles": {
+    "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "assets/index-CdQHCj6g.js": "52914b7b3d8018910f180c354913529702b06a4023114e4b9b9ecd82d8bdc2cd",
+    "index.html": "dc2ec459d0c26be243d8f14a7755550feaff92e73ef893ca254ff8ee4b409887"
+  }
+}

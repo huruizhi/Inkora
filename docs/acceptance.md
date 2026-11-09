@@ -2,6 +2,8 @@
 
 覆盖表示断言已存在；执行结果以 CI / xcresult 为准，不代表人工体验已验收。
 
+混排技术文章新增离屏生产闭环见 [INK-M1-108](tasks/INK-M1-108.md)：真实 WK 正文、表格、任务、代码语言和查找替换操作，经 Bridge/NSDocument Save As 后按字节核对并新文档重开，PNG/JPEG/GIF/WebP 均经真实资源 handler 与 NodeView 解码。该测试仅注入系统目录选择边界，不证明真实 Sandbox 授权、物理输入法、系统面板或人工辅助功能验收。
+
 | 用户路径 | 现有自动化（类 / 测试名） | 盘点缺口与处理 |
 | --- | --- | --- |
 | 打开、编辑 | DocumentOpenUITests.testOpenAndSaveAsPersistDocumentsFromMenusAndShortcuts | 补纯键盘串联 |
