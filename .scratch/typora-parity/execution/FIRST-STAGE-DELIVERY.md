@@ -71,3 +71,11 @@ M0按原04/029限定门槛通过；11/12 resolved。ADR-0004、术语、M0逐门
 **当前唯一执行Agent**：INK-M1-039，生产V1（不是新原型），基线271922e；Codex GPT-5.6-Sol/high/default（高难度内容/历史迁移），agent ad39f8d5-bff8-4ddb-8368-0abbcae9bd6a / workspace wks_b54923516c66c54d / task/INK-M1-039-source-authority-core。范围editor/src真实runtime/main/Bridge接线及对应测试文档，禁止import prototype/装依赖/GUI/新Agent。非UI交付后管理者独立复核和真实WK/NSDocument点验，完成即回收。
 
 首阶段剩余V1–V6完整范围不变，main仍48258a9。表格/任务/图片/高亮/可视替换未完成，不能结束总目标。
+
+## 并行补齐与后续表格规格（2026-11-09）
+
+039生产V1继续执行。管理者已提醒canonical markdown-support旧自动整篇source规则与用户/ADR目标冲突，实施时须更新规则和对应分类测试但保留FID/ENC/EOL字节oracle；任务/图片/表格现有SYN-S009/S010/S014为目标，绝不能为当前缺实现降成D。Bridge逻辑revision与内部原文版本分别处理。
+
+040只修补既有图片平台宿主剩余实际验证：基线037@56b5d318653cf5666db63a6d372c67848849ab7d，branch task/INK-PROT-040-asset-handler-validation，agent ad78db46-cfba-4481-9314-ef4aef74bf7f / workspace wks_642d59b1cc7f4bac，GLM5.3/high/full，notifyOnFinish。范围中间symlink ENOTDIR正确分类及实际handler/broker的stop/generation/单次回调/lease接缝；禁止平行模型假通过、GUI或改037冻结实测资料。与039共两名执行者，完成分别独立验收并回收。
+
+041由管理者独立准备V3功能规格和12份前后字节oracle，branch task/INK-SPEC-041-tables-tasks @929dd60（前一规范提交710863e）。verify.py 12例100项字节/推导通过；锁定markdown-it table规则独立对照8份表格语义通过；24个Git blob SHA与manifest一致，.gitattributes -text保证BOM/CRLF/无尾换行。没有运行产品或宣称表格/任务已实现，不影响039实现范围。官方GFM只用于语法核对，交互与最小范围为项目决策；实施必须真控件/PM动作而非manifest手供patch。V3接线依赖V1公共会话/映射接口。

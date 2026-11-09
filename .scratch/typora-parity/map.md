@@ -86,3 +86,6 @@ Status: open
 
 
 **当前状态（2026-11-09，覆盖上方历史）**：M0五门槛与物理H1/H2/H3/U1已闭合；036 EOF续写/语义反例经管理者补正d3ee3f0并真实WK验证。11/12 resolved，038@271922e记录ADR-0004与V1规格，05转claimed执行实际生产交互。039生产原文权威核心已派Sol5.6/high/default，当前只有此执行Agent；已完成035/036 Agent和workspace校验备份回收（累计50）。037图片Sandbox实际面板/书签/移动目录/WK证据已补，14仍保留明确缺口。main48258a9，首阶段表格/任务/图片/高亮/可视搜索与完整保存重开尚未交付，总目标保持active。详细看execution/FIRST-STAGE-DELIVERY.md。
+
+
+当前并行更新：039生产核心（Sol5.6/high）与040图片真实handler验证（GLM5.3/high）两名执行者；041后续表格/任务功能规格与12份独立golden已推送，未当产品实现计数。详细指针见FIRST-STAGE-DELIVERY。M0有界裁定保持，V1–V6全闭环未完成，main尚无新核心迁移。
