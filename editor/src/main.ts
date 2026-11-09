@@ -10,6 +10,8 @@ import {
   type EditorRuntime,
   type EditorRuntimeStatus,
 } from "./editor-runtime";
+import { analyzeDocument } from "./document-analysis";
+import { DocumentAnalysisPanel } from "./document-analysis-panel";
 import "./style.css";
 
 declare global {
@@ -19,12 +21,10 @@ declare global {
     };
     webkit?: {
       messageHandlers?: {
-        inkora?: {
-          postMessage(message: string): void;
-        };
+        inkora?: { postMessage(serialized: string): void };
       };
     };
-  }
+}
 }
 
 const app = document.querySelector<HTMLElement>("#app");
@@ -32,15 +32,69 @@ if (!app) {
   throw new Error("Missing #app element");
 }
 
+// 稳定子宿主：分析更新只重绘面板，绝不重建/移动活编辑器 DOM。
+// loadDocument 时 createEditorRuntime 自行清空并重建 editorHost 内容。
+const editorHost = document.createElement("div");
+editorHost.className = "editor-host";
+app.append(editorHost);
+const panel = new DocumentAnalysisPanel(app);
+
 const session = new EditorProtocolSession();
 let runtime: EditorRuntime | undefined;
 let executingCommand = false;
+
+// ---------------------------------------------------------------------------
+// 面板分析调度：只由真实 stateChanged 消息驱动，documentID/revision 来自
+// 既有协议字段，文本来自 runtime.getText()。分析失败与延迟均隔离在面板内，
+// 不产生额外协议消息、不阻断保存/编辑。
+// ---------------------------------------------------------------------------
+
+let analysisGeneration = 0;
+let analysisTimer: number | undefined;
+
+function cancelPendingAnalysis(): void {
+  analysisGeneration += 1;
+  if (analysisTimer !== undefined) {
+    window.clearTimeout(analysisTimer);
+    analysisTimer = undefined;
+  }
+}
+
+function scheduleAnalysis(documentID: string, revision: number): void {
+  cancelPendingAnalysis();
+  // composition 进行中保留上一份稳定统计，不显示半拼音文本。
+  if (runtime?.composing) return;
+  const generation = analysisGeneration;
+  analysisTimer = window.setTimeout(() => {
+    analysisTimer = undefined;
+    // 跨文档/重复 load 已 bump generation，旧任务到此作废。
+    if (generation !== analysisGeneration) return;
+    const activeRuntime = runtime;
+    if (!activeRuntime || activeRuntime.composing) return;
+    try {
+      const analysis = analyzeDocument({ raw: activeRuntime.getText(), revision });
+      if (generation !== analysisGeneration) return;
+      panel.update({ kind: "document", documentID, revision, analysis });
+    } catch (error) {
+      // 分析异常只落在面板错误态，绝不冒充 Bridge 错误或打断编辑。
+      panel.update({
+        kind: "error",
+        message: error instanceof Error ? error.message : "无法分析当前文档",
+      });
+    }
+  }, 0);
+}
 
 function postToNative(message: Parameters<typeof encodeEditorMessage>[0]): void {
   const serialized = encodeEditorMessage(message);
   const handler = window.webkit?.messageHandlers?.inkora;
   if (handler) {
     handler.postMessage(serialized);
+  }
+  // 既有的每一条 stateChanged（load/markSaved/executeCommand/runtime 变更）
+  // 都携带真实 documentID/revision，是面板唯一的刷新信号源。
+  if (message.type === "stateChanged") {
+    scheduleAnalysis(message.state.documentID, message.state.revision);
   }
 }
 
@@ -59,10 +113,12 @@ window.inkora = {
       switch (command.type) {
         case "loadDocument":
           {
+            cancelPendingAnalysis();
+            panel.update({ kind: "empty", message: "正在打开文档" });
             const response = session.loadDocument(command);
             if (response.type === "stateChanged") {
               runtime?.destroy();
-              runtime = createEditorRuntime(app, command.text, recordRuntimeChange);
+              runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange);
               runtime.focus();
             }
             postToNative(response);
@@ -119,6 +175,8 @@ window.inkora = {
               ),
             );
           } finally {
+            // executingCommand 期间 runtime 回调被抑制（避免重复 Bridge 消息），
+            // 但显式响应已作为 stateChanged 发出，面板据此刷新 Undo/Redo 后内容。
             executingCommand = false;
           }
           break;
