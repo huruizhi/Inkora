@@ -1,0 +1,685 @@
+{
+  "checks": {
+    "sourceCompositionObserved": true,
+    "sourceCompositionEnded": true,
+    "exactDraft": false,
+    "documentUnchanged": true,
+    "historyUnchanged": true,
+    "draftDirty": true,
+    "sourceMode": true,
+    "guardSnapshotObserved": true,
+    "duringSaveBlocked": true,
+    "composingEnded": true
+  },
+  "expectedRaw": "正文。\n\n替换源码验证\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+  "after": {
+    "activeElement": "source-draft",
+    "blocked": null,
+    "composing": false,
+    "dirty": false,
+    "future": 0,
+    "past": 1,
+    "pending": false,
+    "revision": 10,
+    "saveDisabled": false,
+    "selection": {
+      "anchor": 8,
+      "from": 8,
+      "head": 8,
+      "to": 8
+    },
+    "sourceAuthority": {
+      "currentRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+      "draftDirty": true,
+      "draftRaw": "正文。\n\n源码验证\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+      "epoch": 4,
+      "rawSelection": {
+        "affinity": "right",
+        "anchor": 7,
+        "head": 7
+      },
+      "savedRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+      "saveEligible": false,
+      "sourceAccessible": true,
+      "unresolvedIntent": null
+    },
+    "sourceComposing": false,
+    "sourceMode": true,
+    "staged": false,
+    "stagedKind": null,
+    "textarea": {
+      "readOnly": false,
+      "selectionDirection": "none",
+      "selectionEnd": 9,
+      "selectionStart": 9
+    },
+    "version": "ink-prot-031-observer-v3"
+  },
+  "events": [
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 255,
+        "target": "source-draft",
+        "type": "compositionstart",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:08Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "y",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 256,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:08Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "ya",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 260,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:08Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yan",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 264,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:08Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yan'm",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 268,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:08Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yan'ma",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 272,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:09Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yan'm",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 276,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:09Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yan",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 280,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:09Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "ya",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 284,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:09Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "y",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 288,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:10Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yu",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 292,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:11Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yua",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 296,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:11Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 300,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:11Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'm",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 304,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:11Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'ma",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 308,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:11Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'ma'y",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 312,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:12Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'ma'ya",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 316,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:12Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'ma'yan",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 320,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:12Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'ma'yan'z",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 324,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:12Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'ma'yan'zh",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 328,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:12Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'ma'yan'zhe",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 332,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:13Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'ma'yan'zhen",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 336,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:13Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "yuan'ma'yan'zheng",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 340,
+        "target": "source-draft",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:13Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "源码验证",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 348,
+        "target": "source-draft",
+        "type": "compositionend",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:30:14Z"
+    }
+  ],
+  "duringSnapshots": [
+    {
+      "activeElement": "source-draft",
+      "blocked": null,
+      "composing": true,
+      "dirty": false,
+      "future": 0,
+      "past": 1,
+      "pending": false,
+      "revision": 10,
+      "saveDisabled": true,
+      "selection": {
+        "anchor": 8,
+        "from": 8,
+        "head": 8,
+        "to": 8
+      },
+      "sourceAuthority": {
+        "currentRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "draftDirty": true,
+        "draftRaw": "正文。\n\n\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "epoch": 4,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 7,
+          "head": 7
+        },
+        "savedRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "saveEligible": false,
+        "sourceAccessible": false,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": true,
+      "sourceMode": true,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": false,
+        "selectionDirection": "none",
+        "selectionEnd": 8,
+        "selectionStart": 8
+      },
+      "version": "ink-prot-031-observer-v3"
+    },
+    {
+      "activeElement": "source-draft",
+      "blocked": null,
+      "composing": true,
+      "dirty": false,
+      "future": 0,
+      "past": 1,
+      "pending": false,
+      "revision": 10,
+      "saveDisabled": true,
+      "selection": {
+        "anchor": 8,
+        "from": 8,
+        "head": 8,
+        "to": 8
+      },
+      "sourceAuthority": {
+        "currentRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "draftDirty": true,
+        "draftRaw": "正文。\n\n\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "epoch": 4,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 7,
+          "head": 7
+        },
+        "savedRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "saveEligible": false,
+        "sourceAccessible": false,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": true,
+      "sourceMode": true,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": false,
+        "selectionDirection": "none",
+        "selectionEnd": 10,
+        "selectionStart": 10
+      },
+      "version": "ink-prot-031-observer-v3"
+    },
+    {
+      "activeElement": "source-draft",
+      "blocked": null,
+      "composing": true,
+      "dirty": false,
+      "future": 0,
+      "past": 1,
+      "pending": false,
+      "revision": 10,
+      "saveDisabled": true,
+      "selection": {
+        "anchor": 8,
+        "from": 8,
+        "head": 8,
+        "to": 8
+      },
+      "sourceAuthority": {
+        "currentRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "draftDirty": true,
+        "draftRaw": "正文。\n\n\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "epoch": 4,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 7,
+          "head": 7
+        },
+        "savedRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "saveEligible": false,
+        "sourceAccessible": false,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": true,
+      "sourceMode": true,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": false,
+        "selectionDirection": "none",
+        "selectionEnd": 6,
+        "selectionStart": 6
+      },
+      "version": "ink-prot-031-observer-v3"
+    },
+    {
+      "activeElement": "source-draft",
+      "blocked": null,
+      "composing": true,
+      "dirty": false,
+      "future": 0,
+      "past": 1,
+      "pending": false,
+      "revision": 10,
+      "saveDisabled": true,
+      "selection": {
+        "anchor": 8,
+        "from": 8,
+        "head": 8,
+        "to": 8
+      },
+      "sourceAuthority": {
+        "currentRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "draftDirty": true,
+        "draftRaw": "正文。\n\n\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "epoch": 4,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 7,
+          "head": 7
+        },
+        "savedRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "saveEligible": false,
+        "sourceAccessible": false,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": true,
+      "sourceMode": true,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": false,
+        "selectionDirection": "none",
+        "selectionEnd": 12,
+        "selectionStart": 12
+      },
+      "version": "ink-prot-031-observer-v3"
+    },
+    {
+      "activeElement": "source-draft",
+      "blocked": null,
+      "composing": true,
+      "dirty": false,
+      "future": 0,
+      "past": 1,
+      "pending": false,
+      "revision": 10,
+      "saveDisabled": true,
+      "selection": {
+        "anchor": 8,
+        "from": 8,
+        "head": 8,
+        "to": 8
+      },
+      "sourceAuthority": {
+        "currentRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "draftDirty": true,
+        "draftRaw": "正文。\n\n\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "epoch": 4,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 7,
+          "head": 7
+        },
+        "savedRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "saveEligible": false,
+        "sourceAccessible": false,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": true,
+      "sourceMode": true,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": false,
+        "selectionDirection": "none",
+        "selectionEnd": 16,
+        "selectionStart": 16
+      },
+      "version": "ink-prot-031-observer-v3"
+    },
+    {
+      "activeElement": "source-draft",
+      "blocked": null,
+      "composing": true,
+      "dirty": false,
+      "future": 0,
+      "past": 1,
+      "pending": false,
+      "revision": 10,
+      "saveDisabled": true,
+      "selection": {
+        "anchor": 8,
+        "from": 8,
+        "head": 8,
+        "to": 8
+      },
+      "sourceAuthority": {
+        "currentRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "draftDirty": true,
+        "draftRaw": "正文。\n\n\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "epoch": 4,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 7,
+          "head": 7
+        },
+        "savedRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "saveEligible": false,
+        "sourceAccessible": false,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": true,
+      "sourceMode": true,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": false,
+        "selectionDirection": "none",
+        "selectionEnd": 22,
+        "selectionStart": 22
+      },
+      "version": "ink-prot-031-observer-v3"
+    }
+  ],
+  "startRow": 273,
+  "endRow": 384,
+  "userReport": "源码已上屏",
+  "actualVariant": {
+    "description": "User performed two Backspaces before composing; source draft then inserts Chinese at raw5. Preserve original planned append check as false; no silent content loss inferred.",
+    "nonCompositionDeletes": 2,
+    "preCompositionSnapshot": {
+      "activeElement": "source-draft",
+      "blocked": null,
+      "composing": false,
+      "dirty": false,
+      "future": 0,
+      "past": 1,
+      "pending": false,
+      "revision": 10,
+      "saveDisabled": false,
+      "selection": {
+        "anchor": 8,
+        "from": 8,
+        "head": 8,
+        "to": 8
+      },
+      "sourceAuthority": {
+        "currentRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "draftDirty": true,
+        "draftRaw": "正文。\n\n\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "epoch": 4,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 7,
+          "head": 7
+        },
+        "savedRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "saveEligible": false,
+        "sourceAccessible": true,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": false,
+      "sourceMode": true,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": false,
+        "selectionDirection": "none",
+        "selectionEnd": 5,
+        "selectionStart": 5
+      },
+      "version": "ink-prot-031-observer-v3"
+    },
+    "independentlyDerivedRaw": "正文。\n\n源码验证\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+    "matchesActual": true,
+    "duringSourceAccessBlocked": true
+  }
+}

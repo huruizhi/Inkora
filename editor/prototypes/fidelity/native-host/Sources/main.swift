@@ -3,6 +3,45 @@
 import AppKit
 import WebKit
 
+/// INK-PROT-034: 原生输入对照。只记录 NSTextView 的公开输入边界，原样调用 super。
+@MainActor
+final class CancellationReferenceView: NSTextView {
+    var report: (([String: Any]) -> Void)?
+
+    private func record(_ event: String, _ value: Any? = nil) {
+        var payload: [String: Any] = [
+            "event": event, "text": string, "marked": hasMarkedText(),
+            "selection": [selectedRange().location, selectedRange().length],
+        ]
+        if let value { payload["input"] = (value as? NSAttributedString)?.string ?? String(describing: value) }
+        report?(payload)
+    }
+
+    override func setMarkedText(_ value: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        record("setMarkedText-before", value)
+        super.setMarkedText(value, selectedRange: selectedRange, replacementRange: replacementRange)
+        record("setMarkedText-after")
+    }
+
+    override func unmarkText() {
+        record("unmarkText-before")
+        super.unmarkText()
+        record("unmarkText-after")
+    }
+
+    override func insertText(_ value: Any, replacementRange: NSRange) {
+        record("insertText-before", value)
+        super.insertText(value, replacementRange: replacementRange)
+        record("insertText-after")
+    }
+
+    override func doCommand(by selector: Selector) {
+        record("command-before", NSStringFromSelector(selector))
+        super.doCommand(by: selector)
+        record("command-after", NSStringFromSelector(selector))
+    }
+}
+
 /// 资源版本信息由构建脚本写入 Info.plist，用于窗口标题与诊断栏，
 /// 防止“源码更新但加载旧 bundle”。
 struct ResourceInfo {
@@ -34,12 +73,24 @@ final class HostAppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHan
     var webView: WKWebView!
     var diagnostics: NSTextField!
     var lastSnapshotSignature: Data?
+    var localKeyMonitor: Any?
+    let closureRunID = UUID().uuidString
+    lazy var closureLogURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("InkoraM0Closure", isDirectory: true)
+        .appendingPathComponent("\(closureRunID).jsonl")
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let menu = NSMenu()
+        let applicationItem = NSMenuItem()
+        let applicationMenu = NSMenu()
+        applicationMenu.addItem(withTitle: "退出验收原型", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        applicationItem.submenu = applicationMenu
+        menu.addItem(applicationItem)
+        NSApp.mainMenu = menu
         let content = NSView(frame: NSRect(x: 0, y: 0, width: 1280, height: 800))
 
         let diagHeight: CGFloat = 56
@@ -50,6 +101,22 @@ final class HostAppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHan
         diag.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(diag)
         self.diagnostics = diag
+
+        let referenceLabel = NSTextField(labelWithString: "原生输入对照（仅取消诊断）：在 native: 后输入拼音，候选出现后按 Esc")
+        referenceLabel.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(referenceLabel)
+        let referenceScroll = NSScrollView()
+        referenceScroll.borderType = .bezelBorder
+        referenceScroll.hasVerticalScroller = true
+        referenceScroll.translatesAutoresizingMaskIntoConstraints = false
+        let reference = CancellationReferenceView(frame: NSRect(x: 0, y: 0, width: 1200, height: 40))
+        reference.isRichText = false
+        reference.font = .systemFont(ofSize: 18)
+        reference.string = "native:"
+        reference.setAccessibilityLabel("原生取消对照输入框")
+        reference.report = { [weak self] payload in self?.emit(kind: "native-reference", payload: payload) }
+        referenceScroll.documentView = reference
+        content.addSubview(referenceScroll)
 
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .nonPersistent()
@@ -77,7 +144,14 @@ final class HostAppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHan
             webView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             webView.topAnchor.constraint(equalTo: content.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: diag.topAnchor, constant: -4),
+            webView.bottomAnchor.constraint(equalTo: referenceLabel.topAnchor, constant: -8),
+            referenceLabel.leadingAnchor.constraint(equalTo: diag.leadingAnchor),
+            referenceLabel.trailingAnchor.constraint(equalTo: diag.trailingAnchor),
+            referenceScroll.topAnchor.constraint(equalTo: referenceLabel.bottomAnchor, constant: 4),
+            referenceScroll.leadingAnchor.constraint(equalTo: diag.leadingAnchor),
+            referenceScroll.trailingAnchor.constraint(equalTo: diag.trailingAnchor),
+            referenceScroll.heightAnchor.constraint(equalToConstant: 48),
+            referenceScroll.bottomAnchor.constraint(equalTo: diag.topAnchor, constant: -8),
         ])
 
         let window = NSWindow(
@@ -90,6 +164,23 @@ final class HostAppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHan
         window.center()
         window.makeKeyAndOrderFront(nil)
         self.window = window
+
+        // 仅本应用、本窗口的特殊按键；不监听全局、不吞键、不申请权限。
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            MainActor.assumeIsolated {
+                guard let self, event.window === self.window,
+                      [UInt16(53), 36, 76, 49, 51, 117].contains(event.keyCode) else { return event }
+                self.emit(kind: "native-key", payload: [
+                    "keyCode": event.keyCode, "type": event.type.rawValue,
+                    "modifiers": event.modifierFlags.rawValue, "repeat": event.isARepeat,
+                    "responder": String(describing: type(of: self.window.firstResponder)),
+                    "referenceFocused": self.window.firstResponder === reference,
+                    "referenceText": reference.string, "referenceMarked": reference.hasMarkedText(),
+                    "eventTime": event.timestamp,
+                ])
+                return event
+            }
+        }
 
         updateDiagnostics(pageStatus: "loading")
         emit(kind: "host", payload: [
@@ -110,6 +201,11 @@ final class HostAppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHan
         pollPrototypeState()
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        if let localKeyMonitor { NSEvent.removeMonitor(localKeyMonitor) }
+        emit(kind: "host", payload: ["event": "terminate"])
+    }
+
     func updateDiagnostics(pageStatus: String) {
         let csp = info.cspInjected ? "CSP-injected" : "CSP-asis"
         diagnostics.stringValue =
@@ -126,6 +222,23 @@ final class HostAppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHan
               let line = String(data: data, encoding: .utf8) else { return }
         print("INKORA_RUNTIME \(line)")
         fflush(stdout)
+        // Prototype-only evidence sink. No document, model, or input mutation.
+        do {
+            try FileManager.default.createDirectory(
+                at: closureLogURL.deletingLastPathComponent(), withIntermediateDirectories: true
+            )
+            if !FileManager.default.fileExists(atPath: closureLogURL.path) {
+                guard FileManager.default.createFile(atPath: closureLogURL.path, contents: nil) else {
+                    throw CocoaError(.fileWriteUnknown)
+                }
+            }
+            let handle = try FileHandle(forWritingTo: closureLogURL)
+            defer { try? handle.close() }
+            try handle.seekToEnd()
+            try handle.write(contentsOf: Data((line + "\n").utf8))
+        } catch {
+            print("INKORA_EVIDENCE_WRITE_FAILED \(error.localizedDescription)")
+        }
     }
 
     func userContentController(

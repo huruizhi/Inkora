@@ -1,0 +1,655 @@
+{
+  "checks": {
+    "compositionObserved": true,
+    "compositionEnded": true,
+    "rawUnchanged": false,
+    "pastUnchanged": false,
+    "futureUnchanged": false,
+    "dirtyUnchanged": false,
+    "composingFalse": true,
+    "safe": true
+  },
+  "before": {
+    "kind": "snapshot",
+    "payload": {
+      "activeElement": "prosemirror",
+      "blocked": null,
+      "composing": false,
+      "dirty": false,
+      "future": 1,
+      "past": 0,
+      "pending": false,
+      "revision": 2,
+      "saveDisabled": false,
+      "selection": {
+        "anchor": 22,
+        "from": 22,
+        "head": 22,
+        "to": 22
+      },
+      "sourceAuthority": {
+        "currentRaw": "正文。\n\n测试\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "draftDirty": false,
+        "draftRaw": null,
+        "epoch": 3,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 31,
+          "head": 31
+        },
+        "savedRaw": "正文。\n\n测试\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "saveEligible": true,
+        "sourceAccessible": true,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": false,
+      "sourceMode": false,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": true,
+        "selectionDirection": "forward",
+        "selectionEnd": 31,
+        "selectionStart": 31
+      },
+      "version": "ink-prot-031-observer-v3"
+    },
+    "timestamp": "2026-11-09T08:12:50Z"
+  },
+  "after": {
+    "activeElement": "prosemirror",
+    "blocked": null,
+    "composing": false,
+    "dirty": true,
+    "future": 0,
+    "past": 1,
+    "pending": false,
+    "revision": 16,
+    "saveDisabled": false,
+    "selection": {
+      "anchor": 24,
+      "from": 24,
+      "head": 24,
+      "to": 24
+    },
+    "sourceAuthority": {
+      "currentRaw": "正文。\n\n测试\n\n$$\nx^2\n$$\n\nAfter prote取消cted block.\n",
+      "draftDirty": false,
+      "draftRaw": null,
+      "epoch": 3,
+      "rawSelection": {
+        "affinity": "right",
+        "anchor": 33,
+        "head": 33
+      },
+      "savedRaw": "正文。\n\n测试\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+      "saveEligible": true,
+      "sourceAccessible": true,
+      "unresolvedIntent": null
+    },
+    "sourceComposing": false,
+    "sourceMode": false,
+    "staged": false,
+    "stagedKind": null,
+    "textarea": {
+      "readOnly": true,
+      "selectionDirection": "forward",
+      "selectionEnd": 33,
+      "selectionStart": 33
+    },
+    "version": "ink-prot-031-observer-v3"
+  },
+  "events": [
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 147,
+        "target": "prosemirror",
+        "type": "compositionstart",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "q",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 148,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "q",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 149,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "q",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 150,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 152,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 153,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 154,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qui",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 156,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qui",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 157,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qui",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 158,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "quia",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 160,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "quia",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 161,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "quia",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 162,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "quiao",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 164,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "quiao",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 165,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "quiao",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 166,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:50Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "quia",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 168,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:52Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "quia",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 169,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:52Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "quia",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 170,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:52Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qui",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 172,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:52Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qui",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 173,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:52Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qui",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 174,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:52Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 176,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:53Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 177,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:53Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 178,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:53Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'x",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 180,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:53Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'x",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 181,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:53Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'x",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 182,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:53Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'xi",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 184,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'xi",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 185,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'xi",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 186,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'xia",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 188,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'xia",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 189,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'xia",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 190,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'xiao",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 192,
+        "target": "prosemirror",
+        "type": "compositionupdate",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'xiao",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 193,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "qu'xiao",
+        "inputType": "insertCompositionText",
+        "isComposing": true,
+        "sequence": 194,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": null,
+        "inputType": "deleteCompositionText",
+        "isComposing": true,
+        "sequence": 196,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": null,
+        "inputType": "deleteCompositionText",
+        "isComposing": true,
+        "sequence": 197,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "取消",
+        "inputType": "insertFromComposition",
+        "isComposing": true,
+        "sequence": 198,
+        "target": "prosemirror",
+        "type": "beforeinput",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "取消",
+        "inputType": "insertFromComposition",
+        "isComposing": true,
+        "sequence": 199,
+        "target": "prosemirror",
+        "type": "input",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    },
+    {
+      "kind": "dom-event",
+      "payload": {
+        "data": "取消",
+        "inputType": null,
+        "isComposing": null,
+        "sequence": 200,
+        "target": "prosemirror",
+        "type": "compositionend",
+        "version": "ink-prot-031-observer-v3"
+      },
+      "timestamp": "2026-11-09T08:17:54Z"
+    }
+  ],
+  "startRow": 157,
+  "endRow": 217,
+  "userReport": "已按 Esc 取消，正文未变",
+  "verdict": "inconclusive-cancellation: user reports Esc/no-change; WK records committed 取消; native key code not observed",
+  "runtimePrefixSHA256": "f5b6a1c043366dd1884b67ae72dc2d44fb8a6895f9b904c7b03c8da14469eb47"
+}

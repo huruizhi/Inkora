@@ -1,0 +1,8 @@
+{
+  "H1": "inconclusive: user Esc/no-change report differs from WK committed 取消; key source clarification pending",
+  "H2": "PASS: physical selection replacement, one Undo/Redo, exact raw and directed selections",
+  "H3": "PASS actual deletion+Chinese source variant: composition guards, single apply, cross-mode Undo/Redo, memory savepoint",
+  "runtimeRows": 392,
+  "runtimeSHA256": "b2b43edf54b420a8c15aa9b8c067d65f8a4785b72083a9687feccc844f881537",
+  "bundleSHA256": "7aaa2e7f7ff79104c01bf378dd79c959a084ba7a14ce480f82a978e26c23c807"
+}

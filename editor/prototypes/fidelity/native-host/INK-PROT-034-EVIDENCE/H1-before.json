@@ -1,0 +1,51 @@
+{
+  "runtimePath": "/Users/rayhu/Library/Containers/com.huruizhi.Inkora.FidelityPrototype/Data/Library/Caches/InkoraM0Closure/0E1B9C06-4B35-45FB-B018-A5FB8A0F0D4D.jsonl",
+  "records": 157,
+  "snapshot": {
+    "kind": "snapshot",
+    "payload": {
+      "activeElement": "prosemirror",
+      "blocked": null,
+      "composing": false,
+      "dirty": false,
+      "future": 1,
+      "past": 0,
+      "pending": false,
+      "revision": 2,
+      "saveDisabled": false,
+      "selection": {
+        "anchor": 22,
+        "from": 22,
+        "head": 22,
+        "to": 22
+      },
+      "sourceAuthority": {
+        "currentRaw": "正文。\n\n测试\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "draftDirty": false,
+        "draftRaw": null,
+        "epoch": 3,
+        "rawSelection": {
+          "affinity": "right",
+          "anchor": 31,
+          "head": 31
+        },
+        "savedRaw": "正文。\n\n测试\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+        "saveEligible": true,
+        "sourceAccessible": true,
+        "unresolvedIntent": null
+      },
+      "sourceComposing": false,
+      "sourceMode": false,
+      "staged": false,
+      "stagedKind": null,
+      "textarea": {
+        "readOnly": true,
+        "selectionDirection": "forward",
+        "selectionEnd": 31,
+        "selectionStart": 31
+      },
+      "version": "ink-prot-031-observer-v3"
+    },
+    "timestamp": "2026-11-09T08:12:50Z"
+  }
+}

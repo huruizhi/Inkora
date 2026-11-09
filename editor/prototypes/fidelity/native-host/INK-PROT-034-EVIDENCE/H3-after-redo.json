@@ -1,0 +1,53 @@
+{
+  "checks": {
+    "rawRestored": true,
+    "rawSelectionRestored": true,
+    "visualSelectionRestored": true,
+    "past2future0": true,
+    "safe": true
+  },
+  "snapshot": {
+    "activeElement": "body",
+    "blocked": null,
+    "composing": false,
+    "dirty": true,
+    "future": 0,
+    "past": 2,
+    "pending": false,
+    "revision": 13,
+    "saveDisabled": false,
+    "selection": {
+      "anchor": 10,
+      "from": 10,
+      "head": 10,
+      "to": 10
+    },
+    "sourceAuthority": {
+      "currentRaw": "正文。\n\n源码验证\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+      "draftDirty": false,
+      "draftRaw": null,
+      "epoch": 4,
+      "rawSelection": {
+        "affinity": "right",
+        "anchor": 9,
+        "head": 9
+      },
+      "savedRaw": "正文。\n\n替换\n\n$$\nx^2\n$$\n\nAfter protected block.\n",
+      "saveEligible": true,
+      "sourceAccessible": true,
+      "unresolvedIntent": null
+    },
+    "sourceComposing": false,
+    "sourceMode": false,
+    "staged": false,
+    "stagedKind": null,
+    "textarea": {
+      "readOnly": true,
+      "selectionDirection": "forward",
+      "selectionEnd": 9,
+      "selectionStart": 9
+    },
+    "version": "ink-prot-031-observer-v3"
+  },
+  "records": 391
+}
