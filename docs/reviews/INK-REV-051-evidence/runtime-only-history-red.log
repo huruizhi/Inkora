@@ -1,0 +1,36 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REV-051/editor
+
+ ❯ src/root-composition-publication-review.test.ts (3 tests | 2 failed) 132ms
+   × does not seal a settling composition for a selection-only transaction at 2 34ms
+   × does not seal a settling composition for a selection-only transaction at 4 32ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/root-composition-publication-review.test.ts > does not seal a settling composition for a selection-only transaction at 2
+ FAIL  src/root-composition-publication-review.test.ts > does not seal a settling composition for a selection-only transaction at 4
+AssertionError: expected 'azh\n' to be 'a\n' // Object.is equality
+
+- Expected
++ Received
+
+- a
++ azh
+
+
+ ❯ src/root-composition-publication-review.test.ts:61:29
+     59|   expect(changes).toEqual(["a中文\n"]);
+     60|   expect(runtime.undo()).toBe(true);
+     61|   expect(runtime.getText()).toBe("a\n");
+       |                             ^
+     62| });
+     63|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  19:12:07
+   Duration  530ms (import 61%, tests 31%, transform 8%)
+
