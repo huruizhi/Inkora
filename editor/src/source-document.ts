@@ -1,11 +1,11 @@
-import MarkdownIt, { type StateCore } from "markdown-it";
+import MarkdownIt from "markdown-it";
 import type { Node as PMNode } from "prosemirror-model";
 import type { EditorState } from "prosemirror-state";
 import { inkoraMarkdownParser } from "./markdown-codec";
 import { analyzeMarkdownSafety } from "./markdown-safety";
 import { parseProtectedMarkdown } from "./protected-markdown";
 import { inkoraSchema as schema } from "./schema";
-import { installReferenceCapture, referenceLineRanges, referenceSourceSlices } from "./reference-context";
+import { installReferenceCapture, referenceLineRanges, referenceDefinitions } from "./reference-context";
 
 export { schema };
 
@@ -13,31 +13,9 @@ export type Range = { start: number; end: number; pos: number; size: number; kin
 export type Issue = { code: string; start: number; end: number; message: string };
 const tokenizer = new MarkdownIt('commonmark', { html: false }).enable(['table', 'strikethrough']);
 installReferenceCapture(tokenizer);
-function annotateFenceClosure(state: StateCore): void {
-  const env = state.env;
-  const source = env && typeof env === 'object' && 'source' in env && typeof env.source === 'string' ? env.source : '';
-  const lines = source.split(/\r?\n/);
-  for (const token of state.tokens) {
-    if (token.type !== 'fence' || !token.map || token.markup.length < 3) continue;
-    const closingLine = lines[token.map[1] - 1] ?? '';
-    const marker = token.markup[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const closed = new RegExp(`^ {0,3}${marker}{${token.markup.length},}[\\t ]*$`).test(closingLine);
-    token.meta = { ...token.meta, inkoraClosed: closed };
-  }
-}
-function preserveSoftBreaks(state: StateCore): void {
-  for (const token of state.tokens) {
-    for (const child of token.children ?? []) {
-      if (child.type === 'softbreak') { child.type = 'text'; child.tag = ''; child.content = '\n'; }
-    }
-  }
-}
-const inlineTokenizer = new MarkdownIt('commonmark', { breaks: false, html: false, linkify: false }).enable('strikethrough');
-inlineTokenizer.core.ruler.after('block', 'inkora_fence_closure', annotateFenceClosure);
-inlineTokenizer.core.ruler.after('inline', 'inkora_soft_breaks', preserveSoftBreaks);
 // Production token specs reused verbatim (inkoraMarkdownParser.tokens is the
-// public copy point); the only addition is `image` → image_ref mark so image
-// tokens are no longer an unsupported-token hard failure.
+// public copy point); image tokens become selectable atoms whose source owner
+// is audited by source-ledger rather than exposed as marked alt text.
 const markdownParser = inkoraMarkdownParser;
 export function parse(source: string) {
   const starts = [0];
@@ -52,14 +30,16 @@ export function parse(source: string) {
       source.slice(frontEnd)
     : source;
   const blockEnv: Record<string, unknown> = {};
-  const blockTokens = tokenizer.parse(tokenSource.replace(/^\uFEFF/, ' '), blockEnv);
-  // Only definitions accepted by the CommonMark block rule may resolve body
-  // references. Production currently supports the simple one-line subset;
-  // multiline definitions remain an explicit
-  // unfinished risk rather than falling back to a whole-file regex.
-  const refs = referenceSourceSlices(source, referenceLineRanges(blockEnv))
-    .filter(raw => /^ {0,3}\[[^\]\n]+\]:[^\n]*(?:\r?\n)?$/.test(raw))
-    .join('\n');
+  const blockTokens = tokenizer.parse(tokenSource.replace(/^\uFEFF/, ''), blockEnv);
+  // Keep the accepted block parser's global, first-wins reference semantics.
+  // The capture also owns the exact multi-line/container source fields, so
+  // no source suffix or separate one-line definition regex is needed.
+  const references: Record<string, { href: string; title: string }> = Object.create(null);
+  for (const definition of referenceDefinitions(source, referenceLineRanges(blockEnv))) {
+    if (!Object.hasOwn(references, definition.key)) references[definition.key] = {
+      href: definition.href, title: definition.title ?? '',
+    };
+  }
   const ranges: Range[] = [], nodes: PMNode[] = [], issues: Issue[] = [];
   let cursor = 0, pos = 0;
   if (front) {
@@ -78,15 +58,26 @@ export function parse(source: string) {
     pos += node.nodeSize;
     cursor = frontEnd;
   }
-  // Reference gaps also admit footnote-style labels: markdown-it consumes
-  // `[^1]: def` lines as reference definitions, so they can only be gap bytes.
-  const cleanGap = (s: string) => s.replace(/^ {0,3}\[[^\]\n]+\]:[^\n]*(?:\n|$)/gm, '').trim().length === 0;
+  // Reference gaps (including footnote-style labels consumed by the block
+  // parser) use the accepted line ranges, not a second definition grammar.
+  const gapParts: string[] = [];
+  let gapCursor = 0;
+  for (const definition of referenceLineRanges(blockEnv)) {
+    const from = starts[definition.startLine];
+    const to = starts[definition.endLine] ?? source.length;
+    gapParts.push(source.slice(gapCursor, from));
+    gapParts.push(source.slice(from, to).replace(/[^\r\n]/g, ' '));
+    gapCursor = to;
+  }
+  gapParts.push(source.slice(gapCursor));
+  const gapSource = gapParts.join('');
+  const cleanGap = (from: number, to: number) => gapSource.slice(from, to).trim().length === 0;
   for (const token of blockTokens) {
     if (token.level !== 0 || !token.map || token.type.endsWith('_close')) continue;
     let start = starts[token.map[0]], end = starts[token.map[1]] ?? source.length;
     if (start < cursor) continue;
     if (start === 0 && source[0] === '\uFEFF') start++;
-    if (!cleanGap(source.slice(cursor, start))) throw Error('存在无法归属的原文范围');
+    if (!cleanGap(cursor, start)) throw Error('存在无法归属的原文范围');
     if (source.slice(start, end).endsWith('\r\n')) end -= 2;
     else if (source[end - 1] === '\n') end--;
     const raw = source.slice(start, end), normalized = raw.replace(/\r\n/g, '\n');
@@ -117,8 +108,8 @@ export function parse(source: string) {
         node = schema.nodes.protected_block.create({ raw, kind: protectedDoc.firstChild.attrs.kind });
       } else {
         // Bare URLs stay plain text (tokenizer linkify is off) and reference
-        // links/images resolve against the appended definitions into real
-        // link/image_ref marks — display text, href/title and delimiter forms
+        // links/images resolve against the accepted global reference env into
+        // link marks / image atoms — alt, href/title and delimiter forms
         // all stay separated. Unknown syntax is still a bounded source-owned
         // block: keep it beside editable body text and expose one repair issue
         // instead of throwing the entire document into the legacy textarea.
@@ -132,8 +123,11 @@ export function parse(source: string) {
           };
           node = protect();
         } else {
-          const text = normalized + '\n\n' + refs;
-          const parsed = markdownParser.parse(text, { source: text });
+          const text = normalized;
+          const parsed = markdownParser.parse(text, {
+            source: text,
+            references,
+          });
           if (parsed.childCount !== 1) throw Error('一个范围对应多个 PM 块');
           node = parsed.firstChild!;
           // CommonMark permits a fenced code block to end at EOF without a
@@ -147,7 +141,7 @@ export function parse(source: string) {
     ranges.push(range);
     nodes.push(node); pos += node.nodeSize; cursor = end;
   }
-  if (!cleanGap(source.slice(cursor))) throw Error('尾部存在无法归属的原文范围');
+  if (!cleanGap(cursor, source.length)) throw Error('尾部存在无法归属的原文范围');
   if (!nodes.length) nodes.push(schema.nodes.paragraph.create());
   return { doc: schema.topNodeType.createChecked(null, nodes), ranges, issues };
 }

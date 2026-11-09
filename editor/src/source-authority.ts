@@ -26,6 +26,17 @@ export type ProjectionAudit = {
   provenance: string[];
 };
 export type SourceDraft = { raw: string; selection: RawSelection };
+export type ManagedImageInsertion = {
+  assetID?: string;
+  uri: string;
+  alt: string;
+  title: string | null;
+};
+export type ManagedImageRewrite = { assetID: string; from: string; to: string };
+export type CanonicalImageOwnership = {
+  readonly raw: string;
+  readonly imageURIs: readonly string[];
+};
 
 type Snapshot = {
   raw: string;
@@ -33,6 +44,7 @@ type Snapshot = {
   rawSelection: RawSelection;
   projection: ProjectionAudit;
   issues: Issue[];
+  managedImageOwners: Map<string, string>;
 };
 
 type CompositionGroup = {
@@ -119,6 +131,8 @@ function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger
       definition: link.definition ? {
         source: translateRange(link.definition.source),
         hrefSource: translateRange(link.definition.hrefSource),
+        destinationSource: link.definition.destinationSource
+          ? translateRange(link.definition.destinationSource) : undefined,
         titleSource: link.definition.titleSource
           ? translateRange(link.definition.titleSource)
           : undefined,
@@ -146,6 +160,18 @@ function cloneProjection(value: ProjectionAudit): ProjectionAudit {
     anchors: value.anchors.map(anchor => ({ ...anchor })),
     provenance: [...value.provenance],
   };
+}
+
+function markdownImage(value: ManagedImageInsertion): string {
+  if (!value.uri || /[\u0000-\u0020<>]/.test(value.uri) || /%(?![0-9A-Fa-f]{2})/.test(value.uri)) {
+    throw Error('图片 URI 必须是已按 UTF-8 百分号编码的安全相对 URI 或受控草稿 URI');
+  }
+  if (/[\r\n]/.test(value.alt) || (value.title !== null && /[\r\n]/.test(value.title))) {
+    throw Error('图片 alt/title 不能包含换行');
+  }
+  const alt = value.alt.replace(/([\\\]])/g, '\\$1');
+  const title = value.title === null ? '' : ` "${value.title.replace(/([\\"])/g, '\\$1')}"`;
+  return `![${alt}](${value.uri}${title})`;
 }
 
 function eolAt(raw: string, offset: number): '\n' | '\r\n' {
@@ -281,7 +307,7 @@ function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, project
   return `source-authoritative local insertion: ${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`;
 }
 
-function rawBoundaryError(raw: string, offset: number, knownBoundaries?: ReadonlySet<number>): string | null {
+function rawCodeUnitBoundaryError(raw: string, offset: number): string | null {
   if (!Number.isInteger(offset) || offset < 0 || offset > raw.length) return `原文位置 ${offset} 越界`;
   if (raw.startsWith('\uFEFF') && offset === 0) return 'BOM 前位置不是正文边界';
   if (offset > 0 && offset < raw.length && raw[offset - 1] === '\r' && raw[offset] === '\n') return 'CRLF 内部不是合法边界';
@@ -290,6 +316,12 @@ function rawBoundaryError(raw: string, offset: number, knownBoundaries?: Readonl
     const next = raw.charCodeAt(offset);
     if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) return 'surrogate pair 内部不是合法边界';
   }
+  return null;
+}
+
+function rawBoundaryError(raw: string, offset: number, knownBoundaries?: Pick<ReadonlySet<number>, 'has'>): string | null {
+  const structuralError = rawCodeUnitBoundaryError(raw, offset);
+  if (structuralError) return structuralError;
   const boundaries = knownBoundaries ?? new Set<number>([0, raw.length]);
   if (!knownBoundaries) {
     const writable = boundaries as Set<number>;
@@ -327,6 +359,8 @@ function cloneLinkOwner(owner: SourceLinkOwner): SourceLinkOwner {
     definition: owner.definition ? {
       source: cloneRange(owner.definition.source),
       hrefSource: cloneRange(owner.definition.hrefSource),
+      destinationSource: owner.definition.destinationSource
+        ? cloneRange(owner.definition.destinationSource) : undefined,
       titleSource: owner.definition.titleSource
         ? cloneRange(owner.definition.titleSource)
         : undefined,
@@ -376,6 +410,7 @@ function planOwnedLinkPatches(
       { from: owner.labelMarkupSource.to, to: owner.source.to, insert: '' },
     ];
   }
+  if (attrs.href === owner.href && attrs.title === owner.title) return [];
   if (owner.kind === 'autolink') {
     const label = raw.slice(owner.labelMarkupSource.from, owner.labelMarkupSource.to);
     return [{
@@ -397,11 +432,12 @@ function planOwnedLinkPatches(
     ? owner.definition!.hrefSource
     : owner.hrefSource;
   if (!hrefSource) throw Error('链接 owner 缺少 href 原文范围');
-  const patches: NativePatch[] = [{
+  const patches: NativePatch[] = attrs.href === owner.href ? [] : [{
     from: hrefSource.from,
     to: hrefSource.to,
     insert: destinationToken(raw, hrefSource, attrs.href),
   }];
+  if (attrs.title === owner.title) return patches;
   const currentTitleSource = owner.kind === 'reference'
     ? owner.definition!.titleSource
     : owner.titleSource;
@@ -440,9 +476,12 @@ function planOwnedLinkPatches(
       });
     }
   } else if (attrs.title !== null) {
+    const destinationEnd = owner.kind === 'reference'
+      ? owner.definition!.destinationSource?.to ?? hrefSource.to
+      : hrefSource.to;
     patches.push({
-      from: hrefSource.to,
-      to: hrefSource.to,
+      from: destinationEnd,
+      to: destinationEnd,
       insert: ` ${titleToken(attrs.title)}`,
     });
   }
@@ -475,6 +514,18 @@ export class SourceAuthoritySession {
   private compositionGroup: CompositionGroup | null = null;
   private readonly options: EditorStateOptions;
   private preferredEol: '\r\n' | '\n';
+  private managedImageOwners = new Map<string, string>();
+  // Parsing is a pure function of the exact raw value. Keep one immutable
+  // result across validation/acceptance/ledger construction for that value;
+  // projection proofs still bind raw + PM doc identity + projection identity.
+  private parsedSourceCache: { raw: string; parsed: ReturnType<typeof parse> } | null = null;
+  private projectionContextCache: {
+    raw: string;
+    doc: PMNode;
+    projection: ProjectionAudit;
+    context: ProjectionContext;
+  } | null = null;
+  private rawBoundaryCache: { raw: string; boundaries: Pick<ReadonlySet<number>, 'has'> } | null = null;
 
   constructor(
     raw: string,
@@ -483,7 +534,7 @@ export class SourceAuthoritySession {
   ) {
     this.options = options;
     this.preferredEol = raw.match(/\r\n|\n/)?.[0] === '\r\n' ? '\r\n' : '\n';
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     this.currentRaw = raw;
     this.savedRaw = raw;
     this.state = createInkoraProjectionState(parsed.doc, this.options);
@@ -510,6 +561,23 @@ export class SourceAuthoritySession {
   }
   get sourceAccessible(): boolean { return !this.composing; }
 
+  captureImageOwnership(): CanonicalImageOwnership {
+    const imageURIs: string[] = [];
+    this.state.doc.descendants(node => {
+      if (node.type.name === 'image' && typeof node.attrs.href === 'string' && node.attrs.href) {
+        imageURIs.push(node.attrs.href);
+      }
+    });
+    return { raw: this.currentRaw, imageURIs };
+  }
+
+  private parseSource(raw: string): ReturnType<typeof parse> {
+    if (this.parsedSourceCache?.raw === raw) return this.parsedSourceCache.parsed;
+    const parsed = parse(raw);
+    this.parsedSourceCache = { raw, parsed };
+    return parsed;
+  }
+
   private snapshot(): Snapshot {
     return {
       raw: this.currentRaw,
@@ -517,7 +585,25 @@ export class SourceAuthoritySession {
       rawSelection: cloneSelection(this.rawSelection),
       projection: cloneProjection(this.projection),
       issues: this.issues.map(issue => ({ ...issue })),
+      managedImageOwners: new Map(this.managedImageOwners),
     };
+  }
+
+  private boundaryError(raw: string, offset: number): string | null {
+    let cached = this.rawBoundaryCache;
+    if (!cached || cached.raw !== raw) {
+      // Query ICU's boundary in the complete raw string. This is the same
+      // grapheme segmentation as enumeration, without allocating one Set entry
+      // per character for a handful of selection/anchor checks. No substring
+      // window or ASCII approximation can truncate a combining/ZWJ sequence.
+      const segments = segmenter.segment(raw);
+      const boundaries = {
+        has: (offset: number): boolean => offset === raw.length || segments.containing(offset)?.index === offset,
+      };
+      cached = { raw, boundaries };
+      this.rawBoundaryCache = cached;
+    }
+    return rawBoundaryError(raw, offset, cached.boundaries);
   }
 
   private restore(snapshot: Snapshot): void {
@@ -526,13 +612,27 @@ export class SourceAuthoritySession {
     this.rawSelection = cloneSelection(snapshot.rawSelection);
     this.projection = cloneProjection(snapshot.projection);
     this.issues = snapshot.issues.map(issue => ({ ...issue }));
+    this.managedImageOwners = new Map(snapshot.managedImageOwners);
     this.draft = null;
   }
 
   private projectionContext(state = this.state, projection = this.projection): ProjectionContext {
-    const parsed = parse(this.currentRaw);
-    const base = baseLedger(this.currentRaw, parsed);
-    if (parsed.doc.eq(state.doc)) return { ledger: base, ranges: parsed.ranges, parsedDoc: parsed.doc };
+    const raw = this.currentRaw;
+    const cached = this.projectionContextCache;
+    if (cached && cached.raw === raw && cached.doc === state.doc && cached.projection === projection) {
+      return cached.context;
+    }
+    const remember = (context: ProjectionContext): ProjectionContext => {
+      if (raw === this.currentRaw && state.doc === this.state.doc && projection === this.projection) {
+        this.projectionContextCache = { raw, doc: state.doc, projection, context };
+      }
+      return context;
+    };
+    const parsed = this.parseSource(raw);
+    const base = baseLedger(raw, parsed);
+    if (parsed.doc.eq(state.doc)) {
+      return remember({ ledger: base, ranges: parsed.ranges, parsedDoc: parsed.doc });
+    }
     if (!comparableDoc(parsed.doc).eq(comparableDoc(state.doc))) {
       throw Error('当前 PM 投影与原文派生语义不满足有界投影关系');
     }
@@ -601,7 +701,7 @@ export class SourceAuthoritySession {
           : { ...link, visual: { from: link.visual.from + shift, to: link.visual.to + shift } };
       }),
     };
-    return { ledger, ranges, parsedDoc: parsed.doc };
+    return remember({ ledger, ranges, parsedDoc: parsed.doc });
   }
 
   private projectionIsAuditable(): boolean {
@@ -710,7 +810,7 @@ export class SourceAuthoritySession {
       affinity: selection.affinity,
     };
     try {
-      const parsed = parse(candidate);
+      const parsed = this.parseSource(candidate);
       if (parsed.issues.length) throw Error(parsed.issues[0].message);
       this.currentRaw = candidate;
       this.state = createInkoraProjectionState(parsed.doc, this.options);
@@ -752,23 +852,28 @@ export class SourceAuthoritySession {
   }
 
   setRawSelection(anchor: number, head = anchor, affinity: Affinity = 'right'): boolean {
-    const anchorError = rawBoundaryError(this.currentRaw, anchor);
-    const headError = rawBoundaryError(this.currentRaw, head);
+    const anchorError = this.boundaryError(this.currentRaw, anchor);
+    const headError = this.boundaryError(this.currentRaw, head);
     if (anchorError || headError) {
       this.diagnostic = anchorError ?? headError ?? '非法原文边界';
       return false;
     }
     try {
       const mappedAnchor = this.syntaxAwareRawMap(anchor, anchor === head ? affinity : anchor > head ? 'right' : 'left');
-      const mappedHead = this.syntaxAwareRawMap(head, anchor === head ? affinity : anchor > head ? 'left' : 'right');
+      const mappedHead = anchor === head
+        ? mappedAnchor
+        : this.syntaxAwareRawMap(head, anchor > head ? 'left' : 'right');
       const selection = TextSelection.create(this.state.doc, mappedAnchor.visual, mappedHead.visual);
       this.state = this.state.apply(this.state.tr.setSelection(selection));
       this.rawSelection = { anchor, head, affinity };
-      this.projection.anchors = dedupeAnchors([
-        ...this.projection.anchors,
-        { visual: selection.anchor, raw: anchor, reason: mappedAnchor.note },
-        { visual: selection.head, raw: head, reason: mappedHead.note },
-      ]);
+      this.projection = {
+        ...this.projection,
+        anchors: dedupeAnchors([
+          ...this.projection.anchors,
+          { visual: selection.anchor, raw: anchor, reason: mappedAnchor.note },
+          { visual: selection.head, raw: head, reason: mappedHead.note },
+        ]),
+      };
       this.diagnostic = '';
       return true;
     } catch (error) {
@@ -778,8 +883,8 @@ export class SourceAuthoritySession {
   }
 
   setSourceSelection(anchor: number, head = anchor, affinity: Affinity = 'right'): boolean {
-    const anchorError = rawBoundaryError(this.currentRaw, anchor);
-    const headError = rawBoundaryError(this.currentRaw, head);
+    const anchorError = this.boundaryError(this.currentRaw, anchor);
+    const headError = this.boundaryError(this.currentRaw, head);
     if (anchorError || headError) {
       this.diagnostic = anchorError ?? headError ?? '非法原文边界';
       return false;
@@ -849,10 +954,10 @@ export class SourceAuthoritySession {
   }
 
   private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping']): void {
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
-    const exactTargetLedger = needsAnchorReproof && !parsed.issues.length && parsed.doc.eq(target.doc)
+    let exactTargetLedger = needsAnchorReproof && !parsed.issues.length && parsed.doc.eq(target.doc)
       ? baseLedger(raw, parsed)
       : undefined;
     this.currentRaw = raw;
@@ -879,12 +984,28 @@ export class SourceAuthoritySession {
           visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
       };
     });
+    const oldAnchorCount = mappedAnchors.length;
     const step = target.selection;
     if (sourceCaret !== undefined) mappedAnchors.push({ visual: step.head, raw: sourceCaret, reason });
-    for (const anchor of mappedAnchors) {
+    const validatedAnchors: ProjectionAnchor[] = [];
+    for (const [index, anchor] of mappedAnchors.entries()) {
       if (anchor.visual < 0 || anchor.visual > target.doc.content.size) throw Error(`投影 anchor 的 PM 位置 ${anchor.visual} 越界`);
-      const boundaryError = rawBoundaryError(raw, anchor.raw);
-      if (boundaryError) throw Error(`投影 anchor 映射失败：${boundaryError}`);
+      const boundaryError = this.boundaryError(raw, anchor.raw);
+      if (boundaryError) {
+        // A text edit can merge two old graphemes. Retire only a former
+        // boundary proven to be inside the same new visible raw/PM unit.
+        // Never snap BOM/CRLF/surrogate boundaries or the new caret anchor.
+        if (index < oldAnchorCount && !rawCodeUnitBoundaryError(raw, anchor.raw) &&
+            !parsed.issues.length && parsed.doc.eq(target.doc)) {
+          exactTargetLedger ??= baseLedger(raw, parsed);
+          if (exactTargetLedger.spans.some(span =>
+            span.visible && span.visualStart !== undefined && span.visualEnd !== undefined &&
+            span.sourceStart < anchor.raw && anchor.raw < span.sourceEnd &&
+            span.visualStart < anchor.visual && anchor.visual < span.visualEnd)) continue;
+        }
+        throw Error(`投影 anchor 映射失败：${boundaryError}`);
+      }
+      validatedAnchors.push(anchor);
     }
 
     if (parsed.issues.length) {
@@ -893,7 +1014,7 @@ export class SourceAuthoritySession {
       this.projection = { kind: 'exact', reason: '含混原文的保守保护投影', anchors: [], provenance: parsed.issues.map(issue => issue.message) };
     } else if (parsed.doc.eq(target.doc)) {
       this.state = target;
-      this.projection = { kind: 'exact', reason: '当前原文与 PM 投影精确一致', anchors: dedupeAnchors(mappedAnchors), provenance: [reason] };
+      this.projection = { kind: 'exact', reason: '当前原文与 PM 投影精确一致', anchors: dedupeAnchors(validatedAnchors), provenance: [reason] };
       try {
         this.rawSelection = this.updateSelectionFromState(this.state);
       } catch (error) {
@@ -905,7 +1026,7 @@ export class SourceAuthoritySession {
       }
     } else {
       this.state = target;
-      this.projection = { kind: 'anchored', reason, anchors: dedupeAnchors(mappedAnchors), provenance: [reason, ...patches.map(patch => `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`)] };
+      this.projection = { kind: 'anchored', reason, anchors: dedupeAnchors(validatedAnchors), provenance: [reason, ...patches.map(patch => `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`)] };
       this.projectionContext();
       this.rawSelection = this.updateSelectionFromState(this.state);
     }
@@ -945,11 +1066,14 @@ export class SourceAuthoritySession {
         const rawSelection = this.updateSelectionFromState(this.state.apply(transaction));
         this.state = this.state.apply(transaction);
         this.rawSelection = rawSelection;
-        this.projection.anchors = dedupeAnchors([
-          ...this.projection.anchors,
-          { visual: this.state.selection.anchor, raw: rawSelection.anchor, reason: '真实 PM 选区移动' },
-          { visual: this.state.selection.head, raw: rawSelection.head, reason: '真实 PM 选区移动' },
-        ]);
+        this.projection = {
+          ...this.projection,
+          anchors: dedupeAnchors([
+            ...this.projection.anchors,
+            { visual: this.state.selection.anchor, raw: rawSelection.anchor, reason: '真实 PM 选区移动' },
+            { visual: this.state.selection.head, raw: rawSelection.head, reason: '真实 PM 选区移动' },
+          ]),
+        };
         if (compositionId !== undefined) this.compactComposition();
         return true;
       } catch (error) {
@@ -988,7 +1112,7 @@ export class SourceAuthoritySession {
       if (sourceCaret === undefined && plan.patches.length === 1 && textReplacement) {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
-      const parsed = parse(plan.candidate);
+      const parsed = this.parseSource(plan.candidate);
       if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
         const proof = semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
@@ -1147,7 +1271,7 @@ export class SourceAuthoritySession {
         ));
       }
       const target = this.state.apply(transaction);
-      const parsed = parse(candidate);
+      const parsed = this.parseSource(candidate);
       if (parsed.issues.length || !parsed.doc.eq(target.doc)) {
         throw Error('替换候选与可视意图不一致，整批未应用');
       }
@@ -1220,7 +1344,7 @@ export class SourceAuthoritySession {
     if (part) from = part.index;
     const before = this.snapshot();
     const raw = this.currentRaw.slice(0, from) + this.currentRaw.slice(caret);
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     this.currentRaw = raw;
     this.state = createInkoraProjectionState(parsed.doc, this.options);
     this.issues = parsed.issues;
@@ -1231,6 +1355,123 @@ export class SourceAuthoritySession {
     this.logicalRevision++;
     this.unresolvedIntent = null; this.diagnostic = '';
     return true;
+  }
+
+  insertImage(value: ManagedImageInsertion): boolean {
+    if (this.composing) return this.guard('image_import');
+    if (this.draftDirty || this.issues.length || this.unresolvedIntent) {
+      this.diagnostic = '源码草稿、含混原文或未解决输入存在；图片已由原生保留但不能应用到当前原文';
+      return false;
+    }
+    this.finishComposition();
+    const before = this.snapshot();
+    try {
+      const image = markdownImage(value);
+      const from = Math.min(this.rawSelection.anchor, this.rawSelection.head);
+      const to = Math.max(this.rawSelection.anchor, this.rawSelection.head);
+      const raw = this.currentRaw.slice(0, from) + image + this.currentRaw.slice(to);
+      const parsed = this.parseSource(raw);
+      if (parsed.issues.length) throw Error(parsed.issues[0].message);
+      this.currentRaw = raw;
+      this.state = createInkoraProjectionState(parsed.doc, this.options);
+      this.issues = [];
+      this.projection = {
+        kind: 'exact',
+        reason: '原生确认资源后应用图片原文事务',
+        anchors: [],
+        provenance: [`managed image ${from}..${to} -> ${value.uri}`],
+      };
+      const caret = from + image.length;
+      this.rawSelection = { anchor: caret, head: caret, affinity: 'right' };
+      if (!this.setRawSelection(caret, caret, 'right')) throw Error(this.diagnostic);
+      this.past.push(before);
+      if (value.assetID) this.managedImageOwners.set(value.assetID, value.uri);
+      this.future = [];
+      this.version++;
+      this.logicalRevision++;
+      this.unresolvedIntent = null;
+      this.diagnostic = '';
+      return true;
+    } catch (error) {
+      this.restore(before);
+      this.diagnostic = error instanceof Error ? error.message : String(error);
+      return false;
+    }
+  }
+
+  rewriteManagedImages(rewrites: readonly ManagedImageRewrite[]): boolean {
+    if (this.composing) return this.guard('image_save_prepare');
+    if (!rewrites.length || this.draftDirty || this.issues.length || this.unresolvedIntent) {
+      this.diagnostic = '当前源码草稿、含混原文或未解决输入阻止图片保存路径准备';
+      return false;
+    }
+    this.finishComposition();
+    const before = this.snapshot();
+    try {
+      const patches: NativePatch[] = [];
+      const acceptedOwners = new Map<string, string>();
+      const seenAssets = new Set<string>();
+      for (const rewrite of rewrites) {
+        if (!rewrite.assetID || seenAssets.has(rewrite.assetID)) throw Error('图片保存映射包含重复 asset owner');
+        seenAssets.add(rewrite.assetID);
+        markdownImage({ uri: rewrite.to, alt: '', title: null });
+        const currentOwner = this.managedImageOwners.get(rewrite.assetID) ?? rewrite.from;
+        const hits: number[] = [];
+        for (let at = this.currentRaw.indexOf(currentOwner); at >= 0;
+          at = this.currentRaw.indexOf(currentOwner, at + currentOwner.length)) hits.push(at);
+        if (hits.length !== 1) throw Error(`图片草稿 owner ${rewrite.assetID} 不是唯一当前原文引用`);
+        let imageAtoms = 0;
+        this.state.doc.descendants(node => {
+          if (node.type.name === 'image' && node.attrs.href === currentOwner) imageAtoms++;
+        });
+        if (imageAtoms !== 1) {
+          throw Error(`图片草稿 owner ${rewrite.assetID} 不再对应唯一图片 atom`);
+        }
+        const from = hits[0];
+        if (this.currentRaw.slice(Math.max(0, from - 2), from) !== '](') {
+          throw Error(`图片草稿 owner ${rewrite.assetID} 不在行内图片 destination 边界`);
+        }
+        acceptedOwners.set(rewrite.assetID, rewrite.to);
+        if (currentOwner !== rewrite.to) {
+          patches.push({ from, to: from + currentOwner.length, insert: rewrite.to });
+        }
+      }
+      if (!patches.length) {
+        for (const [assetID, owner] of acceptedOwners) this.managedImageOwners.set(assetID, owner);
+        this.diagnostic = '';
+        return true;
+      }
+      const raw = applyNativePatches(this.currentRaw, patches);
+      const parsed = this.parseSource(raw);
+      if (parsed.issues.length) throw Error(parsed.issues[0].message);
+      const mappedAnchor = mapRawOffset(this.rawSelection.anchor, patches, -1);
+      const mappedHead = mapRawOffset(this.rawSelection.head, patches, 1);
+      this.currentRaw = raw;
+      this.state = createInkoraProjectionState(parsed.doc, this.options);
+      this.issues = [];
+      this.projection = {
+        kind: 'exact',
+        reason: '首次保存前图片 owner 路径准备事务',
+        anchors: [],
+        provenance: patches.map(patch => `${patch.from}..${patch.to} -> ${patch.insert}`),
+      };
+      this.rawSelection = { anchor: mappedAnchor, head: mappedHead, affinity: this.rawSelection.affinity };
+      if (!this.setRawSelection(mappedAnchor, mappedHead, this.rawSelection.affinity)) {
+        throw Error(this.diagnostic);
+      }
+      this.past.push(before);
+      for (const [assetID, owner] of acceptedOwners) this.managedImageOwners.set(assetID, owner);
+      this.future = [];
+      this.version++;
+      this.logicalRevision++;
+      this.unresolvedIntent = null;
+      this.diagnostic = '';
+      return true;
+    } catch (error) {
+      this.restore(before);
+      this.diagnostic = error instanceof Error ? error.message : String(error);
+      return false;
+    }
   }
 
   private guard(command: string): false {
@@ -1264,12 +1505,12 @@ export class SourceAuthoritySession {
     if (!this.draft) return false;
     const draft = this.draft;
     if (draft.raw === this.currentRaw) { this.draft = null; return true; }
-    const anchorError = rawBoundaryError(draft.raw, draft.selection.anchor);
-    const headError = rawBoundaryError(draft.raw, draft.selection.head);
+    const anchorError = this.boundaryError(draft.raw, draft.selection.anchor);
+    const headError = this.boundaryError(draft.raw, draft.selection.head);
     if (anchorError || headError) { this.diagnostic = anchorError ?? headError ?? '非法源码选区'; return false; }
     const before = this.snapshot();
     try {
-      const parsed = parse(draft.raw);
+      const parsed = this.parseSource(draft.raw);
       const firstEol = draft.raw.match(/\r\n|\n/)?.[0];
       if (firstEol) this.preferredEol = firstEol === '\r\n' ? '\r\n' : '\n';
       this.currentRaw = draft.raw;
@@ -1341,8 +1582,9 @@ export class SourceAuthoritySession {
   reopen(raw: string, selection?: RawSelection): boolean {
     if (this.composing) return this.guard('reset');
     this.finishComposition();
-    const parsed = parse(raw);
+    const parsed = this.parseSource(raw);
     this.currentRaw = raw; this.savedRaw = raw;
+    this.managedImageOwners.clear();
     this.preferredEol = raw.match(/\r\n|\n/)?.[0] === '\r\n' ? '\r\n' : '\n';
     this.state = createInkoraProjectionState(parsed.doc, this.options); this.issues = parsed.issues;
     this.projection = { kind: 'exact', reason: 'scratch UTF-8 重开新 epoch', anchors: [], provenance: ['new epoch'] };

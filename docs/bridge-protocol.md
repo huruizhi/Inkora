@@ -17,7 +17,7 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 2. 每次已经提交的用户编辑或 history transaction 恰好增加一次 revision；IME composition 中间态及 DOM end 后尚未稳定的 PM final 不增加，稳定边界只增加一次。
 3. 相同文档的旧 `stateChanged` 不得覆盖较新状态；不同 `documentID` 的事件不得改变当前文档。
 4. `createSnapshot.revision` 是原生已确认的最低 revision；编辑器原子捕获不低于该值的当前 revision 与文本。文档不一致或请求 revision 超前时返回 `stale_revision`。
-5. `snapshotReady` 固定表示编辑器处理请求时捕获的 revision。之后发生的新编辑不会改变该 snapshot，也不得被旧 snapshot 反向覆盖。
+5. `snapshotReady` 固定表示编辑器处理请求时捕获的 revision。之后发生的新编辑不会改变该 snapshot，也不得被旧 snapshot 反向覆盖。可选 `imageOwnership` 把同一次捕获的 `documentID`、revision、逐字 `raw` 与语义投影中的图片 URI 顺序绑定；四者任一不一致即为非法 proof。
 6. 磁盘提交成功后，原生以 `markSaved` 确认实际落盘的 snapshot。该命令不增加 revision；若期间已有更高 revision，编辑器仍保持 dirty。
 
 ## Native → Editor
@@ -93,6 +93,14 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
 
 返回带相同 `requestID` 的 `stateChanged`。尚未加载文档时返回 `editor_not_ready`。
 
+### 图片命令
+
+`applyImageImport` 携带 document/revision、`documentEpoch`、asset UUID、已确定 URI、alt、可空 title、导入意图采样的 `selectionAnchor/selectionHead` 与单个 `inkora-asset://resource/<uuid>` capability。selection 使用当前原文的 directed offsets；执行时 selection、document、revision 或 epoch 任一不匹配都拒绝，不迁移到当前光标。成功是一次正文/history/revision 事务；composition、源码 dirty draft、过期 revision 或无法证明 owner 时拒绝。
+
+`setImageDescriptors` 携带同一 document epoch 的 descriptor 数组和完整 `imageOwnership` proof。状态限定为 `ready/missing/denied/unsupported/error/pending`；只有 ready 必须且只能带 capability URL。Native 在读取或注册前重新捕获当前 proof，且只生成 proof owner 中的 descriptor；命令固定到 proof 的 document/revision/raw/有序 URI。Web 在 ack 前再次核对当前 accepted raw、完整 owner 数组和 composition 状态，缺 proof 或任一不一致均拒绝。ready capability 先以不可读取的 provisional 状态注册，Web ack 入队后才提交为 live；拒绝、超时、跨 load/epoch 或迟到 ack 全部回滚。descriptor ack 先于 NodeView 副作用；命令不改变正文、dirty、revision、selection 或 history。
+
+`prepareImageSave` 携带非空 rewrite 数组、完整 `imageOwnership` proof，每项以 asset ID 绑定唯一 `from` owner 和确定 `to` URI。命令必须固定到产生 plan 的 document/revision/raw/有序 owner；Native 在授权返回后、建立 plan 前重新捕获并逐项比较 proof，Web 在执行前再比较当前 accepted raw/owners 并拒绝 composition。授权等待期间若版本或 owner 前进，旧 plan 在资源或正文变化前以 `stale_revision` 拒绝。编辑器整体校验并作为一个内容事务接受或拒绝；该命令不能由 `markSaved` 替代，也不得改写已有非托管引用。
+
 ## Editor → Native
 
 ### `ready`
@@ -115,12 +123,14 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
     "revision": 4,
     "dirty": true,
     "canUndo": true,
-    "canRedo": false
+    "canRedo": false,
+    "selectionAnchor": 12,
+    "selectionHead": 8
   }
 }
 ```
 
-`requestID` 只在响应 `loadDocument`、`queryState` 或 command 时提供；主动状态变化可省略。原生层按 `(documentID, revision)` 丢弃错误文档或旧状态。
+`requestID` 只在响应 `loadDocument`、`queryState` 或 command 时提供；主动状态变化可省略。`queryState` 同 turn 采样当前原文 directed selection，但不增加 revision、dirty 或 history。旧 v1 发送方可省略 selection；图片导入意图必须取得一对完整 selection 后才可持久化。原生层按 `(documentID, revision)` 丢弃错误文档或旧状态。
 
 ### `snapshotReady`
 
@@ -131,11 +141,19 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
   "requestID": "snapshot-1",
   "documentID": "document-uuid",
   "revision": 4,
-  "text": "current Markdown"
+  "text": "current Markdown",
+  "imageOwnership": {
+    "documentID": "document-uuid",
+    "revision": 4,
+    "raw": "current Markdown",
+    "imageURIs": ["Note.assets/a.png"]
+  }
 }
 ```
 
-原生层只完成相同 `requestID`、`documentID` 且响应 revision 不低于请求门槛的等待请求。未知 request ID 被忽略；字段不匹配导致该请求失败，不得使用返回正文覆盖当前状态。
+`imageOwnership` 是 v1 的可选兼容扩展；旧 golden 可省略，但所有图片资源流程必须显式要求它。编辑器在同一稳定 runtime、同一个 JavaScript turn 捕获 `text/raw` 与语义投影 owner；`raw` 必须逐字等于 `text`，owner 数组保留文档顺序和重复使用。同一 URI 被两个图片节点使用时保留两项；代码、数学、普通链接与保护块中的伪图片不进入数组。
+
+原生层只完成相同 `requestID`、`documentID` 且响应 revision 不低于请求门槛的等待请求。若 proof 存在，还必须严格验证内外 document/revision/raw 与非空 URI。未知 request ID 被忽略；字段不匹配导致该请求失败，不得使用返回正文覆盖当前状态。缺少 proof 表示“未知”，不等价于 `imageURIs: []`；后者才是已证明无图片。
 
 ### `editorError`
 
@@ -165,6 +183,10 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
 | `internal_error` | `stop_saving` | 停止保存，允许重新加载或用户另存恢复 |
 
 `code` 与 `action` 的组合是固定契约；不匹配的组合本身视为 `invalid_message`。
+
+### `imageAccessRequested`
+
+图片占位的「授权/定位」动作发送 document ID、revision、原 `href` 和同一当前版本的 `imageOwnership`。proof 必须包含该 href；原生只接受当前 document/revision，经过用户选择签发新 capability，再用固定到同一 proof 的 `setImageDescriptors` 回填。缺失、跨文档、跨 revision 或不再拥有 href 的事件被忽略；该事件本身不改正文或焦点。
 
 ## 请求、超时与乱序
 

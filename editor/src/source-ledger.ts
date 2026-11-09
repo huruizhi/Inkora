@@ -3,7 +3,7 @@
 import MarkdownIt, { type Token } from 'markdown-it';
 import type { Node as PMNode } from 'prosemirror-model';
 import type { Range } from "./source-document";
-import { installReferenceCapture, referenceLineRanges, type ReferenceLineRange } from "./reference-context";
+import { installReferenceCapture, referenceLineRanges, referenceDefinitions, type ReferenceLineRange } from "./reference-context";
 import { annotateTaskListItems } from "./markdown-codec";
 
 export type SourceRole =
@@ -70,6 +70,7 @@ export type SourceLinkOwner = {
   definition?: {
     source: SourceRange;
     hrefSource: SourceRange;
+    destinationSource?: SourceRange;
     titleSource?: SourceRange;
     titleSeparatorSource?: SourceRange;
   };
@@ -90,16 +91,22 @@ export type LedgerMapResult =
 
 type RawUnit = { start: number; end: number };
 type InlineInput = { text: string; units: RawUnit[] };
-type Atom = LedgerSpan & { visible: true; text: string; projection?: 'text' | 'atom' };
+type Atom = LedgerSpan & {
+  visible: true;
+  text: string;
+  projection?: 'text' | 'atom';
+  expectedNode?: { type: string; attrs: Record<string, unknown> };
+};
 type ReferenceDefinition = {
   key: string;
   href: string;
   title: string | null;
   spans: LedgerSpan[];
+  destinationSyntax: SourceRange;
 };
 type LinkExpectation = {
   owner: string;
-  mark: 'link' | 'image_ref';
+  mark: 'link' | 'image';
   kind: 'inline' | 'reference' | 'autolink';
   href: string;
   title: string | null;
@@ -118,7 +125,13 @@ type TextLeaf = {
   text: string;
   marks: readonly { type: { name: string }; attrs: Record<string, unknown> }[];
 };
-type ProjectionUnit = TextLeaf | { start: number; end: number; atom: string };
+type ProjectionUnit = TextLeaf | {
+  start: number;
+  end: number;
+  atom: string;
+  attrs: Record<string, unknown>;
+  marks: TextLeaf['marks'];
+};
 
 const markdown = new MarkdownIt('commonmark', {
   breaks: false,
@@ -126,6 +139,60 @@ const markdown = new MarkdownIt('commonmark', {
   linkify: false,
 }).enable(['table', 'strikethrough']);
 installReferenceCapture(markdown);
+// Capture the container prefix while markdown-it's block parser still has its
+// list/quote indentation context. Restored physical lines cannot reconstruct
+// that context by looking for the first occurrence of token.content.
+type ContainerBlockState = {
+  src: string;
+  tokens: Token[];
+  bMarks: number[];
+  eMarks: number[];
+  tShift: number[];
+  bsCount: number[];
+  blkIndent: number;
+};
+type ContainerBlockRule = (state: ContainerBlockState, start: number, end: number, silent: boolean) => boolean;
+type ContainerBlockRuler = {
+  __rules__?: Array<{ name: string; fn: ContainerBlockRule; alt: string[] }>;
+  at(name: string, fn: ContainerBlockRule, options: { alt: string[] }): void;
+};
+const containerRuler = markdown.block.ruler as unknown as ContainerBlockRuler;
+for (const name of ['paragraph', 'fence', 'code']) {
+  const entry = containerRuler.__rules__?.find(rule => rule.name === name);
+  if (!entry) throw Error(`markdown-it ${name} block rule unavailable`);
+  const original = entry.fn;
+  containerRuler.at(name, (state, start, end, silent) => {
+    const before = state.tokens.length;
+    const accepted = original(state, start, end, silent);
+    if (!accepted || silent) return accepted;
+    for (const token of state.tokens.slice(before)) {
+      if (!token.map || !['inline', 'fence', 'code_block'].includes(token.type)) continue;
+      const columns: number[] = [];
+      for (let line = token.map[0]; line < token.map[1]; line++) {
+        const lineStart = state.bMarks[line];
+        let first = lineStart;
+        let indent = 0;
+        while (first < state.eMarks[line] && indent < state.blkIndent) {
+          const char = state.src[first];
+          if (char === '\t') indent += 4 - (indent + state.bsCount[line]) % 4;
+          else if (char === ' ' || first - lineStart < state.tShift[line]) indent++;
+          else break;
+          first++;
+        }
+        // A partial tab expansion has no one-to-one raw character boundary.
+        // Preserve the existing explicit refusal instead of inventing spaces.
+        if (indent > state.blkIndent) {
+          columns.push(-1);
+        } else {
+          const physicalStart = state.src.lastIndexOf('\n', Math.max(0, lineStart - 1)) + 1;
+          columns.push(first - physicalStart);
+        }
+      }
+      token.meta = { ...token.meta, inkoraContainerColumns: columns };
+    }
+    return accepted;
+  }, { alt: entry.alt });
+}
 markdown.core.ruler.after('inline', 'inkora_task_items', annotateTaskListItems);
 
 type EmphasisDelimiter = {
@@ -230,6 +297,35 @@ function addAtom(state: ScanState, input: InlineInput, from: number, to: number,
 function addRawAtom(state: ScanState, start: number, end: number, text: string, role: SourceRole, syntax: string, projection: 'text' | 'atom' = 'text', detail?: string): void {
   if (end <= start) throw Error(`可视原文范围 ${start}..${end} 为空`);
   const atom: Atom = { sourceStart: start, sourceEnd: end, role, syntax, visible: true, text, projection, detail };
+  state.spans.push(atom);
+  state.atoms.push(atom);
+}
+
+function addImageAtom(
+  state: ScanState,
+  input: InlineInput,
+  from: number,
+  to: number,
+  alt: string,
+  href: string,
+  title: string | null,
+  owner: string,
+): void {
+  const first = input.units[from];
+  const last = input.units[to - 1];
+  if (!first || !last) throw Error(`图片原文范围 ${from}..${to} 越界`);
+  const atom: Atom = {
+    sourceStart: first.start,
+    sourceEnd: last.end,
+    role: 'image-alt',
+    syntax: 'image',
+    visible: true,
+    text: alt,
+    owner,
+    projection: 'atom',
+    expectedNode: { type: 'image', attrs: { alt, href, title } },
+    detail: '完整 Markdown 图片 owner 映射到一个可选择 PM atom',
+  };
   state.spans.push(atom);
   state.atoms.push(atom);
 }
@@ -434,7 +530,7 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
           const linkOwner = `inline-${++state.ownerSerial}`;
           state.expectations.push({
             owner: linkOwner,
-            mark: image ? 'image_ref' : 'link',
+            mark: image ? 'image' : 'link',
             kind: tail ? 'inline' : 'reference',
             href,
             title,
@@ -442,7 +538,11 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
           });
           if (image) addHidden(state, input, i, i + 1, 'delimiter', 'image-marker', linkOwner);
           addHidden(state, input, bracket, bracket + 1, 'delimiter', image ? 'image-alt-open' : 'link-label-open', linkOwner);
-          scanInline(state, input, bracket + 1, labelEnd, image ? 'image-alt' : 'link-label', linkOwner);
+          if (image) {
+            addHidden(state, input, bracket + 1, labelEnd, 'image-alt', 'image-alt-source', linkOwner);
+          } else {
+            scanInline(state, input, bracket + 1, labelEnd, 'link-label', linkOwner);
+          }
           addHidden(state, input, labelEnd, labelEnd + 1, 'delimiter', image ? 'image-alt-close' : 'link-label-close', linkOwner);
           if (tail) {
             addHidden(state, input, labelEnd + 1, tail.hrefStart, 'delimiter', 'inline-link-open', linkOwner);
@@ -457,6 +557,18 @@ function scanInline(state: ScanState, input: InlineInput, from = 0, to = input.t
             addHidden(state, input, referenceStart, referenceStart + 1, 'delimiter', 'reference-open', linkOwner);
             addHidden(state, input, referenceStart + 1, referenceEnd - 1, 'reference-label', 'reference-label', linkOwner);
             addHidden(state, input, referenceEnd - 1, referenceEnd, 'delimiter', 'reference-close', linkOwner);
+          }
+          if (image) {
+            addImageAtom(
+              state,
+              input,
+              i,
+              end,
+              text.slice(bracket + 1, labelEnd),
+              href,
+              title,
+              linkOwner,
+            );
           }
           i = end;
           continue;
@@ -576,10 +688,27 @@ function prefixCursor(line: string, heading: boolean): number {
   return cursor;
 }
 
+function containerLine(
+  lines: ReturnType<typeof lineTable>, token: Token, index: number, occupied: LedgerSpan[],
+): ReturnType<typeof lineTable>[number] {
+  const line = lines[index];
+  const column = (token.meta?.inkoraContainerColumns?.[index - token.map![0]] ?? 0)
+    + (line.start === 0 && line.text.startsWith('\uFEFF') ? 1 : 0);
+  if (!Number.isInteger(column) || column < 0 || column > line.text.length) {
+    throw Error('容器前缀无法映射到完整原文边界');
+  }
+  if (column) occupied.push({
+    sourceStart: line.start, sourceEnd: line.start + column,
+    role: 'block-prefix', syntax: 'container-prefix', visible: false,
+  });
+  return { ...line, start: line.start + column, text: line.text.slice(column) };
+}
+
 function mapInlineToken(source: string, lines: ReturnType<typeof lineTable>, token: Token, heading: boolean, occupied: LedgerSpan[]): InlineInput {
   if (!token.map) throw Error('inline token 缺少块级行范围');
   const desired = token.content.split('\n');
-  const physical = lines.slice(token.map[0], token.map[1]);
+  const physical = lines.slice(token.map[0], token.map[1]).map((_, offset) =>
+    containerLine(lines, token, token.map![0] + offset, occupied));
   const units: RawUnit[] = [];
   let text = '';
   let physicalIndex = 0;
@@ -589,6 +718,11 @@ function mapInlineToken(source: string, lines: ReturnType<typeof lineTable>, tok
     for (; physicalIndex < physical.length; physicalIndex++) {
       const line = physical[physicalIndex];
       let cursor = prefixCursor(line.text, heading && part === 0);
+      // Paragraph's asciiTrim removes the first logical line's remaining
+      // indentation after getLines has removed the proven container prefix.
+      if (part === 0 && token.meta?.inkoraContainerColumns) {
+        cursor += /^[\t ]*/.exec(line.text.slice(cursor))![0].length;
+      }
       if (part === 0 && typeof token.meta?.inkoraTaskPrefixLength === 'number') {
         const physicalTask = /^\[[ xX]\][\t ]+/.exec(line.text.slice(cursor));
         cursor += physicalTask?.[0].length ?? token.meta.inkoraTaskPrefixLength;
@@ -642,10 +776,12 @@ function codeLineContent(line: ReturnType<typeof lineTable>[number], style: 'fen
 function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: Range, state: ScanState): void {
   if (!token.map || (token.type !== 'fence' && token.type !== 'code_block')) throw Error('代码块 token 缺少可审计行范围');
   const style = token.type === 'fence' ? 'fenced' : 'indented';
-  let contentLines = lines.slice(token.map[0], token.map[1]);
+  const physical = lines.slice(token.map[0], token.map[1]).map((_, offset) =>
+    containerLine(lines, token, token.map![0] + offset, state.spans));
+  let contentLines = physical;
   let fenceIndent = 0;
   if (style === 'fenced') {
-    const opening = lines[token.map[0]];
+    const opening = physical[0];
     if (!opening) throw Error('围栏起始行不存在');
     const openingSliceStart = Math.max(range.start, opening.start);
     const openingSlice = opening.text.slice(openingSliceStart - opening.start);
@@ -658,7 +794,7 @@ function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: 
     hiddenRaw(state, markerStart + token.markup.length, opening.contentEnd, 'block-prefix', 'fence-info', '语言/info string 为非可视语法');
     hiddenRaw(state, opening.contentEnd, opening.end, 'line-ending', 'fence-open-eol');
 
-    const possibleClosing = lines[token.map[1] - 1];
+    const possibleClosing = physical[physical.length - 1];
     if (!possibleClosing) throw Error('围栏闭合行不存在');
     const marker = token.markup[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const close = possibleClosing.text.match(new RegExp(`^( {0,3})(${marker}{${token.markup.length},})([\\t ]*)$`));
@@ -667,12 +803,12 @@ function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: 
       hiddenRaw(state, possibleClosing.start, closeMarkerStart, 'block-prefix', 'fence-close-indent');
       hiddenRaw(state, closeMarkerStart, closeMarkerStart + close[2].length, 'delimiter', 'fence-close');
       hiddenRaw(state, closeMarkerStart + close[2].length, possibleClosing.contentEnd, 'block-suffix', 'fence-close-space');
-      contentLines = lines.slice(token.map[0] + 1, token.map[1] - 1);
+      contentLines = physical.slice(1, -1);
     } else {
       // CommonMark closes a fence implicitly at EOF. Keep the physical source
       // exact and map every following line as code content; no synthetic close
       // delimiter is introduced into the ledger.
-      contentLines = lines.slice(token.map[0] + 1, token.map[1]);
+      contentLines = physical.slice(1);
     }
   }
 
@@ -710,46 +846,41 @@ function mapCodeToken(lines: ReturnType<typeof lineTable>, token: Token, range: 
   }
 }
 
-function parseDefinitions(source: string, lines: ReturnType<typeof lineTable>, accepted: readonly ReferenceLineRange[]): Map<string, ReferenceDefinition> {
+function parseDefinitions(source: string, accepted: readonly ReferenceLineRange[]): Map<string, ReferenceDefinition> {
   const definitions = new Map<string, ReferenceDefinition>();
-  const acceptedLines = new Set(accepted.flatMap(range => {
-    const result: number[] = [];
-    for (let line = range.startLine; line < range.endLine; line++) result.push(line);
-    return result;
-  }));
-  for (const [lineIndex, line] of lines.entries()) {
-    if (!acceptedLines.has(lineIndex)) continue;
-    const match = line.text.match(/^( {0,3})\[([^\]\n]+)\]:[ \t]*(?:<([^>\n]*)>|([^\s]+))(?:[ \t]+(?:"([^"]*)"|'([^']*)'|\(([^)]*)\)))?[ \t]*$/);
-    if (!match) continue;
-    const label = match[2];
-    const destination = match[3] ?? match[4];
-    const title = match[5] ?? match[6] ?? match[7] ?? null;
-    const href = markdown.normalizeLink(markdown.utils.unescapeAll(destination));
-    const labelStart = line.start + match[1].length + 1;
-    const labelEnd = labelStart + label.length;
-    const destinationAt = line.text.indexOf(destination, labelEnd - line.start + 2);
-    const destinationStart = line.start + destinationAt;
-    const destinationEnd = destinationStart + destination.length;
-    const titleAt = title === null ? -1 : line.text.indexOf(title, destinationEnd - line.start);
-    const titleStart = titleAt < 0 ? -1 : line.start + titleAt;
+  for (const definition of referenceDefinitions(source, accepted)) {
+    const { key, href, title } = definition;
+    const labelStart = definition.label.from;
+    const labelEnd = definition.label.to;
+    const destinationStart = definition.destination.from;
+    const destinationEnd = definition.destination.to;
+    const syntaxEnd = definition.destinationSyntax.to;
     const spans: LedgerSpan[] = [
-      { sourceStart: line.start, sourceEnd: labelStart, role: 'delimiter', syntax: 'definition-open', visible: false },
-      { sourceStart: labelStart, sourceEnd: labelEnd, role: 'definition-label', syntax: 'definition-label', visible: false, detail: normalizeReference(label) },
+      { sourceStart: definition.from, sourceEnd: labelStart, role: 'delimiter', syntax: 'definition-open', visible: false },
+      { sourceStart: labelStart, sourceEnd: labelEnd, role: 'definition-label', syntax: 'definition-label', visible: false, detail: key },
       { sourceStart: labelEnd, sourceEnd: destinationStart, role: 'delimiter', syntax: 'definition-separator', visible: false },
       { sourceStart: destinationStart, sourceEnd: destinationEnd, role: 'definition-href', syntax: 'definition-href', visible: false, detail: href },
     ];
-    if (titleStart >= 0 && title !== null) {
-      spans.push({ sourceStart: destinationEnd, sourceEnd: titleStart, role: 'delimiter', syntax: 'definition-title-separator', visible: false });
-      spans.push({ sourceStart: titleStart, sourceEnd: titleStart + title.length, role: 'definition-title', syntax: 'definition-title', visible: false, detail: title });
-      spans.push({ sourceStart: titleStart + title.length, sourceEnd: line.end, role: 'delimiter', syntax: 'definition-close', visible: false });
-    } else spans.push({ sourceStart: destinationEnd, sourceEnd: line.end, role: 'delimiter', syntax: 'definition-close', visible: false });
-    const key = normalizeReference(label);
+    if (syntaxEnd > destinationEnd) spans.push({
+      sourceStart: destinationEnd, sourceEnd: syntaxEnd,
+      role: 'delimiter', syntax: 'definition-destination-close', visible: false,
+    });
+    if (definition.titleSource) {
+      const titleStart = definition.titleSource.from;
+      const titleEnd = definition.titleSource.to;
+      spans.push({ sourceStart: syntaxEnd, sourceEnd: titleStart, role: 'delimiter', syntax: 'definition-title-separator', visible: false });
+      spans.push({ sourceStart: titleStart, sourceEnd: titleEnd, role: 'definition-title', syntax: 'definition-title', visible: false, detail: title ?? '' });
+      spans.push({ sourceStart: titleEnd, sourceEnd: definition.to, role: 'delimiter', syntax: 'definition-close', visible: false });
+    } else spans.push({ sourceStart: syntaxEnd, sourceEnd: definition.to, role: 'delimiter', syntax: 'definition-close', visible: false });
     const existing = definitions.get(key);
     // CommonMark keeps the first definition for resolution. Later duplicate
     // definitions are still audited as non-visible source, but cannot replace
     // the href/title used by PM.
     if (existing) existing.spans.push(...spans);
-    else definitions.set(key, { key, href, title, spans });
+    else definitions.set(key, {
+      key, href, title, spans,
+      destinationSyntax: { from: definition.destinationSyntax.from, to: syntaxEnd },
+    });
   }
   return definitions;
 }
@@ -758,7 +889,13 @@ function projectionUnitsFor(doc: PMNode, range: Range): ProjectionUnit[] {
   const leaves: ProjectionUnit[] = [];
   doc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
     if (node.isText && node.text) leaves.push({ start: pos, end: pos + node.text.length, text: node.text, marks: node.marks as TextLeaf['marks'] });
-    else if (node.isAtom && !node.isText) leaves.push({ start: pos, end: pos + node.nodeSize, atom: node.type.name });
+    else if (node.isAtom && !node.isText) leaves.push({
+      start: pos,
+      end: pos + node.nodeSize,
+      atom: node.type.name,
+      attrs: node.attrs,
+      marks: node.marks as TextLeaf['marks'],
+    });
   });
   return leaves;
 }
@@ -777,7 +914,15 @@ function assignVisualPositions(atoms: Atom[], leaves: ProjectionUnit[], expectat
     const leaf = leaves[leafIndex];
     if (!leaf) return `词法 atom ${JSON.stringify(atom.text)} 没有对应 PM 单元`;
     if (atom.projection === 'atom') {
-      if (!('atom' in leaf) || leaf.atom !== 'hard_break' || leaf.end - leaf.start !== 1) return `词法 ${atom.syntax} 未命中 nodeSize=1 的 PM hard_break atom`;
+      if (!('atom' in leaf) || leaf.end - leaf.start !== 1) return `词法 ${atom.syntax} 未命中 nodeSize=1 的 PM atom`;
+      if (atom.expectedNode) {
+        if (leaf.atom !== atom.expectedNode.type) return `词法 ${atom.syntax} 未命中 PM ${atom.expectedNode.type} atom`;
+        for (const [key, value] of Object.entries(atom.expectedNode.attrs)) {
+          if ((leaf.attrs[key] ?? null) !== (value ?? null)) return `PM ${leaf.atom} 的 ${key} 与图片原文 owner 不一致`;
+        }
+      } else if (leaf.atom !== 'hard_break') {
+        return `词法 ${atom.syntax} 未命中 PM hard_break atom`;
+      }
       atom.visualStart = leaf.start;
       atom.visualEnd = leaf.end;
       leafIndex++;
@@ -936,8 +1081,29 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
   try {
     const lines = lineTable(source);
     const env: Record<string, unknown> = {};
-    const tokens = markdown.parse(source.replace(/^\uFEFF/, ' '), env);
-    const references = parseDefinitions(source, lines, referenceLineRanges(env));
+    const tokens = markdown.parse(source.replace(/^\uFEFF/, ''), env);
+    const references = parseDefinitions(source, referenceLineRanges(env));
+    const indexedTokensByRange: Array<Array<{
+      token: Token;
+      tokenIndex: number;
+    }>> = Array.from({ length: ranges.length }, () => []);
+    tokens.forEach((token, tokenIndex) => {
+      if (!token.map || !['inline', 'table_open', 'fence', 'code_block'].includes(token.type)) return;
+      const tokenStart = lines[token.map[0]]?.start;
+      const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
+      if (tokenStart === undefined || tokenEnd === undefined) return;
+      let low = 0;
+      let high = ranges.length;
+      while (low < high) {
+        const middle = (low + high) >>> 1;
+        if (ranges[middle].end <= tokenStart) low = middle + 1;
+        else high = middle;
+      }
+      const range = ranges[low];
+      if (range && tokenEnd > range.start && tokenStart < range.end) {
+        indexedTokensByRange[low].push({ token, tokenIndex });
+      }
+    });
     const blocks: LedgerBlock[] = [];
     const allSpans: LedgerSpan[] = [];
     const allExpectations: Array<{
@@ -945,7 +1111,7 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       blockSource: SourceRange;
     }> = [];
     let ownerSerial = 0;
-    for (const range of ranges) {
+    for (const [rangeIndex, range] of ranges.entries()) {
       if (range.kind === 'protected_block') {
         blocks.push({ range, spans: [{ sourceStart: range.start, sourceEnd: range.end, role: 'protected', syntax: 'protected-block', visible: false, detail: '受保护块内部不建立文本锚点' }], visualText: '', inlineCount: 0 });
         allSpans.push(...blocks[blocks.length - 1].spans);
@@ -954,15 +1120,10 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       const state: ScanState = { spans: [], atoms: [], expectations: [], references, ownerSerial };
       if (range.kind === 'table') {
         const table = pmDoc.nodeAt(range.pos);
-        const tableToken = tokens.find(token => {
-          if (token.type !== 'table_open' || !token.map) return false;
-          const tokenStart = lines[token.map[0]]?.start;
-          const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
-          // A BOF table starts after the BOM in the model range, while its
-          // physical token line starts at zero. Match its owning overlap.
-          return tokenStart !== undefined && tokenEnd !== undefined &&
-            tokenEnd > range.start && tokenStart < range.end;
-        });
+        // The token index uses overlap, so a BOF table whose model range starts
+        // after the BOM still owns the physical token beginning at zero.
+        const tableToken = indexedTokensByRange[rangeIndex]
+          .find(({ token }) => token.type === 'table_open')?.token;
         if (!table || !tableToken?.map) throw Error('顶层 table 缺少 source token 或 PM 节点');
         mapTableNode(source, lines.slice(tableToken.map[0], tableToken.map[1]), table, range.pos, pmDoc, state);
         const projectionError = assignVisualPositions(state.atoms, projectionUnitsFor(pmDoc, range), state.expectations);
@@ -979,12 +1140,8 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         continue;
       }
       if (range.kind === 'code_block') {
-        const codeToken = tokens.find(token => {
-          if ((token.type !== 'fence' && token.type !== 'code_block') || !token.map) return false;
-          const tokenStart = lines[token.map[0]]?.start;
-          const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
-          return tokenStart !== undefined && tokenEnd !== undefined && tokenEnd > range.start && tokenStart < range.end;
-        });
+        const codeToken = indexedTokensByRange[rangeIndex]
+          .find(({ token }) => token.type === 'fence' || token.type === 'code_block')?.token;
         if (!codeToken) throw Error(`范围 ${range.start}..${range.end} 的 code_block 没有可审计块 token`);
         mapCodeToken(lines, codeToken, range, state);
         const projectionError = assignVisualPositions(state.atoms, projectionUnitsFor(pmDoc, range), state.expectations);
@@ -1000,49 +1157,51 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         ownerSerial = state.ownerSerial;
         continue;
       }
-      const inlineTokens = tokens.filter(token => {
-        if (token.type !== 'inline' || !token.map) return false;
-        const tokenStart = lines[token.map[0]]?.start;
-        const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
-        // A leading BOM belongs to the file gap while the first model range
-        // starts one UTF-16 unit later. The token's physical line still owns
-        // that range, so use overlap rather than requiring identical starts.
-        return tokenStart !== undefined && tokenEnd !== undefined && tokenEnd > range.start && tokenStart < range.end;
-      });
-      const nestedTableTokens = tokens.filter(token => {
-        if (token.type !== 'table_open' || !token.map) return false;
-        const tokenStart = lines[token.map[0]]?.start;
-        const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
-        return tokenStart !== undefined && tokenEnd !== undefined && tokenEnd > range.start && tokenStart < range.end;
-      });
+      // A leading BOM belongs to the file gap while the first model range
+      // starts one UTF-16 unit later. The pre-index retains the prior overlap
+      // rule instead of requiring identical token and range starts.
+      const rangeTokens = indexedTokensByRange[rangeIndex];
+      const inlineTokens = rangeTokens.filter(({ token }) => token.type === 'inline');
+      const nestedTableTokens = rangeTokens.filter(({ token }) => token.type === 'table_open');
+      const codeTokens = rangeTokens.filter(({ token }) => token.type === 'fence' || token.type === 'code_block');
       const nestedTables: Array<{ node: PMNode; pos: number }> = [];
+      const nestedCodes: Array<{ node: PMNode; pos: number }> = [];
       pmDoc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
         if (node.type.name === 'table') nestedTables.push({ node, pos });
+        if (node.type.name === 'code_block') nestedCodes.push({ node, pos });
       });
       let tableIndex = 0;
-      const actions = [...inlineTokens, ...nestedTableTokens]
-        .sort((left, right) => tokens.indexOf(left) - tokens.indexOf(right));
-      for (const token of actions) {
+      let codeIndex = 0;
+      const actions = rangeTokens.filter(({ token }) =>
+        token.type === 'inline' || token.type === 'table_open' || token.type === 'fence' || token.type === 'code_block');
+      for (const { token, tokenIndex } of actions) {
         if (token.type === 'table_open') {
           const target = nestedTables[tableIndex++];
           if (!target || !token.map) throw Error('容器 table token 与 PM 节点数量不一致');
           mapTableNode(source, lines.slice(token.map[0], token.map[1]), target.node, target.pos, pmDoc, state);
+        } else if (token.type === 'fence' || token.type === 'code_block') {
+          const target = nestedCodes[codeIndex++];
+          if (!target || !token.map) throw Error('容器 code token 与 PM 节点数量不一致');
+          mapCodeToken(lines, token, {
+            start: lines[token.map[0]].start,
+            end: lines[token.map[1] - 1].contentEnd,
+            pos: target.pos, size: target.node.nodeSize, kind: 'code_block',
+          }, state);
         } else {
-          const tokenIndex = tokens.indexOf(token);
           const heading = tokenIndex > 0 && tokens[tokenIndex - 1].type === 'heading_open';
           const input = mapInlineToken(source, lines, token, heading, state.spans);
           scanInline(state, input);
         }
       }
       const projectionUnits = projectionUnitsFor(pmDoc, range);
-      if (!inlineTokens.length && !nestedTableTokens.length && projectionUnits.length) {
+      if (!inlineTokens.length && !nestedTableTokens.length && !codeTokens.length && projectionUnits.length) {
         throw Error(`范围 ${range.start}..${range.end} 有 PM 文本/atom 但没有可审计 inline token`);
       }
       const emptyTextblocks: number[] = [];
       pmDoc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
         if (node.isTextblock && node.childCount === 0) emptyTextblocks.push(pos + 1);
       });
-      const emptyTaskTokens = inlineTokens.filter(token =>
+      const emptyTaskTokens = inlineTokens.map(({ token }) => token).filter(token =>
         token.content.length === 0 && typeof token.meta?.inkoraTaskPrefixLength === 'number');
       for (const [index, token] of emptyTaskTokens.entries()) {
         const line = token.map ? lines[token.map[0]] : undefined;
@@ -1095,15 +1254,71 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       });
     }
     const spans = fillGaps(source, allSpans, ranges as Range[]);
+    const spansByOwner = new Map<string, LedgerSpan[]>();
+    for (const span of spans) {
+      if (!span.owner) continue;
+      const owned = spansByOwner.get(span.owner);
+      if (owned) owned.push(span);
+      else spansByOwner.set(span.owner, [span]);
+    }
+    const referenceUsageCounts = new Map<string, number>();
+    for (const { expectation } of allExpectations) {
+      if (expectation.referenceKey === undefined) continue;
+      referenceUsageCounts.set(
+        expectation.referenceKey,
+        (referenceUsageCounts.get(expectation.referenceKey) ?? 0) + 1,
+      );
+    }
+    const definitionRanges = new Map<string, NonNullable<SourceLinkOwner['definition']>>();
+    for (const [key, definition] of references) {
+      const hrefs = definition.spans.filter(span => span.role === 'definition-href');
+      if (hrefs.length !== 1) continue;
+      const titles = definition.spans.filter(span => span.role === 'definition-title');
+      const separators = definition.spans.filter(span => span.syntax === 'definition-title-separator');
+      let from = Number.POSITIVE_INFINITY;
+      let to = Number.NEGATIVE_INFINITY;
+      for (const span of definition.spans) {
+        from = Math.min(from, span.sourceStart);
+        to = Math.max(to, span.sourceEnd);
+      }
+      definitionRanges.set(key, {
+        source: { from, to },
+        hrefSource: { from: hrefs[0].sourceStart, to: hrefs[0].sourceEnd },
+        destinationSource: definition.destinationSyntax,
+        titleSource: titles.length === 1
+          ? { from: titles[0].sourceStart, to: titles[0].sourceEnd }
+          : undefined,
+        titleSeparatorSource: separators.length === 1
+          ? { from: separators[0].sourceStart, to: separators[0].sourceEnd }
+          : undefined,
+      });
+    }
+    const visibleSpansWithin = (from: number, to: number): Array<LedgerSpan & {
+      visualStart: number;
+      visualEnd: number;
+    }> => {
+      let low = 0;
+      let high = spans.length;
+      while (low < high) {
+        const middle = (low + high) >>> 1;
+        if (spans[middle].sourceStart < from) low = middle + 1;
+        else high = middle;
+      }
+      const visible: Array<LedgerSpan & { visualStart: number; visualEnd: number }> = [];
+      for (let index = low; index < spans.length && spans[index].sourceStart <= to; index++) {
+        const span = spans[index];
+        if (span.visible && span.sourceEnd <= to &&
+            span.visualStart !== undefined && span.visualEnd !== undefined) {
+          visible.push(span as LedgerSpan & { visualStart: number; visualEnd: number });
+        }
+      }
+      return visible;
+    };
     const links = allExpectations.filter(({ expectation }) => expectation.mark === 'link')
-      .map(({ expectation, blockSource }) => {
-      const owned = spans.filter(span => span.owner === expectation.owner &&
+      .map(({ expectation, blockSource }): SourceLinkOwner | null => {
+      const owned = (spansByOwner.get(expectation.owner) ?? []).filter(span =>
         span.sourceStart >= blockSource.from && span.sourceEnd <= blockSource.to);
-      const visible = owned.filter((span): span is LedgerSpan & {
-        visualStart: number;
-        visualEnd: number;
-      } => span.visible && span.visualStart !== undefined && span.visualEnd !== undefined);
-      if (!owned.length || !visible.length) throw Error(`链接 owner ${expectation.owner} 缺少可审计范围`);
+      if (!owned.length) throw Error(`链接 owner ${expectation.owner} 缺少可审计范围`);
       const find = (role: SourceRole, syntax?: string): LedgerSpan | undefined =>
         owned.find(span => span.role === role && (syntax === undefined || span.syntax === syntax));
       const inlineHref = find('href', 'inline-href');
@@ -1115,27 +1330,27 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       const labelClose = owned.find(span =>
         span.syntax === 'link-label-close' || span.syntax === 'autolink-close');
       if (!labelOpen || !labelClose) throw Error(`链接 owner ${expectation.owner} 缺少 label 边界`);
-      const definition = expectation.referenceKey === undefined
+      // A link label may contain an image with its own lexical owner. Its
+      // atom still belongs to this label's source interval and PM link mark.
+      const visible = visibleSpansWithin(labelOpen.sourceEnd, labelClose.sourceStart);
+      if (!visible.length) {
+        // An empty link has no selectable PM label. Keep all syntax spans,
+        // while omitting a visual editing target rather than inventing one.
+        if (labelOpen.sourceEnd === labelClose.sourceStart) return null;
+        throw Error(`链接 owner ${expectation.owner} 缺少可审计 label 投影`);
+      }
+      for (const span of visible) {
+        if (span.syntax !== 'image') continue;
+        const node = pmDoc.nodeAt(span.visualStart);
+        const link = node?.marks.find(mark => mark.type.name === 'link');
+        if (node?.type.name !== 'image' || !link || link.attrs.href !== expectation.href ||
+            (link.attrs.title ?? null) !== expectation.title) {
+          throw Error(`链接 owner ${expectation.owner} 的嵌套图片缺少一致的 PM link mark`);
+        }
+      }
+      const definitionRange = expectation.referenceKey === undefined
         ? undefined
-        : references.get(expectation.referenceKey);
-      const definitionHrefs = definition?.spans.filter(span => span.role === 'definition-href') ?? [];
-      const definitionTitles = definition?.spans.filter(span => span.role === 'definition-title') ?? [];
-      const definitionSeparators = definition?.spans.filter(span => span.syntax === 'definition-title-separator') ?? [];
-      const definitionRange = definition && definitionHrefs.length === 1
-        ? {
-            source: {
-              from: Math.min(...definition.spans.map(span => span.sourceStart)),
-              to: Math.max(...definition.spans.map(span => span.sourceEnd)),
-            },
-            hrefSource: { from: definitionHrefs[0].sourceStart, to: definitionHrefs[0].sourceEnd },
-            titleSource: definitionTitles.length === 1
-              ? { from: definitionTitles[0].sourceStart, to: definitionTitles[0].sourceEnd }
-              : undefined,
-            titleSeparatorSource: definitionSeparators.length === 1
-              ? { from: definitionSeparators[0].sourceStart, to: definitionSeparators[0].sourceEnd }
-              : undefined,
-          }
-        : undefined;
+        : definitionRanges.get(expectation.referenceKey);
       return {
         owner: expectation.owner,
         kind: expectation.kind,
@@ -1169,11 +1384,10 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         referenceKey: expectation.referenceKey,
         referenceUsageCount: expectation.referenceKey === undefined
           ? undefined
-          : allExpectations.filter(candidate =>
-              candidate.expectation.referenceKey === expectation.referenceKey).length,
+          : referenceUsageCounts.get(expectation.referenceKey),
         definition: definitionRange,
       } satisfies SourceLinkOwner;
-    });
+    }).filter((owner): owner is SourceLinkOwner => owner !== null);
     return {
       ok: true,
       ledger: { sourceLength: source.length, docSize: pmDoc.content.size, blocks, spans, links, diagnostics },
@@ -1237,7 +1451,9 @@ export function visualToSource(ledger: SourceLedger, anchor: number, head: numbe
     else if (anchor < head) { anchorAffinity = 'right'; headAffinity = 'left'; }
     else { anchorAffinity = 'left'; headAffinity = 'right'; }
     const mappedAnchor = mapVisualEndpoint(ledger, anchor, anchorAffinity, options, snapped);
-    const mappedHead = mapVisualEndpoint(ledger, head, headAffinity, options, snapped);
+    const mappedHead = anchor === head
+      ? mappedAnchor
+      : mapVisualEndpoint(ledger, head, headAffinity, options, snapped);
     return { ok: true, anchor: mappedAnchor, head: mappedHead, snapped: [...new Set(snapped)] };
   } catch (error) {
     const candidateValue = (error as { candidates?: number[] }).candidates;
@@ -1288,7 +1504,9 @@ export function sourceToVisual(ledger: SourceLedger, anchor: number, head: numbe
     else if (anchor < head) { anchorAffinity = 'right'; headAffinity = 'left'; }
     else { anchorAffinity = 'left'; headAffinity = 'right'; }
     const mappedAnchor = mapSourceEndpoint(ledger, anchor, anchorAffinity, options, snapped);
-    const mappedHead = mapSourceEndpoint(ledger, head, headAffinity, options, snapped);
+    const mappedHead = anchor === head
+      ? mappedAnchor
+      : mapSourceEndpoint(ledger, head, headAffinity, options, snapped);
     return { ok: true, anchor: mappedAnchor, head: mappedHead, snapped: [...new Set(snapped)] };
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) };

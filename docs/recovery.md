@@ -30,3 +30,17 @@ INK-021 不启用 NSDocument 就地自动保存，草稿与源文件分离。存
 ## 测试隔离
 
 Hostless XCTest 默认禁用生产草稿目录，只使用注入的临时目录。XCUITest 和 Debug/Release 启动烟测传入 UUID session，使用 `Recovery/UITests/<UUID>` 子目录，扫描不会进入用户根目录。Debug 异常退出注入仅在该隔离 session 中、真实 snapshot 原子落盘后生效。它不调用正常关闭/退出清理。
+
+## 图片会话
+
+每个恢复 UUID 另有 `LocalImages/<session>/manifest.json`。schema 2 记录 document/session/asset、原名、当前 URI、SHA-256、字节数、MIME、所有权、发布状态、当前 save plan ID，以及导入时的 epoch/revision/directed selection 和插入确认状态。清单和图片字节均先持久化再允许正文引用。非法 schema、身份不一致、越界 storage URL、非普通文件、截断或 SHA 不符使该图片会话拒绝恢复；不会扫描文件名猜所有权或删除目录内其他数据。旧 schema 1 可读，但无法证明 selection 的 pending 意图只保留并要求重新确认。
+
+启动 `RecoveryStore.discover()` 同时枚举 `LocalImages` 的 UUID 会话目录。Bridge 尚未接受的 pending 资源在验证 manifest、真实字节、SHA 与 document/session 身份后保留原 epoch/revision/directed selection，并持久化为 `requiresConfirmation` 交给恢复协调器；不会绑定新文档或当前光标。坏 manifest/session 单独列为 rejected，原目录、manifest 与资源证据均不删除。Hostless 测试只扫描显式注入的临时 Recovery 根；生产目录仍只由 `applicationStore()` 的 bundle/session 隔离规则打开。
+
+恢复协调器把同 `sessionID` 的正文草稿与图片会话合并审阅，并提供「恢复图片草稿 / 稍后 / 放弃」三个明确动作。恢复时重新打开并验证原图片会话；有正文草稿时逐字节保留 BOM/EOL/正文，没有可信正文时打开空白的未命名「仅恢复图片草稿」，不虚构旧正文、旧图片语法或旧选区。「稍后」不创建文档、不改正文或资源，保留已标记 `requiresConfirmation` 的 manifest；「放弃」先在 `ImageRecoveryReceipts` 持久化 session/document/asset/SHA 与请求、完成状态，再只移除该会话仍为 pending 且无人引用的恢复资源，同会话已 accepted 的资源、目录内未知文件和其他会话不受影响。
+
+恢复文档顶部提供键盘与无障碍可达的常驻提示。作者确认一张图片时，生产 handoff 重新查询当前 document/epoch/revision/directed selection，先把这份新 intent 记为 `confirming`，再走既有 `applyImageImport` 内容事务；旧 intent 只作为历史审计，绝不自动重投。事务成功后必须读取真实 revisioned snapshot，并用正常恢复草稿写入路径持久化；snapshot 的 canonical owner proof 必须严格匹配 document/revision/raw 且包含该 asset URI。`RecoveryStore` 写入后必须从真实路径回读同一 generation/revision/payload，并返回明确 receipt；silent no-write 与旧 revision 草稿不算成功。只有 receipt 与本次 snapshot 精确匹配，才把 schema 3 manifest 记为 `handedOff/accepted`。stale/closed/nil-store、缺失或跨 document/revision proof、迟到 composition、跨 epoch/load、Bridge、snapshot、writer 或 manifest 任一步失败都保持 pending、fresh intent 审计和原资源；「稍后」把提示收起成仍可继续的入口，不反复弹模态框。
+
+schema 3 在 schema 2 身份字段之外增加可选 `recoveryIntent` 与 `recoveryDisposition`。schema 1/2 保持读取兼容；schema 3 的恢复 intent 必须匹配 document/session、具有非负 revision 和完整 directed selection，`handedOff` 必须同时有新 intent 且 insertion 已 accepted。非法、跨 document/session 或不完整字段整会话拒绝恢复，原 manifest 与资源不删除。
+
+首次保存发布后的 `awaitingMarkdown` 与 Save As migration journal 是未确认状态，不等价于 saved。资源发布不提前把 manifest owner 改成目标 URI；恢复时仍用实际字节、当前 accepted snapshot 的 canonical owner proof、journal 的 Markdown SHA 与当前文件分别作保守判断。图片已从当前正文删除时，accepted 恢复资产继续保留给 Undo/恢复，但不作为本次发布或改写的必需 owner。只有正式 Markdown 写入成功且 plan ID 匹配才确认 published 并退役相应 journal；旧回执不能确认新重试。取消、失败、外部修改或权限未知保留草稿与来源。

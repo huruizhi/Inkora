@@ -31,9 +31,10 @@ export type InkoraNodeName =
   | "table_cell"
   | "ordered_list"
   | "bullet_list"
-  | "list_item";
+  | "list_item"
+  | "image";
 
-export type InkoraMarkName = "strong" | "em" | "strike" | "code" | "link" | "image_ref";
+export type InkoraMarkName = "strong" | "em" | "strike" | "code" | "link";
 
 export type DocumentRecoveryReason = "empty_input" | "invalid_document";
 
@@ -62,8 +63,10 @@ function headingToDOM(node: ProseMirrorNode): DOMOutputSpec {
 }
 
 function validateLinkHref(value: unknown): asserts value is string {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new RangeError("Link href must be a non-empty string");
+  // CommonMark accepts empty destinations, including reference definitions
+  // using <>. Creation/import commands keep their separate URL safety guards.
+  if (typeof value !== "string") {
+    throw new RangeError("Link href must be a string");
   }
 }
 
@@ -71,6 +74,22 @@ function validateLinkTitle(value: unknown): asserts value is string | null {
   if (value !== null && typeof value !== "string") {
     throw new RangeError("Link title must be a string or null");
   }
+}
+
+function imageAttrsFromDOM(dom: Node | string): false | {
+  alt: string;
+  href: string;
+  title: string | null;
+} {
+  if (typeof dom === "string") return false;
+  const element = dom as HTMLElement;
+  const href = element.dataset.inkoraImage;
+  if (href === undefined) return false;
+  return {
+    alt: element.dataset.inkoraAlt ?? "",
+    href,
+    title: element.getAttribute("title"),
+  };
 }
 
 function validateListOrder(value: unknown): asserts value is number {
@@ -97,7 +116,7 @@ function linkAttrsFromDOM(dom: Node | string): false | { href: string; title: st
   if (typeof dom === "string") return false;
   const element = dom as HTMLElement;
   const href = element.getAttribute?.("href");
-  if (!href) return false;
+  if (href === null || href === undefined) return false;
   return {
     href,
     title: element.getAttribute("title"),
@@ -305,6 +324,31 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
       0,
     ],
   },
+  image: {
+    inline: true,
+    group: "inline",
+    atom: true,
+    selectable: true,
+    draggable: true,
+    attrs: {
+      alt: { default: "", validate: "string" },
+      href: { validate: validateLinkHref },
+      title: { default: null, validate: validateLinkTitle },
+    },
+    parseDOM: [{ tag: "span[data-inkora-image]", getAttrs: imageAttrsFromDOM }],
+    toDOM: (node): DOMOutputSpec => [
+      "span",
+      {
+        class: "image-node image-node-pending",
+        "data-inkora-image": node.attrs.href,
+        "data-inkora-alt": node.attrs.alt,
+        title: node.attrs.title ?? undefined,
+        role: "img",
+        "aria-label": node.attrs.alt || "本地图片",
+      },
+      node.attrs.alt || "图片",
+    ],
+  },
   protected_block: {
     group: "block",
     atom: true,
@@ -357,31 +401,6 @@ export const inkoraMarkSpecs: Record<InkoraMarkName, MarkSpec> = {
         0,
       ];
     },
-  },
-  image_ref: {
-    attrs: {
-      href: { validate: validateLinkHref },
-      title: { default: null, validate: validateLinkTitle },
-    },
-    inclusive: false,
-    parseDOM: [{
-      tag: "span[data-image-ref]",
-      getAttrs: (dom) => {
-        const element = dom as HTMLElement;
-        const href = element.dataset.imageRef;
-        if (!href) return false;
-        return { href, title: element.getAttribute("title") };
-      },
-    }],
-    toDOM: (mark): DOMOutputSpec => [
-      "span",
-      {
-        class: "image-ref",
-        "data-image-ref": mark.attrs.href,
-        title: mark.attrs.title ?? undefined,
-      },
-      0,
-    ],
   },
 };
 

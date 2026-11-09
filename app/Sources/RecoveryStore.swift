@@ -98,9 +98,25 @@ struct RecoveryDraft: Codable, Equatable {
 // Main-thread document callbacks serialize store operations. Injected writers and
 // removers let tests model full disks and a failed unlink without touching real data.
 final class RecoveryStore {
+  struct WriteReceipt: Equatable {
+    let draftID: UUID
+    let generation: UUID
+    let revision: Int
+    let payloadHash: String
+
+    init(_ draft: RecoveryDraft) {
+      draftID = draft.id
+      generation = draft.generation
+      revision = draft.revision
+      payloadHash = draft.payloadHash
+    }
+  }
+
   struct Discovery {
     var drafts: [RecoveryDraft] = []
     var corruptCount = 0
+    var pendingImageSessions: [LocalImageStore.RecoveryCandidate] = []
+    var rejectedImageSessions: [URL] = []
   }
 
   private struct Receipt: Codable, Equatable {
@@ -112,6 +128,28 @@ final class RecoveryStore {
       generation = draft.generation
       revision = draft.revision
       payloadHash = draft.payloadHash
+    }
+  }
+
+  private struct ImageRecoveryReceipt: Codable, Equatable {
+    enum Outcome: String, Codable { case abandonRequested, abandoned }
+
+    let schema: Int
+    let sessionID: UUID
+    let documentID: String
+    let assetIDs: [UUID]
+    let assetSHA256: [String]
+    let outcome: Outcome
+    let writtenAt: Date
+
+    init(_ candidate: LocalImageStore.RecoveryCandidate, outcome: Outcome) {
+      schema = 1
+      sessionID = candidate.sessionID
+      documentID = candidate.documentID
+      assetIDs = candidate.assets.map(\.id)
+      assetSHA256 = candidate.assets.map(\.sha256)
+      self.outcome = outcome
+      writtenAt = Date()
     }
   }
 
@@ -128,21 +166,27 @@ final class RecoveryStore {
     self.remove = remove
   }
 
-  func write(_ draft: RecoveryDraft) throws {
+  @discardableResult
+  func write(
+    _ draft: RecoveryDraft, requireExactRevision: Bool = false
+  ) throws -> WriteReceipt {
     try draft.validate()
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let url = draftURL(draft.id)
     let receipt = try? JSONDecoder().decode(
       Receipt.self, from: Data(contentsOf: receiptURL(draft.id)))
-    if let previous = try? decodeDraft(url),
+    if !requireExactRevision, let previous = try? decodeDraft(url),
       receipt != Receipt(previous),
       previous.data == draft.data,
       previous.sourceURL == draft.sourceURL,
       previous.sourceFingerprint == draft.sourceFingerprint
     {
-      return
+      return WriteReceipt(previous)
     }
     try writer.write(try JSONEncoder().encode(draft), to: url)
+    let persisted = try decodeDraft(url)
+    guard persisted == draft else { throw CocoaError(.fileWriteUnknown) }
+    return WriteReceipt(persisted)
   }
 
   func retire(_ id: UUID) throws {
@@ -166,8 +210,36 @@ final class RecoveryStore {
     }
   }
 
+  func abandonImageRecovery(_ candidate: LocalImageStore.RecoveryCandidate) throws {
+    try FileManager.default.createDirectory(
+      at: imageRecoveryReceiptURL(candidate.sessionID).deletingLastPathComponent(),
+      withIntermediateDirectories: true)
+    try writer.write(
+      try JSONEncoder().encode(
+        ImageRecoveryReceipt(candidate, outcome: .abandonRequested)),
+      to: imageRecoveryReceiptURL(candidate.sessionID))
+    let session = try LocalImageStore(
+      root: directory.appendingPathComponent("LocalImages", isDirectory: true)
+    ).begin(documentID: candidate.documentID, sessionID: candidate.sessionID)
+    try session.abandonRecovery()
+    try writer.write(
+      try JSONEncoder().encode(
+        ImageRecoveryReceipt(candidate, outcome: .abandoned)),
+      to: imageRecoveryReceiptURL(candidate.sessionID))
+  }
+
+  func imageRecoveryReceiptURL(_ sessionID: UUID) -> URL {
+    directory.appendingPathComponent(
+      "ImageRecoveryReceipts/\(sessionID.uuidString.lowercased()).json")
+  }
+
   func discover() -> Discovery {
     var result = Discovery()
+    let imageDiscovery = LocalImageStore(
+      root: directory.appendingPathComponent("LocalImages", isDirectory: true)
+    ).discoverRecovery()
+    result.pendingImageSessions = imageDiscovery.pending
+    result.rejectedImageSessions = imageDiscovery.rejected
     let files =
       (try? FileManager.default.contentsOfDirectory(
         at: directory,

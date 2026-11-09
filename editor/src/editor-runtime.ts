@@ -20,6 +20,9 @@ import { searchSource, type DirectedSelection, type SourceReplacementPlan, type 
 import { indexVisualText, locateVisualMatch, mapVisualMatches, sameSearchResult, searchVisualText, type VisualSearchNavigation, type VisualSearchLocation } from "./visual-search";
 import { validateSourceReplacementPlan } from "./source-replacement";
 import { SourceAuthoritySession } from "./source-authority";
+import type { ManagedImageInsertion, ManagedImageRewrite } from "./source-authority";
+import type { CanonicalImageOwnership } from "./source-authority";
+import { parse as parseCanonicalSource } from "./source-document";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
 import { createCodeBlockNodeViews } from "./code-block-view";
@@ -32,6 +35,11 @@ import {
   type LinkAttrs,
 } from "./inline-formatting";
 import type { SourceLinkOwner } from "./source-ledger";
+import {
+  createImageNodeViews,
+  ImageResourceRegistry,
+  type ImageResourceDescriptor,
+} from "./image-view";
 
 export interface EditorRuntimeStatus {
   dirty: boolean;
@@ -60,6 +68,7 @@ export interface LinkEditBinding {
 }
 
 export interface EditorRuntimeOptions {
+  readonly onImageAccessRequest?: (href: string) => void;
   readonly onLinkRequest?: (binding: LinkEditBinding) => void;
   readonly searchIdentity?: {
     readonly documentID: string;
@@ -81,6 +90,7 @@ export type RuntimeSearchResult = SourceSearchResult & {
 
 export interface EditorRuntime {
   readonly status: EditorRuntimeStatus;
+  readonly directedSelection: { selectionAnchor: number; selectionHead: number };
   readonly mode: EditorMode;
   readonly sourceNavigation: boolean;
   readonly sourceReplacement: boolean;
@@ -96,6 +106,10 @@ export interface EditorRuntime {
   }>;
   readonly composing: boolean;
   insertTable(): boolean;
+  applyImageDescriptors(values: readonly ImageResourceDescriptor[]): void;
+  insertImage(value: ManagedImageInsertion): boolean;
+  rewriteManagedImages(values: readonly ManagedImageRewrite[]): boolean;
+  captureImageOwnership(): CanonicalImageOwnership;
   enterSourceMode(): boolean;
   applySourceDraft(): boolean;
   cancelSourceDraft(): boolean;
@@ -133,6 +147,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }>();
   private publishedLogicalRevision = 0;
   private readonly session: SourceAuthoritySession;
+  private readonly imageResources = new ImageResourceRegistry();
   private readonly searchIdentity: { readonly documentID: string; readonly epoch: number };
 
   constructor(
@@ -180,8 +195,17 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     };
   }
 
+  get directedSelection(): { selectionAnchor: number; selectionHead: number } {
+    const selection = this.session.draft?.selection ?? this.session.rawSelection;
+    return { selectionAnchor: selection.anchor, selectionHead: selection.head };
+  }
+
   getText(): string {
     return this.session.currentRaw;
+  }
+
+  captureImageOwnership(): CanonicalImageOwnership {
+    return this.session.captureImageOwnership();
   }
 
   search(query: string, revision: number, options: SearchOptions = {}): RuntimeSearchResult {
@@ -223,6 +247,22 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       return { ok: false, message: reason };
     }
     return { ok: true, value: this.session.currentRaw };
+  }
+
+  applyImageDescriptors(values: readonly ImageResourceDescriptor[]): void {
+    this.imageResources.replace(values);
+  }
+
+  insertImage(value: ManagedImageInsertion): boolean {
+    if (this.mode !== "visual" || !this.session.insertImage(value)) return false;
+    this.view?.updateState(this.session.state);
+    return true;
+  }
+
+  rewriteManagedImages(values: readonly ManagedImageRewrite[]): boolean {
+    if (this.mode !== "visual" || !this.session.rewriteManagedImages(values)) return false;
+    this.view?.updateState(this.session.state);
+    return true;
   }
 
   replaceVisualSearch(raw: string, result: SourceSearchResult, kind: "replace-one" | "replace-all", replacement: string): SourceNavigationResult<{ changed: boolean; replacedCount: number }> {
@@ -618,6 +658,29 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       decorations: codeDecorations,
       nodeViews: {
         code_block: codeBlockNodeView,
+        image: createImageNodeViews(
+          this.imageResources,
+          this.options.onImageAccessRequest,
+          (getPos, expectedNode, attrs) => {
+            if (this.session.composing || view.composing) {
+              return { ok: false, message: "请先完成中文输入，再修改图片描述。" };
+            }
+            const pos = getPos();
+            if (pos === undefined) return { ok: false, message: "图片已变化，请重试。" };
+            const currentNode = view.state.doc.nodeAt(pos);
+            if (!currentNode || !currentNode.eq(expectedNode)) {
+              return { ok: false, message: "图片已变化，请重试。" };
+            }
+            lastDispatchAccepted = undefined;
+            view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, {
+              ...currentNode.attrs,
+              ...attrs,
+            }));
+            return lastDispatchAccepted
+              ? { ok: true }
+              : { ok: false, message: this.session.diagnostic || "无法安全修改图片描述。" };
+          },
+        ),
         table: tableNodeView,
         list_item: taskListItemNodeView,
       },
@@ -856,16 +919,39 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   readonly sourceNavigation = true;
   readonly sourceReplacement = false;
   private readonly textArea: HTMLTextAreaElement;
-  readonly status = {
-    dirty: false,
-    canUndo: false,
-    canRedo: false,
-    draftDirty: false,
-    unresolved: false,
-    saveEligible: true,
-  };
+  get status(): EditorRuntimeStatus {
+    return {
+      dirty: false,
+      canUndo: false,
+      canRedo: false,
+      draftDirty: false,
+      unresolved: false,
+      saveEligible: true,
+    };
+  }
+  get directedSelection(): { selectionAnchor: number; selectionHead: number } {
+    return {
+      selectionAnchor: this.textArea.selectionStart,
+      selectionHead: this.textArea.selectionEnd,
+    };
+  }
   readonly composing = false;
   private readonly searchIdentity: { readonly documentID: string; readonly epoch: number };
+
+  applyImageDescriptors(_values: readonly ImageResourceDescriptor[]): void {}
+  insertImage(_value: ManagedImageInsertion): boolean { return false; }
+  rewriteManagedImages(_values: readonly ManagedImageRewrite[]): boolean { return false; }
+
+  captureImageOwnership(): CanonicalImageOwnership {
+    const imageURIs: string[] = [];
+    const semanticCopy = this.text.replace(/\r(?!\n)/g, "\n");
+    parseCanonicalSource(semanticCopy).doc.descendants(node => {
+      if (node.type.name === "image" && typeof node.attrs.href === "string" && node.attrs.href) {
+        imageURIs.push(node.attrs.href);
+      }
+    });
+    return { raw: this.text, imageURIs };
+  }
 
   constructor(
     parent: HTMLElement,

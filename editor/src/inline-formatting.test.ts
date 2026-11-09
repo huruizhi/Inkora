@@ -264,12 +264,20 @@ describe("inline rich-text paste semantics", () => {
               {
                 type: "text",
                 text: "bad",
-                marks: [{ type: "link", attrs: { href: "", title: null } }],
+                marks: [{ type: "link", attrs: { href: 42, title: null } }],
               },
             ],
           },
         ],
       }),
     ).toThrow(/Link href/);
+  });
+
+  it("round-trips a CommonMark empty destination through document JSON", () => {
+    const link = inkoraSchema.marks.link.create({ href: "", title: null });
+    const original = inkoraSchema.node("doc", null, [
+      inkoraSchema.node("paragraph", null, [inkoraSchema.text("empty", [link])]),
+    ]);
+    expect(documentFromJSON(original.toJSON()).eq(original)).toBe(true);
   });
 });

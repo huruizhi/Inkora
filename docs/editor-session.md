@@ -11,6 +11,12 @@
 - `canUndo` / `canRedo` 来自 ProseMirror history 的真实深度；
 - Undo 精确回到保存文档时，`dirty` 自动恢复为 `false`；Redo 后重新计算，不缓存旧值。
 
+## 图片 owner proof
+
+图片 owner 只来自当前 accepted `EditorState.doc`，不得由 Native 对 Markdown 再做语法扫描。会话在一个同步读点返回 `{ raw: currentRaw, imageURIs }`：`raw` 是对应投影的唯一原文，URI 按图片节点的文档顺序收集并保留重复使用。proof 再由 Bridge 与当前 `(documentID, revision)` 绑定；代码、数学、普通链接或保护块中的相同字串不取得 owner。
+
+源码草稿未提交、composition 未稳定、projection 无法证明或 proof 的 raw 与 snapshot 不一致时，资源流程必须拒绝或重试，不能把未知解释为空数组。bare-CR 只读 runtime 用同一生产 canonical parser 解析规范化 LF 的语义副本，但 proof 的 `raw` 与 snapshot 仍保留原始 CR 字节对应字符串。
+
 ## 中文输入法组合
 
 组合期间的 transaction 会正常应用到 `EditorState`，因此光标和候选文本始终以 ProseMirror 为准；会话层暂缓对外发布文档变化。DOM `compositionend` 只表示 UI 候选会话结束，不等于最终 PM transaction 已排空。生产 runtime 进入 `settling`，继续接受同一 `composition` meta 的 post-end final，并以每次已接受事务重置 24ms quiet window；quiet window 到达且公开 `EditorView.composing` 为 false 后，才同时封口原文、投影、selection、history、逻辑 revision 与唯一文档发布。

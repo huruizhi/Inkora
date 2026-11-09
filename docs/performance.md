@@ -89,3 +89,71 @@ WKWebView 层（full profile，`tests/InkoraTests/PerformanceWebViewTests.swift`
 - 编辑器层基准在 node（非真实 WKWebView JIT 环境）中测量 parse/serialize，绝对值偏保守，用于回归趋势而非用户可感延迟。
 - `document-open` 未覆盖冷页缓存；`launch/first` 也不是严格意义的冷启动（系统缓存仍在），仅首次启动近似。
 - 内存指标（`document-memory`、`launch/peak-physical-memory`）受分配器与系统状态影响，cv 高，仅作量级参考。
+
+## 原文权威生产路径补测（INK-M1-078，2026-11-09）
+
+上述2026-11-08的 `editor.input-typing` 仍调用旧 `InkoraEditorSession`、语义 dirty 与 serializer。保留其有效历史控制，但其“每笔约0.02ms、瓶颈仅在保存序列化”的结论**不能外推当前生产内核**。当前 runtime 每次保存资格/定位会建立原文账本；应分别测量当前路径。
+
+额外入口不改变默认 CI 或旧基线：
+
+- `make bench-production-model`：Node中的公共SourceAuthoritySession，旧small/medium/large/large-crlf加新`production-mixed.md`。每输入独立子进程、60秒整组采集上限（不是编辑响应预算），1次预热+5次样本；原始值、median/p95/CV、输入/生产源码hash写入`build/production-perf/summary.json`及各输入JSON/log。超时终止本进程组、继续其余输入，最终非零；不删除慢样本或继承旧结果。`INKORA_PRODUCTION_PERF_SIZES=small,mixed`仅是显式子集冒烟。
+- `make bench-production-webview PRODUCTION_WK_SIZES=small,medium`：hostless离屏WK，实际生产DOM/源码按钮/Bridge。每输入1次预热+3次工作流；每工作流另测5个快照。结果含原始样本、输入与实际离线bundle各文件SHA，位于`build/production-perf/webview.json`和`artifacts/test-results/production-perf.xcresult`。不打开App/窗口/XCUITest，不是可见paint或物理IME；少量样本的p95只是顺序统计值，不是尾延迟保证。
+
+固定产品起点`a58b8ba`（含图片组合、未含后到的075），M6/32GB/macOS27.2/Node26.13.0/Xcode27.2。完整原始资料见[078证据目录](evidence/INK-M1-078/)。该候选的结果不能冒充后来main、最低macOS或完整功能验收。
+
+| 测量边界 | small中位数 | medium中位数 |
+| --- | --- | --- |
+| Node可审计打开（parse+PM+账本资格） | 4.76ms | 153.38ms |
+| Node选区定位+单字事务+保存资格 | 21.76ms | 626.51ms |
+| Node保存资格+原文读取 | 3.51ms | 135.89ms |
+| 离屏WK打开到精确快照回执 | 125.83ms | 719.94ms |
+| 离屏WK普通单字输入到精确快照回执 | 50.71ms | 974.75ms |
+| 离屏WK快照往返 | 6.37ms | 123.70ms |
+| 离屏WK源码no-op往返+快照 | 71.90ms | 1771.77ms |
+
+Node的large及large-crlf均未在60秒整组采集上限内完成，完整命令因此非零；不是通过或被取消支持。旧WK大文档专项的“CRLF自动源码模式”假设已修正为实际源码按钮/input/apply；保留全原文相等断言，修正后1/1通过，但该候选1MB源码快照中位数约4234.69ms（旧输出仅median/CV，不据此声称p95）。正式预算尚未冻结，不能称体验达标。
+
+实际V8 CPU profile的主要self样本在`buildSourceLedger`的owner组装及每owner全表扫描，另有重复token/range扫描；保存资格重复建账本放大此成本。此为定位线索，不是已优化或最坏复杂度证明。后续必须在接回075/图片最终候选后，以同字节、同工作流复测；缓存/索引不得绕过source/doc/anchor/owner证明、跨文档身份或安全拒绝。
+
+Native写盘、真实屏幕绘制、系统composition/候选响应、最低系统与支持范围仍按性能票15补齐；hostless输入是JS execCommand普通输入，不当作实体键盘中文证据。源码保存点的Node时间也不等于NSDocument安全写盘时间。未运行`bench-full`或App启动测量。
+
+## Source Ledger 热点优化复测（INK-M1-079，2026-11-09）
+
+079 在固定起点 `4de28e9d` 先重跑当前基线，再对 owner/range 建立有界一次索引，并为同一
+raw、PM doc 与 projection 建立严格按值/对象失效的 context；没有改变输入、预热/测量次数、
+60 秒监督上限或完整原文断言。原始 JSON 位于 [`docs/evidence/INK-M1-079/`](evidence/INK-M1-079/)。
+
+| 测量边界 | 起点 medium 中位数 | 优化后 medium 中位数 | 优化后 large / large-crlf 中位数 |
+| --- | ---: | ---: | ---: |
+| Node 可审计打开 | 148.54ms | 53.79ms | 466.17 / 498.48ms |
+| Node 选区+普通输入+保存资格 | 630.26ms | 147.73ms | 1271.04 / 1282.50ms |
+| Node 保存资格+原文读取 | 135.13ms | 0.004ms | 0.006 / 0.005ms |
+| 离屏 WK 打开到精确快照回执 | 716.99ms | 326.99ms | 1712.87 / 1682.02ms |
+| 离屏 WK 普通输入到精确快照回执 | 945.95ms | 179.05ms | 1245.51 / 1246.57ms |
+| 离屏 WK 快照往返 | 119.04ms | 19.18ms | 178.96 / 184.24ms |
+| 离屏 WK 源码 no-op 往返+快照 | 1686.04ms | 60.59ms | 456.87 / 461.87ms |
+
+起点 model 的 large/large-crlf 仍按监督器规则各自 60 秒超时并使命令非零；优化后五个
+vector 全部完成。medium 普通输入达到了本票“尽量 <200ms”的本机方向性目标；1MB 普通
+输入仍约 1.25 秒，未达到“尽量 <1s”，不能写成预算通过。最终 WK 是一次命令采集四尺寸，
+1 次预热+3 次工作流、每工作流 5 次 snapshot；少量样本的 p95 仍只是顺序统计值。
+
+profile 显示 owner 全表扫描消除后，剩余成本分散在每个新候选 raw 的完整 parse、PM 遍历、
+账本建立与 Unicode 边界证明。缓存只复用同一 raw/doc/projection 的已证明 context；source
+apply、拒绝恢复、Undo/Redo、reopen、anchor/provenance 变化和图片 owner 改写均有公共行为
+回归。规模跑完不证明最坏复杂度已线性化；真实 paint、物理 IME、NSDocument 写盘和最低
+系统仍不在本层证据内。
+
+## 同值解析与按需边界复测（INK-M1-085，2026-11-10）
+
+084组合基线的1MB模型选区+单字输入为1272.00/1273.50ms（LF/CRLF）。085先单独复用完整
+raw值的纯解析结果，再单独将少量原文位置检查改为完整字符串的Intl.Segments.containing查询。
+PM/ledger的raw、doc identity、projection identity校验不变；批量替换仍保留完整边界索引。
+
+最终模型medium/large/large-crlf为92.75/916.27/886.19ms；真实离屏WK的普通输入→精确快照回执
+分别为133.14/970.91/964.83ms。CRLF的WK p95仍为1048.63ms，不能声称所有输入均在1秒内。
+重复解析单项、叠加边界优化、被噪声影响的序列、输入/源码/bundle SHA均分别保存在
+[085证据目录](evidence/INK-M1-085/)，未把不同阶段混为同一结果。
+
+这只证明固定样本和工作流在本机的成本改善；正式预算、真实paint、系统IME、最低系统和
+NSDocument安全写盘仍须按票15分层验收，不以中位数或缓存命中数替代。

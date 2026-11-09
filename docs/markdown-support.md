@@ -8,13 +8,15 @@
 
 本文档是 Inkora 1.0 Markdown 支持级别与 golden fixtures 的 canonical 矩阵；内容权威、投影与保存契约以 ADR-0004 和 V1 生产规格为架构依据。实现与矩阵目标之间的缺口必须单独记录，不能通过降低支持级别掩盖，也不能把未验收目标写成已实现。
 
-## 当前实现状态（生产 V1/V3 非UI候选）
+## 当前实现状态（生产 V1/V3/V4/V6 非UI候选）
 
 - `SYN-S001` 至 `SYN-S008`、`SYN-S010` 的链接部分、`SYN-S011` 至 `SYN-S013`、`SYN-S015` 已接入原文权威的基本编辑路径；仍以本矩阵 fixtures 为完整验收范围。
 - `SYN-S009` 任务列表与 `SYN-S014` 表格已接入生产 schema、原文账本、EditorView/NodeView、main 与 Bridge snapshot 路径；冻结12例及独立非UI接缝已通过。真实 WK/物理输入法、VoiceOver 与正式 NSDocument 文件保存重开仍由管理者验收，当前仅为 V3 非UI完成候选。
-- `SYN-S010` 图片保持 S 级首阶段目标；V1 只提供逐字节占位/局部原文路径，完整直接交互由 V4 补齐，当前不得冒称已验收。
+- `SYN-S010` 图片已接入直接编辑、导入、描述、保存迁移和恢复的生产候选；统一owner与持久handoff回归通过，真实Sandbox/系统面板/物理输入及完整文件体验仍待验，不得冒称V4整体验收。
+- 图片资源 owner 以实际编辑器 accepted 语义投影为唯一权威，并与同一 snapshot 的 document/revision/逐字 raw 绑定。Native 不再独立扫描 Markdown 推断 owner；缺失 proof 与已证明空数组必须区分。
+- `SYN-S010` 引用定义复用 CommonMark block rule 实际接受的全局 first-wins 结果；支持 destination/title 跨行、容器内定义和转义 label。字段 provenance 同时用于语义解析与原文账本，未编辑的 destination 转义、title 实体、容器前缀和 EOL 不重写。CommonMark 的空 destination 是合法语义值；创建/导入命令仍使用各自的 URL 安全守卫。
 - `D` 级稳定片段可与可视正文混排并逐字节保留；块内编辑使用主动源码草稿。畸形或边界未证明的输入保留完整当前原文、可信投影和诊断，并阻断不安全快照，修复后可恢复。
-- bare CR 仍按 `EOL-003` 只读。可视查找替换仍由 V6 完成；源码导航和原子替换继续可用。
+- bare CR 仍按 `EOL-003` 只读。可视查找替换与源码导航/原子替换已接入生产路径；`SYN-S016` 裸URL/邮箱识别尚未完成，093独立任务保留S级目标，不以纯文本显示代替支持。
 
 ## 1. 术语与支持级别
 

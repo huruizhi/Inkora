@@ -16,6 +16,8 @@ interface SentMessage {
     dirty: boolean;
     canUndo?: boolean;
     canRedo?: boolean;
+    selectionAnchor?: number;
+    selectionHead?: number;
   };
   [key: string]: unknown;
 }
@@ -567,6 +569,334 @@ async function rootLinkHarness(
   return h;
 }
 
+it("root070: rejected image descriptors never update the current document DOM", async () => {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "image-owner-load", documentID: "image-current",
+    revision: 0, text: "![local](./a.png)\n" });
+  const before = h.editorHost().innerHTML;
+  const messages = h.stateMessages().length;
+  h.receive({
+    type: "setImageDescriptors", requestID: "image-stale-descriptors", documentID: "image-old",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    imageOwnership: {
+      documentID: "image-old", revision: 0, raw: "![local](./a.png)\n",
+      imageURIs: ["./a.png"],
+    },
+    descriptors: [{ href: "./a.png", status: "ready",
+      displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174001" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "stale_revision" });
+  expect(h.editorHost().innerHTML).toBe(before);
+  expect(h.stateMessages()).toHaveLength(messages);
+  h.receive({
+    type: "setImageDescriptors", requestID: "image-valid-descriptors", documentID: "image-current",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    imageOwnership: {
+      documentID: "image-current", revision: 0, raw: "![local](./a.png)\n",
+      imageURIs: ["./a.png"],
+    },
+    descriptors: [{ href: "./a.png", status: "ready",
+      displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174003" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 0, dirty: false } });
+  expect(h.editorHost().querySelector(".image-node img")?.getAttribute("src"))
+    .toBe("inkora-asset://resource/123e4567-e89b-12d3-a456-426614174003");
+});
+
+it("INK-M1-090: descriptors independently reject same-revision raw and owner changes", async () => {
+  const h = await bootMain();
+  const raw = "![local](./a.png)\n";
+  h.receive({
+    type: "loadDocument", requestID: "proof-load", documentID: "proof-doc",
+    revision: 4, text: raw,
+  });
+  const before = h.editorHost().innerHTML;
+  for (const mismatch of [
+    { requestID: "proof-raw-mismatch", proofRaw: "![changed](./a.png)\n", owners: ["./a.png"] },
+    { requestID: "proof-owner-mismatch", proofRaw: raw, owners: ["./b.png"] },
+  ]) {
+    h.receive({
+      type: "setImageDescriptors", requestID: mismatch.requestID, documentID: "proof-doc",
+      revision: 4, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+      imageOwnership: {
+        documentID: "proof-doc", revision: 4, raw: mismatch.proofRaw,
+        imageURIs: mismatch.owners,
+      },
+      descriptors: [{
+        href: mismatch.owners[0], status: "ready",
+        displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000",
+      }],
+    });
+
+    expect(h.sent.at(-1)).toMatchObject({
+      type: "editorError", requestID: mismatch.requestID, code: "stale_revision",
+    });
+    expect(h.editorHost().innerHTML).toBe(before);
+  }
+});
+
+it("INK-M1-090: descriptors reject a matching proof while composition is active", async () => {
+  const h = await bootMain();
+  const raw = "![local](./a.png)\n";
+  h.receive({
+    type: "loadDocument", requestID: "proof-composition-load", documentID: "proof-composition",
+    revision: 2, text: raw,
+  });
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  const before = h.editorHost().innerHTML;
+  h.receive({
+    type: "setImageDescriptors", requestID: "proof-composition-descriptors",
+    documentID: "proof-composition", revision: 2,
+    documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    imageOwnership: {
+      documentID: "proof-composition", revision: 2, raw, imageURIs: ["./a.png"],
+    },
+    descriptors: [{ href: "./a.png", status: "missing" }],
+  });
+
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "editorError", requestID: "proof-composition-descriptors",
+    code: "editor_not_ready",
+  });
+  expect(h.editorHost().innerHTML).toBe(before);
+});
+
+it("INK-M1-090: descriptor proof cannot cross a load or asset epoch", async () => {
+  const h = await bootMain();
+  const firstRaw = "![first](./first.png)\n";
+  const secondRaw = "![second](./second.png)\n";
+  h.receive({
+    type: "loadDocument", requestID: "proof-first-load", documentID: "proof-first",
+    revision: 0, text: firstRaw,
+  });
+  h.receive({
+    type: "loadDocument", requestID: "proof-second-load", documentID: "proof-second",
+    revision: 0, text: secondRaw,
+  });
+  const afterLoad = h.editorHost().innerHTML;
+  h.receive({
+    type: "setImageDescriptors", requestID: "proof-cross-load", documentID: "proof-first",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174020",
+    imageOwnership: {
+      documentID: "proof-first", revision: 0, raw: firstRaw, imageURIs: ["./first.png"],
+    },
+    descriptors: [{ href: "./first.png", status: "missing" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "editorError", requestID: "proof-cross-load", code: "stale_revision",
+  });
+  expect(h.editorHost().innerHTML).toBe(afterLoad);
+
+  const proof = {
+    documentID: "proof-second", revision: 0, raw: secondRaw, imageURIs: ["./second.png"],
+  };
+  h.receive({
+    type: "setImageDescriptors", requestID: "proof-epoch-bind", documentID: "proof-second",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174021",
+    imageOwnership: proof,
+    descriptors: [{ href: "./second.png", status: "missing" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged" });
+  const bound = h.editorHost().innerHTML;
+  h.receive({
+    type: "setImageDescriptors", requestID: "proof-cross-epoch", documentID: "proof-second",
+    revision: 0, documentEpoch: "123e4567-e89b-12d3-a456-426614174022",
+    imageOwnership: proof,
+    descriptors: [{ href: "./second.png", status: "unsupported" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "editorError", requestID: "proof-cross-epoch", code: "command_rejected",
+  });
+  expect(h.editorHost().innerHTML).toBe(bound);
+});
+
+it("root070: image import preserves an active link-field composition", async () => {
+  const h = await rootLinkHarness();
+  h.receive({ type: "queryState", requestID: "image-selection-sample" });
+  const selection = h.sent.at(-1)!.state!;
+  const form = h.linkEditor()!;
+  const input = form.querySelector<HTMLInputElement>(".link-editor-href")!;
+  input.value = "zhong";
+  input.focus();
+  input.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  const messages = h.stateMessages().length;
+  const revision = h.lastRevision();
+  h.receive({
+    type: "applyImageImport", requestID: "image-during-link-composition", documentID: "root-link",
+    revision, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    assetID: "123e4567-e89b-12d3-a456-426614174001",
+    selectionAnchor: selection.selectionAnchor, selectionHead: selection.selectionHead,
+    uri: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174001",
+    alt: "image", title: null,
+    displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174002",
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  expect(form.isConnected).toBe(true);
+  expect(input.value).toBe("zhong");
+  expect(h.dom.window.document.activeElement).toBe(input);
+  expect(h.editorHost().querySelector(".image-node")).toBeNull();
+  expect(h.stateMessages()).toHaveLength(messages);
+  expect(h.lastRevision()).toBe(revision);
+  input.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  form.querySelector<HTMLButtonElement>(".link-editor-cancel")!.click();
+  h.receive({
+    type: "applyImageImport", requestID: "image-after-link-composition", documentID: "root-link",
+    revision, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    assetID: "123e4567-e89b-12d3-a456-426614174001",
+    selectionAnchor: selection.selectionAnchor, selectionHead: selection.selectionHead,
+    uri: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174001",
+    alt: "image", title: null,
+    displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174002",
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: revision + 1, dirty: true } });
+  expect(h.editorHost().querySelector(".image-node")).not.toBeNull();
+});
+
+it("INK-M1-077: first-save retry follows the current asset owner through the bridge", async () => {
+  const h = await bootMain();
+  const documentID = "image-retry";
+  const documentEpoch = "123e4567-e89b-12d3-a456-426614174010";
+  const assetID = "123e4567-e89b-12d3-a456-426614174011";
+  const draft = `inkora-draft://asset/${assetID}`;
+  h.receive({
+    type: "loadDocument", requestID: "retry-load", documentID, revision: 0, text: "",
+  });
+  h.receive({ type: "queryState", requestID: "retry-selection" });
+  const selection = h.sent.at(-1)!.state!;
+  h.receive({
+    type: "applyImageImport", requestID: "retry-import", documentID, revision: 0,
+    documentEpoch, assetID, uri: draft, alt: "图", title: null,
+    displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174012",
+    selectionAnchor: selection.selectionAnchor, selectionHead: selection.selectionHead,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "stateChanged", state: { revision: 1, dirty: true },
+  });
+  h.receive({
+    type: "prepareImageSave", requestID: "retry-first", documentID, revision: 1,
+    imageOwnership: {
+      documentID, revision: 1, raw: `![图](${draft})`, imageURIs: [draft],
+    },
+    documentEpoch, rewrites: [{ assetID, from: draft, to: "Note.assets/a.png" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 2 } });
+
+  h.receive({
+    type: "prepareImageSave", requestID: "retry-same", documentID, revision: 2,
+    imageOwnership: {
+      documentID, revision: 2, raw: "![图](Note.assets/a.png)",
+      imageURIs: ["Note.assets/a.png"],
+    },
+    documentEpoch, rewrites: [{ assetID, from: draft, to: "Note.assets/a.png" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 2 } });
+  h.receive({
+    type: "prepareImageSave", requestID: "retry-other", documentID, revision: 2,
+    imageOwnership: {
+      documentID, revision: 2, raw: "![图](Note.assets/a.png)",
+      imageURIs: ["Note.assets/a.png"],
+    },
+    documentEpoch, rewrites: [{ assetID, from: draft, to: "Other.assets/a.png" }],
+  });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 3 } });
+  h.receive({
+    type: "createSnapshot", requestID: "retry-snapshot", documentID, revision: 3,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", revision: 3, text: "![图](Other.assets/a.png)",
+  });
+  h.receive({
+    type: "executeCommand", requestID: "retry-undo", documentID, revision: 3, command: "undo",
+  });
+  h.receive({
+    type: "createSnapshot", requestID: "retry-after-undo", documentID, revision: 4,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady", revision: 4, text: "![图](Note.assets/a.png)",
+  });
+});
+
+it("INK-M1-083: snapshot binds raw and canonical image owners atomically", async () => {
+  const h = await bootMain();
+  const raw = [
+    "    ![code](Old.assets/missing-code.png)",
+    "",
+    "![real](Old.assets/real.png)",
+    "",
+  ].join("\n");
+  h.receive({
+    type: "loadDocument", requestID: "owners-load", documentID: "owners-doc",
+    revision: 4, text: raw,
+  });
+  h.receive({
+    type: "createSnapshot", requestID: "owners-snapshot", documentID: "owners-doc",
+    revision: 4,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady",
+    requestID: "owners-snapshot",
+    documentID: "owners-doc",
+    revision: 4,
+    text: raw,
+    imageOwnership: {
+      documentID: "owners-doc",
+      revision: 4,
+      raw,
+      imageURIs: ["Old.assets/real.png"],
+    },
+  });
+});
+
+it("INK-M1-083: bare-CR snapshot keeps raw bytes while proving owners", async () => {
+  const h = await bootMain();
+  const raw = "![real](Old.assets/real.png)\rplain";
+  h.receive({
+    type: "loadDocument", requestID: "bare-cr-load", documentID: "bare-cr-doc",
+    revision: 0, text: raw,
+  });
+  h.receive({
+    type: "createSnapshot", requestID: "bare-cr-snapshot", documentID: "bare-cr-doc",
+    revision: 0,
+  });
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "snapshotReady",
+    text: raw,
+    imageOwnership: { raw, imageURIs: ["Old.assets/real.png"] },
+  });
+});
+
+it("INK-M1-083: image access carries the current canonical owner proof", async () => {
+  const h = await bootMain();
+  const raw = "![local](Old.assets/a.png)\n";
+  h.receive({
+    type: "loadDocument", requestID: "access-load", documentID: "access-doc",
+    revision: 2, text: raw,
+  });
+  h.receive({
+    type: "setImageDescriptors", requestID: "access-descriptor", documentID: "access-doc",
+    revision: 2, documentEpoch: "123e4567-e89b-12d3-a456-426614174000",
+    imageOwnership: {
+      documentID: "access-doc", revision: 2, raw, imageURIs: ["Old.assets/a.png"],
+    },
+    descriptors: [{ href: "Old.assets/a.png", status: "denied", displayURL: null }],
+  });
+  h.editorHost().querySelector<HTMLButtonElement>(".image-access-button")!.click();
+
+  expect(h.sent.at(-1)).toMatchObject({
+    type: "imageAccessRequested",
+    documentID: "access-doc",
+    revision: 2,
+    href: "Old.assets/a.png",
+    imageOwnership: {
+      documentID: "access-doc",
+      revision: 2,
+      raw,
+      imageURIs: ["Old.assets/a.png"],
+    },
+  });
+});
+
 it("root062: link action pointerdown keeps an active candidate field focused", async () => {
   const h = await rootLinkHarness();
   const form = h.linkEditor()!;
@@ -607,6 +937,21 @@ it("root061: caret inside a link edits its existing target", async () => {
   form.dispatchEvent(new h.dom.window.Event("submit", {bubbles:true,cancelable:true}));
   h.receive({type:"createSnapshot",requestID:"root-link-snapshot",documentID:"root-link",revision:h.lastRevision()});
   expect(h.sent.at(-1)).toMatchObject({type:"snapshotReady",text:"[alpha](./new)\n\nbody\n"});
+});
+
+it("preserves a multiline reference title on form no-op and href-only edits", async () => {
+  const raw = '[go][ref]\n\n> [ref]:\n>   <docs/old.md>\n>   "line one\n>   line &amp; two"\n';
+  const h = await rootLinkHarness(false, raw);
+  h.linkEditor()!.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.lastRevision()).toBe(0);
+  h.receive({ type: "createSnapshot", requestID: "multiline-no-op", documentID: "root-link", revision: 0 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw });
+  const form = openLinkEditorAtCaret(h);
+  form.querySelector<HTMLInputElement>(".link-editor-href")!.value = "docs/new.md";
+  form.dispatchEvent(new h.dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  expect(h.lastRevision()).toBe(1);
+  h.receive({ type: "createSnapshot", requestID: "multiline-href", documentID: "root-link", revision: 1 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw.replace("docs/old.md", "docs/new.md") });
 });
 
 it("root061: link input composition keeps the form and candidate on Cancel", async () => {

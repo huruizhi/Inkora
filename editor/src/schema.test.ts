@@ -27,6 +27,7 @@ describe("Inkora ProseMirror schema", () => {
       "ordered_list",
       "bullet_list",
       "list_item",
+      "image",
       "protected_block",
     ]);
     expect(Object.keys(inkoraSchema.marks)).toEqual([
@@ -35,8 +36,24 @@ describe("Inkora ProseMirror schema", () => {
       "strike",
       "code",
       "link",
-      "image_ref",
     ]);
+  });
+
+  it("models Markdown images as selectable inline atoms instead of text marks", () => {
+    const image = inkoraSchema.nodes.image.create({
+      alt: "架构图",
+      href: "./文档.assets/架构%20图.png",
+      title: "标题",
+    });
+
+    expect(image.isInline).toBe(true);
+    expect(image.isAtom).toBe(true);
+    expect(image.isLeaf).toBe(true);
+    expect(image.attrs).toMatchObject({
+      alt: "架构图",
+      href: "./文档.assets/架构%20图.png",
+      title: "标题",
+    });
   });
 
   it("accepts the supported base block and inline structures", () => {

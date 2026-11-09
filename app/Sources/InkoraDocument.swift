@@ -1,5 +1,11 @@
 import AppKit
 
+struct DocumentImageSavePreparation {
+  let managedPlan: LocalImageSavePlan?
+  let sourceAuthorizedDirectory: URL?
+  let targetAuthorizedDirectory: URL?
+}
+
 enum InkoraDocumentError: LocalizedError {
   case invalidUTF8
   case utf16Detected
@@ -31,6 +37,11 @@ enum InkoraDocumentError: LocalizedError {
 @objc(InkoraDocument)
 final class InkoraDocument: NSDocument {
   typealias SnapshotRequester = (@escaping (Result<BridgeSnapshot, Error>) -> Void) -> Void
+  typealias ImageSavePreparer = (
+    _ targetURL: URL,
+    _ snapshot: BridgeSnapshot,
+    _ completion: @escaping (Result<DocumentImageSavePreparation?, Error>) -> Void
+  ) -> Void
 
   private struct PendingSave {
     let url: URL
@@ -77,6 +88,12 @@ final class InkoraDocument: NSDocument {
   private var lastRecoveryData: Data?
   private(set) var recoveryError: Error?
   private let openHistory: DocumentOpenHistory
+  private var localImageSession: LocalImageSession?
+  private var preparedImageSave: DocumentImageSavePreparation?
+  private var preparedImageMigration: LocalImageMigrationPlan?
+  private var imageSavePreparer: ImageSavePreparer?
+  private(set) var imageMigrationRecovery = LocalImageMigrationCoordinator.RecoveryDiscovery(
+    records: [], rejected: [])
 
   override init() {
     openHistory = .shared
@@ -120,6 +137,48 @@ final class InkoraDocument: NSDocument {
     synchronizeEditedState(true)
   }
 
+  convenience init(
+    recoveryDraft: RecoveryDraft,
+    pendingImageRecovery: LocalImageStore.RecoveryCandidate,
+    recoveryStore: RecoveryStore,
+    snapshotRequester: SnapshotRequester? = nil
+  ) throws {
+    guard recoveryDraft.id == pendingImageRecovery.sessionID else {
+      throw LocalImageError.corruptManifest
+    }
+    try self.init(recoveryDraft: recoveryDraft, recoveryStore: recoveryStore)
+    self.snapshotRequester = snapshotRequester
+    try attachPendingImageRecovery(pendingImageRecovery, store: recoveryStore)
+  }
+
+  convenience init(
+    pendingImageRecovery: LocalImageStore.RecoveryCandidate,
+    recoveryStore: RecoveryStore,
+    snapshotRequester: SnapshotRequester? = nil
+  ) throws {
+    self.init()
+    self.recoveryStore = recoveryStore
+    self.snapshotRequester = snapshotRequester
+    try read(from: Data(), ofType: "net.daringfireball.markdown")
+    fileType = "net.daringfireball.markdown"
+    try attachPendingImageRecovery(pendingImageRecovery, store: recoveryStore)
+  }
+
+  private func attachPendingImageRecovery(
+    _ candidate: LocalImageStore.RecoveryCandidate,
+    store: RecoveryStore
+  ) throws {
+    let session = try LocalImageStore(
+      root: store.directory.appendingPathComponent("LocalImages", isDirectory: true)
+    ).begin(documentID: candidate.documentID, sessionID: candidate.sessionID)
+    guard session.assets.map(\.id) == candidate.assets.map(\.id) else {
+      throw LocalImageError.corruptManifest
+    }
+    recoveryID = candidate.sessionID
+    bridgeDocumentID = candidate.documentID
+    localImageSession = session
+  }
+
   func preserveDirtyForEditorRecovery() {
     // A replayed snapshot initializes a clean Web session, but it is not a disk save.
     recoveredUnsaved = recoveredUnsaved || isDocumentEdited
@@ -128,6 +187,128 @@ final class InkoraDocument: NSDocument {
   func configureRecovery(store: RecoveryStore, snapshotRequester: SnapshotRequester? = nil) {
     recoveryStore = store
     recoverySnapshotRequester = snapshotRequester
+    imageMigrationRecovery = LocalImageMigrationCoordinator(
+      journalRoot: store.directory.appendingPathComponent(
+        "ImageMigrationJournal", isDirectory: true)
+    ).discoverRecovery()
+  }
+
+  func configureImageSavePreparer(_ preparer: ImageSavePreparer?) {
+    imageSavePreparer = preparer
+  }
+
+  func localImages() throws -> LocalImageSession {
+    if let localImageSession { return localImageSession }
+    guard let recoveryStore else { throw CocoaError(.fileNoSuchFile) }
+    let root = recoveryStore.directory.appendingPathComponent("LocalImages", isDirectory: true)
+    let session = try LocalImageStore(root: root).begin(
+      documentID: recoveryID.uuidString.lowercased(), sessionID: recoveryID)
+    localImageSession = session
+    return session
+  }
+
+  var pendingRecoveredImages: [LocalImageAsset] {
+    guard let session = try? localImages() else { return [] }
+    return session.assets.filter {
+      $0.insertion == .pending
+        && ($0.importIntent?.recoveryState == .requiresConfirmation
+          || $0.recoveryDisposition != nil)
+    }
+  }
+
+  func rememberImageDirectory(
+    _ directory: URL,
+    for documentURL: URL,
+    role: String,
+    access: AssetDirectoryAccess
+  ) throws {
+    guard let recoveryStore else { throw CocoaError(.fileNoSuchFile) }
+    let store = AssetBookmarkStore(
+      url: recoveryStore.directory.appendingPathComponent(
+        "LocalImages/\(recoveryID.uuidString.lowercased())-bookmarks.json")
+    )
+    try store.remember(directory, role: role, access: access)
+    if role == "document-directory" || role == "document-read-directory" {
+      try AssetBookmarkStore(
+        url: recoveryStore.directory.appendingPathComponent(
+          "LocalImages/Documents/\(Self.imageDocumentKey(documentURL)).json")
+      ).remember(directory, role: role, access: access)
+    }
+  }
+
+  func restoredImageDirectory(role: String, for documentURL: URL) -> URL? {
+    try? resolveImageDirectory(role: role, for: documentURL)
+  }
+
+  func resolveImageDirectory(role: String, for documentURL: URL) throws -> URL? {
+    guard let recoveryStore else { return nil }
+    if role == "document-directory" || role == "document-read-directory",
+      let directory = try AssetBookmarkStore(
+        url: recoveryStore.directory.appendingPathComponent(
+          "LocalImages/Documents/\(Self.imageDocumentKey(documentURL)).json")
+      ).resolve(role: role)
+    {
+      return directory
+    }
+    return try AssetBookmarkStore(
+      url: recoveryStore.directory.appendingPathComponent(
+        "LocalImages/\(recoveryID.uuidString.lowercased())-bookmarks.json")
+    ).resolve(role: role)
+  }
+
+  private static func imageDocumentKey(_ url: URL) -> String {
+    RecoveryFingerprint.hash(Data(url.standardizedFileURL.absoluteString.utf8))
+  }
+
+  func importLocalImage(
+    fileURL: URL,
+    preferredName: String? = nil,
+    authorizedDirectory: URL?,
+    importIntent: LocalImageAsset.ImportIntent? = nil
+  ) throws -> LocalImageAsset {
+    let sourceAccessed = fileURL.startAccessingSecurityScopedResource()
+    let directoryAccessed = authorizedDirectory?.startAccessingSecurityScopedResource() ?? false
+    defer {
+      if sourceAccessed { fileURL.stopAccessingSecurityScopedResource() }
+      if directoryAccessed { authorizedDirectory?.stopAccessingSecurityScopedResource() }
+    }
+    return try localImages().importFile(
+      from: fileURL, preferredName: preferredName, documentURL: self.fileURL,
+      authorizedDirectory: authorizedDirectory, importIntent: importIntent)
+  }
+
+  func importPastedPNG(
+    _ data: Data,
+    preferredName: String = "Pasted Image.png",
+    authorizedDirectory: URL?,
+    importIntent: LocalImageAsset.ImportIntent? = nil
+  ) throws -> LocalImageAsset {
+    let directoryAccessed = authorizedDirectory?.startAccessingSecurityScopedResource() ?? false
+    defer { if directoryAccessed { authorizedDirectory?.stopAccessingSecurityScopedResource() } }
+    return try localImages().importBitmapPNG(
+      data, preferredName: preferredName, documentURL: fileURL,
+      authorizedDirectory: authorizedDirectory, importIntent: importIntent)
+  }
+
+  func prepareLocalImagesForSave(
+    documentURL: URL,
+    authorizedDirectory: URL,
+    snapshot: BridgeSnapshot
+  ) throws -> LocalImageSavePlan? {
+    let ownership = try snapshot.requireImageOwnership()
+    let session = try localImages()
+    guard
+      session.assets.contains(where: {
+        ($0.state == .draft || $0.state == .awaitingMarkdown)
+          && $0.insertion == .accepted
+          && ownership.imageURIs.contains($0.markdownURI)
+      })
+    else { return nil }
+    let accessed = authorizedDirectory.startAccessingSecurityScopedResource()
+    defer { if accessed { authorizedDirectory.stopAccessingSecurityScopedResource() } }
+    return try session.prepareFirstSave(
+      documentURL: documentURL, authorizedDirectory: authorizedDirectory,
+      ownerURIs: ownership.imageURIs)
   }
 
   var text: String {
@@ -407,20 +588,64 @@ final class InkoraDocument: NSDocument {
     snapshotRequester { [weak self] result in
       guard let self else { return }
       switch result {
+      case .failure(let error):
+        self.finishCurrentSave(error)
       case .success(let snapshot):
-        self.textStorage.set(snapshot.text)
-        if save.url == self.fileURL {
-          self.refreshFileState()
-          if self.fileState != .current && self.fileState != .moved {
-            self.resolveFileState()
-            return
+        self.prepareImagesAndPersist(snapshot, for: save, using: snapshotRequester)
+      }
+    }
+  }
+
+  private func prepareImagesAndPersist(
+    _ snapshot: BridgeSnapshot,
+    for save: PendingSave,
+    using snapshotRequester: @escaping SnapshotRequester
+  ) {
+    if let imageSavePreparer {
+      imageSavePreparer(save.url, snapshot) { [weak self] result in
+        guard let self else { return }
+        switch result {
+        case .success(let plan):
+          self.preparedImageSave = plan
+          if plan?.managedPlan?.rewrites.isEmpty == false {
+            self.requestSnapshotForSave(save, using: snapshotRequester)
+          } else {
+            self.acceptSnapshotForSave(snapshot, for: save)
           }
+        case .failure(let error):
+          self.finishCurrentSave(error)
         }
-        self.persist(snapshot, for: save)
+      }
+      return
+    }
+    acceptSnapshotForSave(snapshot, for: save)
+  }
+
+  private func requestSnapshotForSave(
+    _ save: PendingSave,
+    using snapshotRequester: @escaping SnapshotRequester
+  ) {
+    snapshotRequester { [weak self] result in
+      guard let self else { return }
+      switch result {
+      case .success(let snapshot):
+        self.acceptSnapshotForSave(snapshot, for: save)
       case .failure(let error):
         self.finishCurrentSave(error)
       }
     }
+  }
+
+  private func acceptSnapshotForSave(_ snapshot: BridgeSnapshot, for save: PendingSave) {
+    textStorage.set(snapshot.text)
+    if save.url == fileURL {
+      refreshFileState()
+      if fileState != .current && fileState != .moved {
+        resolveFileState()
+        return
+      }
+    }
+    persist(snapshot, for: save)
   }
 
   private func persist(_ snapshot: BridgeSnapshot, for save: PendingSave) {
@@ -434,6 +659,51 @@ final class InkoraDocument: NSDocument {
         return
       }
     }
+    if let plan = preparedImageSave?.managedPlan {
+      let accessed = plan.authorizedDirectory.startAccessingSecurityScopedResource()
+      defer { if accessed { plan.authorizedDirectory.stopAccessingSecurityScopedResource() } }
+      do {
+        let session = try localImages()
+        try session.validateMarkdownOwners(
+          try snapshot.requireImageOwnership().imageURIs, for: plan)
+        try session.publish(plan)
+      } catch {
+        finishCurrentSave(error)
+        return
+      }
+    }
+    if let sourceURL = fileURL,
+      sourceURL.standardizedFileURL != save.url.standardizedFileURL,
+      let sourceGrant = preparedImageSave?.sourceAuthorizedDirectory,
+      let targetGrant = preparedImageSave?.targetAuthorizedDirectory,
+      let recoveryStore
+    {
+      let sourceAccessed = sourceGrant.startAccessingSecurityScopedResource()
+      let targetAccessed = targetGrant.startAccessingSecurityScopedResource()
+      defer {
+        if sourceAccessed { sourceGrant.stopAccessingSecurityScopedResource() }
+        if targetAccessed { targetGrant.stopAccessingSecurityScopedResource() }
+      }
+      do {
+        let ownership = try snapshot.requireImageOwnership()
+        let migrator = LocalImageMigrationCoordinator(
+          journalRoot: recoveryStore.directory.appendingPathComponent(
+            "ImageMigrationJournal", isDirectory: true))
+        let migration = try migrator.prepare(
+          markdown: snapshot.text,
+          ownerURIs: ownership.imageURIs,
+          sourceDocumentURL: sourceURL,
+          targetDocumentURL: save.url,
+          sourceAuthorizedDirectory: sourceGrant,
+          targetAuthorizedDirectory: targetGrant,
+          excludingURIs: Set(preparedImageSave?.managedPlan?.items.map(\.targetURI) ?? []))
+        try migrator.publish(migration)
+        preparedImageMigration = migration
+      } catch {
+        finishCurrentSave(error)
+        return
+      }
+    }
     super.save(
       to: save.url,
       ofType: save.typeName,
@@ -441,6 +711,20 @@ final class InkoraDocument: NSDocument {
     ) { [weak self] error in
       guard let self else { return }
       if error == nil {
+        if let session = self.localImageSession {
+          if let plan = self.preparedImageSave?.managedPlan {
+            try? session.confirmMarkdownCommit(plan)
+          }
+          try? session.retireTransferredStorageIfPossible()
+        }
+        if let migration = self.preparedImageMigration, let recoveryStore = self.recoveryStore {
+          try? LocalImageMigrationCoordinator(
+            journalRoot: recoveryStore.directory.appendingPathComponent(
+              "ImageMigrationJournal", isDirectory: true)
+          ).confirm(migration)
+        }
+        self.preparedImageSave = nil
+        self.preparedImageMigration = nil
         self.invalidateRecoveryWork()
         self.recoveredUnsaved = false
         self.retireRecovery()
@@ -664,13 +948,20 @@ final class InkoraDocument: NSDocument {
     }
   }
 
-  func writeRecovery(_ snapshot: BridgeSnapshot) throws {
+  enum RecoveryPersistenceResult: Equatable {
+    case persisted(RecoveryStore.WriteReceipt)
+    case rejected
+  }
+
+  @discardableResult
+  func writeRecovery(
+    _ snapshot: BridgeSnapshot, requireExactReceipt: Bool = false
+  ) throws -> RecoveryPersistenceResult {
     guard !isBareCRReadOnly, !recoveryClosed, let recoveryStore,
       snapshot.documentID == bridgeDocumentID,
       snapshot.revision >= bridgeRevision, isDocumentEdited
-    else { return }
+    else { return .rejected }
     let data = (bomStorage.get() ? Self.utf8BOM : Data()) + Data(snapshot.text.utf8)
-    guard data != lastRecoveryData else { return }
     let source = fileURL ?? recoverySourceURL
     let fingerprint =
       diskVersion.map { RecoveryFingerprint(data: $0.data, modified: $0.modified) }
@@ -683,7 +974,11 @@ final class InkoraDocument: NSDocument {
     let draft = RecoveryDraft(
       id: recoveryID, revision: snapshot.revision, data: data,
       sourceURL: source, sourceFingerprint: fingerprint, bookmark: bookmark)
-    try recoveryStore.write(draft)
+    let receipt = try recoveryStore.write(
+      draft, requireExactRevision: requireExactReceipt)
+    guard receipt.draftID == recoveryID, receipt.revision == snapshot.revision,
+      receipt.payloadHash == draft.payloadHash
+    else { return .rejected }
     lastRecoveryData = data
     recoveryError = nil
     #if DEBUG
@@ -695,6 +990,24 @@ final class InkoraDocument: NSDocument {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { _exit(99) }
       }
     #endif
+    return .persisted(receipt)
+  }
+
+  func persistRecoveredImageHandoff(
+    _ snapshot: BridgeSnapshot,
+    assetID: UUID,
+    freshIntent: LocalImageAsset.ImportIntent
+  ) throws {
+    let session = try localImages()
+    guard snapshot.documentID == bridgeDocumentID,
+      let asset = session.assets.first(where: { $0.id == assetID }),
+      asset.recoveryIntent == freshIntent,
+      try snapshot.requireImageOwnership().imageURIs.contains(asset.markdownURI)
+    else { throw LocalImageError.unresolvedMarkdownOwner }
+    guard case .persisted = try writeRecovery(snapshot, requireExactReceipt: true) else {
+      throw LocalImageError.unresolvedMarkdownOwner
+    }
+    try session.completeRecoveredInsertion(assetID: assetID, freshIntent: freshIntent)
   }
 
   private func retireRecovery() {
@@ -728,6 +1041,10 @@ final class InkoraDocument: NSDocument {
   private func finishCurrentSave(_ error: Error?) {
     guard !pendingSaves.isEmpty else { return }
     let save = pendingSaves.removeFirst()
+    if error != nil {
+      preparedImageSave = nil
+      preparedImageMigration = nil
+    }
     saveInProgress = false
     save.completion(error)
     processNextSave()

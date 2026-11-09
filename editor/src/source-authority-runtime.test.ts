@@ -1,5 +1,5 @@
 import { JSDOM } from "jsdom";
-import { TextSelection } from "prosemirror-state";
+import { NodeSelection, TextSelection } from "prosemirror-state";
 import { splitBlock } from "prosemirror-commands";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -9,6 +9,7 @@ import {
   type LinkEditBinding,
 } from "./editor-runtime";
 import type { InkoraEditorSession } from "./editor-session";
+import { SourceAuthoritySession } from "./source-authority";
 import { createPasteTransaction } from "./editor-session";
 import {
   setHeading,
@@ -58,6 +59,179 @@ function createRuntime(raw: string, options: EditorRuntimeOptions = {}): {
 }
 
 describe("production source authority runtime", () => {
+  it("captures canonical image owners from the accepted semantic projection", () => {
+    const protectedRaw = [
+      "    ![code](Old.assets/missing-code.png)",
+      "$$",
+      "![math](Old.assets/missing-math.png)",
+      "$$",
+      "",
+      "![real](Old.assets/real.png)",
+      "",
+    ].join("\n");
+    const protectedRuntime = createRuntime(protectedRaw).runtime;
+    expect(protectedRuntime.captureImageOwnership()).toEqual({
+      raw: protectedRaw,
+      imageURIs: ["Old.assets/real.png"],
+    });
+
+    const inlineRaw = "![inline](Old.assets/a\\(b\\).png)\n";
+    expect(createRuntime(inlineRaw).runtime.captureImageOwnership().imageURIs)
+      .toEqual(["Old.assets/a(b).png"]);
+
+    const referenceRaw = [
+      "![first][REF] ![shared][ref]",
+      "",
+      "[ref]: Old.assets/first&amp;.png",
+      "[REF]: Old.assets/second.png",
+      "",
+    ].join("\n");
+    expect(createRuntime(referenceRaw).runtime.captureImageOwnership().imageURIs)
+      .toEqual(["Old.assets/first&.png", "Old.assets/first&.png"]);
+
+    const escapedReference = String.raw`![x][A\&amp;   B]
+![entity][&#169;]
+[ordinary][a& b]
+
+[a&amp; b]: Old.assets/owned.png
+[&copy;]: Old.assets/entity.png
+[unused]: Old.assets/unused.png
+`;
+    const escapedReferenceRuntime = createRuntime(escapedReference).runtime;
+    expect(escapedReferenceRuntime.status.saveEligible).toBe(true);
+    expect(escapedReferenceRuntime.captureImageOwnership().imageURIs).toEqual([]);
+
+    const multilineLabel = String.raw`![line][A\]
+  B]
+
+[a\] b]: Old.assets/line.png
+`;
+    const multilineRuntime = createRuntime(multilineLabel).runtime;
+    expect(multilineRuntime.status.saveEligible).toBe(true);
+    expect(multilineRuntime.captureImageOwnership().imageURIs).toEqual(["Old.assets/line.png"]);
+
+    const destinations = [
+      "![balanced](Old.assets/a(b).png)",
+      '![angle](<Old.assets/angle image.png> "title")',
+      String.raw`![escaped](Old.assets/a\(b\).png 'title')`,
+      "[ordinary](Old.assets/not-image.png)",
+      "`![code](Old.assets/not-code.png)`",
+      "",
+    ].join("\n");
+    expect(createRuntime(destinations).runtime.captureImageOwnership().imageURIs)
+      .toEqual([
+        "Old.assets/a(b).png", "Old.assets/angle%20image.png", "Old.assets/a(b).png",
+      ]);
+
+    const protectedInline = "<!-- ![comment](Old.assets/not-comment.png) -->\n" +
+      String.raw`\![escaped-image](Old.assets/not-escaped.png)` + "\n";
+    expect(createRuntime(protectedInline).runtime.captureImageOwnership().imageURIs).toEqual([]);
+
+    const invalid = "![unclosed](Old.assets/a(b.png)\n" +
+      "[plain](Old.assets/not-image.png)\n![valid](Old.assets/real.png)\n";
+    expect(createRuntime(invalid).runtime.captureImageOwnership().imageURIs)
+      .toEqual(["Old.assets/real.png"]);
+
+    const draft = "plain inkora-draft://asset/plain\n" +
+      "`![code](inkora-draft://asset/code)`\n" +
+      "![owned](inkora-draft://asset/owned)\n";
+    expect(createRuntime(draft).runtime.captureImageOwnership().imageURIs)
+      .toEqual(["inkora-draft://asset/owned"]);
+
+    const quoteFence = "> ~~~md\n> ![example](Old.assets/missing-quote.png)\n> ~~~\n";
+    const quoteRuntime = createRuntime(quoteFence).runtime;
+    expect(quoteRuntime.status.saveEligible).toBe(true);
+    expect(quoteRuntime.captureImageOwnership().imageURIs).toEqual([]);
+
+    const listContinuation = "- item\n\n    ![real](Old.assets/list-real.png)\n";
+    const listRuntime = createRuntime(listContinuation).runtime;
+    expect(listRuntime.status.saveEligible).toBe(true);
+    expect(listRuntime.captureImageOwnership().imageURIs)
+      .toEqual(["Old.assets/list-real.png"]);
+  });
+
+  it("rebuilds auditable projections after source, history, reopen, and image owner changes", () => {
+    const original = '[one](./old) tail\r\n';
+    const changed = '[one](./new) tail\r\n';
+    const session = new SourceAuthoritySession(original);
+    expect(session.saveEligible).toBe(true);
+    expect(session.setRawSelection(2)).toBe(true);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./old");
+
+    expect(session.beginSource()).toBe(true);
+    expect(session.updateDraft(changed)).toBe(true);
+    expect(session.cancelSource()).toBe(true);
+    expect(session.currentRaw).toBe(original);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./old");
+    expect(session.stateReport()).toMatchObject({
+      saveEligible: true,
+      documentDirty: false,
+      version: 0,
+      undo: 0,
+      redo: 0,
+    });
+
+    expect(session.beginSource()).toBe(true);
+    expect(session.updateDraft(changed)).toBe(true);
+    expect(session.applySource()).toBe(true);
+    expect(session.currentRaw).toBe(changed);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./new");
+    expect(session.saveEligible).toBe(true);
+    expect(session.undo()).toBe(true);
+    expect(session.currentRaw).toBe(original);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./old");
+    expect(session.redo()).toBe(true);
+    expect(session.currentRaw).toBe(changed);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./new");
+
+    expect(session.reopen(original, { anchor: 2, head: 2, affinity: "right" })).toBe(true);
+    expect(session.linkOwnerAtSelection()?.href).toBe("./old");
+    expect(session.stateReport()).toMatchObject({
+      currentRaw: original,
+      savedRaw: original,
+      saveEligible: true,
+      documentDirty: false,
+      version: 0,
+      undo: 0,
+      redo: 0,
+    });
+
+    const graphemes = "a👩‍💻e\u0301z\n";
+    expect(session.reopen(graphemes)).toBe(true);
+    expect(session.setRawSelection(graphemes.indexOf("‍"))).toBe(false);
+    expect(session.setRawSelection(graphemes.indexOf("e"))).toBe(true);
+    expect(session.reopen("a\r\nb\n")).toBe(true);
+    expect(session.setRawSelection(2)).toBe(false);
+    expect(session.setRawSelection(3)).toBe(true);
+
+    expect(session.reopen("tail\n", { anchor: 0, head: 0, affinity: "right" })).toBe(true);
+    expect(session.insertImage({
+      assetID: "asset-1",
+      uri: "inkora-draft://asset/1",
+      alt: "图",
+      title: null,
+    })).toBe(true);
+    const draftImage = "![图](inkora-draft://asset/1)tail\n";
+    expect(session.currentRaw).toBe(draftImage);
+    expect(session.rewriteManagedImages([{
+      assetID: "asset-1",
+      from: "inkora-draft://asset/1",
+      to: "doc.assets/final.png",
+    }])).toBe(true);
+    const finalImage = "![图](doc.assets/final.png)tail\n";
+    expect(session.currentRaw).toBe(finalImage);
+    expect(session.saveEligible).toBe(true);
+    expect(session.undo()).toBe(true);
+    expect(session.currentRaw).toBe(draftImage);
+    expect(session.redo()).toBe(true);
+    expect(session.currentRaw).toBe(finalImage);
+    expect(session.stateReport()).toMatchObject({
+      saveEligible: true,
+      documentDirty: true,
+      unresolvedIntent: null,
+    });
+  });
+
   it("types in the unchanged code caret after a language attribute change", () => {
     const { dom, runtime } = createRuntime("```python\nabc\n```\n");
     const view = (runtime as unknown as { view: EditorView }).view;
@@ -74,6 +248,251 @@ describe("production source authority runtime", () => {
     expect(runtime.getText()).toBe("```javascript\nabc\n```\n");
     runtime.destroy();
   });
+  it("accepts one managed image import as one raw/history/revision transaction", () => {
+    const { runtime, session } = createRuntime("前后\r\n");
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.setRawSelection(1)).toBe(true);
+    const imported = sourceSession.insertImage({
+      uri: "文档.assets/%E6%9E%B6%E6%9E%84%20%E5%9B%BE%25.png",
+      alt: "架构图",
+      title: "标题",
+    });
+
+    expect(imported).toBe(true);
+    expect(runtime.getText()).toBe('前![架构图](文档.assets/%E6%9E%B6%E6%9E%84%20%E5%9B%BE%25.png "标题")后\r\n');
+    expect(sourceSession.status.revision).toBe(1);
+    expect(sourceSession.past).toHaveLength(1);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe("前后\r\n");
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toContain("文档.assets/%E6%9E%B6%E6%9E%84%20%E5%9B%BE%25.png");
+    runtime.destroy();
+  });
+
+  it("refreshes image capabilities and layered placeholders without changing document state", () => {
+    const raw = "![本地](./doc.assets/a.png) ![外部](https://example.test/a.png)\n";
+    const { runtime, session, dom } = createRuntime(raw);
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    const before = sourceSession.stateReport();
+    expect(dom.window.document.querySelectorAll(".image-node img"), dom.window.document.body.innerHTML).toHaveLength(0);
+    expect(dom.window.document.body.textContent).toContain("离线外部图片");
+
+    (runtime as unknown as {
+      applyImageDescriptors(values: Array<{
+        href: string;
+        status: string;
+        displayURL?: string;
+        message?: string;
+      }>): void;
+    }).applyImageDescriptors([
+      {
+        href: "./doc.assets/a.png",
+        status: "ready",
+        displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000",
+      },
+    ]);
+
+    const image = dom.window.document.querySelector<HTMLImageElement>(".image-node img");
+    expect(image?.getAttribute("src")).toBe("inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000");
+    expect(runtime.getText()).toBe(raw);
+    expect(sourceSession.stateReport()).toMatchObject({
+      currentRaw: before.currentRaw,
+      savedRaw: before.savedRaw,
+      version: before.version,
+      documentDirty: false,
+    });
+    runtime.destroy();
+  });
+
+  it("offers a real inline alt/title editor backed by the source transaction", () => {
+    const { runtime, dom } = createRuntime('前 ![旧](./a.png "旧题") 后\n');
+    const edit = dom.window.document.querySelector<HTMLButtonElement>(".image-edit-button")!;
+    edit.click();
+    const form = dom.window.document.querySelector<HTMLFormElement>(".image-attributes-form")!;
+    const alt = form.querySelector<HTMLInputElement>('[name="alt"]')!;
+    const title = form.querySelector<HTMLInputElement>('[name="title"]')!;
+    alt.value = "新描述";
+    title.value = "新标题";
+    form.dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+
+    expect(runtime.getText()).toBe('前 ![新描述](./a.png "新标题") 后\n');
+    expect(dom.window.document.querySelector(".image-attributes-form")).toBeNull();
+    runtime.destroy();
+  });
+
+  it("rewrites only the unique draft owner as an explicit first-save history unit", () => {
+    const { runtime, session } = createRuntime("已有 ![keep](old.assets/a.png)\n");
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.setRawSelection(sourceSession.currentRaw.length)).toBe(true);
+    expect(sourceSession.insertImage({
+      assetID: "123e4567-e89b-12d3-a456-426614174000",
+      uri: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174000",
+      alt: "新图",
+      title: null,
+    })).toBe(true);
+    const draftRaw = runtime.getText();
+
+    expect(sourceSession.rewriteManagedImages([{
+      assetID: "123e4567-e89b-12d3-a456-426614174000",
+      from: "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174000",
+      to: "Note.assets/%E6%96%B0%20%E5%9B%BE.png",
+    }])).toBe(true);
+    expect(runtime.getText()).toContain("![keep](old.assets/a.png)");
+    expect(runtime.getText()).toContain("Note.assets/%E6%96%B0%20%E5%9B%BE.png");
+    expect(runtime.getText()).not.toContain("inkora-draft:");
+    expect(sourceSession.status.revision).toBe(2);
+    expect(sourceSession.undo()).toBe(true);
+    expect(runtime.getText()).toBe(draftRaw);
+    expect(sourceSession.redo()).toBe(true);
+    expect(runtime.getText()).not.toContain("inkora-draft:");
+    runtime.destroy();
+  });
+
+  it("retries a published first-save owner without undo or a phantom history step", () => {
+    const assetID = "123e4567-e89b-12d3-a456-426614174000";
+    const draft = `inkora-draft://asset/${assetID}`;
+    const { runtime, session } = createRuntime("");
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.insertImage({ assetID, uri: draft, alt: "图", title: null })).toBe(true);
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Note.assets/a.png",
+    }])).toBe(true);
+    const afterFirst = sourceSession.stateReport();
+    const revisionAfterFirst = sourceSession.status.revision;
+    const historyAfterFirst = sourceSession.past.length;
+
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Note.assets/a.png",
+    }])).toBe(true);
+    expect(sourceSession.stateReport()).toMatchObject({
+      currentRaw: afterFirst.currentRaw,
+      version: afterFirst.version,
+    });
+    expect(sourceSession.status.revision).toBe(revisionAfterFirst);
+    expect(sourceSession.past).toHaveLength(historyAfterFirst);
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Renamed.assets/a.png",
+    }])).toBe(true);
+    expect(runtime.getText()).toBe("![图](Renamed.assets/a.png)");
+    expect(sourceSession.undo()).toBe(true);
+    expect(runtime.getText()).toBe("![图](Note.assets/a.png)");
+    runtime.destroy();
+  });
+
+  it("does not retarget a managed asset after source editing removed its real image owner", () => {
+    const assetID = "123e4567-e89b-12d3-a456-426614174001";
+    const draft = `inkora-draft://asset/${assetID}`;
+    const { runtime, session } = createRuntime("");
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.insertImage({ assetID, uri: draft, alt: "图", title: null })).toBe(true);
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Note.assets/a.png",
+    }])).toBe(true);
+    expect(sourceSession.beginSource()).toBe(true);
+    expect(sourceSession.updateDraft("[普通链接](Note.assets/a.png)")).toBe(true);
+    expect(sourceSession.applySource()).toBe(true);
+    const before = sourceSession.stateReport();
+
+    expect(sourceSession.rewriteManagedImages([{
+      assetID, from: draft, to: "Other.assets/a.png",
+    }])).toBe(false);
+    expect(sourceSession.stateReport()).toMatchObject({
+      currentRaw: before.currentRaw,
+      version: before.version,
+    });
+    expect(runtime.getText()).toBe("[普通链接](Note.assets/a.png)");
+    runtime.destroy();
+  });
+
+  it("refuses a managed rewrite when source editing changed the draft URI into a normal link", () => {
+    const draft = "inkora-draft://asset/123e4567-e89b-12d3-a456-426614174000";
+    const { runtime, session } = createRuntime(`![图](${draft})\n`);
+    const sourceSession = session as unknown as SourceAuthoritySession;
+    expect(sourceSession.beginSource()).toBe(true);
+    expect(sourceSession.updateDraft(`[不是图片](${draft})\n`)).toBe(true);
+    expect(sourceSession.applySource()).toBe(true);
+    const before = sourceSession.stateReport();
+
+    expect(sourceSession.rewriteManagedImages([{
+      assetID: "123e4567-e89b-12d3-a456-426614174000",
+      from: draft,
+      to: "Note.assets/a.png",
+    }])).toBe(false);
+    expect(sourceSession.stateReport()).toMatchObject({
+      currentRaw: before.currentRaw,
+      version: before.version,
+    });
+    expect(runtime.getText()).toBe(`[不是图片](${draft})\n`);
+    runtime.destroy();
+  });
+
+  it("deletes and restores one image owner without rewriting adjacent marks", () => {
+    const raw = '**前** [![空 alt](./图%20片.png "标题")](./target) *后*\r\n';
+    const { runtime, session } = createRuntime(raw);
+    let imagePosition = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.type.name === "image") imagePosition = pos;
+    });
+    expect(imagePosition).toBeGreaterThan(0);
+    session.dispatch(session.state.tr.setSelection(NodeSelection.create(session.state.doc, imagePosition)));
+    expect(session.dispatch(session.state.tr.deleteSelection()),
+      (session as unknown as SourceAuthoritySession).diagnostic).toBe(true);
+    expect(runtime.getText()).toBe("**前** [](./target) *后*\r\n");
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe("**前** [](./target) *后*\r\n");
+    runtime.destroy();
+  });
+
+  it("edits a linked image in a BOM CRLF table without touching its outer link", () => {
+    const raw = '\uFEFF| [![旧](./pic.png)](./target) |\r\n| --- |\r\n| value |\r\n';
+    const { runtime, session } = createRuntime(raw);
+    let imagePosition = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.type.name === "image") imagePosition = pos;
+    });
+    expect(imagePosition).toBeGreaterThan(0);
+    const image = session.state.doc.nodeAt(imagePosition)!;
+    expect(session.dispatch(session.state.tr.setNodeMarkup(imagePosition, undefined, {
+      ...image.attrs, alt: "新描述",
+    })), (session as unknown as SourceAuthoritySession).diagnostic).toBe(true);
+    const expected = '\uFEFF| [![新描述](./pic.png)](./target) |\r\n| --- |\r\n| value |\r\n';
+    expect(runtime.getText()).toBe(expected);
+    expect(runtime.snapshotText()).toEqual({ ok: true, value: expected });
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(expected);
+    runtime.destroy();
+  });
+
+  it("edits one image alt/title as one source history unit without touching neighbours", () => {
+    const raw = '**前** [![旧描述][图]](./target) *后*\r\n\r\n[图]: ./图%20片.png "旧标题"\r\n';
+    const { runtime, session } = createRuntime(raw);
+    let imagePosition = -1;
+    session.state.doc.descendants((node, pos) => {
+      if (node.type.name === "image") imagePosition = pos;
+    });
+    expect(imagePosition).toBeGreaterThan(0);
+    const image = session.state.doc.nodeAt(imagePosition)!;
+
+    expect(session.dispatch(session.state.tr.setNodeMarkup(imagePosition, undefined, {
+      ...image.attrs,
+      alt: "新描述",
+      title: "新标题",
+    })), (session as unknown as SourceAuthoritySession).diagnostic).toBe(true);
+    expect(runtime.getText()).toBe(
+      '**前** [![新描述](./%E5%9B%BE%20%E7%89%87.png "新标题")](./target) *后*\r\n\r\n[图]: ./图%20片.png "旧标题"\r\n',
+    );
+    expect(session.status.revision).toBe(1);
+    expect(session.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    expect(session.redo()).toBe(true);
+    expect(runtime.getText()).toContain('![新描述](./%E5%9B%BE%20%E7%89%87.png "新标题")');
+    runtime.destroy();
+  });
+
   function execute(session: InkoraEditorSession, command: Command): boolean {
     return command(session.state, transaction => session.dispatch(transaction));
   }
@@ -244,6 +663,34 @@ describe("production source authority runtime", () => {
     expect(created.runtime.snapshotText()).toEqual({ ok: true, value: expected });
     expect(created.runtime.undo()).toBe(true);
     expect(created.runtime.getText()).toBe(raw);
+    created.runtime.destroy();
+  });
+
+  it("isolates one indexed owner without changing neighboring links or history contracts", () => {
+    const raw = '[zero](./same) [one](./same) [two][ref] [target][ref] [![nested](./img.png)](./outer)\r\n\r\n[ref]: ./shared "title"\r\n';
+    const created = requestLinkAt(raw, { anchor: 20, head: 14 });
+    const sourceSession = created.session as unknown as SourceAuthoritySession;
+    expect(created.binding.target).toMatchObject({
+      kind: "reference",
+      href: "./shared",
+      title: "title",
+      referenceUsageCount: 2,
+    });
+
+    expect(created.runtime.applyLinkEdit(created.binding, { href: "./new", title: "新" }))
+      .toEqual({ ok: true, value: { changed: true } });
+    const expected = '[zero](./same) [one](./same) [two][ref] [target](./new "新") [![nested](./img.png)](./outer)\r\n\r\n[ref]: ./shared "title"\r\n';
+    expect(created.runtime.getText()).toBe(expected);
+    expect(created.runtime.snapshotText()).toEqual({ ok: true, value: expected });
+    expect([created.session.state.selection.anchor, created.session.state.selection.head]).toEqual([20, 14]);
+    expect(sourceSession.status).toMatchObject({ revision: 1, dirty: true, canUndo: true, canRedo: false });
+    expect(created.runtime.status).toMatchObject({ saveEligible: true, unresolved: false });
+
+    expect(created.runtime.undo()).toBe(true);
+    expect(created.runtime.getText()).toBe(raw);
+    expect(created.runtime.redo()).toBe(true);
+    expect(created.runtime.getText()).toBe(expected);
+    expect(created.runtime.status).toMatchObject({ dirty: true, saveEligible: true, canUndo: true, canRedo: false });
     created.runtime.destroy();
   });
 

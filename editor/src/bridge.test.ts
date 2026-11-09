@@ -60,6 +60,68 @@ describe("Bridge protocol v1 contracts", () => {
     });
   });
 
+  it("strictly decodes image import, descriptor, and first-save commands", () => {
+    expect(decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1,
+      type: "applyImageImport",
+      requestID: "image-1",
+      documentID: "doc-1",
+      revision: 4,
+      documentEpoch: "epoch-1",
+      assetID: "asset-1",
+      uri: "Note.assets/a%20b.png",
+      alt: "a b",
+      title: null,
+      displayURL: "inkora-asset://resource/123e4567-e89b-12d3-a456-426614174000",
+      selectionAnchor: 3,
+      selectionHead: 1,
+    }))).toMatchObject({ type: "applyImageImport", assetID: "asset-1", title: null });
+    expect(decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1,
+      type: "setImageDescriptors",
+      requestID: "descriptors-1",
+      documentID: "doc-1",
+      revision: 4,
+      documentEpoch: "epoch-1",
+      imageOwnership: {
+        documentID: "doc-1", revision: 4, raw: "![a](Note.assets/a.png)",
+        imageURIs: ["Note.assets/a.png"],
+      },
+      descriptors: [{ href: "Note.assets/a.png", status: "missing", message: "图片缺失" }],
+    }))).toMatchObject({ type: "setImageDescriptors", descriptors: [{ status: "missing" }] });
+    expect(decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1,
+      type: "prepareImageSave",
+      requestID: "prepare-1",
+      documentID: "doc-1",
+      revision: 4,
+      documentEpoch: "epoch-1",
+      imageOwnership: {
+        documentID: "doc-1", revision: 4,
+        raw: "![a](inkora-draft://asset/asset-1)",
+        imageURIs: ["inkora-draft://asset/asset-1"],
+      },
+      rewrites: [{
+        assetID: "asset-1",
+        from: "inkora-draft://asset/asset-1",
+        to: "Note.assets/a.png",
+      }],
+    }))).toMatchObject({ type: "prepareImageSave", rewrites: [{ assetID: "asset-1" }] });
+
+    expect(() => decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1, type: "setImageDescriptors", requestID: "bad",
+      documentID: "doc-1", revision: 4, documentEpoch: "epoch-1",
+      imageOwnership: {
+        documentID: "doc-1", revision: 4, raw: "![x](x)", imageURIs: ["x"],
+      },
+      descriptors: [{ href: "x", status: "ready", displayURL: "file:///tmp/x" }],
+    }))).toThrow("Invalid displayURL");
+    expect(() => decodeNativeCommand(JSON.stringify({
+      protocolVersion: 1, type: "setImageDescriptors", requestID: "missing-proof",
+      documentID: "doc-1", revision: 4, documentEpoch: "epoch-1", descriptors: [],
+    }))).toThrow("Missing imageOwnership");
+  });
+
   it("rejects unsupported versions, invalid revisions, and malformed commands", () => {
     expect(() =>
       decodeNativeCommand(
@@ -107,9 +169,19 @@ describe("Bridge protocol v1 contracts", () => {
           documentID: "doc-1",
           revision: 2,
           text: "正文",
+          imageOwnership: {
+            documentID: "doc-1",
+            revision: 2,
+            raw: "正文",
+            imageURIs: [],
+          },
         }),
       ),
-    ).toMatchObject({ type: "snapshotReady", text: "正文" });
+    ).toMatchObject({
+      type: "snapshotReady",
+      text: "正文",
+      imageOwnership: { documentID: "doc-1", revision: 2, raw: "正文", imageURIs: [] },
+    });
     expect(
       JSON.parse(
         encodeEditorMessage({
@@ -121,6 +193,19 @@ describe("Bridge protocol v1 contracts", () => {
         }),
       ),
     ).toMatchObject({ type: "editorError", action: "stop_saving" });
+    expect(JSON.parse(encodeEditorMessage({
+      protocolVersion: 1,
+      type: "imageAccessRequested",
+      documentID: "doc-1",
+      revision: 2,
+      href: "Old.assets/a.png",
+    }))).toEqual({
+      protocolVersion: 1,
+      type: "imageAccessRequested",
+      documentID: "doc-1",
+      revision: 2,
+      href: "Old.assets/a.png",
+    });
   });
 
   it("keeps revisions monotonic and rejects stale or duplicate requests", () => {
@@ -150,12 +235,18 @@ describe("Bridge protocol v1 contracts", () => {
           documentID: "doc-1",
           revision: 4,
         },
-        "current after fast input",
+        { raw: "current after fast input", imageURIs: ["a.png"] },
       ),
     ).toMatchObject({
       type: "snapshotReady",
       revision: 5,
       text: "current after fast input",
+      imageOwnership: {
+        documentID: "doc-1",
+        revision: 5,
+        raw: "current after fast input",
+        imageURIs: ["a.png"],
+      },
     });
     const currentCommand = {
       protocolVersion: 1 as const,
@@ -164,19 +255,19 @@ describe("Bridge protocol v1 contracts", () => {
       documentID: "doc-1",
       revision: 5,
     };
-    expect(session.createSnapshot(currentCommand, "current")).toMatchObject({
+    expect(session.createSnapshot(currentCommand, { raw: "current", imageURIs: [] })).toMatchObject({
       type: "snapshotReady",
       revision: 5,
       text: "current",
     });
-    expect(session.createSnapshot(currentCommand, "duplicate")).toMatchObject({
+    expect(session.createSnapshot(currentCommand, { raw: "duplicate", imageURIs: [] })).toMatchObject({
       type: "editorError",
       code: "request_conflict",
     });
     expect(
       session.createSnapshot(
         { ...currentCommand, requestID: "snap-ahead", revision: 6 },
-        "future",
+        { raw: "future", imageURIs: [] },
       ),
     ).toMatchObject({ type: "editorError", code: "stale_revision" });
     expect(
@@ -326,6 +417,24 @@ describe("Bridge protocol v1 contracts", () => {
       type: "editorError",
       code: "editor_not_ready",
       action: "retry",
+    });
+  });
+
+  it("queryState samples the current directed selection without advancing revision", () => {
+    const session = new EditorProtocolSession();
+    session.loadDocument({
+      protocolVersion: 1, type: "loadDocument", requestID: "load-selection",
+      documentID: "doc-selection", revision: 4, text: "正文",
+    });
+    expect(session.queryState(
+      { protocolVersion: 1, type: "queryState", requestID: "state-selection" },
+      {
+        dirty: true, canUndo: true, canRedo: false,
+        selectionAnchor: 7, selectionHead: 3,
+      },
+    )).toMatchObject({
+      type: "stateChanged",
+      state: { revision: 4, selectionAnchor: 7, selectionHead: 3 },
     });
   });
 

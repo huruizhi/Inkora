@@ -4,6 +4,8 @@ import {
   EditorProtocolSession,
   encodeEditorMessage,
   recoveryActionFor,
+  type EditorMessage,
+  type NativeCommand,
 } from "./bridge";
 import {
   createEditorRuntime,
@@ -148,7 +150,9 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
   title.className = "link-editor-title";
   title.type = "text";
   title.autocomplete = "off";
-  title.value = binding.attrs?.title ?? "";
+  const originalTitle = binding.attrs?.title ?? null;
+  title.value = (originalTitle ?? "").replace(/\r\n|\r|\n/g, " ");
+  const initialTitleValue = title.value;
   titleLabel.append(title);
 
   const save = document.createElement("button");
@@ -186,7 +190,12 @@ function openLinkEditor(owner: EditorRuntime, binding: LinkEditBinding): void {
     event.preventDefault();
     if ((event as Event & { isComposing?: boolean }).isComposing ||
         composingLinkEditors.has(form)) return;
-    apply({ href: href.value, title: title.value.length ? title.value : null });
+    apply({
+      href: href.value,
+      title: title.value === initialTitleValue
+        ? originalTitle
+        : title.value.length ? title.value : null,
+    });
   });
   cancel.addEventListener("click", event => {
     if ((event as PointerEvent & { isComposing?: boolean }).isComposing ||
@@ -247,6 +256,7 @@ const guardLinkCompositionAction = (event: Event): void => {
 };
 app.addEventListener("pointerdown", guardLinkCompositionAction, true);
 app.addEventListener("click", guardLinkCompositionAction, true);
+let assetEpoch: string | undefined;
 
 function updateModeControls(): void {
   const activeRuntime = runtime;
@@ -636,12 +646,33 @@ window.inkora = {
               searchPanel.resetForNewDocument();
               loadEpoch += 1;
               closeLinkEditor();
+              assetEpoch = undefined;
               runtime?.destroy();
+              const runtimeEpoch = loadEpoch;
               runtime = createEditorRuntime(editorHost, command.text, recordRuntimeChange, {
                 searchIdentity: { documentID: command.documentID, epoch: loadEpoch },
                 onLinkRequest: (binding) => {
                   const owner = runtime;
                   if (owner) openLinkEditor(owner, binding);
+                },
+                onImageAccessRequest: href => {
+                  if (loadEpoch !== runtimeEpoch) return;
+                  if (activeDocumentID === undefined || activeRevision === undefined) return;
+                  const ownership = runtime?.captureImageOwnership();
+                  if (!ownership || !ownership.imageURIs.includes(href)) return;
+                  postToNative({
+                    protocolVersion: BRIDGE_PROTOCOL_VERSION,
+                    type: "imageAccessRequested",
+                    documentID: activeDocumentID,
+                    revision: activeRevision,
+                    href,
+                    imageOwnership: {
+                      documentID: activeDocumentID,
+                      revision: activeRevision,
+                      raw: ownership.raw,
+                      imageURIs: ownership.imageURIs,
+                    },
+                  });
                 },
               });
               updateModeControls();
@@ -666,7 +697,7 @@ window.inkora = {
                 });
                 return;
               }
-              if (runtime?.composing) {
+              if (captureRuntime?.composing) {
                 postToNative({
                   protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
                   requestID: command.requestID, code: "editor_not_ready", action: "retry",
@@ -674,7 +705,7 @@ window.inkora = {
                 });
                 return;
               }
-              const snapshot = runtime?.snapshotText();
+              const snapshot = captureRuntime?.snapshotText();
               if (!snapshot?.ok) {
                 postToNative({
                   protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
@@ -687,7 +718,16 @@ window.inkora = {
                 protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "queryState",
                 requestID: `${command.requestID}-state`,
               }));
-              postToNative(session.createSnapshot(command, snapshot.value));
+              const ownership = captureRuntime?.captureImageOwnership();
+              if (!ownership || ownership.raw !== snapshot.value) {
+                postToNative({
+                  protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+                  requestID: command.requestID, code: "editor_not_ready", action: "retry",
+                  message: "Image ownership changed while capturing the snapshot",
+                });
+                return;
+              }
+              postToNative(session.createSnapshot(command, ownership));
             };
             if (captureRuntime?.composing) {
               void captureRuntime.whenCompositionStable().then(stable => {
@@ -750,7 +790,88 @@ window.inkora = {
           }
           break;
         case "queryState":
-          postToNative(session.queryState(command));
+          postToNative(session.queryState(
+            command,
+            runtime ? { ...runtime.status, ...runtime.directedSelection } : undefined,
+          ));
+          break;
+        case "applyImageImport":
+          executingCommand = true;
+          try {
+            const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const selectionMatches = runtime?.directedSelection.selectionAnchor === command.selectionAnchor
+              && runtime?.directedSelection.selectionHead === command.selectionHead;
+            const response = session.executeMutation(
+              command,
+              () => epochMatches && selectionMatches && !searchPanel.isInputComposing &&
+                !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)) &&
+                (runtime?.insertImage({
+                assetID: command.assetID, uri: command.uri, alt: command.alt, title: command.title,
+              }) ?? false),
+              () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+            );
+            if (response.type === "stateChanged") {
+              assetEpoch = command.documentEpoch;
+              runtime?.applyImageDescriptors([{
+                href: command.uri, status: "ready", displayURL: command.displayURL,
+              }]);
+            }
+            postToNative(response);
+          } finally {
+            executingCommand = false;
+            updateModeControls();
+          }
+          break;
+        case "prepareImageSave":
+          executingCommand = true;
+          try {
+            const proofError = validateCurrentImageOwnership(command);
+            if (proofError) {
+              postToNative(proofError);
+              break;
+            }
+            const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const rawBefore = runtime?.getText();
+            const response = session.executeMutation(
+              command,
+              () => epochMatches && !searchPanel.isInputComposing &&
+                !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)) &&
+                (runtime?.rewriteManagedImages(command.rewrites) ?? false),
+              () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+              () => runtime?.getText() !== rawBefore,
+            );
+            if (response.type === "stateChanged") assetEpoch = command.documentEpoch;
+            postToNative(response);
+          } finally {
+            executingCommand = false;
+            updateModeControls();
+          }
+          break;
+        case "setImageDescriptors":
+          {
+            const proofError = validateCurrentImageOwnership(command);
+            if (proofError) {
+              postToNative(proofError);
+              break;
+            }
+            const epochMatches = assetEpoch === undefined || assetEpoch === command.documentEpoch;
+            const response = epochMatches
+              ? session.acknowledge(
+                command,
+                runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+              )
+              : session.executeMutation(
+                command, () => false,
+                () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+              );
+            // The acknowledgement is enqueued before a capability reaches a NodeView.
+            // Native commits provisional broker entries only from this response.
+            postToNative(response);
+            if (response.type === "stateChanged") {
+              runtime?.applyImageDescriptors(command.descriptors);
+              assetEpoch = command.documentEpoch;
+            }
+          }
           break;
       }
     } catch (error) {
@@ -769,5 +890,37 @@ window.inkora = {
     }
   },
 };
+
+function validateCurrentImageOwnership(
+  command: Extract<NativeCommand, { type: "setImageDescriptors" | "prepareImageSave" }>,
+): EditorMessage | undefined {
+  const proof = command.imageOwnership;
+  const composing = runtime?.composing || searchPanel.isInputComposing ||
+    !!activeLinkEditor && composingLinkEditors.has(activeLinkEditor);
+  if (composing) {
+    return {
+      protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+      requestID: command.requestID, documentID: command.documentID, revision: command.revision,
+      code: "editor_not_ready", action: "retry",
+      message: "Finish text composition before changing image resources",
+    };
+  }
+  const current = runtime?.captureImageOwnership();
+  const ownersMatch = current !== undefined &&
+    current.imageURIs.length === proof.imageURIs.length &&
+    current.imageURIs.every((uri, index) => uri === proof.imageURIs[index]);
+  if (
+    proof.documentID !== command.documentID || proof.revision !== command.revision ||
+    current?.raw !== proof.raw || !ownersMatch
+  ) {
+    return {
+      protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "editorError",
+      requestID: command.requestID, documentID: command.documentID, revision: command.revision,
+      code: "stale_revision", action: "retry",
+      message: "Image ownership proof no longer matches the current document",
+    };
+  }
+  return undefined;
+}
 
 postToNative({ protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "ready" });

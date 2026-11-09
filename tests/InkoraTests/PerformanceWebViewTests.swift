@@ -46,11 +46,17 @@ final class PerformanceWebViewTests: XCTestCase {
 
   @MainActor
   func testBridgeSnapshotRoundTripForLargeSourceDocument() async throws {
-    // The CRLF variant forces the source-mode runtime (EOL-003), whose
-    // snapshot path exercises the bridge rather than the markdown serializer.
+    // CRLF is visually editable in the source-authoritative runtime. Enter
+    // source mode explicitly; line endings no longer select the runtime.
     let url = try PerfEnvironment.sampleURL(named: "large-crlf")
     let text = try String(contentsOf: url, encoding: .utf8)
     let (document, controller, webView) = try await loadEditor(sampleURL: url, text: text)
+
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.editor-mode-source').click()")
+    let sourceReady = try await webView.evaluateJavaScript(
+      "document.querySelector('textarea#editor') !== null")
+    XCTAssertEqual(sourceReady as? Bool, true)
 
     // Dirty the document through the real input path: focus the textarea,
     // move the caret to the end, and type a suffix via execCommand so the
@@ -65,6 +71,8 @@ final class PerformanceWebViewTests: XCTestCase {
       })()
       """
     )
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.source-draft-apply').click()")
     try await waitUntilDocumentChange(document: document)
 
     // Warmup snapshots absorb one-time lazy work before timing.
@@ -76,7 +84,7 @@ final class PerformanceWebViewTests: XCTestCase {
     for _ in 0..<9 {
       let start = ContinuousClock.now
       let snapshot = try await requestText(controller)
-      XCTAssertTrue(snapshot.hasSuffix("perf-append"), "snapshot tail: ...\(snapshot.suffix(32))")
+      XCTAssertEqual(snapshot, text + "perf-append")
       timings.append(Self.elapsedMilliseconds(since: start))
     }
     PerfRecorder.shared.record(
@@ -86,6 +94,90 @@ final class PerformanceWebViewTests: XCTestCase {
       cv: perfCoefficientOfVariation(timings)
     )
     try PerfRecorder.shared.write(layer: "webview")
+  }
+
+  // Actual production DOM/buttons + Bridge, with no window or synthetic IME.
+  // Input ends at an exact acknowledged snapshot; this is not visible paint.
+  @MainActor
+  func testProductionVisualWorkflowBenchmarks() async throws {
+    try PerfRecorder.shared.recordEditorResources(in: Bundle(for: Self.self))
+    for size in PerfEnvironment.productionSamples {
+      let url = try PerfEnvironment.sampleURL(named: size)
+      let text = try String(contentsOf: url, encoding: .utf8)
+      try PerfRecorder.shared.recordInput(name: size, url: url)
+      var timings: [String: [Double]] = [:]
+      for iteration in -1..<3 {
+        var start = ContinuousClock.now
+        let (document, controller, webView) = try await loadEditor(sampleURL: url, text: text)
+        webView.setFrameSize(NSSize(width: 900, height: 700))
+        defer { document.close() }
+        let loaded = try await requestText(controller)
+        XCTAssertEqual(loaded, text)
+        let mount = try await webView.evaluateJavaScript(
+          "document.querySelector('#editor.ProseMirror') !== null")
+        XCTAssertEqual(mount as? Bool, true, "Must measure the visual production runtime")
+        if iteration >= 0 {
+          timings["production-open-ack", default: []].append(Self.elapsedMilliseconds(since: start))
+        }
+        let titleValue = try await webView.evaluateJavaScript(
+          "document.querySelector('#editor h1, #editor h2, #editor h3, #editor h4').textContent")
+        let title = try XCTUnwrap(titleValue as? String)
+        let titleRange = try XCTUnwrap(text.range(of: title))
+        let expected = text.replacingCharacters(in: titleRange, with: "字" + title)
+        start = ContinuousClock.now
+        let inserted = try await webView.evaluateJavaScript(
+          """
+          (() => {
+            const editor = document.querySelector('#editor.ProseMirror');
+            const title = editor.querySelector('h1,h2,h3,h4');
+            if (title.firstChild.nodeType !== Node.TEXT_NODE) throw Error('Expected plain fixture title');
+            editor.focus();
+            const range = document.createRange(); range.setStart(title.firstChild, 0); range.collapse(true);
+            const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+            return document.execCommand('insertText', false, '字');
+          })()
+          """)
+        XCTAssertEqual(inserted as? Bool, true)
+        let edited = try await requestText(controller)
+        let inputTime = Self.elapsedMilliseconds(since: start)
+        XCTAssertEqual(edited, expected)
+        XCTAssertGreaterThan(document.bridgeRevision, 0)
+        if iteration >= 0 { timings["production-input-to-snapshot", default: []].append(inputTime) }
+
+        for _ in 0..<5 {
+          start = ContinuousClock.now
+          let snapshot = try await requestText(controller)
+          let elapsed = Self.elapsedMilliseconds(since: start)
+          XCTAssertEqual(snapshot, expected)
+          if iteration >= 0 {
+            timings["production-snapshot-roundtrip", default: []].append(elapsed)
+          }
+        }
+        let revision = document.bridgeRevision
+        start = ContinuousClock.now
+        let roundTrip = try await webView.evaluateJavaScript(
+          """
+          (() => {
+            document.querySelector('.editor-mode-source').click();
+            if (!document.querySelector('textarea#editor')) return false;
+            document.querySelector('.source-draft-cancel').click();
+            return !!document.querySelector('#editor.ProseMirror');
+          })()
+          """)
+        let returned = try await requestText(controller)
+        let modeTime = Self.elapsedMilliseconds(since: start)
+        XCTAssertEqual(roundTrip as? Bool, true)
+        XCTAssertEqual(returned, expected)
+        XCTAssertEqual(document.bridgeRevision, revision)
+        if iteration >= 0 {
+          timings["production-source-no-op-roundtrip", default: []].append(modeTime)
+        }
+      }
+      for (operation, samples) in timings {
+        PerfRecorder.shared.recordSamples(name: "\(operation)/\(size)", milliseconds: samples)
+      }
+      try PerfRecorder.shared.write(layer: "webview")
+    }
   }
 
   @MainActor
