@@ -451,4 +451,123 @@ final class SidebarWorkspaceBridgeTests: XCTestCase {
     XCTAssertEqual(replies.count, count)
   }
 
+  func testTargetedCancellationRevokesPendingOpenAndTicketsWithoutHurtingNewIntent() async throws {
+    let root = try folder()
+    let url = root.appendingPathComponent("a.md")
+    try Data("alpha".utf8).write(to: url)
+    var replies: [[String: Any]] = []
+    var pending: [(Bool) -> Void] = []
+    var opened: [SidebarCatalog.OpenedFile] = []
+    let bridge = SidebarWorkspaceBridge(
+      current: { .init(documentID: "document", revision: 0) },
+      chooseFolder: { _ in }, mayOpen: { _, done in pending.append(done) },
+      openFile: { _, _, _ in XCTFail("verified only") },
+      openVerifiedFile: { file, _, done in
+        opened.append(file)
+        done(nil)
+      },
+      replySink: { replies.append(self.parse($0)) })
+    bridge.useFolder(.init(root))
+    bridge.receive(request("ready"), trustedMainFrame: true)
+    let context = try XCTUnwrap(replies.first?["contextID"] as? String)
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "catalog" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    let catalog = try XCTUnwrap(replies.last?["catalog"] as? [String: Any])
+    let catalogID = try XCTUnwrap(catalog["id"] as? String)
+    let fileID = try XCTUnwrap((catalog["files"] as? [[String: Any]])?.first?["id"] as? String)
+    func open(_ id: String, hit: String? = nil) {
+      var fields: [String: Any] = ["requestID": id, "catalogID": catalogID, "fileID": fileID]
+      fields["hitID"] = hit
+      bridge.receive(request("open", context: context, extra: fields), trustedMainFrame: true)
+    }
+    func cancel(
+      _ openID: String?, searchID: String? = nil, inContext: String? = nil, inCatalog: String? = nil
+    ) {
+      var fields: [String: Any] = ["catalogID": inCatalog ?? catalogID]
+      fields["targetOpenRequestID"] = openID
+      fields["targetSearchRequestID"] = searchID
+      bridge.receive(
+        request("cancelSearch", context: inContext ?? context, extra: fields),
+        trustedMainFrame: true)
+    }
+    open("first")
+    cancel("first")
+    XCTAssertEqual(replies.last?["cancelledOpen"] as? Bool, true)
+    pending[0](true)
+    XCTAssertTrue(opened.isEmpty)
+    open("second")
+    pending[1](true)
+    let second = try XCTUnwrap(opened.last)
+    XCTAssertNoThrow(try second.revalidatedForNavigation())
+    cancel("second")
+    XCTAssertThrowsError(try second.revalidatedForNavigation())
+    open("third")
+    open("fourth")
+    cancel("third")
+    XCTAssertEqual(replies.last?["cancelledOpen"] as? Bool, false)
+    pending[2](true)
+    XCTAssertEqual(opened.count, 1)
+    pending[3](true)
+    let fourth = try XCTUnwrap(opened.last)
+    XCTAssertEqual(opened.count, 2)
+    XCTAssertNoThrow(try fourth.revalidatedForNavigation())
+    let count = replies.count
+    cancel("fourth", inContext: "old-context")
+    cancel("fourth", inCatalog: "old-catalog")
+    XCTAssertEqual(replies.count, count)
+    XCTAssertNoThrow(try fourth.revalidatedForNavigation())
+    cancel("second")
+    XCTAssertEqual(replies.last?["cancelledOpen"] as? Bool, false)
+    XCTAssertNoThrow(try fourth.revalidatedForNavigation())
+    bridge.receive(
+      request(
+        "search", context: context,
+        extra: [
+          "requestID": "search-intent", "catalogID": catalogID,
+          "query": "alpha",
+          "options": ["caseSensitive": false, "wholeWord": false, "regularExpression": false],
+        ]), trustedMainFrame: true)
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "search" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    let hit = try XCTUnwrap(
+      ((replies.last?["result"] as? [String: Any])?["hits"] as? [[String: Any]])?.first?["hitID"]
+        as? String)
+    bridge.receive(
+      request(
+        "search", context: context,
+        extra: [
+          "requestID": "new-search", "catalogID": catalogID,
+          "query": "alpha",
+          "options": ["caseSensitive": false, "wholeWord": false, "regularExpression": false],
+        ]), trustedMainFrame: true)
+    cancel(nil, searchID: "search-intent")
+    XCTAssertEqual(replies.last?["cancelledSearch"] as? Bool, false)
+    for _ in 0..<100 {
+      if replies.last?["requestID"] as? String == "new-search" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    XCTAssertEqual(replies.last?["kind"] as? String, "search")
+    let newHit = try XCTUnwrap(
+      ((replies.last?["result"] as? [String: Any])?["hits"] as? [[String: Any]])?.first?["hitID"]
+        as? String)
+    XCTAssertNotEqual(hit, newHit)
+    cancel(nil, searchID: "new-search")
+    XCTAssertEqual(replies.last?["cancelledSearch"] as? Bool, true)
+    open("stale-hit", hit: newHit)
+    XCTAssertEqual(replies.last?["kind"] as? String, "error")
+    XCTAssertEqual(pending.count, 4)
+    // Cancelling search/open leaves the catalog and change watcher operational.
+    try Data("changed".utf8).write(to: url)
+    bridge.pollChanges()
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "invalidated" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    XCTAssertEqual(replies.last?["kind"] as? String, "invalidated")
+  }
+
 }

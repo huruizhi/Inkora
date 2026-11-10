@@ -1,0 +1,6 @@
+Web actual cancelSearch [pending]: posts 3→4, targets completed search + open
+Native cancelled receipt: search=true/open=true; delayed mayOpen(true) verified opens=0
+Cancelled completed-search hit replay rejected=true
+Web actual cancelSearch [ticket]: posts 3→4, targets completed search + open
+Native cancelled receipt: search=true/open=true; issued review ticket rejected=true
+Cancelled completed-search hit replay rejected=true
