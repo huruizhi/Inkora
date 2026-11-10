@@ -563,6 +563,7 @@ export class SourceAuthoritySession {
     context: ProjectionContext;
   } | null = null;
   private rawBoundaryCache: { raw: string; boundaries: Pick<ReadonlySet<number>, 'has'> } | null = null;
+  private mathContentCache: { raw: string; doc: PMNode; values: Map<number, string> } | null = null;
 
   constructor(
     raw: string,
@@ -609,6 +610,31 @@ export class SourceAuthoritySession {
       }
     });
     return { raw: this.currentRaw, imageURIs };
+  }
+
+  /** Display-only content from the same canonical tokens; never a save source. */
+  captureMathContent(position: number | undefined, expectedRaw: string): string | undefined {
+    if (position === undefined) return undefined;
+    const raw = this.currentRaw;
+    const doc = this.state.doc;
+    let cached = this.mathContentCache;
+    if (!cached || cached.raw !== raw || cached.doc !== doc) {
+      const tokens = this.parseSource(raw).tokenEvidence.tokens.filter(token =>
+        token.type === 'inkora_protected_block' && token.meta?.inkoraOpaque === 'math');
+      const values = new Map<number, string>();
+      let index = 0;
+      doc.descendants((node, pos) => {
+        if (node.type.name !== 'protected_block' || node.attrs.kind !== 'math') return;
+        const token = tokens[index++];
+        if (token?.meta?.inkoraRule === 'SYN-D003' && !token.meta.inkoraIssue &&
+            token.meta.inkoraRaw === node.attrs.raw && typeof token.meta.inkoraMathContent === 'string') {
+          values.set(pos, token.meta.inkoraMathContent);
+        }
+      });
+      this.mathContentCache = cached = { raw, doc, values };
+    }
+    if (doc.nodeAt(position)?.attrs.raw !== expectedRaw) return undefined;
+    return cached.values.get(position);
   }
 
   captureProtectedRanges(raw = this.currentRaw): { raw: string; ranges: Array<{ start: number; end: number }> } {

@@ -5,7 +5,7 @@ final class EditorWebViewTests: XCTestCase {
   @MainActor
   func testTechnicalPreviewsRenderOfflineWithoutChangingSnapshot() async throws {
     let raw =
-      "# 技术文档\n\n正文[^note]\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\nA[想法] --> B[草稿]\n```\n\n[^note]: **脚注**内容\n"
+      "# 技术文档\n\n正文[^note]\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\nA[想法] --> B[草稿]\n```\n\n[^note]: **脚注**内容\n\n> $$\n> E=mc^2\n> $$\n\n- $$\n  E=mc^2\n  $$\n"
     let document = InkoraDocument()
     try document.read(from: Data(raw.utf8), ofType: "net.daringfireball.markdown")
     let controller = EditorViewController(
@@ -36,6 +36,7 @@ final class EditorWebViewTests: XCTestCase {
         (() => ({
           diagram: document.querySelector('.mermaid-preview svg')?.textContent || '',
           footnote: document.querySelector('.footnote-definition strong')?.textContent || '',
+        containerMath: document.querySelectorAll('#editor blockquote .math-preview math, #editor li .math-preview math').length,
           inert: !document.querySelector('#editor script, #editor foreignObject, #editor image'),
           local: [...document.scripts].every(script => !script.src || script.src.startsWith('inkora-editor://app/')),
           policy: document.querySelector('meta[http-equiv="Content-Security-Policy"]').content,
@@ -44,6 +45,7 @@ final class EditorWebViewTests: XCTestCase {
     XCTAssertTrue((preview["diagram"] as? String)?.contains("想法") == true)
     XCTAssertTrue((preview["diagram"] as? String)?.contains("草稿") == true)
     XCTAssertEqual(preview["footnote"] as? String, "脚注")
+    XCTAssertEqual(preview["containerMath"] as? Int, 2)
     XCTAssertEqual(preview["inert"] as? Bool, true)
     XCTAssertEqual(preview["local"] as? Bool, true)
     XCTAssertTrue((preview["policy"] as? String)?.contains("connect-src 'none'") == true)

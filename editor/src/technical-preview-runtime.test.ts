@@ -22,6 +22,34 @@ function open(raw: string) {
 }
 
 describe("production technical previews", () => {
+  it.each([
+    "> $$\n> E=mc^2\n> $$\n",
+    "- $$\n  E=mc^2\n  $$\n",
+    "\uFEFF> $$\r\n> E=mc^2\r\n> $$\r\n",
+  ])("renders canonical container math without rewriting its physical raw", raw => {
+    const h = open(raw);
+    expect(h.parent.querySelector(".math-preview math msup")).not.toBeNull();
+    expect(h.runtime.snapshotText()).toEqual({ ok: true, value: raw });
+    expect(h.runtime.status.saveEligible).toBe(true);
+    expect(h.changes()).toBe(0);
+  });
+
+  it("refreshes canonical math content after source editing and Undo/Redo", () => {
+    const raw = "> $$\n> E=mc^2\n> $$\n\nAfter.\n";
+    const h = open(raw);
+    expect(h.runtime.enterSourceMode()).toBe(true);
+    const area = h.parent.querySelector<HTMLTextAreaElement>("textarea")!;
+    area.value = raw.replace("mc^2", "mc^3");
+    area.dispatchEvent(new h.dom.window.Event("input", { bubbles: true }));
+    expect(h.runtime.applySourceDraft()).toBe(true);
+    expect(h.runtime.cancelSourceDraft()).toBe(true);
+    expect(h.parent.querySelector(".math-output mn")?.textContent).toBe("3");
+    expect(h.runtime.undo()).toBe(true);
+    expect(h.parent.querySelector(".math-output mn")?.textContent).toBe("2");
+    expect(h.runtime.redo()).toBe(true);
+    expect(h.parent.querySelector(".math-output mn")?.textContent).toBe("3");
+    expect(h.runtime.snapshotText()).toEqual({ ok: true, value: raw.replace("mc^2", "mc^3") });
+  });
   it("renders math and footnotes while preserving exact raw and a source no-op roundtrip", () => {
     const raw = "\uFEFF# 文档\r\n\r\n正文[^note]。\r\n\r\n$$\r\nE = mc^2\r\n$$\r\n\r\n[^note]: **脚注**内容。\r\n";
     const h = open(raw);

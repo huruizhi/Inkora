@@ -31,4 +31,6 @@
 
 ## 状态
 
+独立 Standards：0 hard / 0 actionable judgement。Spec：发现容器块公式 P2；已用 canonical 同次解析 metadata 与只读位置依据补正，并修正既有 nested opaque action 资格遗漏，保留反向 raw/attrs 拒绝控制。最终 Web 777，Native 182 passed/0 failed/8 skip，Bridge Web 14/Swift 15，lint 与 test-non-ui exit 0。完整记录见 [两轴报告](../reviews/INK-UX-115-technical-rendering.md)。schema attrs、Markdown 物理字节与 Bridge 字段均未改变；只读 accessor 和 metadata 是此显示修复的必要内部接缝。
+
 用户明确暂无 Developer ID/公证凭据，现阶段先准备 Release 候选；不发布未经签名公证的正式包。最终 Debug App 已重建，但 desktop preflight 实测 exit 78（屏幕已锁定），因此新增渲染目前只有真实 hostless WK 图形/布局/行为证据，最终桌面视觉仍待解锁后查看。候选包结构与独立审查在本轮继续收束，不宣告完整 Typora 功能或 macOS 14 实测通过。

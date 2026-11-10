@@ -33,17 +33,20 @@ export function footnoteReference(raw: string): HTMLElement | undefined {
 }
 
 /** Only called for canonical accepted opaque kinds; never classifies source. */
-export function renderTechnicalPreview(element: HTMLElement, raw: string, kind: string): boolean {
+export function renderTechnicalPreview(
+  element: HTMLElement, raw: string, kind: string, mathContent?: string,
+): boolean {
   const normalized = raw.replace(/\r\n?/g, "\n");
   if (kind === "math") {
     const lines = normalized.split("\n");
-    if (lines[0]?.trim() !== "$$" || lines.at(-1)?.trim() !== "$$" || lines.length < 3) return false;
+    if (mathContent === undefined &&
+        (lines[0]?.trim() !== "$$" || lines.at(-1)?.trim() !== "$$" || lines.length < 3)) return false;
     element.classList.add("math-preview");
     element.setAttribute("aria-label", "公式；可在源码中修改");
     const output = document.createElement("div");
     output.className = "math-output";
     try {
-      const expression = lines.slice(1, -1).join("\n");
+      const expression = mathContent ?? lines.slice(1, -1).join("\n");
       if (expression.length > 16000) throw Error("公式超过预览长度限制");
       output.innerHTML = katex.renderToString(expression, {
         displayMode: true, output: "mathml", trust: false, strict: "error",

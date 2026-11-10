@@ -48,6 +48,16 @@ it("assigns footnote bytes only to their accepted opaque block", () => {
   expect(result.ledger.links.map(owner => owner.href)).toEqual(["/first"]);
 });
 
+it("still rejects a mismatched nested opaque atom after accepting its canonical block token", () => {
+  const raw = "> $$\n> E=mc^2\n> $$\n";
+  const parsed = parse(raw);
+  const quote = parsed.doc.firstChild!;
+  const original = quote.firstChild!;
+  const changed = original.type.create({ ...original.attrs, raw: "> $$\n> changed\n> $$" });
+  const forged = parsed.doc.type.create(null, quote.type.create(quote.attrs, changed));
+  expect(buildSourceLedger(raw, forged, parsed.ranges, parsed.tokenEvidence).ok).toBe(false);
+});
+
 it("requires a matching TOML closing fence and treats its contents as opaque", () => {
   const raw = "+++\nx = 1\n...\n\nAfter.\n";
   const session = new SourceAuthoritySession(raw);

@@ -26,6 +26,7 @@ import { parse as parseCanonicalSource } from "./source-document";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
 import { contextToolDecorations, focusContextToolbar } from "./context-tools";
+import { protectedPreview } from "./protected-preview";
 import { createCodeBlockNodeViews } from "./code-block-view";
 import { createTableNodeViews, handleTableTab, insertDefaultTable } from "./table-editing";
 import { createTaskListItemNodeViews } from "./task-list-view";
@@ -665,6 +666,12 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       decorations: state => codeDecorations(state).add(state.doc, contextToolDecorations(state)),
       nodeViews: {
         code_block: codeBlockNodeView,
+        protected_block: (node, _view, getPos) => ({
+          dom: protectedPreview(node.attrs.raw, node.attrs.kind,
+            this.session.captureMathContent(getPos(), node.attrs.raw)),
+          ignoreMutation: mutation => mutation.type !== "selection",
+          stopEvent: event => !!(event.target as Element | null)?.closest?.("button"),
+        }),
         image: createImageNodeViews(
           this.imageResources,
           this.options.onImageAccessRequest,
@@ -750,7 +757,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     view.dom.setAttribute("aria-keyshortcuts", "Alt+F10");
     view.dom.addEventListener("click", event => {
       if ((this.session.composing || view.composing) &&
-          (event.target as Element).closest(".footnote-reference, .footnote-back")) {
+          (event.target as Element | null)?.closest?.(".footnote-reference, .footnote-back")) {
         event.preventDefault();
         event.stopImmediatePropagation();
       }
