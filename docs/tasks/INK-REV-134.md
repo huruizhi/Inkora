@@ -289,3 +289,202 @@ enum BridgeProtocolV1 { static let maxSafeRevision = 9_007_199_254_740_991 }
 - 原发现1/3：仍未关闭；没有重审未完成C文件或因旧C路径重报旧缺陷。A的`revalidatedForNavigation`及Bridge包装ticket只核读，不宣称C已接通，也未自跑ticket专项。
 - 未运行App、显示窗口、真实系统面板、GUI、浏览器、XCU、物理IME、全量门禁；未创建Agent、安装依赖、修改其他worktree。仅追加自己的两份报告。
 - 后验报告独立提交并push同名branch，核对远端SHA等于HEAD且clean，worktree继续保留；准确提交SHA见最终回报。产品剩余修复与WK证据由父会话继续整合。
+
+
+## Post-fix：固定caab97a9最终独立复审
+
+固定产品完整SHA：`caab97a9b3a03bf2dbc6bcecf66d27d201eccd87`。自己的初始HEAD为`1bb5a3f7226c91eba932e0272af005f1607585a1`，工作区clean。原始四发现与8e64424后验全文不改写，本次仅追加两文档；产品源码一律来自以下冻结归档，不读动态根产品：
+
+```sh
+mkdir -p /tmp/ink-rev-134-final-caab97a9
+git archive caab97a9b3a03bf2dbc6bcecf66d27d201eccd87 > /tmp/ink-rev-134-final-caab97a9/fixed.tar
+tar -xf /tmp/ink-rev-134-final-caab97a9/fixed.tar -C /tmp/ink-rev-134-final-caab97a9
+```
+
+全归档SHA256：`de515b0592afcf682d876413e85c283c5327e2e85db89b0ff31dbccfec49e6f9`。只读借用主仓既有锁定依赖，冻结副本内自建`.tools`和`editor/node_modules`链接，无setup/install/新依赖；产物写冻结副本，交付前仅unlink这两个自建链接。没有对其他worktree写入或从其读取产品文件。补充说明：一次附带shasum错用归档根的pnpm-lock路径，命令退出1；随后核对正确`editor/pnpm-lock.yaml`成功，SHA256为`5a48c9876e852d688eaa2ed3f689dde3dd387fae4b4c7c54e4c8416ba46c4db7`，不是产品测试失败。
+
+### 自跑：离线构建和8项定向DOM
+
+```sh
+make -C /tmp/ink-rev-134-final-caab97a9 editor-build
+/tmp/ink-rev-134-final-caab97a9/.tools/node_modules/.bin/pnpm --dir /tmp/ink-rev-134-final-caab97a9/editor exec vitest run src/main.test.ts src/sidebar-connection.test.ts src/sidebar-library.test.ts -t '标题元数据|原始UTF16|侧栏选目录|侧栏输入持焦|真实DOM清空|取消已完成|迟到cancelled|空目标与跨文档'
+```
+
+两命令退出0。构建tsc/Vite通过，保留965.79kB chunk体积提示。定向DOM实际输出：
+
+```text
+
+ RUN  v5.1.0 /private/tmp/ink-rev-134-final-caab97a9/editor
+
+
+ Test Files  3 passed (3)
+      Tests  8 passed | 113 skipped (121)
+   Start at  00:19:04
+   Duration  1.05s (tests 43%, import 43%, transform 14%)
+
+
+```
+
+113 skipped是`-t`未选择的用例，不计通过，也不是因缺资源跳过已选用例。实际8项覆盖title同行与snapshot字节不变、重复原始UTF16命中/源码选择和stale doc/rev/load/range拒绝、源草稿处理、侧栏focus/composition、真实DOM返回/清空发Native取消、旧cancelled不影响新意图等。
+
+### 自跑：7项有限Native与隐藏WK
+
+只选固定源码`SidebarNavigationTests`的6项，不运行其余2项；另加自己的1项公共接缝负控制。没有修改归档内测试或降低断言。资源由本次冻结源码构建并显式传入bundle；确认测试默认`Bundle(for: Self.self)` fallback后强制unwrap，没有缺资源跳过路径。
+
+资源建立：
+
+```sh
+mkdir -p /tmp/ink-rev-134-final-caab97a9/review-output/Resources.bundle/Contents/Resources
+```
+
+bundle Info.plist使用`CFBundleIdentifier=com.inkora.review134.frozen`、`CFBundlePackageType=BNDL`，Contents/Resources/editor链接到同一冻结目录的build/editor。运行：
+
+```zsh
+platform=$(xcrun --show-sdk-platform-path)
+freeze=/tmp/ink-rev-134-final-caab97a9
+sources=("$freeze"/app/Sources/*.swift)
+sources=("${(@)sources:#*/AppDelegate.swift}")
+xcrun swiftc -swift-version 6 -I "$platform/Developer/usr/lib" -L "$platform/Developer/usr/lib" -F "$platform/Developer/Library/Frameworks" -Xlinker -rpath -Xlinker "$platform/Developer/Library/Frameworks" -Xlinker -rpath -Xlinker "$platform/Developer/usr/lib" "${sources[@]}" "$freeze/tests/InkoraTests/SidebarNavigationTests.swift" "$freeze/review-output/Supplement.swift" "$freeze/review-output/Runner.swift" -o "$freeze/review-output/tests"
+INKORA_SIDEBAR_RESOURCE_BUNDLE="$freeze/review-output/Resources.bundle" "$freeze/review-output/tests"
+```
+
+编译退出0，保留既有actor isolation/Any?警告；实际运行退出0，7/7、无skip：
+
+```text
+Test Suite 'Review134FrozenLimited' started at 2026-11-11 00:19:10.571.
+Test Case '-[tests.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' started.
+Test Case '-[tests.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' passed (0.124 seconds).
+Test Case '-[tests.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' started.
+Test Case '-[tests.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' passed (0.022 seconds).
+Test Case '-[tests.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' started.
+Test Case '-[tests.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' passed (0.001 seconds).
+Test Case '-[tests.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' started.
+Test Case '-[tests.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' passed (0.374 seconds).
+Test Case '-[tests.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' started.
+Test Case '-[tests.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' passed (7.295 seconds).
+Test Case '-[tests.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' started.
+Test Case '-[tests.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' passed (0.048 seconds).
+Test Suite 'Review134Controls' started at 2026-11-11 00:19:18.438.
+Test Case '-[tests.Review134Controls testStrictHitMismatchAndSameDocumentReload]' started.
+Test Case '-[tests.Review134Controls testStrictHitMismatchAndSameDocumentReload]' passed (0.184 seconds).
+Test Suite 'Review134Controls' passed at 2026-11-11 00:19:18.622.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.184 (0.184) seconds
+Test Suite 'Review134FrozenLimited' passed at 2026-11-11 00:19:18.622.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 8.048 (8.050) seconds
+
+```
+
+既有六项的源文件是固定归档`tests/InkoraTests/SidebarNavigationTests.swift`，名称由以下Runner固定选择（不是全量Native）：
+
+```swift
+import XCTest
+@main struct Runner {
+  static func main() {
+    let names = ["FullSizeTitlebar", "ExistingDirtyTarget", "PresentationBridge", "CancelledOpenReview", "ChangedOrDeletedTarget", "DelayedCloseReview"]
+    let suite = XCTestSuite(name: "Review134FrozenLimited")
+    for test in XCTestSuite(forTestCaseClass: SidebarNavigationTests.self).tests where names.contains(where: { test.name.contains($0) }) { suite.addTest(test) }
+    suite.addTest(XCTestSuite(forTestCaseClass: Review134Controls.self))
+    suite.run()
+    guard let run = suite.testRun, run.executionCount == 7, run.hasSucceeded else { exit(1) }
+  }
+}
+
+```
+
+自写Supplement.swift保留如下。它额外验证：有hit但目标当前snapshot不同于磁盘时不能present；同doc、同revision reload后旧review必须失败，不可发目标snapshot或转交源窗口。所有窗口均断言不可见，presenter注入只记录调用，无orderFront：
+
+```swift
+import AppKit
+import XCTest
+final class Review134Controls: XCTestCase {
+  @MainActor func testStrictHitMismatchAndSameDocumentReload() throws {
+    let bundle = try XCTUnwrap(ProcessInfo.processInfo.environment["INKORA_SIDEBAR_RESOURCE_BUNDLE"].flatMap(Bundle.init(path:)))
+    for reload in [false, true] {
+      let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+      try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+      defer { try? FileManager.default.removeItem(at: root) }
+      let url = root.appendingPathComponent("target.md")
+      try Data("alpha\r\n".utf8).write(to: url)
+      let catalog = try SidebarCatalog.scan(folder: root)
+      let hit = try XCTUnwrap(catalog.search("alpha", options: .init()).hits.first)
+      let file = try catalog.openFile(id: hit.fileID, catalogID: catalog.id, hit: hit)
+      let source = InkoraDocument(editorResourceBundle: bundle)
+      var review: ((Bool) -> Void)?
+      source.navigationReviewer = { review = $0 }
+      var presented = false
+      let editor = EditorViewController(document: source, resourceBundle: bundle, sidebarWindowPresenter: { _ in presented = true })
+      let sourceWindow = NSWindow(contentViewController: editor)
+      let sourceController = NSWindowController(window: sourceWindow)
+      source.addWindowController(sourceController)
+      let target = InkoraDocument(editorResourceBundle: bundle)
+      try target.readSidebarFile(data: file.data, url: url, modified: file.modified)
+      var requested = false
+      let targetEditor = EditorViewController(document: target, resourceBundle: bundle, sidebarSnapshotRequester: { done in
+        requested = true
+        done(.success(BridgeSnapshot(documentID: target.bridgeDocumentID, revision: 0, text: "DIFFERENT alpha\r\n")))
+      })
+      let targetWindow = NSWindow(contentViewController: targetEditor)
+      let targetController = NSWindowController(window: targetWindow)
+      target.addWindowController(targetController)
+      NSDocumentController.shared.addDocument(target)
+      defer {
+        source.removeWindowController(sourceController)
+        target.removeWindowController(targetController)
+        NSDocumentController.shared.removeDocument(target)
+        sourceWindow.close(); targetWindow.close()
+      }
+      var completed = false
+      var failure: Error?
+      editor.navigateSidebarFile(file, access: .init(root)) { error in completed = true; failure = error }
+      XCTAssertNotNil(review)
+      if reload { editor.reloadDocument() }
+      review?(true)
+      XCTAssertTrue(completed)
+      XCTAssertNotNil(failure)
+      XCTAssertEqual(requested, !reload)
+      XCTAssertFalse(presented)
+      XCTAssertTrue(editor.document === source)
+      XCTAssertTrue(source.windowControllers.first === sourceController)
+      XCTAssertFalse(sourceWindow.isVisible); XCTAssertFalse(targetWindow.isVisible)
+    }
+  }
+}
+
+```
+
+几何已有用例实际创建隐藏NSWindow/WK，默认及reduced-motion fixture下分别运行1280/600/480与+12px稳定resize，快速三次反向后闭合；同JS turn断言reserving/内容opacity=0，随后对真实Web Animations调用finish再采实际矩形，EditorView必须非空且身份不变、revision=0、dirty=false。不能把此结果当实际paint、墙钟动画时长、物理IME或macOS14通过。640px仍只有前次静态数值核读，不说本次实际WK测了640。
+
+### 自跑：1项Foundation精确取消控制
+
+冻结Catalog/WorkspaceBridge和其既有测试原样复制到冻结输出下的无依赖Swift Package，唯一外部常量与既有hostless脚本相同：scheme=inkora-editor、maxSafeRevision=9007199254740991。Package为swift-tools-version 6.0，platform macOS14，单testTarget Sources，无依赖。
+
+```sh
+swift test --package-path /tmp/ink-rev-134-final-caab97a9/review-output/cancel-package --filter testTargetedCancellationRevokesPendingOpenAndTicketsWithoutHurtingNewIntent
+```
+
+退出0，单项通过；实际末段：
+
+```text
+Build complete! (6.00秒)
+Test Suite 'Selected tests' started at 2026-11-11 00:20:39.299.
+Test Suite 'Review134Cancel.xctest' started at 2026-11-11 00:20:39.299.
+Test Suite 'SidebarWorkspaceBridgeTests' started at 2026-11-11 00:20:39.299.
+Test Case '-[Review134Cancel.SidebarWorkspaceBridgeTests testTargetedCancellationRevokesPendingOpenAndTicketsWithoutHurtingNewIntent]' started.
+Test Case '-[Review134Cancel.SidebarWorkspaceBridgeTests testTargetedCancellationRevokesPendingOpenAndTicketsWithoutHurtingNewIntent]' passed (0.049 seconds).
+Test Suite 'SidebarWorkspaceBridgeTests' passed at 2026-11-11 00:20:39.348.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.049 (0.049) seconds
+Test Suite 'Review134Cancel.xctest' passed at 2026-11-11 00:20:39.348.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.049 (0.049) seconds
+Test Suite 'Selected tests' passed at 2026-11-11 00:20:39.348.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.049 (0.049) seconds
+```
+
+该项验证真实Bridge旧cancel/context/catalog不能撤销新请求，已签发ticket被目标cancel撤销，search hit能力撤销；与DOM发cancel及C延后review消费ticket三个实际接缝共同支撑取消链，未把一段手工成功JSON当端到端证明。
+
+### 结论、外部证据与交付
+
+[Spec最终追加段](../reviews/INK-REV-134-sidebar-spec.md)记录四原发现的限定关闭与完整12条/SB-01–15复核。原2仅保留既有8e64424的6/6限定关闭，本次不重复执行、不混计。原1/3与取消链在本次公共接缝/隐藏WK范围关闭；原4具真实阶段/终态几何，但仍有上述paint与平台边界。残余P3为侧栏开关在文档/搜索视图仍称“大纲”，源panel:198–199，违反矩阵SB-02状态文案要求；首稿已记此偏差，非新P1/P2。
+
+恢复Agent的`docs/tasks/INK-UX-135.md`与`docs/evidence/INK-UX-135`仅作外部证据；仅本次实际选择并运行的用例转为本次自跑。root正在跑lint/test-non-ui/release offline，本复审未核实结果，不报通过。未运行全量门禁、Release、CI或App，不显示任何窗口/系统面板，不用GUI/CUA/browser/XCU、不建Agent/新依赖。系统Save/Discard/Cancel面板不在范围，注入reviewer的通过不可替代它们。
+
+本次只追加两文档，提交后独立push同名分支，核对远端=HEAD/clean；完整交付SHA见最终回报。两次早期报告完整保留，冻结副本及本worktree继续保留作为验收备份。未完成：P3文案修正、SB-15和实际paint/平台/最终交付裁定，交由父会话处理；本审查未改实现。
