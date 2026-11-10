@@ -28,3 +28,13 @@
 - 产物日志：本工作树 `artifacts/INK-UX-131/{dom-tests,sidebar-tests,lint,build}.log`（ignored，保留供验收）。
 - 未启动GUI、浏览器、Native/App或物理IME；未运行全量Native/Release/CI。未改依赖、未创建PR/merge或修改Issue。
 - 风险/未完成：Native真实标题行几何、实际动画流畅度与物理IME由父会话后续验收；JSDOM证明事件、CSS目标与计时阶段，不能证明窗口像素布局。A/C最终组合需再次验证 isCurrent、reset callback、hitID定位与原生目录刷新。保存与文档历史代码均未修改。
+
+## Spec 窄窗几何补正
+
+独立审查发现旧窄窗侧栏 `min(280px,82vw)` 加45vw上限，与正文 `min(240px,45vw)` 不是同一依据；600px稳定态重叠30px，640px重叠40px。
+
+修复使用 `#app --sidebar-width`：宽窗240px，<=640px为 `min(240px,45vw)`。侧栏 flex-basis / 窄窗 width 与 workspace margin-left 共同引用该值；侧栏 border-box，无额外 max-width 再约束。collapsed宽度仍0，先预留220ms再显内容、反向/快速切换与reduced-motion保持。稳定open/closed态不对resize的宽度进行独立过渡，避免跨断点时两个边界以不同起点移动；仅显式reserving/closing阶段对正文margin做220ms过渡。
+
+几何预期（相对app左缘）：1280/640/600px时展开侧栏右缘及正文左缘均240px；480px均216px；320px均144px；收起均0。系统安全区保持标题行左90px、侧栏顶部40px。
+
+新增`sidebar-chrome.test.ts`生产CSSOM计算接缝：读取真实样式级联而非复写产品宽度函数，校验两条布局属性引用同一变量、border-box及无第二max-width，并核算1280/640/600/480/320边界。`.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/sidebar-chrome.test.ts src/document-analysis-panel.test.ts`：2文件21项通过；`make lint`通过。真实像素几何不由JSDOM外推，已协调C使用现有隐藏WK runner验证宽窗/600/480px、开关/resize/reduced-motion；B未显示窗口、启动App/浏览器或改C/A文件。

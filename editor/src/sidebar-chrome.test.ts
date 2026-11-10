@@ -49,3 +49,52 @@ describe("侧栏两阶段布局", () => {
     layout.setCollapsed(false); expect(root.dataset.sidebarPhase).toBe("open"); layout.setCollapsed(true); expect(root.dataset.sidebarPhase).toBe("closed"); expect(vi.getTimerCount()).toBe(baseline); layout.destroy();
   });
 });
+
+describe("生产CSS宽度计算接缝", () => {
+  // CSSOM reads the shipped cascade. This is a calculation proof; C's hidden WK
+  // runner separately verifies actual rendered edges and animation boundaries.
+  it("宽窗/640/600/480/320的侧栏边界与正文让位使用同一计算依据", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
+    const window = new JSDOM('<style></style><main id="app"><aside class="analysis-panel"></aside><div class="editor-workspace"></div></main>').window;
+    window.document.querySelector("style")!.textContent = css;
+    const sheet = window.document.styleSheets[0];
+    function declarations(selector: string, viewport: number): Map<string, string> {
+      const values = new Map<string, string>();
+      function walk(rules: CSSRuleList): void {
+        for (const rule of Array.from(rules)) {
+          if ("conditionText" in rule && "cssRules" in rule) {
+            const query = String(rule.conditionText).match(/^\(max-width: (\d+)px\)$/);
+            if (query && viewport <= Number(query[1])) walk(rule.cssRules as CSSRuleList);
+          } else if ("selectorText" in rule && rule.selectorText === selector && "style" in rule) {
+            const style = rule.style as CSSStyleDeclaration;
+            for (const name of Array.from(style)) values.set(name, style.getPropertyValue(name));
+          }
+        }
+      }
+      walk(sheet.cssRules as unknown as CSSRuleList); return values;
+    }
+    function length(value: string, viewport: number): number {
+      const minimum = value.match(/^min\((.+)\)$/);
+      if (minimum) return Math.min(...minimum[1].split(",").map(term => length(term.trim(), viewport)));
+      const dimension = value.match(/^(\d+(?:\.\d+)?)(px|vw)$/);
+      if (!dimension) throw new Error(`Unsupported production length: ${value}`);
+      return Number(dimension[1]) * (dimension[2] === "vw" ? viewport / 100 : 1);
+    }
+    for (const [viewport, expected] of [[1280, 240], [640, 240], [600, 240], [480, 216], [320, 144]]) {
+      const source = declarations("#app", viewport).get("--sidebar-width")!;
+      const panel = declarations(".analysis-panel", viewport);
+      expect(panel.get("box-sizing")).toBe("border-box");
+      const basis = viewport <= 640 ? panel.get("width")! : panel.get("flex-basis")!;
+      expect(basis).toBe("var(--sidebar-width)");
+      expect(panel.get("max-width")).toBeUndefined();
+      if (viewport <= 640) {
+        const workspace = declarations("#app:has(.analysis-panel:not(.analysis-panel-collapsed)) .editor-workspace", viewport);
+        expect(workspace.get("margin-left")).toBe(basis);
+        expect(declarations(".analysis-panel.analysis-panel-collapsed", viewport).get("width")).toBe("0px");
+      }
+      expect(length(source, viewport)).toBe(expected);
+    }
+    window.close();
+  });
+});
