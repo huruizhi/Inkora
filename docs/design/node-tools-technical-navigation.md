@@ -33,3 +33,13 @@
 统一禁止App启动、显示窗口/系统面板/CUA/browser/XCU/物理IME/macOS14专项及新子Agent。允许不可见NSWindow/WK和公共runtime/DOM接缝，禁止以JSDOM替代几何。只暂借主仓锁定.tools与editor/node_modules链接，不setup/install/改依赖锁。先有限真实反例和定向检查，完整非UI/Release/默认CI由管理者在最终组合集中结算。
 
 中文任务/evidence独立记录，必须区分作者与自跑证据、隐藏WK与实际paint；英文Conventional提交并push/核对remote与clean。产品归属接口先确认，禁止改其他worktree。工作树和临时证据保留至管理者独立两轴审查、两层备份后回收，不自行PR/merge/安装。
+
+## 第一阶段证据后的接口裁定
+
+A142的不可见真实WK证明：生产broker校验并解码的PNG可显示；许可点击请求新窗口而现有Native返回nil；描述草稿在descriptor刷新后失去DOM/焦点，composition期间提交被现有guard拒绝，但未composition的detached旧form提交仍可修改原文。B143公开runtime/DOM反例证明：第二脚注引用返回第一处、两种math均无实际修改入口、源码定位取消改变原选区。以上是各作者实跑，管理者核读源码与日志，不转称为管理者自跑；隐藏WK/DOM不证明paint、物理输入或Sandbox授权。
+
+据此批准两Agent进入实现。A独占code/image NodeView、同域测试/独立CSS及context-tools.ts最小image识别/F10接线；runtime仍由B唯一维护。许可采用现有打包许可全文的离线只读次级面板，不用fetch/iframe/新窗口，不改变CSP或Native。图片使用稳定草稿表单、不可变expectedNode、alive/openEpoch/connected守卫及明确取消，descriptor更新不拆composition；不以stopPropagation绕开全局保存/模式资格。成功图片控件候选先用有尺寸已解码图片验证选择/焦点可达及不占正文流，失败授权定位保持明显，不直接隐藏唯一键盘入口。若确需runtime输入资格接口，A先提案，由B按管理者协调接线。
+
+B的TechnicalTarget/ReturnContext保持runtime私有，绑定同runtime/load、exact raw、version/epoch、唯一canonical范围及expected node/getPos；preview只接展示回调。captureProtectedRanges会合并相邻范围，不能用作节点精确owner。确有必要时允许B在source-authority.ts增加最小只读技术target capture/validate方法，复用已有canonical parse/provenance，不改parser/ledger/事务或普通源码取消。技术取消在绑定仍有效时恢复原PM和有向raw选区，dirty取消也恢复入口前位置；成功apply含no-op后清理返回上下文。过期上下文不得自动取消新草稿或复活旧文档。main/schema新增接口仍须先协调；状态通知使用既有status路径，不新造UI旁路。
+
+两者保留第一阶段坏行为证据，再以预期正确行为锁住真实RED→GREEN；“断言坏行为成功”不记为产品修复通过。新增接口均服务已复现问题，不扩为通用编辑状态框架。
