@@ -191,6 +191,132 @@ async function bootMain(): Promise<Harness> {
 // （仓库 tsconfig 较低且不在本任务允许修改范围），沿用 executor 形式。
 const settle = (ms = 60): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+it("原生命令切换源码和阅读宽度不改变字节、版本或历史", async () => {
+  const h = await bootMain();
+  const raw = "\uFEFF# 标题\r\n\r\n正文。\r\n";
+  h.receive({ type: "loadDocument", requestID: "load-quiet", documentID: "quiet", revision: 4, text: raw });
+  const command = (name: string, id: string) => h.receive({
+    type: "executeCommand", requestID: id, documentID: "quiet", revision: 4, command: name,
+  });
+  command("sourceMode", "source-quiet");
+  expect(h.editorHost().querySelector("textarea#editor")).not.toBeNull();
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: {
+    revision: 4, dirty: false, canUndo: false, canRedo: false,
+  } });
+  command("readingWidth900", "width-wide");
+  expect(h.dom.window.document.querySelector<HTMLElement>(".editor-workspace")?.style.getPropertyValue("--writing-width")).toBe("900px");
+  command("visualMode", "visual-quiet");
+  expect(h.editorHost().querySelector("textarea#editor")).toBeNull();
+  command("readingWidth760", "width-original");
+  expect(h.lastRevision()).toBe(4);
+  h.receive({ type: "createSnapshot", requestID: "snap-quiet", documentID: "quiet", revision: 4 });
+  await settle();
+  expect(h.sent.find(message => message.requestID === "snap-quiet")).toMatchObject({ text: raw, revision: 4 });
+});
+
+it("原生插表只发布一次并可Undo，过期与组合输入动作原子拒绝", async () => {
+  const h = await bootMain();
+  const raw = "正文。\n";
+  h.receive({ type: "loadDocument", requestID: "load-menu", documentID: "menu", revision: 0, text: raw });
+  h.receive({ type: "queryState", requestID: "table-target" });
+  const target = h.sent.at(-1)!.state!;
+  h.receive({ type: "executeCommand", requestID: "table-menu", documentID: "menu", revision: 0,
+    command: "insertTable", selectionAnchor: target.selectionAnchor, selectionHead: target.selectionHead });
+  expect(h.editorHost().querySelector("table")).not.toBeNull();
+  expect(h.lastRevision()).toBe(1);
+  expect(h.stateMessages()).toHaveLength(3);
+  h.receive({ type: "executeCommand", requestID: "stale-menu", documentID: "menu", revision: 0, command: "sourceMode" });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "stale_revision" });
+  h.receive({ type: "executeCommand", requestID: "undo-menu", documentID: "menu", revision: 1, command: "undo" });
+  expect(h.editorHost().querySelector("table")).toBeNull();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  h.receive({ type: "queryState", requestID: "composition-menu" });
+  expect(h.sent.at(-1)?.state).toMatchObject({ availableCommands: [] });
+  for (const name of ["sourceMode", "insertTable", "readingWidth900", "find", "toggleOutline"]) {
+    h.receive({ type: "executeCommand", requestID: `blocked-${name}`, documentID: "menu", revision: 2, command: name, selectionAnchor: 0, selectionHead: 0 });
+    expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  }
+  expect(h.lastRevision()).toBe(2);
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  await settle();
+  h.receive({ type: "createSnapshot", requestID: "snap-menu", documentID: "menu", revision: 2 });
+  await settle();
+  expect(h.sent.find(message => message.requestID === "snap-menu")).toMatchObject({ text: raw });
+});
+
+it("原生插表拒绝旧caret，不迁移到同版本的新选区", async () => {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "caret-load", documentID: "caret", revision: 0, text: "正文内容\n" });
+  h.receive({ type: "queryState", requestID: "caret-before" });
+  const original = h.sent.at(-1)!.state!;
+  h.sourceMode().click();
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  area.setSelectionRange(2, 2);
+  h.visualMode().click();
+  h.receive({ type: "executeCommand", requestID: "caret-stale", documentID: "caret", revision: 0,
+    command: "insertTable", selectionAnchor: original.selectionAnchor, selectionHead: original.selectionHead });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  expect(h.editorHost().querySelector("table")).toBeNull();
+  expect(h.lastRevision()).toBe(0);
+});
+
+it("Native订阅后草稿资格即时同步，UI资格事件不冒充正文发布", async () => {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "observe-load", documentID: "observe", revision: 0, text: "正文\n" });
+  expect(h.dom.window.document.documentElement.classList.contains("native-chrome")).toBe(false);
+  h.receive({ type: "queryState", requestID: "observe-state", observeCommands: true });
+  expect(h.dom.window.document.documentElement.classList.contains("native-chrome")).toBe(true);
+  h.receive({ type: "executeCommand", requestID: "observe-source", documentID: "observe", revision: 0, command: "sourceMode" });
+  const before = h.stateMessages().length;
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  area.value = "新草稿\n";
+  area.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, inputType: "insertText", data: "新草稿" }));
+  expect(h.sent.at(-1)).toMatchObject({ type: "commandsChanged", documentID: "observe", revision: 0,
+    availableCommands: expect.arrayContaining(["applySource", "cancelSource"]) });
+  expect(h.stateMessages()).toHaveLength(before);
+  h.sourceCancel().click();
+  expect(h.sent.at(-1)).toMatchObject({ type: "commandsChanged", revision: 0,
+    availableCommands: expect.arrayContaining(["sourceMode"]) });
+  expect(h.lastRevision()).toBe(0);
+});
+
+it("取消正文composition后菜单资格自动恢复且不发布内容版本", async () => {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "cancel-load", documentID: "cancel", revision: 0, text: "正文\n" });
+  h.receive({ type: "queryState", requestID: "cancel-observe", observeCommands: true });
+  const before = h.stateMessages().length;
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  await settle(1);
+  expect(h.sent.at(-1)).toMatchObject({ type: "commandsChanged", availableCommands: [] });
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  await settle();
+  expect(h.sent.at(-1)).toMatchObject({ type: "commandsChanged", revision: 0,
+    availableCommands: expect.arrayContaining(["sourceMode", "find"]) });
+  expect(h.stateMessages()).toHaveLength(before);
+});
+
+it("原生模式入口保留未提交草稿，取消后恢复可信正文和future", async () => {
+  const h = await bootMain();
+  const raw = "正文\n";
+  h.receive({ type: "loadDocument", requestID: "draft-load", documentID: "draft", revision: 0, text: raw });
+  const command = (name: string) => h.receive({ type: "executeCommand", requestID: `draft-${name}`,
+    documentID: "draft", revision: 0, command: name });
+  command("sourceMode");
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  area.value = "草稿\n";
+  area.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, inputType: "insertText", data: "草稿" }));
+  command("visualMode");
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  expect(area.value).toBe("草稿\n");
+  expect(h.sourceApply().hidden).toBe(false);
+  expect(h.sourceCancel().hidden).toBe(false);
+  command("cancelSource");
+  expect(h.editorHost().querySelector("#editor")?.textContent).toBe("正文");
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 0, dirty: false, canUndo: false } });
+});
+
 it("V2：真实DOM邻接输入、可视查找、图片proof和源码往返保持同一原文", async () => {
   const h = await bootMain();
   const raw = '\uFEFFBefore [[![fake](fake.png)]] after.\r\n\r\n![real](real.png)\r\n';

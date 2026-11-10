@@ -22,11 +22,17 @@ enum BridgeEventType: String, Codable {
   case snapshotReady
   case editorError
   case imageAccessRequested
+  case commandsChanged
 }
 
 enum BridgeEditorCommand: String, Codable {
   case undo
   case redo
+  case sourceMode, visualMode, applySource, cancelSource
+  case insertTable, insertImage, find, toggleOutline
+  case readingWidth760, readingWidth900
+
+  var isHistory: Bool { self == .undo || self == .redo }
 }
 
 enum BridgeImageStatus: String, Codable {
@@ -102,10 +108,13 @@ struct BridgeEditorState: Codable, Equatable {
   let canRedo: Bool
   let selectionAnchor: Int?
   let selectionHead: Int?
+  let availableCommands: [BridgeEditorCommand]?
+  let readingWidth: Int?
 
   init(
     documentID: String, revision: Int, dirty: Bool, canUndo: Bool, canRedo: Bool,
-    selectionAnchor: Int? = nil, selectionHead: Int? = nil
+    selectionAnchor: Int? = nil, selectionHead: Int? = nil,
+    availableCommands: [BridgeEditorCommand]? = nil, readingWidth: Int? = nil
   ) {
     self.documentID = documentID
     self.revision = revision
@@ -114,6 +123,8 @@ struct BridgeEditorState: Codable, Equatable {
     self.canRedo = canRedo
     self.selectionAnchor = selectionAnchor
     self.selectionHead = selectionHead
+    self.availableCommands = availableCommands
+    self.readingWidth = readingWidth
   }
 }
 
@@ -136,6 +147,7 @@ struct BridgeNativeCommand: Codable, Equatable {
   let imageOwnership: BridgeImageOwnershipProof?
   let descriptors: [BridgeImageDescriptor]?
   let rewrites: [BridgeImageRewrite]?
+  let observeCommands: Bool?
 
   init(
     protocolVersion: Int,
@@ -155,7 +167,8 @@ struct BridgeNativeCommand: Codable, Equatable {
     selectionHead: Int? = nil,
     imageOwnership: BridgeImageOwnershipProof? = nil,
     descriptors: [BridgeImageDescriptor]? = nil,
-    rewrites: [BridgeImageRewrite]? = nil
+    rewrites: [BridgeImageRewrite]? = nil,
+    observeCommands: Bool? = nil
   ) {
     self.protocolVersion = protocolVersion
     self.type = type
@@ -175,6 +188,7 @@ struct BridgeNativeCommand: Codable, Equatable {
     self.imageOwnership = imageOwnership
     self.descriptors = descriptors
     self.rewrites = rewrites
+    self.observeCommands = observeCommands
   }
 
   static func loadDocument(
@@ -251,7 +265,8 @@ struct BridgeNativeCommand: Codable, Equatable {
     requestID: String,
     documentID: String,
     revision: Int,
-    command: BridgeEditorCommand
+    command: BridgeEditorCommand,
+    selectionAnchor: Int? = nil, selectionHead: Int? = nil
   ) -> Self {
     Self(
       protocolVersion: BridgeProtocolV1.version,
@@ -267,12 +282,13 @@ struct BridgeNativeCommand: Codable, Equatable {
       alt: nil,
       title: nil,
       displayURL: nil,
+      selectionAnchor: selectionAnchor, selectionHead: selectionHead,
       descriptors: nil,
       rewrites: nil
     )
   }
 
-  static func queryState(requestID: String) -> Self {
+  static func queryState(requestID: String, observeCommands: Bool = false) -> Self {
     Self(
       protocolVersion: BridgeProtocolV1.version,
       type: .queryState,
@@ -288,7 +304,8 @@ struct BridgeNativeCommand: Codable, Equatable {
       title: nil,
       displayURL: nil,
       descriptors: nil,
-      rewrites: nil
+      rewrites: nil,
+      observeCommands: observeCommands ? true : nil
     )
   }
 
@@ -402,6 +419,12 @@ struct BridgeNativeCommand: Codable, Equatable {
     case .executeCommand:
       try validateDocumentRevision()
       guard command != nil else { throw BridgeProtocolValidationError.missingField("command") }
+      if command == .insertTable {
+        guard let selectionAnchor, let selectionHead,
+          selectionAnchor >= 0, selectionAnchor <= BridgeProtocolV1.maxSafeRevision,
+          selectionHead >= 0, selectionHead <= BridgeProtocolV1.maxSafeRevision
+        else { throw BridgeProtocolValidationError.missingField("selection") }
+      }
     case .queryState:
       break
     case .applyImageImport:
@@ -518,6 +541,8 @@ struct BridgeEditorEvent: Codable, Equatable {
   let message: String?
   let href: String?
   let imageOwnership: BridgeImageOwnershipProof?
+  let availableCommands: [BridgeEditorCommand]?
+  let readingWidth: Int?
 
   init(
     protocolVersion: Int,
@@ -531,7 +556,8 @@ struct BridgeEditorEvent: Codable, Equatable {
     action: BridgeRecoveryAction?,
     message: String?,
     href: String? = nil,
-    imageOwnership: BridgeImageOwnershipProof? = nil
+    imageOwnership: BridgeImageOwnershipProof? = nil,
+    availableCommands: [BridgeEditorCommand]? = nil, readingWidth: Int? = nil
   ) {
     self.protocolVersion = protocolVersion
     self.type = type
@@ -545,6 +571,8 @@ struct BridgeEditorEvent: Codable, Equatable {
     self.message = message
     self.href = href
     self.imageOwnership = imageOwnership
+    self.availableCommands = availableCommands
+    self.readingWidth = readingWidth
   }
 
   func validate() throws {
@@ -553,6 +581,11 @@ struct BridgeEditorEvent: Codable, Equatable {
     }
 
     switch type {
+    case .commandsChanged:
+      guard let documentID, !documentID.isEmpty, let revision,
+        availableCommands != nil, let readingWidth, [760, 900].contains(readingWidth)
+      else { throw BridgeProtocolValidationError.missingField("commands") }
+      try Self.validateRevision(revision)
     case .ready:
       break
     case .stateChanged:

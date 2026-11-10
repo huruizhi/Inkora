@@ -5,6 +5,7 @@ import {
   encodeEditorMessage,
   recoveryActionFor,
   type EditorMessage,
+  type EditorCommand,
   type NativeCommand,
 } from "./bridge";
 import {
@@ -115,6 +116,9 @@ let executingCommand = false;
 let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
 let loadEpoch = 0;
+let readingWidth: 760 | 900 = 760;
+let observesCommands = false;
+let commandStateSignature = "";
 let activeLinkEditor: HTMLFormElement | undefined;
 const composingLinkEditors = new WeakSet<HTMLFormElement>();
 
@@ -285,34 +289,74 @@ function updateModeControls(): void {
       : "当前原文需要源码修复，保存已阻断"
     : activeRuntime?.status.draftDirty
       ? "源码草稿尚未提交"
-      : "";
+      : mode === "source" ? "源码模式" : "";
 }
 
-sourceModeButton.addEventListener("click", () => {
-  closeLinkEditor();
-  runtime?.enterSourceMode();
-  updateModeControls();
-});
-visualModeButton.addEventListener("click", () => {
-  closeLinkEditor();
-  if (runtime?.mode === "source" && !runtime.status.draftDirty) {
-    runtime.cancelSourceDraft();
+function availableEditorCommands(): EditorCommand[] {
+  const current = runtime;
+  if (!current || current.composing || searchPanel.isInputComposing ||
+      (activeLinkEditor && composingLinkEditors.has(activeLinkEditor))) return [];
+  const commands: EditorCommand[] = ["find", "toggleOutline", "readingWidth760", "readingWidth900"];
+  if (current.mode === "visual") commands.push("sourceMode");
+  if (current.mode === "source") {
+    commands.push("cancelSource");
+    if (!current.status.draftDirty) commands.push("visualMode");
+    if (current.status.draftDirty || (current.status.unresolved && !current.status.saveEligible)) {
+      commands.push("applySource");
+    }
   }
-  updateModeControls();
-});
-sourceApplyButton.addEventListener("click", () => {
-  runtime?.applySourceDraft();
-  updateModeControls();
-});
-sourceCancelButton.addEventListener("click", () => {
-  runtime?.cancelSourceDraft();
-  updateModeControls();
-});
+  if (searchPanel.ownsFocus || activeLinkEditor?.contains(document.activeElement)) return commands;
+  if (current.status.canUndo) commands.push("undo");
+  if (current.status.canRedo) commands.push("redo");
+  if (current.mode === "visual") commands.push("insertTable", "insertImage");
+  return commands;
+}
+
+function publishCommandAvailability(): void {
+  if (!app?.isConnected || !observesCommands || executingCommand || !activeDocumentID || activeRevision === undefined) return;
+  const availableCommands = availableEditorCommands();
+  const signature = JSON.stringify([activeDocumentID, activeRevision, availableCommands, readingWidth]);
+  if (signature === commandStateSignature) return;
+  commandStateSignature = signature;
+  postToNative({ protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "commandsChanged",
+    documentID: activeDocumentID, revision: activeRevision, availableCommands, readingWidth });
+}
+
+// Focus/composition events settle their own handlers first; publishing observes
+// current state and never writes content or advances a document revision.
+for (const event of ["focusin", "focusout", "compositionstart", "compositionend"]) {
+  app.addEventListener(event, () => queueMicrotask(publishCommandAvailability));
+}
+
+function performEditorAction(command: EditorCommand): boolean {
+  if (!availableEditorCommands().includes(command)) return false;
+  let applied: boolean;
+  switch (command) {
+    case "sourceMode": closeLinkEditor(); applied = runtime!.enterSourceMode(); break;
+    case "visualMode":
+    case "cancelSource": applied = runtime!.cancelSourceDraft(); break;
+    case "applySource": applied = runtime!.applySourceDraft(); break;
+    case "insertTable": return runtime!.insertTable();
+    case "find": searchPanel.open(); return true;
+    case "toggleOutline": panel.setCollapsed(!panel.isCollapsed); return true;
+    case "readingWidth760":
+    case "readingWidth900":
+      readingWidth = command === "readingWidth760" ? 760 : 900;
+      workspace.style.setProperty("--writing-width", `${readingWidth}px`);
+      return true;
+    // Image insertion is owned by the Native file picker, never a DOM click.
+    default: return false;
+  }
+  if (applied) runtime!.focus();
+  return applied;
+}
+
+sourceModeButton.addEventListener("click", () => { performEditorAction("sourceMode"); updateModeControls(); });
+visualModeButton.addEventListener("click", () => { performEditorAction("visualMode"); updateModeControls(); });
+sourceApplyButton.addEventListener("click", () => { performEditorAction("applySource"); updateModeControls(); });
+sourceCancelButton.addEventListener("click", () => { performEditorAction("cancelSource"); updateModeControls(); });
 insertTableButton.addEventListener("pointerdown", (event) => event.preventDefault());
-insertTableButton.addEventListener("click", () => {
-  runtime?.insertTable();
-  updateModeControls();
-});
+insertTableButton.addEventListener("click", () => { performEditorAction("insertTable"); updateModeControls(); });
 updateModeControls();
 
 const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
@@ -598,6 +642,12 @@ function scheduleSearch(documentID: string, revision: number): void {
 }
 
 function postToNative(message: Parameters<typeof encodeEditorMessage>[0]): void {
+  if (message.type === "stateChanged") {
+    const availableCommands = availableEditorCommands();
+    message = { ...message, state: { ...message.state, availableCommands, readingWidth } };
+    commandStateSignature = JSON.stringify([message.state.documentID, message.state.revision,
+      availableCommands, readingWidth]);
+  }
   const serialized = encodeEditorMessage(message);
   const handler = window.webkit?.messageHandlers?.inkora;
   if (handler) {
@@ -621,6 +671,7 @@ function recordRuntimeChange(
 ): void {
   updateModeControls();
   if (kind === "status") {
+    publishCommandAvailability();
     // Mode/projection changes can change the searchable surface without
     // changing document bytes or the Bridge revision.
     if (activeDocumentID !== undefined && activeRevision !== undefined && searchPanel.shouldSearch) {
@@ -772,34 +823,34 @@ window.inkora = {
         case "executeCommand":
           executingCommand = true;
           try {
-            // 原生菜单命令没有携带 Web 端文本输入焦点。查询区域拥有焦点或
-            // 正在 composition 时，明确拒绝文档 Undo/Redo，避免越过查询框
-            // 修改正文；正文重新拥有焦点后仍走既有文档历史。
-            const documentCommandBlocked =
+            const before = runtime?.getText();
+            const historyCommand = command.command === "undo" || command.command === "redo";
+            const documentCommandBlocked = runtime?.composing ||
               searchPanel.ownsFocus || searchPanel.isInputComposing ||
-              !!activeLinkEditor && (
-                composingLinkEditors.has(activeLinkEditor) ||
-                activeLinkEditor.contains(document.activeElement)
-              );
-            postToNative(
-              session.executeCommand(
-                command,
-                () =>
-                  !documentCommandBlocked &&
-                  (command.command === "undo"
-                    ? (runtime?.undo() ?? false)
-                    : (runtime?.redo() ?? false)),
-                () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
-              ),
-            );
+              !!activeLinkEditor && (composingLinkEditors.has(activeLinkEditor) ||
+                activeLinkEditor.contains(document.activeElement));
+            postToNative(session.executeCommand(command, () => {
+              if (!historyCommand) {
+                if (command.command === "insertTable" && (
+                  command.selectionAnchor !== runtime?.directedSelection.selectionAnchor ||
+                  command.selectionHead !== runtime?.directedSelection.selectionHead
+                )) return false;
+                return performEditorAction(command.command);
+              }
+              return !documentCommandBlocked && (command.command === "undo"
+                ? (runtime?.undo() ?? false) : (runtime?.redo() ?? false));
+            }, () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
+            () => historyCommand || runtime?.getText() !== before));
           } finally {
-            // executingCommand 期间 runtime 回调被抑制（避免重复 Bridge 消息），
-            // 但显式响应已作为 stateChanged 发出，面板据此刷新 Undo/Redo 后内容。
             executingCommand = false;
             updateModeControls();
           }
           break;
         case "queryState":
+          if (command.observeCommands) {
+            observesCommands = true;
+            document.documentElement.classList.add("native-chrome");
+          }
           postToNative(session.queryState(
             command,
             runtime ? { ...runtime.status, ...runtime.directedSelection } : undefined,

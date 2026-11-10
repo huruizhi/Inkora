@@ -1,6 +1,29 @@
 import XCTest
 
 final class BridgeProtocolTests: XCTestCase {
+  func testPresentationCommandsAndAvailabilityRoundTripWithoutContentFields() throws {
+    for name in [
+      "sourceMode", "visualMode", "applySource", "cancelSource", "insertTable", "insertImage",
+      "find", "toggleOutline", "readingWidth760", "readingWidth900",
+    ] {
+      let command = try XCTUnwrap(BridgeEditorCommand(rawValue: name))
+      let payload = BridgeNativeCommand.execute(
+        requestID: name, documentID: "doc", revision: 3, command: command,
+        selectionAnchor: 0, selectionHead: 0)
+      try payload.validate()
+      let decoded = try JSONDecoder().decode(
+        BridgeNativeCommand.self, from: JSONEncoder().encode(payload))
+      XCTAssertEqual(decoded, payload)
+      XCTAssertNil(decoded.text)
+    }
+    let state = BridgeEditorState(
+      documentID: "doc", revision: 3, dirty: false, canUndo: false,
+      canRedo: false, availableCommands: [.sourceMode, .find], readingWidth: 900)
+    let decoded = try JSONDecoder().decode(
+      BridgeEditorState.self, from: JSONEncoder().encode(state))
+    XCTAssertEqual(decoded, state)
+  }
+
   func testCommandValidationRejectsMissingFieldsAndUnsafeRevisions() throws {
     let valid: [String: Any] = [
       "protocolVersion": 1, "type": "loadDocument", "requestID": "r",

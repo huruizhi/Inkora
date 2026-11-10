@@ -3,6 +3,131 @@ import XCTest
 
 final class EditorWebViewTests: XCTestCase {
   @MainActor
+  func testNativePresentationMenusReachOnlyTheirDocumentAndPreserveSnapshot() async throws {
+    let raw = "\u{FEFF}# 标题\r\n\r\n正文。\r\n"
+    let first = InkoraDocument()
+    try first.read(from: Data(raw.utf8), ofType: "net.daringfireball.markdown")
+    let second = InkoraDocument()
+    try second.read(from: Data("其他文档\n".utf8), ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(document: first, resourceBundle: Bundle(for: Self.self))
+    let other = EditorViewController(document: second, resourceBundle: Bundle(for: Self.self))
+    controller.loadViewIfNeeded()
+    other.loadViewIfNeeded()
+    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    let otherView = try XCTUnwrap(other.view as? WKWebView)
+    webView.setFrameSize(NSSize(width: 1400, height: 900))
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "!!document.querySelector('#editor')"
+    ) { $0 as? Bool == true }
+    _ = try await waitForJavaScriptValue(
+      in: otherView,
+      script: "!!document.querySelector('#editor')"
+    ) { $0 as? Bool == true }
+    _ = try await requestText(from: controller)
+    _ = try await requestText(from: other)
+    let revision = first.bridgeRevision
+    let menu = NSMenu()
+    let commandMenus = EditorCommandMenus()
+    commandMenus.install(in: menu, editMenu: NSMenu())
+    let items = menu.items.flatMap { $0.submenu?.items ?? [] }
+    let sourceItem = try XCTUnwrap(items.first { $0.representedObject as? String == "sourceMode" })
+    XCTAssertNil(sourceItem.target, "Commands must use the active window responder chain")
+    XCTAssertEqual(sourceItem.keyEquivalent, "2")
+    XCTAssertEqual(sourceItem.keyEquivalentModifierMask, [.command, .option, .shift])
+    controller.inkoraEditorAction(sourceItem)
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('textarea#editor')"
+    ) {
+      $0 as? Bool == true
+    }
+    let otherMode = try await otherView.evaluateJavaScript(
+      "!!document.querySelector('textarea#editor')")
+    XCTAssertEqual(otherMode as? Bool, false)
+    let sourceFocused = try await webView.evaluateJavaScript(
+      "document.activeElement === document.querySelector('textarea#editor')")
+    XCTAssertEqual(sourceFocused as? Bool, true)
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const area = document.querySelector('textarea#editor');
+        area.value = '未提交草稿\\n';
+        area.dispatchEvent(new InputEvent('input', {bubbles:true, inputType:'insertText', data:'草稿'}));
+      })()
+      """)
+    try await waitForEditorCommand(.applySource, enabled: true, in: controller)
+    let applyItem = try XCTUnwrap(items.first { $0.representedObject as? String == "applySource" })
+    XCTAssertTrue(
+      controller.validateUserInterfaceItem(applyItem),
+      "Shortcut eligibility must not require opening a menu")
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.source-draft-cancel').click()")
+    try await waitForEditorCommand(.sourceMode, enabled: true, in: controller)
+    controller.performEditorCommand(.sourceMode)
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('textarea#editor')"
+    ) {
+      $0 as? Bool == true
+    }
+    controller.performEditorCommand(.readingWidth900)
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script:
+        "document.querySelector('.editor-workspace').style.getPropertyValue('--writing-width')"
+    ) {
+      $0 as? String == "900px"
+    }
+    let contentWidthScript = """
+      (() => {
+        const editor = document.querySelector('#editor');
+        const style = getComputedStyle(editor);
+        return editor.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      })()
+      """
+    let wide = try await webView.evaluateJavaScript(contentWidthScript)
+    XCTAssertEqual(wide as? Int, 900)
+    controller.performEditorCommand(.visualMode)
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('#editor[contenteditable]')"
+    ) {
+      $0 as? Bool == true
+    }
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('#editor').dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))"
+    )
+    try await waitForEditorCommand(.sourceMode, enabled: false, in: controller)
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('#editor').dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))"
+    )
+    try await waitForEditorCommand(.sourceMode, enabled: true, in: controller)
+    let chrome =
+      try await webView.evaluateJavaScript(
+        """
+        (() => ({
+          mode: getComputedStyle(document.querySelector('.editor-mode-source')).display,
+          insert: getComputedStyle(document.querySelector('.insert-table')).display,
+          bar: getComputedStyle(document.querySelector('.editor-topbar')).position,
+          applyHidden: document.querySelector('.source-draft-apply').hidden,
+        }))()
+        """) as! [String: Any]
+    XCTAssertEqual(chrome["mode"] as? String, "none")
+    XCTAssertEqual(chrome["insert"] as? String, "none")
+    XCTAssertEqual(chrome["bar"] as? String, "absolute")
+    XCTAssertEqual(chrome["applyHidden"] as? Bool, true)
+    controller.performEditorCommand(.readingWidth760)
+    _ = try await waitForJavaScriptValue(in: webView, script: contentWidthScript) {
+      $0 as? Int == 760
+    }
+    let snapshot = try await requestText(from: controller)
+    let otherSnapshot = try await requestText(from: other)
+    XCTAssertEqual(snapshot, "# 标题\r\n\r\n正文。\r\n")
+    XCTAssertEqual(try first.data(ofType: "net.daringfireball.markdown"), Data(raw.utf8))
+    XCTAssertEqual(otherSnapshot, "其他文档\n")
+    XCTAssertEqual(first.bridgeRevision, revision)
+    XCTAssertFalse(controller.canPerformEditorCommand(.undo))
+  }
+
+  @MainActor
   func testTechnicalPreviewsRenderOfflineWithoutChangingSnapshot() async throws {
     let raw =
       "# 技术文档\n\n正文[^note]\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\nA[想法] --> B[草稿]\n```\n\n[^note]: **脚注**内容\n\n> $$\n> E=mc^2\n> $$\n\n- $$\n  E=mc^2\n  $$\n"

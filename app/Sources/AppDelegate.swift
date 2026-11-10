@@ -10,6 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     application.run()
   }
 
+  private let editorCommandMenus = EditorCommandMenus()
+
   private let openRecentMenu = OpenRecentMenuController(
     list: DocumentControllerRecentDocumentList(),
     openDocument: AppDelegate.openDocumentFromURL
@@ -202,6 +204,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
       keyEquivalent: "a"
     )
     editItem.submenu = editMenu
+
+    editorCommandMenus.install(in: mainMenu, editMenu: editMenu)
 
     return mainMenu
   }
