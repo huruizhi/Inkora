@@ -2,7 +2,7 @@ import { EditorView } from "prosemirror-view";
 import { InkoraEditorSession } from "./editor-session";
 import { TextAreaEditorKernel } from "./editor-kernel";
 import { classifyLineEndings } from "./line-endings";
-import { TextSelection, type EditorState } from "prosemirror-state";
+import { TextSelection, type Selection, type EditorState } from "prosemirror-state";
 import { analyzeDocument, type DocumentAnalysis } from "./document-analysis";
 import {
   sameHeading,
@@ -27,6 +27,8 @@ import { parse as parseCanonicalSource } from "./source-document";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
 import { contextToolDecorations, focusContextToolbar } from "./context-tools";
+import type { Node as PMNode } from "prosemirror-model";
+import { footnoteReference } from "./technical-preview";
 import { protectedPreview } from "./protected-preview";
 import { createCodeBlockNodeViews } from "./code-block-view";
 import { createTableNodeViews, handleTableTab, insertDefaultTable } from "./table-editing";
@@ -150,6 +152,13 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     resolve: (stable: boolean) => void;
     timer: number;
   }>();
+  private technicalReturn: {
+    raw: string; revision: number; epoch: number;
+    selection: { anchor: number; head: number; affinity: "left" | "right" };
+    visual: Selection;
+  } | undefined;
+  private footnoteReturn: { source: HTMLElement; valid: () => boolean; definition: HTMLElement } | undefined;
+  private destroyed = false;
   private publishedLogicalRevision = 0;
   private readonly session: SourceAuthoritySession;
   private readonly imageResources = new ImageResourceRegistry();
@@ -347,6 +356,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     this.session.updateDraft(draftRaw, { ...selection.value, affinity: "right" });
     const before = this.session.currentRaw;
     if (!this.session.applySource()) return false;
+    this.technicalReturn = undefined;
     this.session.beginSource();
     kernel.setText(this.session.currentRaw);
     this.applySourceSelection(this.session.currentRaw, this.session.rawSelection);
@@ -358,7 +368,15 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     const area = this.textArea;
     const kernel = this.sourceKernel;
     if (!area || !kernel || this.composing) return false;
-    if (kernel.getText() === this.session.currentRaw) {
+    const back = this.technicalReturn;
+    if (back && (back.raw !== this.session.currentRaw || back.revision !== this.session.version ||
+        back.epoch !== this.session.epoch || this.destroyed)) return false;
+    if (back) {
+      this.session.state = this.session.state.apply(this.session.state.tr.setSelection(
+        back.visual));
+      this.session.setSourceSelection(back.selection.anchor, back.selection.head, back.selection.affinity);
+      this.technicalReturn = undefined;
+    } else if (kernel.getText() === this.session.currentRaw) {
       const selection = readRawSelection(
         this.session.currentRaw,
         area.value,
@@ -461,6 +479,8 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   undo(): boolean {
     if (this.composing) return false;
     if (!this.session.undo()) return false;
+    this.technicalReturn = undefined;
+    this.footnoteReturn = undefined;
     this.publishedLogicalRevision = this.session.status.revision;
     this.renderCurrentMode();
     return true;
@@ -469,6 +489,8 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   redo(): boolean {
     if (this.composing) return false;
     if (!this.session.redo()) return false;
+    this.technicalReturn = undefined;
+    this.footnoteReturn = undefined;
     this.publishedLogicalRevision = this.session.status.revision;
     this.renderCurrentMode();
     return true;
@@ -593,6 +615,9 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }
 
   destroy(): void {
+    this.destroyed = true;
+    this.technicalReturn = undefined;
+    this.footnoteReturn = undefined;
     this.cancelCompositionQuietTimer();
     this.resolveStabilityWaiters(false);
     this.destroySurface();
@@ -689,12 +714,8 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       decorations: state => codeDecorations(state).add(state.doc, contextToolDecorations(state)),
       nodeViews: {
         code_block: codeBlockNodeView,
-        protected_block: (node, _view, getPos) => ({
-          dom: protectedPreview(node.attrs.raw, node.attrs.kind,
-            this.session.captureMathContent(getPos(), node.attrs.raw)),
-          ignoreMutation: mutation => mutation.type !== "selection",
-          stopEvent: event => !!(event.target as Element | null)?.closest?.("button"),
-        }),
+        protected_block: (node, _view, getPos) => this.technicalNode(node, getPos),
+        protected_inline: (node, _view, getPos) => this.technicalNode(node, getPos),
         image: createImageNodeViews(
           this.imageResources,
           this.options.onImageAccessRequest,
@@ -757,6 +778,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
             this.compositionID === undefined) {
           this.compositionID = compositionID;
         }
+        if (transaction.selectionSet || transaction.docChanged) this.footnoteReturn = undefined;
         const before = this.session.currentRaw;
         const accepted = this.session.dispatch(transaction);
         lastDispatchAccepted = accepted;
@@ -787,6 +809,99 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     }, true);
     view.dom.addEventListener("compositionstart", this.handleCompositionStart);
     view.dom.addEventListener("compositionend", this.handleCompositionEnd);
+  }
+
+  /** Match the complete canonical projection before pairing accepted opaque owners. */
+  private technicalRange(pos: number | undefined, expected: PMNode) {
+    if (pos === undefined || !this.session.state.doc.nodeAt(pos)?.eq(expected)) return undefined;
+    const parsed = parseCanonicalSource(this.session.currentRaw);
+    if (!parsed.doc.eq(this.session.state.doc)) return undefined;
+    const nodes: Array<{ node: PMNode; pos: number }> = [];
+    parsed.doc.descendants((node, position) => {
+      if (node.type.name === "protected_block" || node.type.name === "protected_inline") {
+        nodes.push({ node, pos: position });
+      }
+    });
+    if (nodes.length !== parsed.opaqueSpans.length || nodes.some(({ node }, index) =>
+      node.attrs.raw !== parsed.opaqueSpans[index].raw || node.attrs.kind !== parsed.opaqueSpans[index].kind)) return undefined;
+    const index = nodes.findIndex(item => item.pos === pos);
+    return index < 0 ? undefined : parsed.opaqueSpans[index];
+  }
+
+  private technicalNode(node: PMNode, getPos: () => number | undefined) {
+    let dom: HTMLElement;
+    const current = () => !this.destroyed && this.mode === "visual" && dom.isConnected &&
+      !this.composing && !this.view?.composing && !!this.technicalRange(getPos(), node);
+    const edit = () => {
+      if (!current()) {
+        if (dom.isConnected && !this.destroyed && this.mode === "visual" && !this.composing) {
+          let status = dom.querySelector<HTMLElement>(".technical-target-status");
+          if (!status) {
+            status = document.createElement("p");
+            status.className = "technical-target-status technical-preview-error";
+            status.setAttribute("role", "status");
+            dom.append(status);
+          }
+          status.textContent = "无法确认当前原文位置，请重新打开源码。原文已保留。";
+        }
+        return;
+      }
+      const range = this.technicalRange(getPos(), node)!;
+      const raw = this.session.currentRaw;
+      const revision = this.session.version;
+      const epoch = this.session.epoch;
+      const back = { raw, revision, epoch, selection: { ...this.session.rawSelection },
+        visual: this.session.state.selection };
+      if (!this.enterSourceMode()) return;
+      const selected = this.selectSourceRange(raw, { anchor: range.sourceStart, head: range.sourceEnd });
+      if (!selected.ok) { this.cancelSourceDraft(); return; }
+      this.technicalReturn = back;
+      this.textArea?.focus();
+    };
+    const navigate = (element: HTMLElement, toDefinition: boolean) => {
+      if (!current()) return;
+      if (!toDefinition) {
+        const back = this.footnoteReturn;
+        if (!back || back.definition !== element || !back.valid() || !back.source.isConnected) return;
+        back.source.scrollIntoView?.({ block: "center" });
+        back.source.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+        this.footnoteReturn = undefined;
+        return;
+      }
+      const candidates = [...this.parent.querySelectorAll<HTMLElement>(".footnote-definition")]
+        .filter(item => item.dataset.footnoteLabel === element.dataset.footnoteLabel);
+      if (candidates.length !== 1) return;
+      const definition = candidates[0];
+      const selection = { ...this.session.rawSelection };
+      const raw = this.session.currentRaw;
+      const revision = this.session.version;
+      const epoch = this.session.epoch;
+      const valid = () => current() && raw === this.session.currentRaw &&
+        revision === this.session.version && epoch === this.session.epoch && this.session.rawSelection.anchor === selection.anchor &&
+        this.session.rawSelection.head === selection.head && this.session.rawSelection.affinity === selection.affinity;
+      this.footnoteReturn = { source: element, definition, valid };
+      definition.scrollIntoView?.({ block: "center" });
+      definition.querySelector<HTMLButtonElement>(".footnote-back")?.focus({ preventScroll: true });
+    };
+    if (node.type.name === "protected_inline") {
+      dom = document.createElement("span");
+      dom.className = "protected-inline";
+      dom.setAttribute("contenteditable", "false");
+      // Preserve the existing serialization/clipboard DOM contract, never use
+      // these presentation attributes to resolve a source owner.
+      dom.dataset.inkoraRaw = node.attrs.raw;
+      dom.dataset.inkoraKind = node.attrs.kind;
+      dom.title = "只读原文片段；请在源码中修改";
+      const reference = node.attrs.kind === "footnote" ? footnoteReference(node.attrs.raw, { navigate }) : undefined;
+      if (reference) dom.append(reference);
+      else dom.textContent = node.attrs.raw;
+    } else {
+      dom = protectedPreview(node.attrs.raw, node.attrs.kind,
+        this.session.captureMathContent(getPos(), node.attrs.raw),
+        ["math", "footnote"].includes(node.attrs.kind) ? { edit, navigate } : undefined);
+    }
+    return { dom, ignoreMutation: (mutation: { type: string }) => mutation.type !== "selection",
+      stopEvent: (event: Event) => !!(event.target as Element | null)?.closest?.("button") };
   }
 
   private renderSource(): void {

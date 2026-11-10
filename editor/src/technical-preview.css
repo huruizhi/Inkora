@@ -41,6 +41,7 @@ div#editor .is-mermaid { background: transparent; border-color: transparent; }
 .mermaid-preview { padding: 20px 12px; text-align: center; overflow-x: auto; cursor: text; }
 .mermaid-preview[hidden] { display: none; }
 .mermaid-preview svg { max-width: 100%; height: auto; }
+.technical-edit,
 .mermaid-edit {
   margin: 0 12px 8px;
   padding: 3px 8px;
@@ -56,8 +57,11 @@ div#editor .is-mermaid { background: transparent; border-color: transparent; }
 #editor .is-mermaid.inkora-context-active > .mermaid-preview,
 .is-mermaid:has(> .inkora-code-toolbar:focus-within) > .mermaid-preview { display: none; }
 #editor .is-mermaid.inkora-context-active > .mermaid-edit,
-.is-mermaid:has(> .inkora-code-toolbar:focus-within) > .mermaid-edit { display: none; }
+.is-mermaid:has(> .inkora-code-toolbar:focus-within) > .technical-edit,
+.mermaid-edit { display: none; }
 @media (prefers-color-scheme: dark) {
   .footnote-reference button, .footnote-back { color: #8bb9df; }
   .mermaid-preview svg { filter: invert(.88) hue-rotate(180deg); }
 }
+
+.technical-edit:focus-visible { outline: 2px solid AccentColor; outline-offset: 2px; }
