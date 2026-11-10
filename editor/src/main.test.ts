@@ -173,7 +173,14 @@ async function bootMain(): Promise<Harness> {
       input.value = value;
       input.dispatchEvent(new dom.window.InputEvent("input", { bubbles: true }));
     },
-    replacement: () => dom.window.document.querySelector<HTMLInputElement>(".search-panel-replacement")!,
+    replacement: () => {
+      const mode = dom.window.document.querySelector<HTMLSelectElement>(".search-panel-mode")!;
+      if (mode.value !== "replace") {
+        mode.value = "replace";
+        mode.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+      }
+      return dom.window.document.querySelector<HTMLInputElement>(".search-panel-replacement")!;
+    },
     replaceSelected: () => dom.window.document.querySelector<HTMLButtonElement>(".search-panel-replace-selected")!,
     replaceAll: () => dom.window.document.querySelector<HTMLButtonElement>(".search-panel-replace-all")!,
     sourceMode: () => dom.window.document.querySelector<HTMLButtonElement>(".editor-mode-source")!,
@@ -212,6 +219,64 @@ it("原生命令切换源码和阅读宽度不改变字节、版本或历史", a
   h.receive({ type: "createSnapshot", requestID: "snap-quiet", documentID: "quiet", revision: 4 });
   await settle();
   expect(h.sent.find(message => message.requestID === "snap-quiet")).toMatchObject({ text: raw, revision: 4 });
+});
+
+it("原生 ⌘F 打开单行查找，最右侧唯一侧栏按钮展开左侧大纲且不切换模式", async () => {
+  const h = await bootMain();
+  const raw = "# 标题\r\n\r\n正文。\r\n";
+  h.receive({ type: "loadDocument", requestID: "chrome-load", documentID: "chrome", revision: 2, text: raw });
+  await settle();
+  h.receive({ type: "queryState", requestID: "chrome-observe", observeCommands: true });
+  h.receive({ type: "executeCommand", requestID: "chrome-find", documentID: "chrome", revision: 2,
+    command: "find" });
+
+  expect(h.searchBody().hidden).toBe(false);
+  expect(h.dom.window.document.activeElement).toBe(h.searchQuery());
+  expect(h.dom.window.document.querySelector<HTMLSelectElement>(".search-panel-mode")?.value).toBe("find");
+  expect(h.dom.window.document.querySelector<HTMLElement>(".search-panel-replacement-controls")?.hidden)
+    .toBe(true);
+  expect(h.dom.window.document.querySelector<HTMLElement>(".search-panel-results")?.hidden).toBe(true);
+  expect(h.dom.window.document.documentElement.classList.contains("native-chrome")).toBe(true);
+
+  const stats = h.dom.window.document.querySelector<HTMLButtonElement>(".analysis-stats-toggle")!;
+  expect(stats.textContent).toContain("1 分钟");
+  stats.click();
+  const popover = h.dom.window.document.querySelector<HTMLElement>(".analysis-stats-popover")!;
+  expect(popover.hidden).toBe(false);
+  expect(popover.textContent).toContain("行数4");
+  expect(popover.textContent).toContain("字数");
+  expect(popover.textContent).toContain("字符数");
+
+  h.searchClose().click();
+  const tools = h.dom.window.document.querySelector<HTMLElement>(".editor-corner-tools")!;
+  const buttons = Array.from(tools.children).filter(node => node.tagName === "BUTTON");
+  expect(buttons).toEqual([stats, h.toggle()]);
+  expect(tools.querySelector(".corner-mode-toggle")).toBeNull();
+  expect(tools.querySelector(".corner-icon-outline")).toBeNull();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.focus();
+  const before = h.sent.length;
+  const sidebar = h.toggle();
+  const pointer = new h.dom.window.Event("pointerdown", { bubbles: true, cancelable: true });
+  sidebar.dispatchEvent(pointer);
+  expect(pointer.defaultPrevented).toBe(true);
+  sidebar.click();
+  expect(h.panel().classList.contains("analysis-panel-collapsed")).toBe(false);
+  expect(sidebar.getAttribute("aria-expanded")).toBe("true");
+  expect(sidebar.getAttribute("aria-label")).toBe("收起大纲");
+  expect(h.editorHost().querySelector("textarea#editor")).toBeNull();
+  expect(h.dom.window.document.activeElement).toBe(editor);
+  sidebar.click();
+  expect(h.panel().classList.contains("analysis-panel-collapsed")).toBe(true);
+  expect(sidebar.getAttribute("aria-expanded")).toBe("false");
+  expect(h.sent).toHaveLength(before);
+
+  h.receive({ type: "createSnapshot", requestID: "chrome-snapshot", documentID: "chrome", revision: 2 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw, revision: 2 });
+  expect(h.lastRevision()).toBe(2);
+
+  const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
+  expect(css).toMatch(/\.native-chrome[\s\S]*\.search-toggle\s*\{\s*display:\s*none/s);
 });
 
 it("原生插表只发布一次并可Undo，过期与组合输入动作原子拒绝", async () => {
@@ -514,9 +579,10 @@ it("源码全部替换超过显示上限时重新完整搜索并一次提交", a
   h.typeSearchQuery("alpha");
   await settle();
   expect(h.searchMatches()).toHaveLength(100);
+  const replacement = h.replacement();
   expect(h.searchResultsText()).toContain("重新校验完整结果");
-  h.replacement().value = "beta";
-  h.replacement().dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
+  replacement.value = "beta";
+  replacement.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
   expect(h.replaceAll().disabled).toBe(false);
   const before = h.stateMessages().length;
   h.replaceAll().click();
@@ -735,11 +801,13 @@ it("冻结可视替换 14: 同身份新 load 后旧结果按钮按 epoch 拒绝"
   await settle();
   const before = h.stateMessages().length;
   staleReplace.click();
-  expect(h.dom.window.document.querySelector(".search-panel-status")?.textContent).toContain("尚未就绪");
+  expect(h.dom.window.document.querySelector(".search-panel-status")?.textContent).toBe("");
   staleResult.click();
+  expect(h.dom.window.document.querySelector(".search-panel-status")?.textContent).toContain("过期");
   expect(h.stateMessages()).toHaveLength(before);
   expect(h.searchResultsText()).toContain("输入查询");
-  expect(h.dom.window.document.querySelector(".search-panel-replacement")).toBeNull();
+  expect(h.dom.window.document.querySelector(".search-panel-replacement")).not.toBeNull();
+  expect(h.replaceAll().disabled).toBe(true);
   h.receive({ type: "createSnapshot", requestID: "epoch-snapshot", documentID: "epoch", revision: 0 });
   expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw });
   expect(h.stateMessages().at(-1)?.state).toMatchObject({ revision: 0, dirty: false, canUndo: false });
@@ -1828,10 +1896,12 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
 
     h.receive({ type: "loadDocument", requestID: "pm", documentID: "pm", revision: 0, text: "# Safe\n" });
     await settle();
-    expect(h.dom.window.document.querySelector(".search-panel-replacement")).toBeNull();
+    expect(h.dom.window.document.querySelector(".search-panel-replacement")).not.toBeNull();
+    expect(h.replaceAll().disabled).toBe(true);
     h.receive({ type: "loadDocument", requestID: "cr", documentID: "cr", revision: 0, text: "a\rb" });
     await settle();
-    expect(h.dom.window.document.querySelector(".search-panel-replacement")).toBeNull();
+    expect(h.dom.window.document.querySelector(".search-panel-replacement")).not.toBeNull();
+    expect(h.replaceAll().disabled).toBe(true);
   });
   it("点击第二个重复标题经真实 DOM/runtime 精确定位且不发 Bridge 消息", async () => {
     const h = await bootMain();
@@ -2647,7 +2717,8 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     input.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true }));
     await settle();
     expect(input.value).toBe("");
-    expect(input.isConnected).toBe(false);
+    expect(input.isConnected).toBe(true);
+    expect(h.replaceAll().disabled).toBe(true);
   });
 
   it("查找面板：快速跨文档同 revision 旧查找任务作废，不覆盖新文档", async () => {

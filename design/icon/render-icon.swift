@@ -3,7 +3,7 @@
 // Usage: swift design/icon/render-icon.swift <output-appiconset-dir>
 //
 // Design (2026-11-08, approved direction): a white rounded-square page with a
-// dark serif capital "I" that doubles as a text cursor (I-beam), flanked by
+// fine serif capital "I" that doubles as a text cursor (I-beam), flanked by
 // light grey text lines. All geometry is original vector drawing in a
 // 1024x1024 y-down design space; no font glyphs are used.
 //
@@ -32,12 +32,12 @@ let bodyRadius: CGFloat = 185
 
 /// Serif capital I with bracketed serifs and slightly rounded serif tips.
 func glyphPath() -> CGPath {
-  let left: CGFloat = 362, right: CGFloat = 662
+  let left: CGFloat = 382, right: CGFloat = 642
   let top: CGFloat = 287, bottom: CGFloat = 737
-  let serif: CGFloat = 46  // serif thickness
-  let stemLeft: CGFloat = 452, stemRight: CGFloat = 572
-  let bracket: CGFloat = 46
-  let tip: CGFloat = 10  // serif corner radius
+  let serif: CGFloat = 22  // fine horizontal strokes, readable at Dock sizes
+  let stemLeft: CGFloat = 482, stemRight: CGFloat = 542
+  let bracket: CGFloat = 24
+  let tip: CGFloat = 6  // serif corner radius
 
   let p = CGMutablePath()
   p.move(to: CGPoint(x: left + tip, y: top))

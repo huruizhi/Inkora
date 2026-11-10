@@ -28,9 +28,31 @@ final class EditorWebViewTests: XCTestCase {
     _ = try await requestText(from: other)
     let revision = first.bridgeRevision
     let menu = NSMenu()
+    let editMenu = NSMenu()
     let commandMenus = EditorCommandMenus()
-    commandMenus.install(in: menu, editMenu: NSMenu())
-    let items = menu.items.flatMap { $0.submenu?.items ?? [] }
+    commandMenus.install(in: menu, editMenu: editMenu)
+    let items = editMenu.items + menu.items.flatMap { $0.submenu?.items ?? [] }
+    let findItem = try XCTUnwrap(items.first { $0.representedObject as? String == "find" })
+    XCTAssertNil(findItem.target, "Find must use the active window responder chain")
+    XCTAssertEqual(findItem.keyEquivalent, "f")
+    XCTAssertEqual(findItem.keyEquivalentModifierMask, [.command])
+    controller.inkoraEditorAction(findItem)
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script:
+        "!document.querySelector('#search-panel-body').hidden && document.activeElement === document.querySelector('.search-panel-query')"
+    ) { $0 as? Bool == true }
+    let findChrome =
+      try await webView.evaluateJavaScript(
+        """
+        [document.querySelector('.search-panel-mode').value,
+         document.querySelector('.search-panel-replacement-controls').hidden]
+        """
+      ) as! [Any]
+    XCTAssertEqual(findChrome[0] as? String, "find")
+    XCTAssertEqual(findChrome[1] as? Bool, true)
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.search-panel-close').click()")
     let sourceItem = try XCTUnwrap(items.first { $0.representedObject as? String == "sourceMode" })
     XCTAssertNil(sourceItem.target, "Commands must use the active window responder chain")
     XCTAssertEqual(sourceItem.keyEquivalent, "2")
@@ -47,6 +69,16 @@ final class EditorWebViewTests: XCTestCase {
     let sourceFocused = try await webView.evaluateJavaScript(
       "document.activeElement === document.querySelector('textarea#editor')")
     XCTAssertEqual(sourceFocused as? Bool, true)
+    let cornerTools = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const tools = document.querySelector('.editor-corner-tools');
+        return tools.querySelectorAll(':scope > button').length === 2 &&
+          !tools.querySelector('.corner-mode-toggle, .corner-icon-outline') &&
+          !!tools.querySelector('.analysis-panel-toggle .corner-icon-sidebar');
+      })()
+      """)
+    XCTAssertEqual(cornerTools as? Bool, true)
     _ = try await webView.evaluateJavaScript(
       """
       (() => {
@@ -216,7 +248,7 @@ final class EditorWebViewTests: XCTestCase {
     controller.loadViewIfNeeded()
     let webView = try XCTUnwrap(controller.view as? WKWebView)
     _ = try await waitForJavaScriptValue(
-      in: webView, script: "!!document.querySelector('.document-status-bar dd')"
+      in: webView, script: "!!document.querySelector('.analysis-stats-summary')"
     ) { $0 as? Bool == true }
     for width in [900, 480] {
       webView.setFrameSize(NSSize(width: width, height: 700))
@@ -229,21 +261,28 @@ final class EditorWebViewTests: XCTestCase {
           (() => {
             const rect = selector => document.querySelector(selector).getBoundingClientRect();
             const root = document.scrollingElement;
-            const footer = rect('.document-status-bar');
-            return [rect('.analysis-panel').width, footer.height, footer.bottom,
+            const stats = rect('.analysis-stats-toggle');
+            const corner = rect('.editor-corner-tools');
+            return [rect('.analysis-panel').width, stats.height, stats.top, corner.right,
                     root.scrollWidth, root.clientWidth, root.scrollHeight, root.clientHeight,
-                    rect('.insert-table').right,
                     getComputedStyle(document.querySelector('.inkora-code-toolbar')).visibility];
           })()
           """) as! [Any]
       XCTAssertEqual(metrics[0] as? Int, 0, "Closed outline must release its entire width")
-      XCTAssertEqual(metrics[1] as? Int, 30)
-      XCTAssertEqual(metrics[2] as? Int, 700)
-      XCTAssertLessThanOrEqual(metrics[3] as! Int, metrics[4] as! Int)
-      XCTAssertLessThanOrEqual(metrics[5] as! Int, metrics[6] as! Int)
-      XCTAssertLessThanOrEqual((metrics[7] as! NSNumber).doubleValue, Double(width - 110))
+      XCTAssertGreaterThan((metrics[1] as! NSNumber).doubleValue, 0)
+      XCTAssertGreaterThanOrEqual((metrics[2] as! NSNumber).doubleValue, 0)
+      XCTAssertLessThanOrEqual((metrics[3] as! NSNumber).doubleValue, Double(width))
+      XCTAssertLessThanOrEqual(metrics[4] as! Int, metrics[5] as! Int)
+      XCTAssertLessThanOrEqual(metrics[6] as! Int, metrics[7] as! Int)
       XCTAssertEqual(metrics[8] as? String, "hidden")
     }
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.analysis-stats-toggle').click()")
+    let statsText = try await webView.evaluateJavaScript(
+      "document.querySelector('.analysis-stats-popover').textContent")
+    XCTAssertTrue((statsText as? String)?.contains("行数") == true)
+    XCTAssertTrue((statsText as? String)?.contains("字数") == true)
+    XCTAssertTrue((statsText as? String)?.contains("字符数") == true)
     _ = try await webView.evaluateJavaScript(
       "document.querySelector('.analysis-panel-toggle').click()")
     _ = try await waitForJavaScriptValue(

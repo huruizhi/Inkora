@@ -64,6 +64,9 @@ app.append(workspace);
 const topBar = document.createElement("header");
 topBar.className = "editor-topbar";
 workspace.append(topBar);
+const cornerTools = document.createElement("div");
+cornerTools.className = "editor-corner-tools";
+workspace.append(cornerTools);
 const findBar = document.createElement("div");
 findBar.className = "find-bar";
 topBar.append(findBar);
@@ -377,10 +380,10 @@ const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
   }
   return activeRuntime.navigateToHeading(snapshot.raw, target);
 }, () => !runtime?.composing && !searchPanel.isInputComposing &&
-  !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)));
+  !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)), cornerTools);
 
-// 查找面板（INK-M1-009 阶段 A）：只做查询与结果列表，不做定位/替换。
-// 面板动作自身不产生任何 Bridge 消息，也不改正文/历史/保存点。
+// 查找面板：原生菜单的 Cmd-F 打开查找模式，面板内可显式切换到替换模式。
+// 查询、展示与导航不产生 Bridge 正文消息；只有有效替换会进入既有正文事务。
 const searchPanel = new SearchPanel(findBar, {
   onSearchRequest: () => {
     if (activeDocumentID !== undefined && activeRevision !== undefined) {

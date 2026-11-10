@@ -1,8 +1,8 @@
 import type { SearchDirection, SourceSearchResult } from "./source-search";
 
 /**
- * 当前文档查找面板（阶段 B）：复用 source-search 纯函数的结果列表，
- * 安全呈现查询，并把显式源码导航意图交给调用方复核；不做替换。
+ * 当前文档查找与替换面板：复用 source-search 纯函数的结果列表，
+ * 安全呈现查询，并把显式导航或替换意图交给调用方复核。
  *
  * 组件约束（INK-M1-009）：
  * - 全部内容经 createElement/textContent 渲染，无 HTML 注入、无资源加载。
@@ -16,6 +16,7 @@ import type { SearchDirection, SourceSearchResult } from "./source-search";
  */
 
 export const SEARCH_MAX_RESULTS = 100;
+export type SearchPanelMode = "find" | "replace";
 
 export interface SearchSnapshotBinding {
   readonly documentID: string;
@@ -203,6 +204,7 @@ export class SearchPanel {
   private readonly root: HTMLElement;
   private readonly findButton: HTMLButtonElement;
   private readonly panelBody: HTMLElement;
+  private readonly modeSelect: HTMLSelectElement;
   private readonly queryInput: HTMLInputElement;
   private readonly caseInput: HTMLInputElement;
   private readonly replacementControls: HTMLElement;
@@ -216,6 +218,7 @@ export class SearchPanel {
   private queryValue = "";
   private caseValue = true;
   private openValue = false;
+  private modeValue: SearchPanelMode = "find";
   private queryComposing = false;
   private replacementValue = "";
   private replacementComposing = false;
@@ -249,7 +252,7 @@ export class SearchPanel {
     });
     findButton.addEventListener("click", () => {
       if (this.openValue) return;
-      this.open();
+      this.open("find");
     });
 
     const panel = document.createElement("aside");
@@ -260,6 +263,31 @@ export class SearchPanel {
 
     const controls = document.createElement("div");
     controls.className = "search-panel-controls";
+
+    const modeSelect = document.createElement("select");
+    modeSelect.className = "search-panel-mode";
+    modeSelect.setAttribute("aria-label", "查找模式");
+    for (const [value, label] of [["find", "查找"], ["replace", "替换"]] as const) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      modeSelect.append(option);
+    }
+    modeSelect.addEventListener("pointerdown", event => {
+      if (this.isInteractionBlocked()) {
+        event.preventDefault();
+        this.showStatus("请先完成中文输入，再切换查找模式");
+      }
+    });
+    modeSelect.addEventListener("change", () => {
+      if (this.isInteractionBlocked()) {
+        modeSelect.value = this.modeValue;
+        this.showStatus("请先完成中文输入，再切换查找模式");
+        return;
+      }
+      this.setMode(modeSelect.value === "replace" ? "replace" : "find");
+      if (this.modeValue === "replace") this.replacementInput.focus();
+    });
 
     const queryInput = document.createElement("input");
     queryInput.type = "text";
@@ -345,11 +373,13 @@ export class SearchPanel {
       this.handlers.onSearchRequest();
     });
     const caseText = document.createElement("span");
-    caseText.textContent = "区分大小写";
+    caseText.textContent = "Aa";
+    caseLabel.title = "区分大小写";
     caseLabel.append(caseInput, caseText);
 
     const replacementControls = document.createElement("div");
     replacementControls.className = "search-panel-replacement-controls";
+    replacementControls.hidden = true;
     const replacementInput = document.createElement("input");
     replacementInput.type = "text";
     replacementInput.className = "search-panel-replacement";
@@ -399,11 +429,11 @@ export class SearchPanel {
     const replaceSelectedButton = document.createElement("button");
     replaceSelectedButton.type = "button";
     replaceSelectedButton.className = "search-panel-replace-selected";
-    replaceSelectedButton.textContent = "替换选中匹配";
+    replaceSelectedButton.textContent = "替换";
     const replaceAllButton = document.createElement("button");
     replaceAllButton.type = "button";
     replaceAllButton.className = "search-panel-replace-all";
-    replaceAllButton.textContent = "全部替换";
+    replaceAllButton.textContent = "全部";
     for (const [button, kind] of [
       [replaceSelectedButton, "replace-one"],
       [replaceAllButton, "replace-all"],
@@ -416,13 +446,13 @@ export class SearchPanel {
       });
       button.addEventListener("click", () => this.requestReplacement(kind));
     }
-    replacementControls.append(replacementInput, replaceSelectedButton, replaceAllButton);
+    replacementControls.append(replacementInput, replaceAllButton, replaceSelectedButton);
 
     const closeButton = document.createElement("button");
     closeButton.type = "button";
     closeButton.className = "search-panel-close";
     closeButton.setAttribute("aria-label", "关闭查找");
-    closeButton.textContent = "关闭";
+    closeButton.textContent = "×";
     closeButton.addEventListener("pointerdown", (event) => {
       if (this.isInteractionBlocked()) {
         event.preventDefault();
@@ -433,7 +463,7 @@ export class SearchPanel {
       this.close();
     });
 
-    controls.append(queryInput, caseLabel, closeButton);
+    controls.append(modeSelect, queryInput, caseLabel, closeButton);
 
     const statusLine = document.createElement("p");
     statusLine.className = "search-panel-status";
@@ -443,12 +473,13 @@ export class SearchPanel {
     const resultsBody = document.createElement("div");
     resultsBody.className = "search-panel-results";
 
-    panel.append(controls, resultsBody);
+    panel.append(controls, replacementControls, resultsBody);
     // 拒绝打开时面板仍 hidden，因此提示必须位于 hidden 子树之外。
     root.append(findButton, statusLine, panel);
     this.root = root;
     this.findButton = findButton;
     this.panelBody = panel;
+    this.modeSelect = modeSelect;
     this.queryInput = queryInput;
     this.caseInput = caseInput;
     this.replacementControls = replacementControls;
@@ -472,6 +503,10 @@ export class SearchPanel {
 
   get query(): string {
     return this.queryValue;
+  }
+
+  get mode(): SearchPanelMode {
+    return this.modeValue;
   }
 
   get caseSensitive(): boolean {
@@ -500,11 +535,12 @@ export class SearchPanel {
     return activeElement !== null && this.root.contains(activeElement);
   }
 
-  open(): void {
+  open(mode: SearchPanelMode = "find"): void {
     if (this.isInteractionBlocked()) {
       this.showStatus("请先完成中文输入，再使用查找");
       return;
     }
+    this.setMode(mode);
     this.openValue = true;
     this.panelBody.hidden = false;
     this.findButton.setAttribute("aria-expanded", "true");
@@ -577,6 +613,14 @@ export class SearchPanel {
   private clearQuery(): void {
     this.queryValue = "";
     this.queryInput.value = "";
+  }
+
+  private setMode(mode: SearchPanelMode): void {
+    this.modeValue = mode;
+    this.modeSelect.value = mode;
+    this.panelBody.classList.toggle("search-panel-replace-mode", mode === "replace");
+    this.replacementControls.hidden = mode !== "replace";
+    this.render();
   }
 
   private isInteractionBlocked(): boolean {
@@ -652,20 +696,16 @@ export class SearchPanel {
 
   private render(): void {
     this.resultsBody.replaceChildren();
+    this.resultsBody.hidden = false;
     const state = this.state;
 
     const replacementAvailable = state.kind === "document" && state.replacement?.available === true;
-    if (replacementAvailable && !this.replacementControls.isConnected) {
-      this.panelBody.querySelector(".search-panel-controls")?.append(this.replacementControls);
-    } else if (!replacementAvailable && this.replacementControls.isConnected &&
-        !this.replacementComposing && !this.resetReplacementAfterComposition) {
-      this.replacementControls.remove();
-    }
-    if (replacementAvailable && state.kind === "document") {
-      const empty = state.result.query.length === 0 || state.result.matches.length === 0;
-      this.replaceSelectedButton.disabled = empty;
-      this.replaceAllButton.disabled = empty || (state.result.truncated && !state.replacement?.completeOnReplaceAll);
-    }
+    this.replacementControls.hidden = this.modeValue !== "replace";
+    const empty = state.kind !== "document" || state.result.query.length === 0 ||
+      state.result.matches.length === 0;
+    this.replaceSelectedButton.disabled = !replacementAvailable || empty;
+    this.replaceAllButton.disabled = !replacementAvailable || empty ||
+      (state.kind === "document" && state.result.truncated && !state.replacement?.completeOnReplaceAll);
 
     if (state.kind === "error") {
       const note = document.createElement("p");
@@ -682,6 +722,8 @@ export class SearchPanel {
         ? "输入查询以查找可编辑内容（不含 Markdown 定界符、链接目标和工具栏）。"
         : "输入查询以在当前文档中查找（结果基于 Markdown 原文）。";
       this.resultsBody.append(note);
+      // 空查询保留说明节点供状态检查，但不占用 Typora 风格查找条的第二行。
+      this.resultsBody.hidden = true;
       return;
     }
 
@@ -701,19 +743,19 @@ export class SearchPanel {
       this.resultsBody.append(rejected);
     }
 
-    if (state.replacement?.available && state.result.truncated) {
+    if (this.modeValue === "replace" && state.replacement?.available && state.result.truncated) {
       const replaceNote = document.createElement("p");
       replaceNote.className = "search-panel-note";
       replaceNote.textContent = state.replacement.completeOnReplaceAll
         ? "列表仅显示部分匹配；全部替换会重新校验完整结果并一次提交。"
         : "全部替换需要完整结果；当前结果已截断，操作已禁用。";
       this.resultsBody.append(replaceNote);
-    } else if (state.replacement && !state.replacement.available) {
+    } else if (this.modeValue === "replace" && state.replacement && !state.replacement.available) {
       const replaceNote = document.createElement("p");
       replaceNote.className = "search-panel-note";
       replaceNote.textContent = state.replacement.reason ?? "当前编辑模式不支持原文替换";
       this.resultsBody.append(replaceNote);
-    } else if (!state.replacement) {
+    } else if (this.modeValue === "replace" && !state.replacement) {
       const replaceNote = document.createElement("p");
       replaceNote.className = "search-panel-note";
       replaceNote.textContent = "替换尚未开放。";
@@ -726,11 +768,13 @@ export class SearchPanel {
       const previous = document.createElement("button");
       previous.type = "button";
       previous.className = "search-panel-previous";
-      previous.textContent = "上一处";
+      previous.textContent = "↑";
+      previous.setAttribute("aria-label", "上一处");
       const next = document.createElement("button");
       next.type = "button";
       next.className = "search-panel-next";
-      next.textContent = "下一处";
+      next.textContent = "↓";
+      next.setAttribute("aria-label", "下一处");
       for (const [button, direction] of [
         [previous, "backward"],
         [next, "forward"],

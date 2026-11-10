@@ -21,7 +21,11 @@ export type AnalysisPanelState =
 export class DocumentAnalysisPanel {
   private readonly body: HTMLElement;
   private readonly stats: HTMLElement;
+  private readonly statsToggle: HTMLButtonElement;
+  private readonly statsSummary: HTMLElement;
+  private readonly toolbarElements: readonly HTMLElement[];
   private collapsed = true;
+  private statsExpanded = false;
 
   constructor(
     parent: HTMLElement,
@@ -30,40 +34,63 @@ export class DocumentAnalysisPanel {
       target: HeadingNavigationTarget,
     ) => HeadingNavigationResult = () => ({ ok: false, message: "导航尚未连接" }),
     private readonly canToggle: () => boolean = () => true,
+    toolbarParent?: HTMLElement,
   ) {
     const root = document.createElement("aside");
     root.className = "analysis-panel";
 
-    const header = document.createElement("div");
-    header.className = "analysis-panel-header";
+    const toolbar = toolbarParent ?? root;
+
+    const statsToggle = document.createElement("button");
+    statsToggle.type = "button";
+    statsToggle.className = "analysis-stats-toggle";
+    statsToggle.setAttribute("aria-expanded", "false");
+    statsToggle.setAttribute("aria-controls", "analysis-stats-popover");
+    statsToggle.setAttribute("aria-label", "显示文档统计");
+    const statsSummary = document.createElement("span");
+    statsSummary.className = "analysis-stats-summary";
+    statsSummary.textContent = "0 分钟";
+    const statsChevron = document.createElement("span");
+    statsChevron.className = "analysis-stats-chevron";
+    statsChevron.setAttribute("aria-hidden", "true");
+    statsToggle.append(statsSummary, statsChevron);
+    statsToggle.addEventListener("pointerdown", event => event.preventDefault());
+    statsToggle.addEventListener("click", () => {
+      if (this.canToggle()) this.setStatsExpanded(!this.statsExpanded);
+    });
 
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "analysis-panel-toggle";
     toggle.setAttribute("aria-expanded", "false");
     toggle.setAttribute("aria-controls", "analysis-panel-body");
-    toggle.textContent = "大纲";
+    toggle.setAttribute("aria-label", "展开大纲");
+    toggle.title = "大纲";
+    const outlineIcon = document.createElement("span");
+    outlineIcon.className = "corner-icon corner-icon-sidebar";
+    outlineIcon.setAttribute("aria-hidden", "true");
+    toggle.append(outlineIcon);
     toggle.addEventListener("pointerdown", event => event.preventDefault());
     toggle.addEventListener("click", () => {
       if (this.canToggle()) this.setCollapsed(!this.collapsed);
     });
 
-    const title = document.createElement("span");
-    title.className = "analysis-panel-title";
-    title.textContent = "文档大纲";
-
-    header.append(toggle, title);
-
     this.body = document.createElement("div");
     this.body.id = "analysis-panel-body";
     this.body.className = "analysis-panel-body";
 
-    this.stats = document.createElement("footer");
-    this.stats.className = "document-status-bar";
+    this.stats = document.createElement("div");
+    this.stats.id = "analysis-stats-popover";
+    this.stats.className = "analysis-stats-popover";
     this.stats.setAttribute("aria-label", "文档统计");
-    root.append(header, this.body, this.stats);
+    this.stats.hidden = true;
+    root.append(this.body);
+    toolbar.append(statsToggle, toggle, this.stats);
     this.root = root;
     this.toggleButton = toggle;
+    this.statsToggle = statsToggle;
+    this.statsSummary = statsSummary;
+    this.toolbarElements = [statsToggle, toggle, this.stats];
     parent.append(root);
     this.setCollapsed(true);
     this.update({ kind: "empty", message: "尚未打开文档" });
@@ -83,8 +110,8 @@ export class DocumentAnalysisPanel {
   setCollapsed(collapsed: boolean): void {
     this.collapsed = collapsed;
     this.toggleButton.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    this.toggleButton.textContent = collapsed ? "大纲" : "收起大纲";
     this.toggleButton.setAttribute("aria-label", collapsed ? "展开大纲" : "收起大纲");
+    this.toggleButton.title = collapsed ? "大纲" : "收起大纲";
     this.body.hidden = collapsed;
     this.body.classList.toggle("analysis-panel-collapsed", collapsed);
     this.root.classList.toggle("analysis-panel-collapsed", collapsed);
@@ -95,6 +122,7 @@ export class DocumentAnalysisPanel {
     this.body.replaceChildren();
     this.stats.replaceChildren();
     if (state.kind === "empty" || state.kind === "error") {
+      this.statsSummary.textContent = "0 分钟";
       const note = document.createElement("p");
       note.className =
         state.kind === "error" ? "analysis-panel-note analysis-panel-error" : "analysis-panel-note";
@@ -104,12 +132,21 @@ export class DocumentAnalysisPanel {
       this.stats.append(status);
       return;
     }
+    this.statsSummary.textContent = `${readingMinutes(state.analysis.content.writingUnits)} 分钟`;
     this.body.append(this.renderOutline(state));
-    this.stats.append(this.renderStats(state.analysis));
+    this.stats.append(this.renderStats(state.analysis, state.raw));
   }
 
   destroy(): void {
     this.root.remove();
+    for (const element of this.toolbarElements) element.remove();
+  }
+
+  private setStatsExpanded(expanded: boolean): void {
+    this.statsExpanded = expanded;
+    this.stats.hidden = !expanded;
+    this.statsToggle.setAttribute("aria-expanded", String(expanded));
+    this.statsToggle.setAttribute("aria-label", expanded ? "隐藏文档统计" : "显示文档统计");
   }
 
   private renderOutline(state: Extract<AnalysisPanelState, { kind: "document" }>): HTMLElement {
@@ -160,7 +197,7 @@ export class DocumentAnalysisPanel {
     return section;
   }
 
-  private renderStats(analysis: DocumentAnalysis): HTMLElement {
+  private renderStats(analysis: DocumentAnalysis, raw: string): HTMLElement {
     const section = document.createElement("section");
     section.className = "analysis-panel-section";
     section.setAttribute("aria-label", "统计");
@@ -168,17 +205,23 @@ export class DocumentAnalysisPanel {
     const list = document.createElement("dl");
     list.className = "analysis-panel-stats";
 
-    const charactersTerm = document.createElement("dt");
-    charactersTerm.textContent = "字符数";
-    const charactersValue = document.createElement("dd");
-    charactersValue.textContent = String(analysis.content.characters);
-    list.append(charactersTerm, charactersValue);
+    const linesTerm = document.createElement("dt");
+    linesTerm.textContent = "行数";
+    const linesValue = document.createElement("dd");
+    linesValue.textContent = String(lineCount(raw));
+    list.append(linesTerm, linesValue);
 
     const unitsTerm = document.createElement("dt");
     unitsTerm.textContent = "字数";
     const unitsValue = document.createElement("dd");
     unitsValue.textContent = String(analysis.content.writingUnits);
     list.append(unitsTerm, unitsValue);
+
+    const charactersTerm = document.createElement("dt");
+    charactersTerm.textContent = "字符数";
+    const charactersValue = document.createElement("dd");
+    charactersValue.textContent = String(analysis.content.characters);
+    list.append(charactersTerm, charactersValue);
     section.append(list);
 
     const hint = document.createElement("p");
@@ -194,4 +237,22 @@ export class DocumentAnalysisPanel {
     section.append(rules);
     return section;
   }
+}
+
+function lineCount(raw: string): number {
+  if (raw.length === 0) return 0;
+  let lines = 1;
+  for (let index = 0; index < raw.length; index += 1) {
+    if (raw[index] === "\n") lines += 1;
+    else if (raw[index] === "\r") {
+      lines += 1;
+      if (raw[index + 1] === "\n") index += 1;
+    }
+  }
+  return lines;
+}
+
+function readingMinutes(writingUnits: number): number {
+  if (writingUnits === 0) return 0;
+  return Math.max(1, Math.ceil(writingUnits / 500));
 }
