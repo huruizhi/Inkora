@@ -70,14 +70,33 @@ final class DocumentOpenUITests: AcceptanceTestCase {
     let editor = webEditor(in: app, windowTitle: fileURL.lastPathComponent)
     XCTAssertTrue(editor.waitForExistence(timeout: 10))
 
+    hoverTitleTools(in: window)
     let stats = window.buttons["显示文档统计"]
     XCTAssertTrue(stats.waitForExistence(timeout: 5))
     XCTAssertTrue(window.buttons["展开大纲"].exists)
     XCTAssertFalse(window.buttons["切换到源码模式"].exists)
+    hoverTitleTools(in: window)
     window.buttons["展开大纲"].click()
     XCTAssertTrue(window.buttons["收起大纲"].exists)
+    hoverTitleTools(in: window)
     window.buttons["收起大纲"].click()
     XCTAssertTrue(window.buttons["展开大纲"].exists)
+    hoverTitleTools(in: window)
+    stats.click()
+    XCTAssertTrue(window.descendants(matching: .any)["文档统计"].waitForExistence(timeout: 5))
+    let lineCount = String(decoding: original, as: UTF8.self)
+      .split(separator: "\n", omittingEmptySubsequences: false).count
+    // Use the public menu label; WebKit can expose menuitemradio with different
+    // XCUI element types, so do not assume it is a native radio button.
+    let lineChoice = window.descendants(matching: .any).matching(
+      NSPredicate(format: "label CONTAINS %@", "行数 \(lineCount) 行")
+    ).firstMatch
+    XCTAssertTrue(lineChoice.waitForExistence(timeout: 5))
+    lineChoice.click()
+    XCTAssertTrue(
+      lineChoice.waitForNonExistence(timeout: 5), "Selecting a statistic closes its menu")
+    XCTAssertTrue(stats.waitForExistence(timeout: 5))
+    hoverTitleTools(in: window)
     stats.click()
     XCTAssertTrue(window.descendants(matching: .any)["文档统计"].waitForExistence(timeout: 5))
     window.buttons["隐藏文档统计"].click()
@@ -553,6 +572,14 @@ final class DocumentOpenUITests: AcceptanceTestCase {
     discard.click()
     XCTAssertTrue(recoveredEditor.waitForNonExistence(timeout: 5))
     XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "original on disk")
+  }
+
+  @MainActor
+  private func hoverTitleTools(in window: XCUIElement) {
+    // The real 28pt title row reserves the left 90pt for system controls.
+    // Enter the rightmost tool's hot region even while its button is hidden.
+    window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0))
+      .withOffset(CGVector(dx: -28, dy: 14)).hover()
   }
 
   @MainActor

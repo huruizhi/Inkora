@@ -6,7 +6,7 @@
 
 - 保留错误态既有断言并修复 `analysis-panel-error`；大纲过滤保留真实索引，候选阶段不提前过滤；旧按钮、候选阶段和宿主拒绝均不能导航，拒绝原因在面板可见。
 - 统一大纲/文件视图顶栏和上下文搜索；文档卡片淡化扩展名、摘要、当前文档状态；搜索按文件分组显示行号/片段，点击携带原生签发的可选 `hitID`。
-- 连接层校验 document/context/request/catalog，消费当前响应；旧查询/旧选项/旧打开错误、跨 load 重连回包均拒绝。返回/清空通过纯 Web `cancelSearch` 作废旧回包，不发 Native 请求。目录 `invalidated` 只接受当前 catalog 并刷新。
+- 连接层校验 document/context/request/catalog，消费当前响应；旧查询/旧选项/旧打开错误、跨 load 重连回包均拒绝。返回/清空通过正式 `cancelSearch` 撤销对应 Native 搜索/打开意图（见后续补正）。目录 `invalidated` 只接受当前 catalog 并刷新。
 - 真正可选的阅读时间/行数/词数/字符数摘要：`menuitemradio`、选中标记、键盘方向/Home/End/Escape；选择后关闭菜单，保留正文焦点和 caret，刷新保留选择口径和菜单焦点。词数沿用现有 writingUnits 定义，详细字数定义保持兼容。
 - `SidebarChrome` 默认隐藏；进入立即显示，离开严格 5000ms；重入取消旧 timer，菜单/focus/composition 保活，结束后重新计时，destroy 清理。触屏保持可用，热区本身可命中。
 - `SidebarLayout` 先让正文工作区让位，220ms 后侧栏内容淡入；收起、快速反向、窄窗、reduced motion、销毁均有最终状态。只变布局与呈现，不重建 EditorView、不产生编辑事务。
@@ -16,7 +16,7 @@
 
 保留 ctor 第五个 `SidebarLibraryAction` callback 和既有公开方法。
 新增 `panel.resetWorkspace()`（C 的 connection reset callback 调用）、`panel.setCurrentFile(fileID?)`；也接受 catalog file 的可选 `isCurrent`。
-`SidebarSearchHit` 新增可选 `hitID/fileVersion/utf16Location/utf16Length`，open 新增可选 `hitID`。连接层 `reset?` callback 在每次 connect 调用；C 必须在每次已接受 load 后 connect。
+`cancelSearch` 正式传输携带目标请求ID（见补正）。`SidebarSearchHit` 新增可选 `hitID/fileVersion/utf16Location/utf16Length`，open 新增可选 `hitID`。连接层 `reset?` callback 在每次 connect 调用；C 必须在每次已接受 load 后 connect。
 `SidebarChrome` 和 `SidebarLayout` 在 Panel 内部创建/销毁，C 只传真实标题行工具容器，不重复实例化。
 
 ## 实跑与边界
@@ -46,3 +46,18 @@
 A已确认Native分别精确匹配activeSearchRequestID/activeOpenRequestID后撤销task/generation/hits，保留catalog/watch；旧目标no-op，回执kind=cancelled，带cancelledSearch/cancelledOpen布尔值。C已获字段同步。Web现有清空查询、返回列表、切换视图路径沿用SidebarLibraryAction，不增编辑器事务。
 
 实跑：`.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/sidebar-connection.test.ts src/sidebar-library.test.ts src/sidebar-chrome.test.ts src/document-analysis-panel.test.ts`，4文件31项通过，包含真实DOM清空/返回经真实Connection发目标ID，完成search+在途open组合取消、迟到回执与新请求隔离、无目标/跨load/跨document；`make lint`通过。Native延迟mayOpen/ticket撤销实证由A负责，本分支未执行GUI/Native UI，不以Web回包隔离冒称Native能力已撤销。
+
+## 有效 UI 测试维护（未执行 UI）
+
+授权仅修改`tests/InkoraUITests/DocumentOpenUITests.swift`中的既有Typora查找/标题工具测试及私有helper。使用窗口右上角归一化坐标，加(-28,+14)pt进入真实28pt标题行右侧工具热区，不点击仍隐藏的按钮；统计/侧栏各次操作前重新hover，避免AX等待期间经过5秒导致工具隐藏。保持左90pt系统区，使用公开XCU坐标事件，无生产测试开关。
+
+统计菜单通过现有公开AX文案“行数 N 行”查找（N由原始fixture物理行推导），点击选择并验证菜单收起，再打开后保留原有“隐藏文档统计”动作。使用any元素查询兼容WebKit对menuitemradio的AX类型映射，不假定其为原生radioButton，也不猜AX value对应选中状态。原Cmd+F模式/匹配/Enter/Shift-Enter/Escape、全文原字节、保存、关闭重开断言全部保留。
+
+锁定SDK声明已核对：`XCUIElement.h`的coordinateWithNormalizedOffset；`XCUICoordinate.h`的coordinateWithOffset与MouseEvents.hover（位于Xcode MacOSX.platform/Developer/Library/Frameworks/XCUIAutomation.framework/Headers）。
+
+实跑：
+
+- `xcrun swift-format format -i tests/InkoraUITests/DocumentOpenUITests.swift`，随后`xcrun swift-format lint --strict tests/InkoraUITests/DocumentOpenUITests.swift`通过。
+- `xcrun swiftc -typecheck -swift-version 6 -target arm64-apple-macosx14.0 -I /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path build/INK-UX-131-ui-module-cache tests/InkoraUITests/AcceptanceTestCase.swift tests/InkoraUITests/DocumentOpenUITests.swift`通过。首次命令缺少XCTest Swift overlay的-I路径，触发既有AcceptanceTestCase的XCTIssue改名错误；补全锁定SDK模块路径后通过，未改该文件或绕过检查。
+
+未启动App/XCU/窗口/系统面板，未实际执行该UI测试；AX呈现与hover实际命中仍需未来授权运行，不将类型检查当作运行通过。
