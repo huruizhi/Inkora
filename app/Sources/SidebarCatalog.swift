@@ -7,6 +7,7 @@ struct SidebarFile: Codable, Equatable, Sendable {
   let name: String
   let relativePath: String
   let summary: String
+  var isCurrent: Bool? = nil
 }
 
 struct SidebarSearchOptions: Codable, Equatable, Sendable {
@@ -78,6 +79,17 @@ struct SidebarCatalog: Sendable {
     let data: Data
     let version: String
     let location: SidebarSearchLocation?
+    let modified: Date?
+
+    init(
+      url: URL, data: Data, version: String, location: SidebarSearchLocation?, modified: Date? = nil
+    ) {
+      self.url = url
+      self.data = data
+      self.version = version
+      self.location = location
+      self.modified = modified
+    }
   }
 
   private struct Entry: Sendable {
@@ -261,7 +273,10 @@ struct SidebarCatalog: Sendable {
     }
     return OpenedFile(
       url: entry.components.reduce(root) { $0.appendingPathComponent($1) }, data: data,
-      version: entry.version, location: location)
+      version: entry.version, location: location,
+      modified: Date(
+        timeIntervalSince1970: Double(read.metadata.st_mtimespec.tv_sec)
+          + Double(read.metadata.st_mtimespec.tv_nsec) / 1_000_000_000))
   }
 
   static func version(_ data: Data) -> String {
@@ -310,20 +325,27 @@ struct SidebarCatalog: Sendable {
           stop.pointee = true
           return
         }
-        guard let match, let range = Range(match.range, in: text) else { return }
+        guard let match else { return }
         guard hits.count < limits.searchHits else {
           truncated = true
           stop.pointee = true
           return
         }
-        let prefix = text[..<range.lowerBound]
+        // Regex offsets may be inside a grapheme (e.g. a combining accent).
+        // NSString keeps those valid UTF-16 hits instead of silently discarding them.
+        let source = text as NSString
+        let prefix = source.substring(to: match.range.location)
         let line = prefix.reduce(into: 1) { if $1.isNewline { $0 += 1 } }
-        let lineStart =
-          prefix.lastIndex(where: \.isNewline).map { prefix.index(after: $0) } ?? prefix.startIndex
-        let before = String(prefix[lineStart...].suffix(50))
+        let lineRange = source.lineRange(for: NSRange(location: match.range.location, length: 0))
+        let before = String(
+          source.substring(
+            with: NSRange(
+              location: lineRange.location,
+              length: match.range.location - lineRange.location)
+          ).suffix(50))
         let after =
-          text[range.lowerBound...].prefix(120).split(whereSeparator: \.isNewline).first.map(
-            String.init) ?? ""
+          source.substring(from: match.range.location).prefix(120)
+          .split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
         hits.append(
           SidebarSearchHit(
             fileID: file.id, line: line, snippet: before + after,
@@ -342,8 +364,10 @@ struct SidebarCatalog: Sendable {
     guard !data.starts(with: [0xFF, 0xFE]), !data.starts(with: [0xFE, 0xFF]),
       !data.starts(with: [0x00, 0x00, 0xFE, 0xFF])
     else { return nil }
-    guard let text = String(data: data, encoding: .utf8) else { return nil }
-    return text
+    guard String(data: data, encoding: .utf8) != nil else { return nil }
+    // Foundation's String(data:encoding:) consumes a leading UTF-8 BOM. Validate
+    // with it, then decode exact code units so search ranges remain raw offsets.
+    return String(decoding: data, as: UTF8.self)
   }
 
   private static func read(

@@ -7,6 +7,13 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   struct Context: Equatable {
     let documentID: String
     let revision: Int
+    let fileURL: URL?
+
+    init(documentID: String, revision: Int, fileURL: URL? = nil) {
+      self.documentID = documentID
+      self.revision = revision
+      self.fileURL = fileURL
+    }
   }
 
   private struct Request: Decodable {
@@ -46,11 +53,17 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   final class FolderAccess: @unchecked Sendable {
     let url: URL
     private let active: Bool
-    init(_ url: URL) {
+    private let stopAccess: @Sendable (URL) -> Void
+    init(
+      _ url: URL,
+      startAccess: @Sendable (URL) -> Bool = { $0.startAccessingSecurityScopedResource() },
+      stopAccess: @escaping @Sendable (URL) -> Void = { $0.stopAccessingSecurityScopedResource() }
+    ) {
       self.url = url
-      active = url.startAccessingSecurityScopedResource()
+      self.stopAccess = stopAccess
+      active = startAccess(url)
     }
-    deinit { if active { url.stopAccessingSecurityScopedResource() } }
+    deinit { if active { stopAccess(url) } }
   }
 
   private let replySink: ((String) -> Void)?
@@ -70,7 +83,15 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   private var searchID = UUID()
   private var navigationID = UUID()
   private var searchHits: [String: SidebarSearchHit] = [:]
-  private var watcher: Timer?
+  // Timer.invalidate is thread-safe; the wrapper permits deterministic deinit
+  // cancellation when the last bridge reference is released off the main actor.
+  private final class WatchTimer: @unchecked Sendable {
+    let timer: Timer
+    init(_ timer: Timer) { self.timer = timer }
+    func invalidate() { timer.invalidate() }
+    deinit { timer.invalidate() }
+  }
+  private var watcher: WatchTimer?
   private var watchTask: Task<SidebarCatalog, Error>?
   private var invalidated = false
 
@@ -184,10 +205,11 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
       }
     case .refresh: scan(request)
     case .search:
+      navigationID = UUID()
       searchTask?.cancel()
       searchID = UUID()
       searchHits.removeAll()
-      guard let catalog, request.catalogID == catalog.id, let query = request.query,
+      guard !invalidated, let catalog, request.catalogID == catalog.id, let query = request.query,
         let options = request.options, query.utf16.count <= 2_000
       else {
         reject(request, "文档列表已变化，请刷新后搜索。")
@@ -217,7 +239,7 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
         }
       }
     case .open:
-      guard request.revision == binding.revision, let catalog, let access,
+      guard !invalidated, request.revision == binding.revision, let catalog, let access,
         request.catalogID == catalog.id, let fileID = request.fileID
       else {
         reject(request, "文档或列表已变化，请重新选择。")
@@ -296,12 +318,13 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   private func startWatching() {
     watcher?.invalidate()
     invalidated = false
-    watcher = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-      MainActor.assumeIsolated { self?.pollChanges() }
-    }
+    watcher = WatchTimer(
+      Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+        MainActor.assumeIsolated { self?.pollChanges() }
+      })
   }
 
-  private func pollChanges() {
+  func pollChanges() {
     guard !invalidated, watchTask == nil, let access, let catalog, let binding = current() else {
       return
     }
@@ -335,17 +358,23 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   }
 
   private func matches(_ request: Request) -> Bool {
-    current() == Context(documentID: request.documentID, revision: request.revision)
+    current()?.documentID == request.documentID && current()?.revision == request.revision
       && request.contextID == contextID
   }
 
   private func sendCatalog(_ catalog: SidebarCatalog, request: Request) {
+    let currentURL = current()?.fileURL?.standardizedFileURL.resolvingSymlinksInPath()
+    let files = catalog.files.map { file in
+      var value = file
+      value.isCurrent = currentURL == catalog.root.appendingPathComponent(file.relativePath)
+      return value
+    }
     send(
       Reply(
         requestID: request.requestID, documentID: request.documentID,
         contextID: contextID, kind: "catalog",
         catalog: CatalogReply(
-          id: catalog.id, rootName: catalog.root.lastPathComponent, files: catalog.files,
+          id: catalog.id, rootName: catalog.root.lastPathComponent, files: files,
           incomplete: catalog.incomplete, skippedFiles: catalog.skippedFiles)))
   }
 
