@@ -70,3 +70,9 @@ NodeSelection 有限核实：生产 view.dispatch(NodeSelection.create(...)) 在
 修改文件：editor-runtime.ts、technical-preview.ts、protected-preview.ts、technical-preview.css、新 technical-navigation-runtime.test.ts，以及本任务/evidence。未改main/schema/context-tools/source-authority/依赖。独立 CSS 仅复用既有 Mermaid 修改按钮层级与 focus outline；未验证屏幕几何。
 
 根管理者已接收 NodeSelection 规范化证据，撤回“本切片 NodeSelection 取消缺陷已证实”的假设，不增加私有注入或 session 改动。最终审查产物与工作树保留；本人创建的两个临时工具 symlink 在验证后 unlink，不删除共享依赖目录。
+
+## 根独立审查后的 CSS 修复
+
+根发现本次公共样式替换误改了下方 Mermaid 隐藏选择器，造成 `.mermaid-edit` 无条件隐藏。已恢复基线两条显隐 selector；相对基线 CSS diff 现在仅含公共按钮样式追加 `.technical-edit` 与末尾 focus outline。原始报告与证据保留；不以行为测试冒称 CSS 几何通过。
+
+实跑 `.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/technical-preview-runtime.test.ts src/technical-navigation-runtime.test.ts --disableConsoleIntercept`，2 files / 14 tests passed；`git diff --check` 通过。日志 `css-fix-green.txt`。本次未改 runtime，A 的第4图片回调接线仍等根提供固定SHA后在组合代码上处理。

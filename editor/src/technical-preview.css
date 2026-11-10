@@ -57,8 +57,7 @@ div#editor .is-mermaid { background: transparent; border-color: transparent; }
 #editor .is-mermaid.inkora-context-active > .mermaid-preview,
 .is-mermaid:has(> .inkora-code-toolbar:focus-within) > .mermaid-preview { display: none; }
 #editor .is-mermaid.inkora-context-active > .mermaid-edit,
-.is-mermaid:has(> .inkora-code-toolbar:focus-within) > .technical-edit,
-.mermaid-edit { display: none; }
+.is-mermaid:has(> .inkora-code-toolbar:focus-within) > .mermaid-edit { display: none; }
 @media (prefers-color-scheme: dark) {
   .footnote-reference button, .footnote-back { color: #8bb9df; }
   .mermaid-preview svg { filter: invert(.88) hue-rotate(180deg); }
