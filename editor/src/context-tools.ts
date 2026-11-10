@@ -3,6 +3,7 @@ import { Decoration, type EditorView } from "prosemirror-view";
 
 export function focusContextToolbar(view: EditorView): boolean {
   const target = view.dom.querySelector<HTMLElement>(
+    ".inkora-context-active > .image-controls button:not(:disabled), " +
     ".inkora-context-active > [role='toolbar'] button:not(:disabled), " +
     ".inkora-context-active > [role='toolbar'] select:not(:disabled)",
   );
@@ -32,9 +33,11 @@ export function contextToolDecorations(state: EditorState): Decoration[] {
       positions.add($from.before(depth));
     }
   }
+  if ($from.nodeAfter?.type.name === "image") positions.add(from);
+  if ($from.nodeBefore?.type.name === "image") positions.add(from - $from.nodeBefore.nodeSize);
   if (from !== to) {
     state.doc.nodesBetween(from, to, (node, pos) => {
-      if (["table", "code_block"].includes(node.type.name)) positions.add(pos);
+      if (["table", "code_block", "image"].includes(node.type.name)) positions.add(pos);
     });
   }
   return Array.from(positions, pos => Decoration.node(

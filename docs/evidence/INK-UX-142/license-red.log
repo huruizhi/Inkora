@@ -1,0 +1,27 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-142-node-tools/editor
+
+ ❯ src/code-block-view.test.ts (14 tests | 1 failed) 104ms
+   ❯ code block node view (14)
+     × opens an offline notice and returns focus without replacing language or document 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/code-block-view.test.ts > code block node view > opens an offline notice and returns focus without replacing language or document
+AssertionError: expected null not to be null
+ ❯ src/code-block-view.test.ts:229:25
+    227|     const before = h.view.state;
+    228|     const trigger = h.view.dom.querySelector<HTMLButtonElement>("butto…
+    229|     expect(trigger).not.toBeNull();
+       |                         ^
+    230|     trigger.click();
+    231|     const panel = h.view.dom.querySelector<HTMLElement>('[role="dialog…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  01:43:43
+   Duration  460ms (import 66%, tests 28%, transform 6%)
+

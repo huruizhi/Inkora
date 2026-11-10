@@ -1,0 +1,9 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-142-node-tools/editor
+
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  01:44:08
+   Duration  483ms (import 61%, tests 31%, transform 7%)
+
