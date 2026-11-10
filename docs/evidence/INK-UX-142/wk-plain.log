@@ -1,0 +1,10 @@
+GEOMETRY {"complete":true,"width":1,"height":1,"image":{"x":52.0625,"y":78.53125,"width":1,"height":1,"top":78.53125,"right":53.0625,"bottom":79.53125,"left":52.0625},"button":{"x":65.0625,"y":67.53125,"width":46.796875,"height":23,"top":67.53125,"right":111.859375,"bottom":90.53125,"left":65.0625},"tabIndex":0,"text":"描述…"}
+KEYBOARD_FOCUS image-edit-button
+LICENSE 1 0 前 ![旧](./a.png "旧题") 后
+
+```js
+x
+```
+
+FORM {"afterRefresh":{"detached":true,"value":"旧","focusLost":true},"rawAfterDetachedSubmit":"前 ![未确认拼音](./a.png \"旧题\") 后\n\n```js\nx\n```\n","status":{"dirty":true,"canUndo":true,"canRedo":false,"draftDirty":false,"unresolved":false,"saveEligible":true}}
+VISIBLE false
