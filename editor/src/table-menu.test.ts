@@ -103,6 +103,13 @@ describe("production context tools", () => {
     expect(runtime.status).toEqual(before);
     expect(publications).toBe(0);
     open();
+    menu.dispatchEvent(new dom.window.Event("scroll", { bubbles: false }));
+    expect(menu.hidden).toBe(false);
+    view.dom.dispatchEvent(new dom.window.Event("scroll", { bubbles: false }));
+    expect(menu.hidden).toBe(true);
+    expect(runtime.status).toEqual(before);
+    expect(publications).toBe(0);
+    open();
     document.body.dispatchEvent(new dom.window.Event("pointerdown", { bubbles: true }));
     stale.click();
     expect(runtime.getText()).toBe(raw);
