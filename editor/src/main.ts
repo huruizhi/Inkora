@@ -45,10 +45,6 @@ declare global {
       receive(serialized: string): void;
     };
     inkoraSidebar: { receive(serialized: string): void };
-    inkoraPresentation: {
-      setTitle(documentID: string, title: string, serial?: number): boolean;
-      locate(documentID: string, revision: number, raw: string, from: number, to: number): boolean;
-    };
     webkit?: {
       messageHandlers?: {
         inkora?: { postMessage(serialized: string): void };
@@ -132,6 +128,7 @@ let executingCommand = false;
 let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
 let loadEpoch = 0;
+let acceptedLoadRequestID: string | undefined;
 let readingWidth: 760 | 900 = 900;
 let observesCommands = false;
 let commandStateSignature = "";
@@ -453,27 +450,21 @@ const sidebarConnection = new SidebarConnection({
   error: message => panel.showWorkspaceError(message),
 });
 window.inkoraSidebar = { receive: serialized => sidebarConnection.receive(serialized) };
-let presentationSerial = -1;
-window.inkoraPresentation = {
-  setTitle(documentID, title, serial) {
-    if (documentID !== activeDocumentID ||
-        (serial !== undefined && (!Number.isSafeInteger(serial) || serial <= presentationSerial))) return false;
-    if (serial !== undefined) presentationSerial = serial;
-    documentTitle.textContent = title;
-    titlebar.dataset.native = "true";
-    return true;
-  },
-  locate(documentID, revision, raw, from, to) {
+function revealRange(command: Extract<NativeCommand, { type: "setDocumentTitle" | "revealRange" }>): "applied" | "sourceChoice" | undefined {
+  const { documentID, revision } = command;
+  const raw = runtime?.getText() ?? "";
+  const from = command.selectionAnchor!;
+  const to = command.selectionHead!;
     if (!runtime || documentID !== activeDocumentID || revision !== activeRevision ||
         runtime.getText() !== raw || runtime.composing || searchPanel.isInputComposing ||
         panel.isInputComposing || runtime.status.draftDirty || runtime.status.unresolved ||
-        (activeLinkEditor && composingLinkEditors.has(activeLinkEditor))) return false;
+        (activeLinkEditor && composingLinkEditors.has(activeLinkEditor))) return undefined;
     if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to) || from < 0 || to < from || to > raw.length) {
       panel.showWorkspaceError("搜索位置不属于当前可编辑原文（可能是文件编码标记）。请刷新搜索。");
-      return false;
+      return undefined;
     }
     const outcome = runtime.navigateRawRange(raw, { anchor: from, head: to });
-    if (outcome.ok) return true;
+    if (outcome.ok) return "applied";
     // A protected or syntax-only range needs an explicit source-mode choice.
     const epoch = loadEpoch;
     const choice = document.createElement("button");
@@ -494,9 +485,8 @@ window.inkoraPresentation = {
     linkEditorHost.querySelector(".sidebar-source-location")?.remove();
     linkEditorHost.append(choice);
     panel.showWorkspaceError(outcome.message);
-    return false;
-  },
-};
+    return "sourceChoice";
+}
 
 // 查找面板：原生菜单的 Cmd-F 打开查找模式，面板内可显式切换到替换模式。
 // 查询、展示与导航不产生 Bridge 正文消息；只有有效替换会进入既有正文事务。
@@ -810,6 +800,17 @@ window.inkora = {
       const command = decodeNativeCommand(serialized);
       requestID = command.requestID;
       switch (command.type) {
+        case "setDocumentTitle":
+        case "revealRange":
+          postToNative(session.present(command, acceptedLoadRequestID, () => {
+            if (command.type === "setDocumentTitle") {
+              documentTitle.textContent = command.title!;
+              titlebar.dataset.native = "true";
+              return "applied";
+            }
+            return revealRange(command);
+          }));
+          break;
         case "loadDocument":
           {
             // 先验证再重置：被拒绝的 load（stale_revision/request_conflict）
@@ -825,6 +826,7 @@ window.inkora = {
               // 面板开关保留）。被拒 load 不走这里，查找状态原样保留。
               searchPanel.resetForNewDocument();
               loadEpoch += 1;
+              acceptedLoadRequestID = command.requestID;
               linkEditorHost.querySelector(".sidebar-source-location")?.remove();
               linkEditorHost.querySelector(".sidebar-navigation-review")?.remove();
               closeLinkEditor();
