@@ -169,3 +169,123 @@ import Foundation
 本次不重跑根会话负责的make lint/test、全量Native、Release、CI，不运行GUI/App/XCU/CUA/浏览器、实际保存或文件夹面板、物理IME。没有安装或借用依赖symlink。两段probe及其可执行文件留在本机`/tmp/ink-rev-134-spec`；完整源和输出已经随本任务记录保留，临时目录清理不影响评审证据。窄窗几何和已打开dirty目标卡片为静态推导，尚未独立运行对应窗口/布局反例。
 
 未完成事项：四项发现的产品修复及相应回归、矩阵剩余证明，由父会话安排；只审不修意味着这些产品风险仍存在。审查本身完成，不声称整个Typora目标或main交付完成。工作树与分支保留作为验收备份。提交使用英文Conventional Commits，提交后push同名origin并核对origin=HEAD/clean；完整交付SHA见最终回报（本文件不能自引用自己的提交SHA）。
+
+
+## Post-fix：固定8e64424限定后验复核
+
+按父会话后续限定指令执行；首稿内容不改写，仅追加本节及Spec报告后验段。自己的分支初始HEAD为`557d67f5417d619171ca073a8aaf5454450e890c`，工作区clean。`git rev-parse 8e64424^{commit}`得到固定产品`8e64424f2fd8b0c54faf449b418551d1761a8551`。
+
+未从动态根工作树读产品文件；下列选定A/B文件全部来自固定commit。最初亦以git show固定SHA核读Bridge/CSS，然后建立archive冻结副本，所有复现编译均只使用archive源：
+
+```sh
+mkdir -p /tmp/ink-rev-134-post-8e64424
+git archive 8e64424f2fd8b0c54faf449b418551d1761a8551 app/Sources/SidebarCatalog.swift app/Sources/SidebarWorkspaceBridge.swift editor/src/style.css editor/src/sidebar-chrome.ts editor/src/sidebar-chrome.test.ts tests/InkoraTests/SidebarWorkspaceBridgeTests.swift > /tmp/ink-rev-134-post-8e64424/fixed.tar
+tar -xf /tmp/ink-rev-134-post-8e64424/fixed.tar -C /tmp/ink-rev-134-post-8e64424
+```
+
+archive SHA256：`246efb97fea9682975f656140f7f23dd33c84bc6a4b1f487b3f005b07757fc11`。没有生成新的产品审查diff，未改变首稿唯一diff范围。
+
+### 自跑命令及结果
+
+沿用首稿Bridge公开receive/current/replySink接缝；只有6个有限情形，没有运行归档内既有测试套件、全量门禁或C导航窗口反例。每个请求后同一MainActor turn立即更改绑定，避免完成先于更改；typing控制要求收到成功结果，负控制要求旧完成被拒且新ready能成功返回目录。跨doc控制还在发送新ready前等待250ms，验证仅document变更也足以拒旧回包。
+
+```sh
+xcrun swiftc -swift-version 6 /tmp/ink-rev-134-post-8e64424/app/Sources/SidebarCatalog.swift /tmp/ink-rev-134-post-8e64424/app/Sources/SidebarWorkspaceBridge.swift /tmp/ink-rev-134-post-8e64424/PostFixProbe.swift -o /tmp/ink-rev-134-post-8e64424/post-fix-probe
+/tmp/ink-rev-134-post-8e64424/post-fix-probe
+```
+
+编译与运行退出0，实际输出：
+
+```text
+PASS scan typing: catalog delivered after revision 0 -> 1
+PASS scan document: old completion rejected; rebound catalog delivered
+PASS scan context: old completion rejected; rebound catalog delivered
+PASS search typing: search delivered after revision 0 -> 1
+PASS search document: old completion rejected; rebound catalog delivered
+PASS search context: old completion rejected; rebound catalog delivered
+
+```
+
+完整probe源码保留如下；与首稿预期不同是因为它验证补正后的成功回包，同时保留跨doc/context拒绝要求，没有修改生产实现或有效测试：
+
+```swift
+import Foundation
+
+enum EditorResourceSchemeHandler { static let scheme = "inkora-editor" }
+enum BridgeProtocolV1 { static let maxSafeRevision = 9_007_199_254_740_991 }
+@main struct PostFixProbe {
+  @MainActor static func main() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try Data("alpha\r\n".utf8).write(to: root.appendingPathComponent("a.md"))
+    for operation in ["scan", "search"] {
+      for control in ["typing", "document", "context"] {
+        var revision = 0
+        var documentID = "doc-A"
+        var replies: [[String: Any]] = []
+        let bridge = SidebarWorkspaceBridge(current: { .init(documentID: documentID, revision: revision) }, chooseFolder: { _ in }, mayOpen: { _, done in done(true) }, openFile: { _, _, _ in }, replySink: { replies.append(try! JSONSerialization.jsonObject(with: Data($0.utf8)) as! [String: Any]) })
+        func request(_ action: String, id: String, context: String? = nil, extra: [String: Any] = [:]) -> String {
+          var value: [String: Any] = ["action": action, "requestID": id, "documentID": documentID, "revision": revision]
+          value["contextID"] = context
+          value.merge(extra) { _, new in new }
+          return String(data: try! JSONSerialization.data(withJSONObject: value), encoding: .utf8)!
+        }
+        func waitFor(_ id: String, kind: String) async throws {
+          for _ in 0..<100 {
+            if replies.contains(where: { $0["requestID"] as? String == id && $0["kind"] as? String == kind }) { return }
+            try await Task.sleep(for: .milliseconds(10))
+          }
+          preconditionFailure("missing \(kind) for \(id): \(replies)")
+        }
+        bridge.useFolder(.init(root))
+        let pending = "pending-\(operation)-\(control)"
+        if operation == "scan" {
+          bridge.receive(request("ready", id: pending), trustedMainFrame: true)
+        } else {
+          bridge.receive(request("ready", id: "setup"), trustedMainFrame: true)
+          try await waitFor("setup", kind: "catalog")
+          let context = replies.first!["contextID"] as! String
+          let catalog = replies.last!["catalog"] as! [String: Any]
+          bridge.receive(request("search", id: pending, context: context, extra: ["catalogID": catalog["id"]!, "query": "alpha", "options": ["caseSensitive": false, "wholeWord": false, "regularExpression": false]]), trustedMainFrame: true)
+        }
+        let expected = operation == "scan" ? "catalog" : "search"
+        // No await before changing binding: MainActor completion cannot win the race.
+        if control == "typing" {
+          revision += 1
+          try await waitFor(pending, kind: expected)
+          if operation == "search" {
+            let result = replies.last!["result"] as! [String: Any]
+            precondition((result["hits"] as! [[String: Any]]).count == 1)
+          }
+          print("PASS \(operation) typing: \(expected) delivered after revision 0 -> 1")
+        } else {
+          if control == "document" {
+            documentID = "doc-B"
+            try await Task.sleep(for: .milliseconds(250))
+            precondition(!replies.contains { $0["requestID"] as? String == pending && $0["kind"] as? String != "ready" })
+          }
+          let oldContext = replies.first!["contextID"] as! String
+          bridge.receive(request("ready", id: "rebind"), trustedMainFrame: true)
+          try await waitFor("rebind", kind: "catalog")
+          try await Task.sleep(for: .milliseconds(100))
+          precondition(!replies.contains { $0["requestID"] as? String == pending && $0["kind"] as? String != "ready" })
+          let ready = replies.first { $0["requestID"] as? String == "rebind" && $0["kind"] as? String == "ready" }!
+          precondition(ready["contextID"] as! String != oldContext)
+          precondition(ready["documentID"] as! String == documentID)
+          print("PASS \(operation) \(control): old completion rejected; rebound catalog delivered")
+        }
+      }
+    }
+  }
+}
+
+```
+
+### 后验结论与未完成事项
+
+- 原发现2：在上述限定Foundation/Bridge公共接缝范围已关闭。冻结源码`SidebarWorkspaceBridge.swift:203–205,265–267,348,407–408`支持该结果；未外推为真实WK生产交互全通过。
+- 原发现4：B共享`--sidebar-width`消除原静态600/640数值分歧；600与640的侧栏/正文让位均240px，480均216px。依据冻结`style.css:171,324,617,624,868–872`，仅为核读CSS数值，实际WK几何与动画仍待C及根验收。
+- 原发现1/3：仍未关闭；没有重审未完成C文件或因旧C路径重报旧缺陷。A的`revalidatedForNavigation`及Bridge包装ticket只核读，不宣称C已接通，也未自跑ticket专项。
+- 未运行App、显示窗口、真实系统面板、GUI、浏览器、XCU、物理IME、全量门禁；未创建Agent、安装依赖、修改其他worktree。仅追加自己的两份报告。
+- 后验报告独立提交并push同名branch，核对远端SHA等于HEAD且clean，worktree继续保留；准确提交SHA见最终回报。产品剩余修复与WK证据由父会话继续整合。
