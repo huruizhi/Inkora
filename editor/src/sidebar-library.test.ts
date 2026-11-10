@@ -1,16 +1,17 @@
 import { JSDOM } from "jsdom";
 import { afterEach, describe, expect, it } from "vitest";
+import { SidebarConnection } from "./sidebar-connection";
 import { SidebarLibrary, type SidebarLibraryAction, type SidebarCatalog } from "./sidebar-library";
 const original = globalThis.document;
 afterEach(() => Object.defineProperty(globalThis, "document", { configurable: true, value: original }));
 const catalog: SidebarCatalog = { id: "cat", rootName: "笔记", incomplete: false, skippedFiles: 0, files: [
   { id: "a", name: "笔记.md", relativePath: "笔记.md", summary: "摘要" }, { id: "b", name: "另一篇.txt", relativePath: "子目录/另一篇.txt", summary: "另一摘要" },
 ] };
-function setup() {
+function setup(sink: (action: SidebarLibraryAction) => void = () => {}) {
   const window = new JSDOM("<main></main>", { pretendToBeVisual: true }).window;
   Object.defineProperty(globalThis, "document", { configurable: true, value: window.document });
   const actions: SidebarLibraryAction[] = []; let allowed = true;
-  const library = new SidebarLibrary(action => actions.push(action), () => allowed); window.document.querySelector("main")!.append(library.element);
+  const library = new SidebarLibrary(action => { actions.push(action); sink(action); }, () => allowed); window.document.querySelector("main")!.append(library.element);
   return { window, library, actions, deny: () => { allowed = false; } };
 }
 describe("文件侧栏", () => {
@@ -33,4 +34,22 @@ describe("文件侧栏", () => {
     library.showSearch("内容", { truncated: false, hits: [] }); expect(library.element.textContent).toContain("正在搜索");
     library.reset(); expect(library.element.querySelectorAll(".sidebar-file-card")).toHaveLength(0); library.destroy();
   });
+});
+
+it("真实DOM清空/返回将已完成search及在途open身份传至Native取消请求", () => {
+  const sent: Record<string, unknown>[] = [];
+  const s = setup(action => connection.perform(action));
+  const connection = new SidebarConnection({ binding: () => ({ documentID: "doc", revision: 1 }), send: value => { sent.push(JSON.parse(value)); return true; }, catalog: value => s.library.update(value), result: (query, value) => s.library.showSearch(query, value), error: value => s.library.showError(value) });
+  const receive = (value: Record<string, unknown>) => connection.receive(JSON.stringify({ documentID: "doc", contextID: "ctx", ...value }));
+  connection.connect(); const ready = sent.at(-1)!;
+  receive({ kind: "ready", requestID: ready.requestID }); receive({ kind: "catalog", requestID: ready.requestID, catalog }); s.library.setSearchOpen(true);
+  const query = s.library.element.querySelector("input")!;
+  query.value = "内容"; query.dispatchEvent(new s.window.Event("input")); const search = sent.at(-1)!;
+  receive({ kind: "search", requestID: search.requestID, query: "内容", result: { hits: [{ fileID: "a", line: 1, snippet: "内容", hitID: "proof" }], truncated: false } });
+  s.library.element.querySelector<HTMLButtonElement>(".sidebar-file-card")!.click(); const open = sent.at(-1)!;
+  query.value = ""; query.dispatchEvent(new s.window.Event("input"));
+  expect(sent.at(-1)).toMatchObject({ action: "cancelSearch", catalogID: "cat", targetSearchRequestID: search.requestID, targetOpenRequestID: open.requestID });
+  query.value = "新内容"; query.dispatchEvent(new s.window.Event("input")); const next = sent.at(-1)!;
+  s.library.element.querySelector<HTMLButtonElement>('[aria-label="返回文档列表"]')!.click();
+  expect(sent.at(-1)).toMatchObject({ action: "cancelSearch", targetSearchRequestID: next.requestID }); expect(sent.at(-1)!.targetOpenRequestID).toBeUndefined(); s.library.destroy();
 });

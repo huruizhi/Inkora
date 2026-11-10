@@ -38,3 +38,11 @@
 几何预期（相对app左缘）：1280/640/600px时展开侧栏右缘及正文左缘均240px；480px均216px；320px均144px；收起均0。系统安全区保持标题行左90px、侧栏顶部40px。
 
 新增`sidebar-chrome.test.ts`生产CSSOM计算接缝：读取真实样式级联而非复写产品宽度函数，校验两条布局属性引用同一变量、border-box及无第二max-width，并核算1280/640/600/480/320边界。`.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/sidebar-chrome.test.ts src/document-analysis-panel.test.ts`：2文件21项通过；`make lint`通过。真实像素几何不由JSDOM外推，已协调C使用现有隐藏WK runner验证宽窗/600/480px、开关/resize/reduced-motion；B未显示窗口、启动App/浏览器或改C/A文件。
+
+## 正式取消传输补正
+
+先前`cancelSearch`仅清Web请求ID，不能撤销Native延迟打开及已完成搜索的hit能力。现为正式传输action：沿用requestID/documentID/revision/contextID/catalogID，至少携带targetSearchRequestID或targetOpenRequestID之一。发送前捕获旧目标后清本地；searchIntentID在完成搜索后继续保留，直到取消/新请求/重连/catalog切换，保证已签发hit也可撤销。旧cancelled回执不改变新search/open或UI。
+
+A已确认Native分别精确匹配activeSearchRequestID/activeOpenRequestID后撤销task/generation/hits，保留catalog/watch；旧目标no-op，回执kind=cancelled，带cancelledSearch/cancelledOpen布尔值。C已获字段同步。Web现有清空查询、返回列表、切换视图路径沿用SidebarLibraryAction，不增编辑器事务。
+
+实跑：`.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/sidebar-connection.test.ts src/sidebar-library.test.ts src/sidebar-chrome.test.ts src/document-analysis-panel.test.ts`，4文件31项通过，包含真实DOM清空/返回经真实Connection发目标ID，完成search+在途open组合取消、迟到回执与新请求隔离、无目标/跨load/跨document；`make lint`通过。Native延迟mayOpen/ticket撤销实证由A负责，本分支未执行GUI/Native UI，不以Web回包隔离冒称Native能力已撤销。
