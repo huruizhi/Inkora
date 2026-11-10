@@ -19,3 +19,8 @@ README、发布流程、Beta 1 说明、INK-REL-119 发布后实证及本任务�
 
 原下载与发布回执位于主仓忽略目录 `artifacts/release/unsigned-preview/v0.1.0-beta.1/`。
 本版无 Developer ID、公证或 Gatekeeper 下载首启证据，仍有已披露的最终桌面复查限制；这些不被私有预览发布解释成正式质量验收通过。
+
+## 后续决定
+
+用户随后明确授权“如果已经准备好了，可以把仓库改成 public”。INK-REL-121 执行公开前检查并将现有仓库改为 public，匿名仓库/Release API 和五个附件下载校验通过。
+本任务的 private 状态保留为当时发布记录；当前权限以 INK-REL-121 为准，原标签、附件和未签名限制不变。
