@@ -21,7 +21,7 @@
 - `xcrun swift-format lint --strict app/Sources/SidebarCatalog.swift app/Sources/SidebarWorkspaceBridge.swift tests/InkoraTests/SidebarCatalogTests.swift tests/InkoraTests/SidebarWorkspaceBridgeTests.swift`：退出 0。
 - `git diff --check`：通过。
 
-先红后绿：原始 BOM 搜索偏移实测少 1，保留断言后改为验证 UTF-8 再按原始码元解码；另在实际 emit 编译暴露 Swift 6 非隔离 deinit 不能触及 Timer，改成可跨线程取消的生命周期包装。没有绕过或删除测试。
+先红后绿：原始 BOM 搜索偏移实测少 1，保留断言后改为验证 UTF-8 再按原始码元解码；另在实际 emit 编译暴露 Swift 6 非隔离 deinit 不能触及 Timer，初版通过包装消除了编译错误，但仍有后台直接 invalidate 的 SDK 约束缺陷；已按下述补正修复。没有绕过或删除测试。
 
 证据：[完整专项](../evidence/INK-UX-130/hostless-green.txt)、[BOM 失败](../evidence/INK-UX-130/bom-offset-red.txt)、[应用源级检查](../evidence/INK-UX-130/app-typecheck.txt)。
 
@@ -31,3 +31,14 @@
 - C 必须采用 `openVerifiedFile`、安全 modified 与 exact-byte 磁盘基线，原文坐标转换只扣文件首 BOM；B 必须采用 hitID 和 invalidated。已向双方发出接口提交并获得确认，组合后的导航/保存验收仍由主会话负责。
 - 轮询开销上界是每轮 50 MiB/10 秒；大目录会显示不完整/跳过。目录更换或销毁取消轮询，变化后等待 Web 刷新。没有 FSEvents 常驻全盘读取。
 - 工作树保留等待主会话验收、备份和两层回收；本分支不 PR、不 merge、不安装应用。
+
+
+## 管理者审查补正：Timer 安装线程
+
+管理者指出 Foundation Timer 必须在安装线程调用 invalidate，初版 WatchTimer 的线程安全注释和后台直接调用不成立，依据 [Apple Timer.invalidate 文档](https://developer.apple.com/documentation/foundation/timer/invalidate())。
+
+本轮将 Timer 放在仅主 actor 可访问的 Registration 内；安装处及真正 invalidate 处均要求主线程。Sendable WatchTimer 的后台 invalidate/deinit 将不可变 Registration 引用交给 DispatchQueue.main，闭包不捕获正在析构的 WatchTimer/Bridge。主线程取消同步执行；注册对象内部去重，使显式取消加 deinit 只实际取消一次。移除了生产 wrapper 的 unchecked Sendable 声明。
+
+新增 `testTimerReleasedOffMainInvalidatesOnInstallationThread`：真实 RunLoop Timer 在主线程安装，后台 Task 显式取消并释放最后 owner；核验后台执行、owner 真正销毁、实际取消回调在主线程、Timer.isValid 为 false、重复取消仅一次。等待有上限，无 GUI/WebView 实例或 App 启动。
+
+实跑 `tests/InkoraTests/SidebarHostless.sh`：15/15 通过（9 Catalog + 6 Bridge）；`xcrun swift-format lint --strict app/Sources/SidebarWorkspaceBridge.swift tests/InkoraTests/SidebarWorkspaceBridgeTests.swift` 与 `git diff --check` 均通过。未跑全量 Native、GUI、Release 或 CI。证据：[安装线程专项](../evidence/INK-UX-130/timer-installation-thread-green.txt)。

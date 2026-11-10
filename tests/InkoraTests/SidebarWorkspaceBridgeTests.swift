@@ -224,4 +224,43 @@ final class SidebarWorkspaceBridgeTests: XCTestCase {
     XCTAssertEqual(replies.last?["kind"] as? String, "catalog")
   }
 
+  func testTimerReleasedOffMainInvalidatesOnInstallationThread() async throws {
+    // Ownership transfers to the background task; all accesses are ordered by
+    // task completion. This box is only needed to force the last release there.
+    final class Owner: @unchecked Sendable {
+      var timer: SidebarWorkspaceBridge.WatchTimer?
+      init(_ timer: SidebarWorkspaceBridge.WatchTimer) { self.timer = timer }
+    }
+    XCTAssertTrue(Thread.isMainThread)
+    var invalidations = 0
+    let timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
+      XCTFail("invalidated timer must not fire")
+    }
+    let owner = Owner(
+      SidebarWorkspaceBridge.WatchTimer(
+        timer,
+        onInvalidated: {
+          XCTAssertTrue(Thread.isMainThread)
+          XCTAssertFalse(timer.isValid)
+          invalidations += 1
+        }))
+    weak var weakOwner = owner.timer
+    await Task.detached {
+      XCTAssertFalse(Thread.isMainThread)
+      // Exercise explicit cancellation and the last release in a worker thread.
+      // Both paths must hand only the registration back to its installation queue.
+      owner.timer?.invalidate()
+      owner.timer = nil
+    }.value
+    XCTAssertNil(weakOwner)
+    for _ in 0..<100 {
+      if invalidations == 1 { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    XCTAssertEqual(invalidations, 1)
+    XCTAssertFalse(timer.isValid)
+    try await Task.sleep(for: .milliseconds(30))
+    XCTAssertEqual(invalidations, 1)
+  }
+
 }

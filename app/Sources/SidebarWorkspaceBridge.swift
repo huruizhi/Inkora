@@ -85,13 +85,48 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   private var searchID = UUID()
   private var navigationID = UUID()
   private var searchHits: [String: SidebarSearchHit] = [:]
-  // Timer.invalidate is thread-safe; the wrapper permits deterministic deinit
-  // cancellation when the last bridge reference is released off the main actor.
-  private final class WatchTimer: @unchecked Sendable {
-    let timer: Timer
-    init(_ timer: Timer) { self.timer = timer }
-    func invalidate() { timer.invalidate() }
-    deinit { timer.invalidate() }
+  // Foundation requires invalidation on the timer's installation thread. The
+  // registration is main-actor-only; the Sendable owner can be released anywhere.
+  // Deferred cleanup retains only the registration, never a deinitializing owner.
+  final class WatchTimer: Sendable {
+    @MainActor
+    private final class Registration {
+      let timer: Timer
+      let onInvalidated: (@MainActor () -> Void)?
+      private var invalidated = false
+
+      init(_ timer: Timer, onInvalidated: (@MainActor () -> Void)?) {
+        precondition(Thread.isMainThread)
+        self.timer = timer
+        self.onInvalidated = onInvalidated
+      }
+
+      func invalidate() {
+        precondition(Thread.isMainThread)
+        guard !invalidated else { return }
+        invalidated = true
+        timer.invalidate()
+        onInvalidated?()
+      }
+    }
+
+    private let registration: Registration
+
+    @MainActor
+    init(_ timer: Timer, onInvalidated: (@MainActor () -> Void)? = nil) {
+      registration = Registration(timer, onInvalidated: onInvalidated)
+    }
+
+    func invalidate() {
+      let registration = registration
+      if Thread.isMainThread {
+        MainActor.assumeIsolated { registration.invalidate() }
+      } else {
+        DispatchQueue.main.async { registration.invalidate() }
+      }
+    }
+
+    deinit { invalidate() }
   }
   private var watcher: WatchTimer?
   private var watchTask: Task<SidebarCatalog, Error>?
