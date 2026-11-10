@@ -1,0 +1,9 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/editor
+
+
+ Test Files  3 passed (3)
+      Tests  157 passed (157)
+   Start at  23:29:07
+   Duration  1.41s (tests 56%, import 37%, transform 7%)
+
