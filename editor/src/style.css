@@ -168,6 +168,7 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 
 /* 大纲与统计面板：INK-055 约束 —— 页面不滚动，编辑区与面板各自内层滚动。 */
 #app {
+  --sidebar-width: 240px;
   display: flex;
   align-items: stretch;
   box-sizing: border-box;
@@ -319,7 +320,8 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 
 .analysis-panel {
   order: -1;
-  flex: 0 0 240px;
+  flex: 0 0 auto;
+  flex-basis: var(--sidebar-width);
   box-sizing: border-box;
   height: 100%;
   display: flex;
@@ -612,13 +614,14 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 
 /* 窄窗大纲仍从左侧展开，正文保留独立滚动。 */
 @media (max-width: 640px) {
+  #app { --sidebar-width: min(240px, 45vw); }
   .analysis-panel {
     position: absolute;
     z-index: 3;
     top: 0;
     bottom: 0;
     left: 0;
-    width: min(280px, 82vw);
+    width: var(--sidebar-width);
     height: auto;
     background: Canvas;
     box-shadow: 6px 0 24px #0001;
@@ -862,9 +865,11 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 .analysis-panel[data-sidebar-phase="closed"] > * { opacity: 0; pointer-events: none; }
 .analysis-panel[data-sidebar-phase="open"] > * { opacity: 1; }
 @media (max-width: 640px) {
-  #app:has(.analysis-panel:not(.analysis-panel-collapsed)) .editor-workspace { margin-left: min(240px, 45vw); }
-  .editor-workspace { transition: margin-left 220ms ease; }
-  .analysis-panel { max-width: 45vw; transition: width 220ms ease, padding 220ms ease; }
+  #app:has(.analysis-panel:not(.analysis-panel-collapsed)) .editor-workspace { margin-left: var(--sidebar-width); }
+  /* Stable resize updates both edges together; only explicit toggles animate. */
+  #app:has(.analysis-panel:is([data-sidebar-phase="reserving"], [data-sidebar-phase="closing"])) .editor-workspace { transition: margin-left 220ms ease; }
+  .analysis-panel { transition: width 220ms ease, padding 220ms ease; }
+  .analysis-panel:is([data-sidebar-phase="open"], [data-sidebar-phase="closed"]) { transition: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .analysis-panel, .analysis-panel > *, .editor-workspace { transition: none !important; }
