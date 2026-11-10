@@ -28,7 +28,7 @@ final class EditorCommandMenus: NSObject, NSMenuDelegate {
       "显示/隐藏大纲", .toggleOutline, to: viewMenu, key: "o", modifiers: [.command, .shift])
     viewMenu.addItem(.separator())
     addEditorAction("阅读宽度 760 px", .readingWidth760, to: viewMenu)
-    addEditorAction("阅读宽度 900 px（对照）", .readingWidth900, to: viewMenu)
+    addEditorAction("阅读宽度 900 px", .readingWidth900, to: viewMenu)
     let viewItem = NSMenuItem(title: "显示", action: nil, keyEquivalent: "")
     viewItem.submenu = viewMenu
     viewMenu.delegate = self

@@ -116,7 +116,7 @@ let executingCommand = false;
 let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
 let loadEpoch = 0;
-let readingWidth: 760 | 900 = 760;
+let readingWidth: 760 | 900 = 900;
 let observesCommands = false;
 let commandStateSignature = "";
 let activeLinkEditor: HTMLFormElement | undefined;
