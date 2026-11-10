@@ -50,3 +50,38 @@
 | 3：dirty目标普通卡片无法复用 | **仍未关闭，等待C补正与独立复核。** 本次未审导航集成，不对尚未完成的C动态代码作新判断。 |
 
 本次实跑只含1个Foundation/Bridge hostless可执行文件的6个情形，编译与执行均退出0，无窗口/App/系统面板/GUI/新Agent/依赖安装；没有复跑首稿导航窗口反例或全量门禁。原发现1/3与WK证明边界继续保留，不能把本次A/B限定复核外推为产品Spec整体通过。
+
+## Post-fix：固定caab97a9最终独立复审
+
+本节只追加；`d3edf880`首稿和`8e64424`后验全文保留。固定产品：`caab97a9b3a03bf2dbc6bcecf66d27d201eccd87`，全量`git archive`冻结于`/tmp/ink-rev-134-final-caab97a9`。所有产品核读、离线构建和限定测试均来自该副本，不读动态根产品文件。[任务记录](../tasks/INK-REV-134.md)附自跑命令、选择器、补充控制源码与实际输出。
+
+### 主结论（少于400词）
+
+- **原1关闭（有限导航范围）**：契约§6/7（design:18–19）、SB-08/09（matrix:24–25）。`EditorViewController.swift:271–280,303–329`在关闭review后与snapshot后重验ticket，转交无await；独立外改/删除反例现均拒绝并保留源窗。跨doc及同doc reload也拒绝旧review。
+- **原3关闭**：§6/SB-08。`:298–308`只对有hit的已有目标snapshot，普通卡片保留dirty/未提交源码会话；自跑确认不snapshot、草稿内容及DOM身份保留。补充不同原文snapshot反例被拒，匹配snapshot后外改也被拒。
+- **原4关闭于阶段/终态几何范围**：§12（design:27）、SB-14（matrix:30）。实际隐藏WK覆盖1280/600/480、稳定resize、快速反向及reduced-motion，验证reserving隐藏内容、panel/workspace边界与真实EditorView身份。`Animations.finish()`仅证明阶段状态与终态矩形，不证明实际paint/墙钟时长/macOS14。原2沿用上次6/6限定关闭，本次不重复跑。
+- **取消链接通**：§5/8及SB-07/10。Library:109/171→Connection:44–55→WorkspaceBridge:289–317→C:280/329；独立DOM、Native取消review及targeted Foundation控制通过，旧cancel不撤销新ticket。
+- **残余P3**：SB-02要求动作tooltip随状态正确（matrix:18），但`document-analysis-panel.ts:198–199`在文档/搜索视图仍称“展开/收起大纲”；这是首稿已注明的文案偏差，宜改为“侧栏”。未发现新增P1/P2或无关功能扩张。四项原阻断在注明范围关闭，不等于SB-15或整体产品交付通过。
+
+本节省略目录的Swift文件位于`app/Sources/`；design指`docs/design/typora-sidebar.md`，matrix指`docs/reviews/INK-UX-129-acceptance-matrix.md`。残余P3为静态核读，未单独新增GUI反例。
+
+### 完整契约复核及证据边界
+
+| 条款 / 矩阵 | 固定产品路径与后验判断 |
+|---|---|
+| 1–2 / SB-01/02 | main→DocumentAnalysisPanel；单一右角侧栏开关、视图/搜索顶栏、原index过滤与候选守卫仍在；首稿的顶栏文案偏差保留为P3。没有把条件式当前位置高亮变成新增必交功能。 |
+| 3–4 / SB-03–05 | Catalog安全descriptor读与版本、scope捕获、currentURL卡片标记、poll→invalidated→refresh仍接通。原2保持既有限定关闭；本次不重复目录上限/权限/symlink全套。真实Sandbox授权与OS面板没有本次独立证据。 |
+| 5 / SB-06/07 | Aa/整词/正则、分组行号、部分索引提示、旧query/options/catalog过滤仍在；真实DOM清空/返回现在发送带目标身份的cancel，Native只撤销匹配意图，不清catalog/watch。独立1项Foundation覆盖旧context/catalog/请求取消及新意图保留。 |
+| 6 / SB-08 | 当前文档review仍走InkoraDocument.canClose→snapshot→super.canClose；源码草稿/未解决意图先在main明确处理。原1/3及cancel控制已自跑；既有Save/Discard/Cancel真实系统面板不在本次范围，注入reviewer不能冒称三条系统流程均自跑通过。 |
+| 7 / SB-09 | 原始BOM/CRLF UTF-16继续来自Catalog hit；C扣BOM，已有目标hit严格snapshot比较，异步门后再验证ticket。正式revealRange不带raw；DOM精确重复命中/语法源码选择和旧doc/rev/load/range拒绝已自跑。非BMP/ZWJ完整集合沿用既有外部证据，未本次重跑。 |
+| 8 / SB-10 | 本次真实main定向测试验证侧栏持焦Undo/模式命令与composition阻断；UI动作使用metadata回执而非正文stateChanged。GLOSSARY当前原文/草稿/保存点、ADR-0004及save-barrier继续作为不变量，未降低保存资格。 |
+| 9 / SB-11 | 正式setDocumentTitle绑定accepted load；真实隐藏Native顶沿/右角hitTest/90px安全区及宽窄tools边界自跑。standalone同header在DOM自跑确认；未声称standalone独立像素布局已测。 |
+| 10–11 / SB-12/13 | SidebarChrome的5000ms、focus/menu/composition及destroy逻辑；四统计值同源、radio选择/键盘及selectedStat跨更新保留仍在。既有DOM虚拟计时/统计菜单测试只核读，未借本次7项Native数量证明这些项全部实跑。 |
+| 12 / SB-14 | 上述真实WK阶段/终态断言通过，EditorView非空且身份稳定、revision=0、dirty=false。未用class存在代替矩形；没有实际屏幕paint/墙钟动画/物理IME/macOS14结论，亦未把这些禁跑项单独报为缺陷。 |
+| SB-15 | root并行lint/test-non-ui/release offline属于外部证据；本次未核实其结果，不写通过。精确HEAD CI/Release身份/正式安装与整个Typora目标未由本复审裁定。 |
+
+正式Bridge v1补正见冻结`docs/bridge-protocol.md:229–267`：title/reveal的requestID/doc/rev/accepted load/ack与超时/取消，目录通道限定例外。自跑`EditorBridge` load确认、错误load ack、超时、同doc reload迟到ack控制；核读`EditorBridge.swift:345–400`与`editor/src/bridge.ts:505–519`，两侧绑定一致。原`window.inkoraPresentation`及完整raw定位旁路已移除，不将目录摘要当当前正文或保存依据。该协议补正属于既有需求的集成收口，没有扩张到文件树/重命名/删除/主题/全量偏好。
+
+**本次独立自跑**：冻结`make editor-build`通过（保留965.79kB chunk提示）；6项既有公开Native测试加1项自写负控制，7/7无skip；1项targeted Foundation取消测试通过；8项定向DOM通过、113项未选择。没有运行全量Native/全部Web/Release/CI。Native资源显式使用由冻结源码构建的bundle；默认测试已改为`Bundle(for: Self.self)` fallback并强制unwrap，不以缺资源skip算通过。
+
+**外部借用**：冻结`docs/tasks/INK-UX-135.md`、`docs/evidence/INK-UX-135/README.md`及日志仅是恢复Agent/原C证据；本次只把实际重跑的具体用例记为独立自跑。根正在执行的门禁和上次8e64424的6/6限定结果不混入本次通过计数。没有App启动、显示窗口、真实系统面板、GUI/CUA/browser/XCU、依赖安装或新Agent。
