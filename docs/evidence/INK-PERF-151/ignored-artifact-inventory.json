@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "fullInventory": {
+    "sha256": "d32946c2c4a8bba6fd858807ddb78c55c1d08274657bcf94d599e38c1d89dcf7",
+    "bytes": 1723658,
+    "preservedPath": "artifacts/perf-151/ignored-artifact-inventory-full.json",
+    "originalCommit": "544bd298835a32674f5926c02eae0ff9d3aaa995"
+  },
+  "directories": {
+    "artifacts/test-results/production-perf.xcresult": {
+      "files": 1660,
+      "bytes": 70741104
+    },
+    "artifacts/test-results/safe-save-151-1794337547.xcresult": {
+      "files": 1620,
+      "bytes": 68326911
+    },
+    "artifacts/test-results/safe-save-151-1794337645.xcresult": {
+      "files": 1600,
+      "bytes": 68520705
+    },
+    "artifacts/test-results/safe-save-151-1794337670.xcresult": {
+      "files": 30,
+      "bytes": 319474
+    },
+    "artifacts/test-results/safe-save-151-1794337693.xcresult": {
+      "files": 1608,
+      "bytes": 70057305
+    },
+    "build/DerivedData": {
+      "files": 3265,
+      "bytes": 186719772
+    },
+    "build/editor": {
+      "files": 5,
+      "bytes": 4972484
+    },
+    "build/perf-samples": {
+      "files": 6,
+      "bytes": 2188533
+    },
+    "build/production-perf": {
+      "files": 15,
+      "bytes": 51049
+    }
+  }
+}

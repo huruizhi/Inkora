@@ -1,0 +1,15 @@
+{
+  "sourceCommit": "f09143d4f3d47a2397c7c2d690cd30750c0841df",
+  "productIdentitySameAsMain": "aef514c501cb33eb10cac121d300b67374c462a5",
+  "recordedSourceHashesPass": true,
+  "modelRepetitions": 5,
+  "p95Meaning": "largest observed value of five samples; not tail guarantee",
+  "sizes": [
+    "small",
+    "medium",
+    "large",
+    "large-crlf",
+    "mixed"
+  ],
+  "note": "Model only; WK/native pending. Did not rerun benchmark."
+}

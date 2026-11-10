@@ -1,0 +1,2 @@
+PASS: subset invocation starts clean and archives prior full output
+PASS: failed invocation preserves prior and leaves no stale canonical output

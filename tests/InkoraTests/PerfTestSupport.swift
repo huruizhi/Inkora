@@ -21,7 +21,7 @@ enum PerfEnvironment {
     precondition(
       !names.isEmpty
         && names.allSatisfy {
-          ["small", "medium", "large", "large-crlf"].contains($0)
+          ["small", "medium", "large", "large-crlf", "mixed"].contains($0)
         })
     return names
   }
