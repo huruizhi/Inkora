@@ -1,0 +1,10 @@
+43:/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-130-sidebar-native/build/sidebar-tests/Sources/SidebarCatalogTests.swift:96: error: -[SidebarHostless.SidebarCatalogTests testRawUTF16LocationAndVersionRejectChangedBytes] : XCTAssertEqual failed: ("11") is not equal to ("12")
+47:Test Suite 'SidebarCatalogTests' failed at 2026-11-10 23:16:03.983.
+48:	 Executed 8 tests, with 1 failure (0 unexpected) in 0.067 (0.068) seconds
+55:/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-130-sidebar-native/build/sidebar-tests/Sources/SidebarWorkspaceBridgeTests.swift:126: error: -[SidebarHostless.SidebarWorkspaceBridgeTests testRefreshSearchVerifiedOpenAndExternalChangeInvalidation] : XCTAssertEqual failed: ("Optional(6)") is not equal to ("Optional(7)")
+59:Test Suite 'SidebarWorkspaceBridgeTests' failed at 2026-11-10 23:16:04.121.
+60:	 Executed 4 tests, with 1 failure (0 unexpected) in 0.138 (0.138) seconds
+61:Test Suite 'SidebarHostless.xctest' failed at 2026-11-10 23:16:04.121.
+62:	 Executed 12 tests, with 2 failures (0 unexpected) in 0.205 (0.205) seconds
+63:Test Suite 'All tests' failed at 2026-11-10 23:16:04.121.
+64:	 Executed 12 tests, with 2 failures (0 unexpected) in 0.205 (0.206) seconds

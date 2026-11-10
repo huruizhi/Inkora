@@ -44,6 +44,7 @@ enum SidebarCatalogError: LocalizedError {
   case invalidEncoding
   case invalidPattern
   case searchTimedOut
+  case scanTimedOut
   case cancelled
 
   var errorDescription: String? {
@@ -54,6 +55,7 @@ enum SidebarCatalogError: LocalizedError {
     case .sizeLimit: "文件超过侧栏读取上限，请通过文件菜单单独打开。"
     case .invalidEncoding: "文件不是有效UTF-8文本，未参与侧栏搜索。"
     case .invalidPattern: "正则表达式无效。"
+    case .scanTimedOut: "文件夹读取超时，请选择更小的文件夹。"
     case .searchTimedOut: "搜索超时，请缩小范围或简化正则表达式。"
     case .cancelled: "搜索已取消。"
     }
@@ -63,6 +65,20 @@ enum SidebarCatalogError: LocalizedError {
 /// An immutable, authorized-folder index. Web receives opaque file IDs, never paths
 /// it can substitute into a native read. Every read walks from the root descriptor.
 struct SidebarCatalog: Sendable {
+  struct RootIdentity: Equatable, Sendable {
+    let device: dev_t
+    let inode: ino_t
+  }
+
+  static func rootIdentity(folder: URL) throws -> RootIdentity {
+    let descriptor = open(folder.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
+    guard descriptor >= 0 else { throw SidebarCatalogError.unavailable }
+    defer { Darwin.close(descriptor) }
+    var metadata = stat()
+    guard fstat(descriptor, &metadata) == 0 else { throw SidebarCatalogError.unavailable }
+    return RootIdentity(device: metadata.st_dev, inode: metadata.st_ino)
+  }
+
   struct Limits: Sendable {
     var files = 10_000
     var fileBytes = 5 * 1024 * 1024
@@ -119,15 +135,19 @@ struct SidebarCatalog: Sendable {
   }
 
   static func scan(
-    folder: URL, limits: Limits = Limits(),
+    folder: URL, limits: Limits = Limits(), expectedRoot: RootIdentity? = nil,
     cancelled: @Sendable () -> Bool = { false }
   ) throws -> SidebarCatalog {
-    let root = folder.standardizedFileURL.resolvingSymlinksInPath()
+    let root = folder.standardizedFileURL
     let descriptor = open(root.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
     guard descriptor >= 0 else { throw SidebarCatalogError.unavailable }
     defer { Darwin.close(descriptor) }
     var rootMetadata = stat()
     guard fstat(descriptor, &rootMetadata) == 0 else { throw SidebarCatalogError.unavailable }
+    if let expectedRoot {
+      guard expectedRoot == RootIdentity(device: rootMetadata.st_dev, inode: rootMetadata.st_ino)
+      else { throw SidebarCatalogError.unsafeFile }
+    }
     let deadline = ProcessInfo.processInfo.systemUptime + limits.scanSeconds
     var visited = 0
     var files: [SidebarFile] = []
@@ -140,7 +160,7 @@ struct SidebarCatalog: Sendable {
     func check() throws {
       if cancelled() { throw SidebarCatalogError.cancelled }
       if ProcessInfo.processInfo.systemUptime > deadline {
-        throw SidebarCatalogError.searchTimedOut
+        throw SidebarCatalogError.scanTimedOut
       }
     }
 
