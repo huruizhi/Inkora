@@ -1,7 +1,21 @@
 # Developer ID 直接分发与 Beta 发布（INK-025）
 
-只支持 Developer ID 直接分发，不上架 Mac App Store；自动更新属于 #31。
+发行渠道为 GitHub Releases 直接分发，不上架 Mac App Store；自动更新属于 #31。
+正式分发使用 Developer ID 签名与公证。2026-11-10 用户另行明确授权先发布未签名预览版，范围及限制见下节。
 本任务只验证无凭据部分；真实 Developer ID 导出、公证、Gatekeeper 与干净用户首次启动，须在持有凭据的发布机执行后记录证据。
+
+## 未签名预览版例外（INK-REL-119）
+
+用户确认“现在发布 GitHub 未签名预览版”后，允许把已验证的 build 3 ad-hoc 候选作为 `v0.1.0-beta.1` 预发布。
+“未签名”表示无 Developer ID 分发签名，实际保留 ad-hoc/runtime 结构签名；没有 Apple 公证，也未验证带 quarantine 下载后的 Gatekeeper 首启。
+安装包名称带 `unsigned`，发行说明首段明确系统可能拦截、本版仅供预览，且不代表完整视觉、物理输入或最低系统验收。
+
+此例外不修改 `make release` 的严格凭据检查，也不把 ad-hoc 包标为签名/公证成功。仅可复用已绑定源码 commit、结构检查及 SHA256 的候选字节；
+发布前再次校验 ZIP/DMG，并证明候选的 `app/`、`editor/` 与 `project.yml` 和标签目标相同。
+打包内容不变，文件名改为 `Inkora-0.1.0-beta.1-unsigned-universal.zip` / `.dmg`，同时发布对应 `SHA256SUMS` 与 provenance。
+先创建 GitHub draft prerelease、上传全部资产并核对，再公开该预发布；公开后下载两包复验 SHA256，标签与资产不得静默覆盖。
+
+以下凭据、公证和干净用户步骤仍适用于后续正式分发；本例外只免除本次预览的这些完成声明，不制造相应通过证据。
 
 ## 环境与入口
 
@@ -69,7 +83,7 @@ ZIP 本身不能 staple，因此先 staple App，再重建 ZIP；DMG 另行签�
 依据：[Apple 公证要求](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)、[自定义公证流程](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)。
 
 - 正式产物与脱敏日志：`artifacts/release/developer-id/Inkora.dmg`、`Inkora.zip`、`SHA256SUMS`、`release.log`。
-- dry-run：`artifacts/release/dry-run/Inkora-DRY-RUN.dmg`、`Inkora-DRY-RUN.zip`、`SHA256SUMS`、`release.log`。只能结构验证，不能发布，也不代表通过公证。
+- dry-run：`artifacts/release/dry-run/Inkora-DRY-RUN.dmg`、`Inkora-DRY-RUN.zip`、`SHA256SUMS`、`release.log`。仅证明结构验证，不代表通过公证；默认不能发布，本次已明确授权的未签名预览版按上节例外处理。
 - archive / export 位于忽略的 `build/release/<kind>/`；Xcode 可能在这里留下身份元数据，不能上传整个 build 目录。
 - 临时 ExportOptions 在系统临时目录中生成，权限仅当前用户可读，退出时清理；仓库 plist 只有占位符。
 - 所有发布子进程 stdout/stderr 先脱敏身份、Team ID、profile 名称，再写控制台和 release.log；不要以 `bash -x`、shell tracing 或额外通用 capture 包装发布入口。
