@@ -1,0 +1,3 @@
+Web actual cancelSearch: transport posts before=2 after=2, cancelPosted=false
+Native delayed mayOpen(true): verified open count=1, old navigation ticket still valid=true
+Control real Native search: previous ticket rejected=true

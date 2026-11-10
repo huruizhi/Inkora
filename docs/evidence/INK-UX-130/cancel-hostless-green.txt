@@ -1,0 +1,101 @@
+Building for debugging...
+[2 / 4] SidebarHostless-product
+[8 / 10] SidebarHostless-product
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-130-sidebar-native/build/sidebar-tests/Sources/SidebarWorkspaceBridgeTests.swift:168:14: warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+166 |       current: { .init(documentID: "document", revision: 0) }, chooseFolder: { _ in },
+167 |       mayOpen: { _, done in done(true) }, openFile: { _, _, _ in })
+168 |     weak var weakBridge = bridge
+    |              `- warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+169 |     bridge?.useFolder(
+170 |       .init(
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-130-sidebar-native/build/sidebar-tests/Sources/SidebarWorkspaceBridgeTests.swift:247:14: warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+245 |           invalidations += 1
+246 |         }))
+247 |     weak var weakOwner = owner.timer
+    |              `- warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+248 |     await Task.detached {
+249 |       XCTAssertFalse(Thread.isMainThread)
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-130-sidebar-native/build/sidebar-tests/Sources/SidebarWorkspaceBridgeTests.swift:168:14: warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+166 |       current: { .init(documentID: "document", revision: 0) }, chooseFolder: { _ in },
+167 |       mayOpen: { _, done in done(true) }, openFile: { _, _, _ in })
+168 |     weak var weakBridge = bridge
+    |              `- warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+169 |     bridge?.useFolder(
+170 |       .init(
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-130-sidebar-native/build/sidebar-tests/Sources/SidebarWorkspaceBridgeTests.swift:247:14: warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+245 |           invalidations += 1
+246 |         }))
+247 |     weak var weakOwner = owner.timer
+    |              `- warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+248 |     await Task.detached {
+249 |       XCTAssertFalse(Thread.isMainThread)
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
+[13 / 14] SidebarHostless-product
+Build complete! (1.72秒)
+Test Suite 'All tests' started at 2026-11-11 00:03:46.113.
+Test Suite 'SidebarHostless.xctest' started at 2026-11-11 00:03:46.113.
+Test Suite 'SidebarCatalogTests' started at 2026-11-11 00:03:46.113.
+Test Case '-[SidebarHostless.SidebarCatalogTests testCancellationAfterReadStartsNeverReturnsPartialCatalogOrHits]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testCancellationAfterReadStartsNeverReturnsPartialCatalogOrHits]' passed (0.014 seconds).
+Test Case '-[SidebarHostless.SidebarCatalogTests testCatalogListsNestedDocumentsAndPreservesExactBOMAndCRLFOnOpen]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testCatalogListsNestedDocumentsAndPreservesExactBOMAndCRLFOnOpen]' passed (0.002 seconds).
+Test Case '-[SidebarHostless.SidebarCatalogTests testDescriptorNavigationRevalidationRejectsReplacedOrDeletedTargets]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testDescriptorNavigationRevalidationRejectsReplacedOrDeletedTargets]' passed (0.002 seconds).
+Test Case '-[SidebarHostless.SidebarCatalogTests testFolderSearchSupportsLiteralCaseWholeWordsRegexAndLineSnippets]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testFolderSearchSupportsLiteralCaseWholeWordsRegexAndLineSnippets]' passed (0.001 seconds).
+Test Case '-[SidebarHostless.SidebarCatalogTests testLimitsAreVisibleAndCancellationDoesNotReturnPartialSuccess]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testLimitsAreVisibleAndCancellationDoesNotReturnPartialSuccess]' passed (0.001 seconds).
+Test Case '-[SidebarHostless.SidebarCatalogTests testNaturalOrderBoundsAndChangedCatalogFingerprint]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testNaturalOrderBoundsAndChangedCatalogFingerprint]' passed (0.002 seconds).
+Test Case '-[SidebarHostless.SidebarCatalogTests testOldCatalogTokensAndReplacedSymlinkCannotOpenAFile]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testOldCatalogTokensAndReplacedSymlinkCannotOpenAFile]' passed (0.001 seconds).
+Test Case '-[SidebarHostless.SidebarCatalogTests testRawUTF16LocationAndVersionRejectChangedBytes]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testRawUTF16LocationAndVersionRejectChangedBytes]' passed (0.001 seconds).
+Test Case '-[SidebarHostless.SidebarCatalogTests testRegexInsideGraphemeAndCatastrophicPatternAreBounded]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testRegexInsideGraphemeAndCatastrophicPatternAreBounded]' passed (0.022 seconds).
+Test Case '-[SidebarHostless.SidebarCatalogTests testReplacedAncestorAndRootCannotReuseCatalog]' started.
+Test Case '-[SidebarHostless.SidebarCatalogTests testReplacedAncestorAndRootCannotReuseCatalog]' passed (0.002 seconds).
+Test Suite 'SidebarCatalogTests' passed at 2026-11-11 00:03:46.163.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.049 (0.049) seconds
+Test Suite 'SidebarWorkspaceBridgeTests' started at 2026-11-11 00:03:46.163.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testCrossDocumentScanCompletionCannotReply]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testCrossDocumentScanCompletionCannotReply]' passed (0.103 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testCrossDocumentSearchCompletionCannotReply]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testCrossDocumentSearchCompletionCannotReply]' passed (0.120 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testDelayedFolderSelectionCannotReplaceNewContext]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testDelayedFolderSelectionCannotReplaceNewContext]' passed (0.085 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testFolderLeaseBalancesReplacementAndDestroyDuringScan]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testFolderLeaseBalancesReplacementAndDestroyDuringScan]' passed (0.017 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testLateOpenErrorAndSupersededSearchCannotReplyIntoNewContext]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testLateOpenErrorAndSupersededSearchCannotReplyIntoNewContext]' passed (0.096 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testNavigationTicketRechecksBytesAndEveryRequestBoundary]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testNavigationTicketRechecksBytesAndEveryRequestBoundary]' passed (0.031 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testRefreshSearchVerifiedOpenAndExternalChangeInvalidation]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testRefreshSearchVerifiedOpenAndExternalChangeInvalidation]' passed (0.045 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testSameDocumentTypingDoesNotLoseScanCompletionOrWatcher]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testSameDocumentTypingDoesNotLoseScanCompletionOrWatcher]' passed (0.038 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testSameDocumentTypingDoesNotLoseSearchCompletion]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testSameDocumentTypingDoesNotLoseSearchCompletion]' passed (0.027 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testTargetedCancellationRevokesPendingOpenAndTicketsWithoutHurtingNewIntent]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testTargetedCancellationRevokesPendingOpenAndTicketsWithoutHurtingNewIntent]' passed (0.058 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testTimerReleasedOffMainInvalidatesOnInstallationThread]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testTimerReleasedOffMainInvalidatesOnInstallationThread]' passed (0.040 seconds).
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testUntrustedAndStaleContextsCannotChooseOrOpen]' started.
+Test Case '-[SidebarHostless.SidebarWorkspaceBridgeTests testUntrustedAndStaleContextsCannotChooseOrOpen]' passed (0.000 seconds).
+Test Suite 'SidebarWorkspaceBridgeTests' passed at 2026-11-11 00:03:46.823.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.660 (0.661) seconds
+Test Suite 'SidebarHostless.xctest' passed at 2026-11-11 00:03:46.823.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.708 (0.710) seconds
+Test Suite 'All tests' passed at 2026-11-11 00:03:46.823.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.708 (0.711) seconds
+◇ Test run started.
+↳ Testing Library Version: 2403
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

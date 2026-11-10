@@ -64,3 +64,28 @@
 - 四个 A Swift 文件的 `xcrun swift-format lint --strict` 与 `git diff --check`：通过。
 
 [最终专项证据](../evidence/INK-UX-130/typing-ticket-green.txt)。仍由 C 接口接线、根会话组合后验收关闭等待中的目标外改/导航失效；本任务不启动窗口、不跑全量 Native/Release/CI。工作树保留。
+
+## 正式取消意图：跨进程目标请求撤销
+
+有限复核先在固定组合 `8e64424f2fd8b0c54faf449b418551d1761a8551` 的真实 SidebarConnection 捕获 transport，再将实际序列化 open 送生产 Native receive，延后 mayOpen。真实 Web 返回列表 cancelSearch 不发消息（2→2），Native 后续 mayOpen(true) 仍打开一次，且已发票据仍可重验；真实新 search 消息作为控制则会撤销旧票据。证据：[原缺口](../evidence/INK-UX-130/cancel-boundary-red.txt)。红 probe 源：[Swift](../evidence/INK-UX-130/CancelBoundaryProbe.swift)、[Web](../evidence/INK-UX-130/cancel-probe-web.cjs)。这些是反例成立，不是通过声明。
+
+根授权后与 B 明确契约：`action=cancelSearch` 使用既有 requestID/documentID/revision/contextID/catalogID，加 targetSearchRequestID?/targetOpenRequestID?，至少一个非空且至多200 UTF-8字节目标。Native 保留当前 search 请求身份（完成后仍绑定 hit capabilities）及 open 身份。仅分别匹配当前目标时取消对应任务/代际并清旧 hits，目录 catalog/watch 不变。旧目标回 no-op，不撤销新请求；跨 context/catalog 忽略。成功/no-op 回 `kind=cancelled` 及 cancelledSearch/cancelledOpen 布尔，仅作 receipt，不改变正文或保存协议。open 仍即时 revision 相等，取消沿目录 UI 的 revision 规则。
+
+新增公共 receive/延后 mayOpen 回归：cancel 后回调 true 不执行打开；已发票据取消后重验拒绝；旧取消不影响新 open/search；跨 context/catalog 不影响当前；已完成 search 取消后 hit 重放拒绝；watcher 仍可探测变化。实跑 `tests/InkoraTests/SidebarHostless.sh` 22/22 绿（10 Catalog+12 Bridge），[日志](../evidence/INK-UX-130/cancel-hostless-green.txt)。受影响两个 Swift 的 strict-format 与 git diff --check 通过，没有重跑全量检查。
+
+跨层 green 使用 B 固定 `17995615637d1c6dd90c5cd77db9fcee50ef86c7` 的真实 Connection（只读提取进自身 build，无 cherry-pick B 产品代码），与本分支 Native 源码连接：真实 Native 完成 search 后，把真实 result 回送 Connection，再实际执行 open、取消。两种模式分别停在 Native mayOpen 等待、已签发票据等待，随后真实 Web 发取消，Native 两项 receipt 均 true；打开次数为0/票据重验拒绝，旧 hit 重放拒绝。[green日志](../evidence/INK-UX-130/cancel-cross-layer-green.txt)、[Swift源](../evidence/INK-UX-130/CancelBoundaryGreenProbe.swift)、[Web源](../evidence/INK-UX-130/cancel-probe-green-web.cjs)。未展示 review 系统面板；C 仍需验收实际关闭协调器中的取消结果。
+
+精确复跑（目录仅限本工作树 build；红版本用固定8e的Connection、红两份源；green用上述B固定SHA和green源）：
+
+```sh
+mkdir -p build/sidebar-cancel-probe
+# 将证据Swift/Web源分别复制为 build/sidebar-cancel-probe/Probe.swift 和 web.cjs
+# 红用8e64424，green用下列SHA；只读外分支源码，不修改其工作树
+ git show 17995615637d1c6dd90c5cd77db9fcee50ef86c7:editor/src/sidebar-connection.ts > build/sidebar-cancel-probe/sidebar-connection.ts
+/Users/rayhu/Documents/projects/Inkora/editor/node_modules/.bin/tsc --noCheck --noResolve --module commonjs --target es2022 --outDir build/sidebar-cancel-probe/compiled build/sidebar-cancel-probe/sidebar-connection.ts
+xcrun swiftc -swift-version 6 app/Sources/SidebarCatalog.swift app/Sources/SidebarWorkspaceBridge.swift build/sidebar-cancel-probe/Probe.swift -o build/sidebar-cancel-probe/probe
+build/sidebar-cancel-probe/probe "$PWD/build/sidebar-cancel-probe" pending
+build/sidebar-cancel-probe/probe "$PWD/build/sidebar-cancel-probe" ticket
+```
+
+转译仅为执行真实 Connection，不将 `--noCheck` 当类型验证。初次探针尝试旧 TypeScript JS API/Node transform 未能运行（本机是原生TS7、Node仅strip模式）；随后直接使用已有锁定 tsc 命令，无安装或依赖修改。一次探针 stdin EOF 等待已终止自有进程并改为显式关闭输入；最终两模式均退出0，无遗留 probe。没有 App/GUI/面板/全量 Native/Release/CI。
