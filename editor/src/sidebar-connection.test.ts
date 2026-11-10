@@ -25,7 +25,7 @@ describe("侧栏请求代际", () => {
     const s = setup(); s.connection.perform({ type: "open", catalogID: "cat", fileID: "file" }); const open = s.sent.at(-1)!;
     s.receive({ kind: "error", requestID: open.requestID, message: "打开失败" }); expect(s.errors).toEqual(["打开失败"]);
     s.connection.perform({ type: "open", catalogID: "cat", fileID: "file" }); const stale = s.sent.at(-1)!; const count = s.sent.length;
-    s.connection.perform({ type: "cancelSearch" }); expect(s.sent).toHaveLength(count); s.receive({ kind: "error", requestID: stale.requestID, message: "old" }); expect(s.errors).toHaveLength(1);
+    s.connection.perform({ type: "cancelSearch" }); expect(s.sent).toHaveLength(count + 1); expect(s.sent.at(-1)).toMatchObject({ action: "cancelSearch", catalogID: "cat", targetOpenRequestID: stale.requestID }); s.receive({ kind: "error", requestID: stale.requestID, message: "old" }); expect(s.errors).toHaveLength(1);
   });
   it("重连/跨load/跨document拒绝旧回包，invalidated仅刷新当前catalog", () => {
     const s = setup(); s.connection.perform({ type: "search", catalogID: "cat", query: "a", options }); const old = s.sent.at(-1)!;
@@ -43,5 +43,36 @@ describe("侧栏请求代际", () => {
     s.receive({ kind: "catalog", catalog }); expect(s.catalogs).toHaveLength(1); s.connection.perform({ type: "search", catalogID: "cat", query: "a", options }); const requestID = s.sent.at(-1)!.requestID;
     s.receive({ kind: "search", requestID, query: "a", result: { truncated: false, hits: [{ fileID: "file", line: 0, snippet: "a" }] } }); expect(s.results).toEqual([]);
     s.receive({ kind: "search", requestID, query: "a", result: { truncated: false, hits: [{ fileID: "file", line: 1, snippet: "a", hitID: {} }] } }); expect(s.results).toEqual([]);
+  });
+});
+
+describe("Native取消传输", () => {
+  it("取消已完成搜索的hit能力与延迟open，捕获旧目标后清空本地", () => {
+    const s = setup(); s.connection.perform({ type: "search", catalogID: "cat", query: "a", options }); const search = s.sent.at(-1)!;
+    s.receive({ kind: "search", requestID: search.requestID, query: "a", result: { hits: [{ fileID: "file", line: 1, snippet: "a", hitID: "proof" }], truncated: false } });
+    s.connection.perform({ type: "open", catalogID: "cat", fileID: "file", hitID: "proof" }); const open = s.sent.at(-1)!;
+    s.connection.perform({ type: "cancelSearch" }); const cancel = s.sent.at(-1)!;
+    expect(cancel).toEqual({ action: "cancelSearch", requestID: expect.any(String), documentID: "doc", revision: 1, contextID: "ctx", catalogID: "cat", targetSearchRequestID: search.requestID, targetOpenRequestID: open.requestID });
+    expect(cancel.requestID).not.toBe(open.requestID); expect(cancel.requestID).not.toBe(search.requestID);
+    s.receive({ kind: "search", requestID: search.requestID, query: "a", result: { hits: [], truncated: false } });
+    s.receive({ kind: "error", requestID: open.requestID, message: "old" }); expect(s.errors).toEqual([]); expect(s.results).toHaveLength(1);
+    const count = s.sent.length; s.connection.perform({ type: "cancelSearch" }); expect(s.sent).toHaveLength(count);
+  });
+  it("迟到cancelled不影响新search/open；新取消仅指向新目标", () => {
+    const s = setup(); s.connection.perform({ type: "search", catalogID: "cat", query: "old", options }); const oldSearch = s.sent.at(-1)!;
+    s.connection.perform({ type: "cancelSearch" }); const oldCancel = s.sent.at(-1)!;
+    s.connection.perform({ type: "search", catalogID: "cat", query: "new", options }); const search = s.sent.at(-1)!;
+    s.receive({ kind: "cancelled", requestID: oldCancel.requestID, catalogID: "cat", cancelledSearch: true, cancelledOpen: false });
+    s.receive({ kind: "search", requestID: search.requestID, query: "new", result: { hits: [], truncated: false } }); expect(s.results).toHaveLength(1);
+    s.connection.perform({ type: "open", catalogID: "cat", fileID: "file" }); const open = s.sent.at(-1)!;
+    s.receive({ kind: "cancelled", requestID: oldCancel.requestID, catalogID: "cat", cancelledSearch: false, cancelledOpen: false });
+    s.connection.perform({ type: "cancelSearch" }); expect(s.sent.at(-1)).toMatchObject({ targetSearchRequestID: search.requestID, targetOpenRequestID: open.requestID });
+    expect(s.sent.at(-1)!.targetSearchRequestID).not.toBe(oldSearch.requestID); expect(s.errors).toEqual([]);
+  });
+  it("空目标与跨文档不会发取消，重载不会沿用旧能力", () => {
+    const s = setup(); const count = s.sent.length; s.connection.perform({ type: "cancelSearch" }); expect(s.sent).toHaveLength(count);
+    s.connection.perform({ type: "search", catalogID: "cat", query: "a", options }); s.connection.connect(); const afterLoad = s.sent.length;
+    s.connection.perform({ type: "cancelSearch" }); expect(s.sent).toHaveLength(afterLoad);
+    s.changeDocument(); s.connection.perform({ type: "cancelSearch" }); expect(s.sent).toHaveLength(afterLoad);
   });
 });

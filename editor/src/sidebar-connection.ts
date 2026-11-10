@@ -10,6 +10,8 @@ export class SidebarConnection {
   private readyID?: string;
   private listID?: string;
   private searchID?: string;
+  // Completed searches still own Native hit capabilities until explicitly revoked.
+  private searchIntentID?: string;
   private openID?: string;
   private bindingID?: string;
   private serial = 0;
@@ -29,6 +31,7 @@ export class SidebarConnection {
     this.catalogID = undefined;
     this.contextID = undefined;
     this.searchID = undefined;
+    this.searchIntentID = undefined;
     this.openID = undefined;
     this.bindingID = this.options.binding()?.documentID;
     this.readyID = this.nextID();
@@ -37,13 +40,27 @@ export class SidebarConnection {
   }
 
   perform(action: SidebarLibraryAction): void {
-    if (action.type === "cancelSearch") { this.searchID = undefined; this.openID = undefined; return; }
     if (this.bindingID !== this.options.binding()?.documentID) return;
+    if (action.type === "cancelSearch") {
+      const targetSearchRequestID = this.searchIntentID;
+      const targetOpenRequestID = this.openID;
+      this.searchID = undefined;
+      this.searchIntentID = undefined;
+      this.openID = undefined;
+      if (this.contextID && this.catalogID && (targetSearchRequestID || targetOpenRequestID)) {
+        this.post({ action: "cancelSearch", requestID: this.nextID(), contextID: this.contextID,
+          catalogID: this.catalogID,
+          ...(targetSearchRequestID ? { targetSearchRequestID } : {}),
+          ...(targetOpenRequestID ? { targetOpenRequestID } : {}),
+        });
+      }
+      return;
+    }
     if ((action.type === "search" || action.type === "open") && action.catalogID !== this.catalogID) return;
     if (!this.contextID) { this.options.error("侧栏尚未就绪，请稍后重试。"); return; }
     const requestID = this.nextID();
-    if (action.type === "chooseFolder" || action.type === "refresh") { this.listID = requestID; this.searchID = undefined; this.openID = undefined; }
-    if (action.type === "search") { this.searchID = requestID; this.openID = undefined; this.searchQuery = action.query; }
+    if (action.type === "chooseFolder" || action.type === "refresh") { this.listID = requestID; this.searchID = undefined; this.searchIntentID = undefined; this.openID = undefined; }
+    if (action.type === "search") { this.searchID = requestID; this.searchIntentID = requestID; this.openID = undefined; this.searchQuery = action.query; }
     if (action.type === "open") this.openID = requestID;
     const { type, ...fields } = action;
     this.post({ ...fields, action: type, requestID, contextID: this.contextID });
@@ -65,6 +82,7 @@ export class SidebarConnection {
     if (value.kind === "invalidated" && this.catalogID !== undefined && value.catalogID === this.catalogID) { this.perform({ type: "refresh" }); return; }
     if (value.kind === "catalog" && value.requestID === this.listID && catalog(value.catalog)) {
       this.searchID = undefined;
+      this.searchIntentID = undefined;
       this.openID = undefined;
       this.catalogID = value.catalog.id;
       this.listID = undefined;
