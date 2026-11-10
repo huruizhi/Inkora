@@ -64,6 +64,17 @@ app.append(workspace);
 const topBar = document.createElement("header");
 topBar.className = "editor-topbar";
 workspace.append(topBar);
+const cornerTools = document.createElement("div");
+cornerTools.className = "editor-corner-tools";
+workspace.append(cornerTools);
+const cornerModeButton = document.createElement("button");
+cornerModeButton.type = "button";
+cornerModeButton.className = "corner-mode-toggle";
+const cornerModeIcon = document.createElement("span");
+cornerModeIcon.className = "corner-icon corner-icon-mode";
+cornerModeIcon.setAttribute("aria-hidden", "true");
+cornerModeButton.append(cornerModeIcon);
+cornerTools.append(cornerModeButton);
 const findBar = document.createElement("div");
 findBar.className = "find-bar";
 topBar.append(findBar);
@@ -283,6 +294,11 @@ function updateModeControls(): void {
     !activeRuntime || activeRuntime.composing;
   sourceCancelButton.disabled = !activeRuntime || activeRuntime.composing;
   insertTableButton.disabled = !activeRuntime || mode !== "visual" || activeRuntime.composing;
+  cornerModeButton.disabled = !activeRuntime || mode === "read_only" || activeRuntime.composing ||
+    (mode === "source" && activeRuntime.status.draftDirty);
+  cornerModeButton.dataset.mode = mode ?? "none";
+  cornerModeButton.setAttribute("aria-label", mode === "source" ? "切换到可视模式" : "切换到源码模式");
+  cornerModeButton.title = mode === "source" ? "可视模式" : "源码模式";
   modeStatus.textContent = activeRuntime?.status.unresolved
     ? activeRuntime.status.saveEligible
       ? "源码已提交；未识别的语法只读保留，可按原文保存"
@@ -357,6 +373,11 @@ sourceApplyButton.addEventListener("click", () => { performEditorAction("applySo
 sourceCancelButton.addEventListener("click", () => { performEditorAction("cancelSource"); updateModeControls(); });
 insertTableButton.addEventListener("pointerdown", (event) => event.preventDefault());
 insertTableButton.addEventListener("click", () => { performEditorAction("insertTable"); updateModeControls(); });
+cornerModeButton.addEventListener("pointerdown", event => event.preventDefault());
+cornerModeButton.addEventListener("click", () => {
+  performEditorAction(runtime?.mode === "source" ? "visualMode" : "sourceMode");
+  updateModeControls();
+});
 updateModeControls();
 
 const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
@@ -377,10 +398,10 @@ const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
   }
   return activeRuntime.navigateToHeading(snapshot.raw, target);
 }, () => !runtime?.composing && !searchPanel.isInputComposing &&
-  !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)));
+  !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)), cornerTools);
 
-// 查找面板（INK-M1-009 阶段 A）：只做查询与结果列表，不做定位/替换。
-// 面板动作自身不产生任何 Bridge 消息，也不改正文/历史/保存点。
+// 查找面板：原生菜单的 Cmd-F 打开查找模式，面板内可显式切换到替换模式。
+// 查询、展示与导航不产生 Bridge 正文消息；只有有效替换会进入既有正文事务。
 const searchPanel = new SearchPanel(findBar, {
   onSearchRequest: () => {
     if (activeDocumentID !== undefined && activeRevision !== undefined) {

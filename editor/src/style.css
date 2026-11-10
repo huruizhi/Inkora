@@ -171,10 +171,11 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   display: flex;
   align-items: stretch;
   box-sizing: border-box;
-  padding-bottom: 30px;
+  padding-bottom: 0;
 }
 
 .editor-workspace {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
   height: 100%;
@@ -338,35 +339,93 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   display: none;
 }
 
-.analysis-panel-header {
+.editor-corner-tools {
+  position: absolute;
+  z-index: 5;
+  top: 8px;
+  right: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 28px;
-  padding-bottom: 8px;
+  color: color-mix(in srgb, CanvasText 58%, Canvas);
 }
-.analysis-panel-toggle {
-  position: fixed;
-  z-index: 5;
-  top: 8px;
-  left: 12px;
-  font: inherit;
-  font-size: 12px;
-  padding: 2px 8px;
-  border: 1px solid transparent;
+.editor-workspace:has(.search-panel:not([hidden])) .editor-corner-tools {
+  opacity: 0;
+  pointer-events: none;
+}
+.editor-corner-tools button {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 3px 5px;
+  border: 0;
   border-radius: 6px;
   background: transparent;
   color: inherit;
-  cursor: pointer;
+  font: inherit;
 }
-.analysis-panel-toggle:hover { background: color-mix(in srgb, CanvasText 6%, Canvas); }
-.analysis-panel-toggle:focus-visible {
+.editor-corner-tools button:hover {
+  background: color-mix(in srgb, CanvasText 6%, Canvas);
+}
+.editor-corner-tools button:focus-visible {
   outline: 2px solid AccentColor;
   outline-offset: 1px;
 }
-.analysis-panel-title {
+.editor-corner-tools button:disabled { opacity: 0.38; }
+.analysis-stats-toggle { order: 1; display: inline-flex; align-items: center; gap: 5px; }
+.analysis-panel-toggle { order: 2; }
+.corner-mode-toggle { order: 3; }
+.analysis-stats-summary {
+  min-width: 3.4em;
   font-size: 13px;
-  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.analysis-stats-chevron {
+  position: relative;
+  width: 9px;
+  height: 14px;
+}
+.analysis-stats-chevron::before,
+.analysis-stats-chevron::after {
+  position: absolute;
+  left: 2px;
+  width: 5px;
+  height: 5px;
+  border-left: 1.5px solid currentColor;
+  border-top: 1.5px solid currentColor;
+  content: "";
+}
+.analysis-stats-chevron::before { top: 1px; transform: rotate(45deg); }
+.analysis-stats-chevron::after { bottom: 1px; transform: rotate(225deg); }
+.corner-icon {
+  position: relative;
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  color: currentColor;
+}
+.corner-icon-outline {
+  background: repeating-linear-gradient(to bottom, currentColor 0 2px, transparent 2px 6px);
+  clip-path: inset(1px 0 1px 5px);
+}
+.corner-icon-outline::before {
+  position: absolute;
+  inset: 1px auto 1px 0;
+  width: 3px;
+  background: repeating-linear-gradient(to bottom, currentColor 0 2px, transparent 2px 6px);
+  content: "";
+}
+.corner-icon-mode {
+  box-sizing: border-box;
+  border: 2px solid currentColor;
+  background: linear-gradient(to right, transparent 52%, currentColor 52%);
+}
+.corner-mode-toggle[data-mode="source"] .corner-icon-mode {
+  background: linear-gradient(to right, currentColor 48%, transparent 48%);
+}
+.analysis-panel-toggle {
+  cursor: pointer;
 }
 
 .analysis-panel-body {
@@ -378,44 +437,32 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   display: none;
 }
 
-.document-status-bar {
-  position: fixed;
-  z-index: 4;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 30px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 16px;
-  background: Canvas;
-  border-top: 1px solid color-mix(in srgb, CanvasText 8%, transparent);
-  color: color-mix(in srgb, CanvasText 60%, Canvas);
-}
-.document-status-bar .analysis-panel-section,
-.document-status-bar .analysis-panel-stats {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  font-size: 11px;
-}
-.document-status-bar .analysis-panel-stats dd { margin: 0 12px 0 -5px; }
-.document-status-bar .analysis-panel-note { margin: 0; }
-.analysis-panel-count-rules summary { cursor: pointer; }
-.analysis-panel-count-rules .analysis-panel-hint {
+.analysis-stats-popover {
   position: absolute;
-  bottom: 32px;
-  right: 12px;
-  max-width: min(320px, calc(100vw - 48px));
-  padding: 12px 16px;
-  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
-  border-radius: 8px;
+  z-index: 6;
+  top: 34px;
+  right: 64px;
+  min-width: 128px;
+  box-sizing: border-box;
+  padding: 12px 18px;
   background: Canvas;
-  box-shadow: 0 4px 24px #0001;
+  border: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px #0002;
+  color: CanvasText;
 }
+.analysis-stats-popover[hidden] { display: none; }
+.analysis-stats-popover .analysis-panel-section { margin: 0; }
+.analysis-stats-popover .analysis-panel-section > h2,
+.analysis-stats-popover .analysis-panel-count-rules { display: none; }
+.analysis-stats-popover .analysis-panel-stats {
+  grid-template-columns: 1fr auto;
+  gap: 8px 16px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.analysis-stats-popover .analysis-panel-stats dt { text-align: right; }
+.analysis-stats-popover .analysis-panel-stats dd { text-align: left; }
 
 .analysis-panel-section {
   margin: 0 0 12px;
@@ -507,13 +554,13 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   outline-offset: -2px;
 }
 
-/* 窄窗大纲仍从左侧展开，正文保留独立滚动，底栏不被遮挡。 */
+/* 窄窗大纲仍从左侧展开，正文保留独立滚动。 */
 @media (max-width: 640px) {
   .analysis-panel {
     position: absolute;
     z-index: 3;
     top: 0;
-    bottom: 30px;
+    bottom: 0;
     left: 0;
     width: min(280px, 82vw);
     height: auto;
@@ -525,7 +572,9 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
     box-shadow: none;
   }
   #app:has(.analysis-panel:not(.analysis-panel-collapsed)) .editor-topbar { padding-left: 76px; }
-  #editor { padding: 32px 24px 72px; }
+  #editor { padding: 48px 24px 64px; }
+  .editor-corner-tools { right: 8px; gap: 3px; }
+  .analysis-stats-popover { right: 54px; }
 }
 
 /* 查找结果占据工具区布局空间，不能覆盖已定位到的正文。 */
@@ -555,24 +604,37 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 .search-panel {
   flex: 0 1 auto;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto auto;
+  align-items: center;
   gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 16%, transparent);
+  background: Canvas;
 }
 .search-panel[hidden] {
   display: none;
 }
 .search-panel-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
+  display: contents;
+}
+.search-panel-mode {
+  grid-column: 1;
+  grid-row: 1;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+.search-panel-replace-mode .search-panel-mode {
+  grid-row: 2;
 }
 .search-panel-query {
+  grid-column: 2;
+  grid-row: 1;
   box-sizing: border-box;
-  width: min(220px, 32vw);
+  width: 100%;
   border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
   border-radius: 6px;
   background: transparent;
@@ -582,13 +644,16 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   padding: 2px 8px;
 }
 .search-panel-replacement-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  display: contents;
+}
+.search-panel-replacement-controls[hidden] {
+  display: none;
 }
 .search-panel-replacement {
+  grid-column: 2;
+  grid-row: 2;
   box-sizing: border-box;
-  width: min(200px, 28vw);
+  width: 100%;
   border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
   border-radius: 6px;
   background: transparent;
@@ -598,25 +663,45 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   padding: 2px 8px;
 }
 .search-panel-replacement-controls button {
+  grid-row: 2;
   font: inherit;
   font-size: 11px;
   white-space: nowrap;
 }
+.search-panel-replace-all { grid-column: 3; }
+.search-panel-replace-selected { grid-column: 4; }
 .search-panel-case {
+  grid-column: 3;
+  grid-row: 1;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  min-width: 28px;
+  padding: 2px 5px;
+  border-radius: 4px;
   font-size: 12px;
   white-space: nowrap;
 }
+.search-panel-case input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+}
+.search-panel-case:has(input:checked) {
+  background: color-mix(in srgb, CanvasText 9%, Canvas);
+}
 .search-panel-close {
+  grid-column: 4;
+  grid-row: 1;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 12px;
-  text-decoration: underline;
-  padding: 2px 4px;
+  font-size: 20px;
+  line-height: 1;
+  text-decoration: none;
+  padding: 0 4px;
 }
 .search-panel-status {
   margin: 0;
@@ -624,15 +709,18 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   color: color-mix(in srgb, CanvasText 65%, Canvas);
 }
 .search-panel-results {
+  grid-column: 1 / -1;
   position: static;
   box-sizing: border-box;
   width: 100%;
   max-height: min(200px, 28vh);
   overflow: auto;
   padding: 8px 10px;
-  border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
-  background: color-mix(in srgb, Canvas 97%, CanvasText);
+  border: 0;
+  border-radius: 5px;
+  background: color-mix(in srgb, CanvasText 3%, Canvas);
 }
+.search-panel-results[hidden] { display: none; }
 .search-panel-count {
   margin: 0 0 6px;
   font-size: 12px;
@@ -664,8 +752,8 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 /* Native menus own mode/insertion actions; standalone Web development retains them. */
 .native-chrome .editor-mode-visual,
 .native-chrome .editor-mode-source,
-.native-chrome .insert-table { display: none; }
-.native-chrome .editor-workspace { position: relative; }
+.native-chrome .insert-table,
+.native-chrome .search-toggle { display: none; }
 .native-chrome .editor-topbar {
   position: absolute;
   z-index: 3;
@@ -679,4 +767,5 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 .native-chrome .editor-topbar:has(.search-panel:not([hidden])) {
   position: relative;
   pointer-events: auto;
+  padding: 0;
 }

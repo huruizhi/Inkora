@@ -54,6 +54,11 @@ function caseInput(): HTMLInputElement {
 }
 
 function replacementInput(): HTMLInputElement {
+  const mode = doc().querySelector<HTMLSelectElement>(".search-panel-mode")!;
+  if (mode.value !== "replace") {
+    mode.value = "replace";
+    mode.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  }
   return doc().querySelector<HTMLInputElement>(".search-panel-replacement")!;
 }
 
@@ -122,6 +127,27 @@ describe("SearchPanel：打开/关闭与焦点", () => {
     expect(handlers.onSearchRequest).not.toHaveBeenCalled();
   });
 
+  it("默认是单行查找，显式切换替换后显示第二行，重新以查找打开会复位", () => {
+    const { panel } = setup();
+    panel.open();
+    const mode = doc().querySelector<HTMLSelectElement>(".search-panel-mode")!;
+    const replacement = doc().querySelector<HTMLElement>(".search-panel-replacement-controls")!;
+    expect(panel.mode).toBe("find");
+    expect(mode.value).toBe("find");
+    expect(replacement.hidden).toBe(true);
+
+    mode.value = "replace";
+    mode.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    expect(panel.mode).toBe("replace");
+    expect(replacement.hidden).toBe(false);
+    expect(doc().activeElement).toBe(replacementInput());
+
+    panel.open("find");
+    expect(panel.mode).toBe("find");
+    expect(replacement.hidden).toBe(true);
+    expect(doc().activeElement).toBe(queryInput());
+  });
+
   it("关闭取消待执行搜索，重新打开时保留查询并重算", () => {
     const { panel, handlers } = setup();
     findButton().click();
@@ -164,7 +190,7 @@ describe("SearchPanel：查询输入与 composition", () => {
     }));
   });
 
-  it("只读/PM 不渲染替换控件，截断结果禁用全部替换", () => {
+  it("只读/PM 的替换模式保留第二行但禁用动作，截断结果禁用全部替换", () => {
     const { panel } = setup();
     findButton().click();
     typeQuery("a");
@@ -174,6 +200,7 @@ describe("SearchPanel：查询输入与 composition", () => {
       result: searchSource({ raw, revision: 1 }, "a", { maxResults: SEARCH_MAX_RESULTS }),
       navigation: { available: true }, replacement: { available: true },
     });
+    replacementInput();
     expect(doc().querySelector<HTMLButtonElement>(".search-panel-replace-all")!.disabled).toBe(true);
     expect(resultsText()).toContain("完整结果");
     panel.update({
@@ -181,7 +208,8 @@ describe("SearchPanel：查询输入与 composition", () => {
       result: searchSource({ raw: "a", revision: 1 }, "a", { maxResults: SEARCH_MAX_RESULTS }),
       replacement: { available: false, reason: "结构化编辑模式不支持原文替换" },
     });
-    expect(doc().querySelector(".search-panel-replacement")).toBeNull();
+    expect(doc().querySelector(".search-panel-replacement")).not.toBeNull();
+    expect(doc().querySelector<HTMLButtonElement>(".search-panel-replace-all")!.disabled).toBe(true);
     expect(resultsText()).toContain("不支持原文替换");
   });
 
@@ -210,7 +238,7 @@ describe("SearchPanel：查询输入与 composition", () => {
     input.dispatchEvent(new dom.window.InputEvent("input", { bubbles: true }));
     expect(input.value).toBe("");
     expect(panel.replacement).toBe("");
-    expect(input.isConnected).toBe(false);
+    expect(input.isConnected).toBe(true);
     await new Promise((resolve) => dom.window.setTimeout(resolve, 0));
   });
   it("输入触发重算请求；半拼音（composition/isComposing）不触发", () => {
@@ -610,8 +638,10 @@ describe("SearchPanel：结果渲染（真实 searchSource 结果）", () => {
     findButton().click();
     panel.update({ kind: "idle" });
     expect(resultsText()).toContain("输入查询");
+    expect(doc().querySelector<HTMLElement>(".search-panel-results")?.hidden).toBe(true);
     panel.update({ kind: "error", message: "boom" });
     expect(resultsText()).toContain("查找失败：boom");
+    expect(doc().querySelector<HTMLElement>(".search-panel-results")?.hidden).toBe(false);
 
     // 构造 rejected：查询横跨 CRLF 内部边界会被 searchSource 拒绝。
     const raw = "ab\r\ncd";
@@ -644,7 +674,7 @@ describe("SearchPanel：结果渲染（真实 searchSource 结果）", () => {
       result,
     });
     expect(resultsText()).toContain("结果基于 Markdown 原文");
-    expect(resultsText()).toContain("尚未开放");
+    expect(resultsText()).not.toContain("尚未开放");
     // 不渲染任何定位/替换控件。
     expect(doc().querySelector(".search-panel-results button")).toBeNull();
   });

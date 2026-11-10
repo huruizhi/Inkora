@@ -67,6 +67,8 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     const expected = analyzeDocument({ raw, revision: 3 });
     expect(statValue(panel, "字符数")).toBe(String(expected.content.characters));
     expect(statValue(panel, "字数")).toBe(String(expected.content.writingUnits));
+    expect(statValue(panel, "行数")).toBe("4");
+    expect(panel.element.querySelector(".analysis-stats-summary")?.textContent).toBe("1 分钟");
     const hint = panel.element.querySelector(".analysis-panel-hint")?.textContent ?? "";
     expect(hint).toContain("组合表情算一个字符");
     expect(hint).toContain("中文逐字计数");
@@ -148,13 +150,20 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     expect(panel.isCollapsed).toBe(true);
     expect(panel.element.querySelector<HTMLElement>("#analysis-panel-body")?.hidden).toBe(true);
     panel.update(documentState("# 甲\n"));
-    expect(panel.element.querySelector(".document-status-bar .analysis-panel-stats")?.textContent)
+    expect(panel.element.querySelector(".analysis-stats-popover .analysis-panel-stats")?.textContent)
       .toContain("字数");
+
+    const stats = panel.element.querySelector<HTMLButtonElement>(".analysis-stats-toggle")!;
+    expect(stats.textContent).toContain("1 分钟");
+    stats.click();
+    expect(stats.getAttribute("aria-expanded")).toBe("true");
+    expect(panel.element.querySelector<HTMLElement>(".analysis-stats-popover")?.hidden).toBe(false);
 
     toggle?.click();
     expect(panel.isCollapsed).toBe(false);
     expect(toggle?.getAttribute("aria-expanded")).toBe("true");
-    expect(toggle?.textContent).toBe("收起大纲");
+    expect(toggle?.getAttribute("aria-label")).toBe("收起大纲");
+    expect(toggle?.querySelector(".corner-icon-outline")).not.toBeNull();
     expect(panel.element.querySelector<HTMLElement>("#analysis-panel-body")?.hidden).toBe(false);
     expect(panel.element.classList.contains("analysis-panel-collapsed")).toBe(false);
     expect(
@@ -166,15 +175,27 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     toggle?.click();
     expect(panel.isCollapsed).toBe(true);
     expect(toggle?.getAttribute("aria-expanded")).toBe("false");
-    expect(toggle?.textContent).toBe("大纲");
+    expect(toggle?.getAttribute("aria-label")).toBe("展开大纲");
     expect(panel.element.classList.contains("analysis-panel-collapsed")).toBe(true);
   });
 
-  it("收起大纲释放全部侧栏宽度，窄窗从左侧展开并留出底栏", () => {
+  it("收起大纲释放全部侧栏宽度，窄窗从左侧展开且统计移到右上角", () => {
     const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
     expect(css).toMatch(/\.analysis-panel\.analysis-panel-collapsed\s*\{[^}]*flex-basis:\s*0/s);
     expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*\.analysis-panel\s*\{[^}]*left:\s*0/s);
-    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*\.analysis-panel\s*\{[^}]*bottom:\s*30px/s);
+    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*\.analysis-panel\s*\{[^}]*bottom:\s*0/s);
+    expect(css).toMatch(/\.editor-corner-tools\s*\{[^}]*right:\s*14px/s);
+    expect(css).not.toContain(".document-status-bar");
+  });
+
+  it("统计按 CRLF、LF 与 bare CR 计算物理行，并以行/字/字符顺序显示", () => {
+    const { parent } = stubDom();
+    const panel = new DocumentAnalysisPanel(parent);
+    panel.update(documentState("甲\r\n乙\n丙\r丁"));
+    expect(statValue(panel, "行数")).toBe("4");
+    const terms = Array.from(panel.element.querySelectorAll(".analysis-panel-stats dt"),
+      item => item.textContent);
+    expect(terms).toEqual(["行数", "字数", "字符数"]);
   });
 
   it("更新不偷焦点、不改既有选区", () => {
