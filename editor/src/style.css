@@ -168,6 +168,7 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 
 /* 大纲与统计面板：INK-055 约束 —— 页面不滚动，编辑区与面板各自内层滚动。 */
 #app {
+  --sidebar-width: 240px;
   display: flex;
   align-items: stretch;
   box-sizing: border-box;
@@ -319,7 +320,8 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 
 .analysis-panel {
   order: -1;
-  flex: 0 0 240px;
+  flex: 0 0 auto;
+  flex-basis: var(--sidebar-width);
   box-sizing: border-box;
   height: 100%;
   display: flex;
@@ -335,6 +337,77 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   padding: 0;
   border: 0;
 }
+.sidebar-header {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 40px;
+  margin-bottom: 12px;
+}
+.sidebar-title { text-align: center; font-size: 15px; font-weight: 500; }
+.sidebar-header button, .sidebar-file-search button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+.sidebar-header button { opacity: 0; font-size: 20px; }
+.analysis-panel:hover .sidebar-header button,
+.analysis-panel:focus-within .sidebar-header button { opacity: 1; }
+@media (hover: none) { .sidebar-header button { opacity: 1; } }
+.sidebar-outline-query, .sidebar-file-search input {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid AccentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 6px 2px;
+}
+.sidebar-library { display: flex; flex-direction: column; gap: 6px; }
+.sidebar-header[hidden], .sidebar-library[hidden], .sidebar-file-search[hidden],
+.sidebar-outline-content[hidden] { display: none; }
+.sidebar-file-search { display: flex; align-items: center; gap: 2px; }
+.sidebar-file-search input { flex: 1; }
+.sidebar-file-search button { flex: 0 0 auto; font-size: 11px; }
+.sidebar-file-search button[aria-pressed="true"] { color: AccentColor; background: color-mix(in srgb, AccentColor 10%, transparent); }
+.sidebar-folder-button, .sidebar-refresh {
+  font: inherit;
+  font-size: 12px;
+  background: transparent;
+  color: color-mix(in srgb, CanvasText 65%, Canvas);
+  border: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.sidebar-refresh { align-self: flex-end; }
+.sidebar-file-list { display: flex; flex-direction: column; }
+.sidebar-file-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 0;
+  border-radius: 4px;
+  padding: 12px 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.sidebar-file-card:hover { background: color-mix(in srgb, CanvasText 6%, Canvas); }
+.sidebar-file-card strong { font-size: 13px; font-weight: 600; }
+.sidebar-file-summary, .sidebar-file-snippet { font-size: 12px; line-height: 1.5; white-space: pre-line; color: color-mix(in srgb, CanvasText 68%, Canvas); }
+.sidebar-notice { margin: 4px 0; font-size: 12px; line-height: 1.5; color: color-mix(in srgb, CanvasText 65%, Canvas); }
+.analysis-panel button:focus-visible { outline: 2px solid AccentColor; outline-offset: 1px; }
 .analysis-panel-title {
   display: none;
 }
@@ -541,13 +614,14 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 
 /* 窄窗大纲仍从左侧展开，正文保留独立滚动。 */
 @media (max-width: 640px) {
+  #app { --sidebar-width: min(240px, 45vw); }
   .analysis-panel {
     position: absolute;
     z-index: 3;
     top: 0;
     bottom: 0;
     left: 0;
-    width: min(280px, 82vw);
+    width: var(--sidebar-width);
     height: auto;
     background: Canvas;
     box-shadow: 6px 0 24px #0001;
@@ -754,3 +828,53 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   pointer-events: auto;
   padding: 0;
 }
+
+/* Native and standalone Web share one filename/title tools row. */
+.editor-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  min-height: 28px;
+  padding: 0 14px 0 90px;
+  box-sizing: border-box;
+}
+.editor-document-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.editor-titlebar .editor-corner-tools { position: relative; top: auto; right: auto; margin-left: auto; min-height: 28px; }
+[data-tools-visible="false"] > button,
+[data-tools-visible="false"] > .analysis-stats-popover { opacity: 0; }
+[data-tools-visible="false"] > button { pointer-events: none; }
+[data-tools-visible="true"] > button { opacity: 1; }
+.sidebar-file-extension { font-weight: 400; opacity: .5; }
+.sidebar-current-state { color: AccentColor; font-size: 11px; }
+.sidebar-file-card[aria-current] { background: color-mix(in srgb, AccentColor 8%, Canvas); }
+.sidebar-search-group h3 { margin: 12px 0 4px; font-size: 12px; overflow-wrap: anywhere; }
+.sidebar-stat-choices { display: flex; flex-direction: column; gap: 2px; }
+.sidebar-stat-choices button { text-align: left; white-space: nowrap; }
+.sidebar-stat-choices [aria-checked="true"]::before { content: "✓ "; }
+.sidebar-stat-choices [aria-checked="false"]::before { content: "　"; }
+/* Preserve the original detailed count definition for assistive technology. */
+.analysis-stats-popover .analysis-panel-section { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.analysis-panel { overflow: hidden; transition: flex-basis 220ms ease, padding 220ms ease; }
+.analysis-panel > .sidebar-header,
+.analysis-panel > .analysis-panel-body,
+.analysis-panel > .sidebar-outline-query { transition: opacity 180ms ease; }
+.analysis-panel[data-sidebar-phase="reserving"] > *,
+.analysis-panel[data-sidebar-phase="closing"] > *,
+.analysis-panel[data-sidebar-phase="closed"] > * { opacity: 0; pointer-events: none; }
+.analysis-panel[data-sidebar-phase="open"] > * { opacity: 1; }
+@media (max-width: 640px) {
+  #app:has(.analysis-panel:not(.analysis-panel-collapsed)) .editor-workspace { margin-left: var(--sidebar-width); }
+  /* Stable resize updates both edges together; only explicit toggles animate. */
+  #app:has(.analysis-panel:is([data-sidebar-phase="reserving"], [data-sidebar-phase="closing"])) .editor-workspace { transition: margin-left 220ms ease; }
+  .analysis-panel { transition: width 220ms ease, padding 220ms ease; }
+  .analysis-panel:is([data-sidebar-phase="open"], [data-sidebar-phase="closed"]) { transition: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-panel, .analysis-panel > *, .editor-workspace { transition: none !important; }
+}
+@media (hover: none) { [data-tools-visible="false"] > button { opacity: 1; pointer-events: auto; } }
+/* Keep sidebar controls below the shared window title row / traffic lights. */
+.analysis-panel:not(.analysis-panel-collapsed) { padding-top: 40px; }
+.analysis-panel[data-sidebar-phase="reserving"] { background: transparent; border-right-color: transparent; }

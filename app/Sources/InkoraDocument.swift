@@ -59,6 +59,8 @@ final class InkoraDocument: NSDocument {
   private nonisolated static let utf16BEBOM = Data([0xFE, 0xFF])
 
   private(set) var bridgeDocumentID = UUID().uuidString
+  // Window navigation may share an explicit directory grant. It is not document content.
+  var sidebarFolderAccess: SidebarWorkspaceBridge.FolderAccess?
   private var diskVersion: DocumentDiskVersion?
   private var missingOriginal = false
   private(set) var fileState: DocumentFileState = .current
@@ -73,6 +75,8 @@ final class InkoraDocument: NSDocument {
   private let bomStorage = DocumentBOMStorage()
   private let encodingErrorStorage = DocumentEncodingErrorStorage()
   private weak var editorViewController: EditorViewController?
+  private var navigationReview: DocumentNavigationReview?
+  var navigationReviewer: ((@escaping (Bool) -> Void) -> Void)?
   private var snapshotRequester: SnapshotRequester?
   private var pendingSaves: [PendingSave] = []
   private var saveInProgress = false
@@ -358,6 +362,10 @@ final class InkoraDocument: NSDocument {
     window.setContentSize(NSSize(width: 900, height: 700))
     window.minSize = NSSize(width: 480, height: 320)
     window.title = displayName
+    window.styleMask.insert(.fullSizeContentView)
+    window.titlebarAppearsTransparent = true
+    window.titleVisibility = .hidden
+    window.isMovableByWindowBackground = false
     window.setAccessibilityIdentifier("DocumentWindow")
     // Automatic NSDocument state restoration is off: the launch policy
     // (LastDocumentRestoreController) reopens exactly the last successfully
@@ -525,6 +533,55 @@ final class InkoraDocument: NSDocument {
     let dirty = dirty && !isBareCRReadOnly && encodingError == nil
     guard dirty != isDocumentEdited else { return }
     updateChangeCount(dirty ? .changeDone : .changeCleared)
+  }
+
+  /// The same NSDocument close/save/cancel chain used by a window close.
+  func reviewSidebarNavigation(completion: @escaping (Bool) -> Void) {
+    if let navigationReviewer {
+      navigationReviewer(completion)
+      return
+    }
+    guard navigationReview == nil else {
+      completion(false)
+      return
+    }
+    let review = DocumentNavigationReview { [weak self] allowed in
+      self?.navigationReview = nil
+      completion(allowed)
+    }
+    navigationReview = review
+    canClose(
+      withDelegate: review,
+      shouldClose: #selector(DocumentNavigationReview.document(_:shouldClose:contextInfo:)),
+      contextInfo: nil)
+  }
+
+  func readSidebarFile(data: Data, url: URL, modified: Date? = nil) throws {
+    try read(from: data, ofType: "net.daringfireball.markdown")
+    fileURL = url
+    fileType = "net.daringfireball.markdown"
+    diskVersion = DocumentDiskVersion(sidebarData: data, modified: modified)
+    fileModificationDate = modified
+    openHistory.noteDocumentOpened(url)
+    RecentDocumentNoter.shared.noteDocumentOpened(url)
+  }
+
+  func attachSidebarEditor(_ controller: EditorViewController) {
+    editorViewController = controller
+    snapshotRequester = controller.requestSnapshot
+    recoverySnapshotRequester = controller.requestRecoverySnapshot
+    configureImageSavePreparer { [weak controller] targetURL, snapshot, completion in
+      controller?.prepareSidebarImagesForSave(
+        to: targetURL, snapshot: snapshot, completion: completion)
+        ?? completion(.failure(EditorBridgeError.editorUnavailable))
+    }
+  }
+
+  func detachSidebarEditor() {
+    editorViewController = nil
+    snapshotRequester = nil
+    recoverySnapshotRequester = nil
+    configureImageSavePreparer(nil)
   }
 
   func prepareForClose(completion: @escaping (Error?) -> Void) {
@@ -794,6 +851,7 @@ final class InkoraDocument: NSDocument {
       controller.window?.subtitle = fileState == .current ? "" : fileState.localizedDescription
       controller.window?.setAccessibilityTitle(displayName)
     }
+    editorViewController?.publishDocumentPresentation()
   }
 
   private func validateOriginalForSaving() throws {
@@ -1107,5 +1165,23 @@ private final class DocumentEncodingErrorStorage: @unchecked Sendable {
 
   func set(_ updatedError: InkoraDocumentError?) {
     lock.withLock { error = updatedError }
+  }
+}
+
+@MainActor
+private final class DocumentNavigationReview: NSObject {
+  let completion: (Bool) -> Void
+  init(completion: @escaping (Bool) -> Void) { self.completion = completion }
+  @objc func document(
+    _ document: NSDocument, shouldClose: Bool, contextInfo: UnsafeMutableRawPointer?
+  ) {
+    completion(shouldClose)
+  }
+}
+
+extension DocumentDiskVersion {
+  init(sidebarData: Data, modified: Date?) {
+    self.data = sidebarData
+    self.modified = modified
   }
 }

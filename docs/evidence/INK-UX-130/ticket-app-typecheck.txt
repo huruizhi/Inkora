@@ -1,0 +1,56 @@
+app/Sources/InkoraDocument.swift:439:5: warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+  62 |   // Window navigation may share an explicit directory grant. It is not document content.
+  63 |   var sidebarFolderAccess: SidebarWorkspaceBridge.FolderAccess?
+  64 |   private var diskVersion: DocumentDiskVersion?
+     |               `- note: mutation of this property is only permitted within the actor
+  65 |   private var missingOriginal = false
+  66 |   private(set) var fileState: DocumentFileState = .current
+     :
+ 437 |     let version = try DocumentDiskVersion(url: url)
+ 438 |     try read(from: version.data, ofType: typeName)
+ 439 |     diskVersion = version
+     |     `- warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+ 440 |     fileModificationDate = version.modified
+ 441 |     MainActor.assumeIsolated {
+
+app/Sources/InkoraDocument.swift:474:11: warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 472 |       let original = absoluteOriginalContentsURL, original == fileURL
+ 473 |     {
+ 474 |       try validateOriginalForSaving()
+     |           `- warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 475 |     }
+ 476 |     try dataWriter.write(encodedDocumentData(), to: url)
+     :
+ 799 |   }
+ 800 | 
+ 801 |   private func validateOriginalForSaving() throws {
+     |                |- note: calls to instance method 'validateOriginalForSaving()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 802 |     if let encodingError { throw encodingError }
+ 803 |     if isBareCRReadOnly { throw DocumentFileState.bareCR }
+
+app/Sources/InkoraDocument.swift:476:26: warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 474 |       try validateOriginalForSaving()
+ 475 |     }
+ 476 |     try dataWriter.write(encodedDocumentData(), to: url)
+     |                          `- warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 477 |   }
+ 478 | 
+ 479 |   private func encodedDocumentData() -> Data {
+     |                |- note: calls to instance method 'encodedDocumentData()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 480 |     let body = Data(textStorage.get().utf8)
+ 481 |     guard bomStorage.get() else { return body }
+
+app/Sources/InkoraDocument.swift:579:34: warning: expression implicitly coerced from 'Any?' to 'Any'
+ 577 |     withDelegate delegate: Any?, shouldClose: Selector?, contextInfo: UnsafeMutableRawPointer?
+ 578 |   ) {
+ 579 |     super.canClose(withDelegate: delegate, shouldClose: shouldClose, contextInfo: contextInfo)
+     |                                  |- warning: expression implicitly coerced from 'Any?' to 'Any'
+     |                                  |- note: provide a default value to avoid this warning
+     |                                  |- note: force-unwrap the value to avoid this warning
+     |                                  `- note: explicitly cast to 'Any' with 'as Any' to silence this warning
+ 580 |   }
+ 581 | 
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>

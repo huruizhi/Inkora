@@ -223,3 +223,45 @@ v1 不兼容 v0。映射如下：
 | `error` | `editorError` + 固定 code/action |
 
 双方必须整体切换到 v1，不允许在一个会话中混用 v0/v1 消息。
+
+## 标题元数据与范围定位（additive v1）
+
+`setDocumentTitle` 与 `revealRange` 均通过既有 `window.inkora.receive` 入口，
+包含 `protocolVersion: 1`、唯一非空 `requestID`、当前 `documentID/revision`，以及
+`loadRequestID`：Web 最近一次**接受**的 `loadDocument.requestID`。同一文档以相同
+revision 重载后，旧 load 身份仍失效。Native 仅在该 load 的 `stateChanged` 确认后发起。
+
+- `setDocumentTitle` 仅附带 `title` 文件名；它是窗口标题 UI 元数据，不是正文 H1。
+- `revealRange` 仅附带非负安全整数 `selectionAnchor/selectionHead`，要求 head ≥ anchor，
+  坐标为当前已接受原文的 UTF-16；Native 对文件搜索的原始 BOM 坐标扣除文件前导 BOM。
+  不传全文、重复 raw、保存点、catalog 原文或 Markdown 片段。Native 先通过原始文件
+  exact-version capability 重验；已有目标的搜索命中还要用实时 snapshot 验证当前内容。
+
+Web 先消费 requestID，校验 doc/revision/load/range/composition/草稿/未解决意图，
+再执行呈现。成功返回 `presentationApplied`，携带相同 requestID/docID/revision/loadRequestID，
+`outcome: "applied"`。受保护或语法范围无法严格映射时，只创建显式源码定位选择，回执
+`outcome: "sourceChoice"`；作者选择前不改变模式或选区。该选择自身再次验证加载代际、
+原文版本与输入状态。没有可用选择的拒绝返回可关联 `editorError`，不产生正文事务。
+重复 requestID 返回 `request_conflict`；旧身份返回 `stale_revision`。成功、选择和拒绝都不
+增加 revision、不更改 dirty/history/保存点。Native 精确匹配回执；跨 load 取消在途请求，
+迟到回执丢弃，超时向调用者返回 `requestTimedOut`，不重放导航或改写正文。
+
+## 文件夹 UI 通道的限定例外
+
+`inkoraSidebar` 是目录 capability 与索引展示的专用 UI 通道，唯一允许的动作为
+ready/chooseFolder/refresh/search/open/cancelSearch，及其 ready/catalog/search/invalidated/error/cancelled 回复。
+它不承载**当前文档全文、正文事务或保存真值**，不得用于替代 Editor Bridge。
+目录摘要和搜索命中片段来自显式授权目录，不能当作当前已接受原文或保存依据。
+
+Native 验证本地 editor scheme/host 的 main frame、请求大小、requestID、当前 document、
+context、catalog 与不透明 file/hit 身份；Web 按当前 document/context/request 接收结果。
+目录扫描/搜索与正文 revision 解耦，但跨文档/目录代际结果失效；open 需精确绑定 revision
+并签发受限导航票据。在关闭审查、snapshot 等异步等待后必须重新验证票据及安全文件描述符
+的 root/file 身份和 exact bytes/version，转交前再验证；失败发 error/invalidated 并保留源会话。
+标题与选区呈现不属于此例外，必须使用上述正式 v1 请求与回执。
+
+`cancelSearch` 也跨进程：携带原绑定、requestID/contextID/catalogID，以及至少一个
+`targetSearchRequestID` / `targetOpenRequestID`。Native 只撤销匹配的搜索意图、命中 capability
+或在途 open/navigation 票据；迟到取消不能撤销新请求，不清空正常 catalog/watch。
+回复 `cancelled` 包含同次 requestID/doc/context/catalog 与 `cancelledSearch/cancelledOpen`，
+仅作回执，不覆盖当前列表/搜索 UI。Web 返回列表、清空或换视图时不能仅删除本地回包 ID。

@@ -204,6 +204,15 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   private var currentDocument: LoadedDocument?
   private var revisionTracker = BridgeRevisionTracker()
   private var snapshotRequests: [String: SnapshotRequest] = [:]
+  private struct PresentationRequest {
+    let documentID: String
+    let revision: Int
+    let loadRequestID: String
+    let completion: (Error?) -> Void
+  }
+  private var pendingLoadRequestID: String?
+  private var acceptedLoadRequestID: String?
+  private var presentationRequests: [String: PresentationRequest] = [:]
   private var stateRequests: [String: (Result<BridgeEditorState, Error>) -> Void] = [:]
   private var editorCommandQueue: [EditorCommandRequest] = []
   private var activeEditorCommand: ActiveEditorCommand?
@@ -258,6 +267,9 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   }
 
   func loadDocument(documentID: String, revision: Int, text: String) {
+    failPresentationRequests(EditorBridgeError.staleRevision)
+    acceptedLoadRequestID = nil
+    pendingLoadRequestID = nil
     // A queued command belongs to its original load, even when raw/revision match.
     if currentDocument != nil { failEditorCommands(EditorBridgeError.staleRevision) }
     revisionTracker.beginDocument(documentID: documentID, revision: revision)
@@ -328,6 +340,65 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       guard let callback = self?.stateRequests.removeValue(forKey: requestID) else { return }
       callback(.failure(EditorBridgeError.requestTimedOut))
     }
+  }
+
+  var canPresentDocument: Bool { lifecycle == .ready && acceptedLoadRequestID != nil }
+
+  func presentDocument(
+    title: String? = nil, range: (Int, Int)? = nil,
+    completion: @escaping (Error?) -> Void = { _ in }
+  ) {
+    guard lifecycle == .ready, let documentID = revisionTracker.documentID,
+      let revision = revisionTracker.latestRevision, let loadRequestID = acceptedLoadRequestID,
+      (title != nil) != (range != nil)
+    else {
+      completion(EditorBridgeError.editorNotReady)
+      return
+    }
+    let requestID = UUID().uuidString
+    presentationRequests[requestID] = PresentationRequest(
+      documentID: documentID, revision: revision, loadRequestID: loadRequestID,
+      completion: completion)
+    let command = BridgeNativeCommand(
+      protocolVersion: 1, type: title != nil ? .setDocumentTitle : .revealRange,
+      requestID: requestID, documentID: documentID, revision: revision, text: nil, command: nil,
+      title: title, selectionAnchor: range?.0, selectionHead: range?.1, loadRequestID: loadRequestID
+    )
+    do { try command.validate() } catch {
+      presentationRequests.removeValue(forKey: requestID)?.completion(error)
+      return
+    }
+    sendImmediately(command) { [weak self] error in
+      if let error { self?.presentationRequests.removeValue(forKey: requestID)?.completion(error) }
+    }
+    Task { @MainActor [weak self] in
+      try? await Task.sleep(for: self?.requestTimeout ?? .seconds(5))
+      self?.presentationRequests.removeValue(forKey: requestID)?.completion(
+        EditorBridgeError.requestTimedOut)
+    }
+  }
+
+  private func failPresentationRequests(_ error: Error) {
+    let pending = Array(presentationRequests.values)
+    presentationRequests.removeAll()
+    for request in pending { request.completion(error) }
+  }
+
+  private func handlePresentationApplied(_ event: BridgeEditorEvent) {
+    guard let requestID = event.requestID,
+      let request = presentationRequests.removeValue(forKey: requestID)
+    else { return }
+    guard event.documentID == request.documentID, event.revision == request.revision,
+      event.loadRequestID == request.loadRequestID,
+      acceptedLoadRequestID == request.loadRequestID,
+      revisionTracker.documentID == request.documentID,
+      revisionTracker.latestRevision == request.revision,
+      event.outcome == "applied" || event.outcome == "sourceChoice"
+    else {
+      request.completion(EditorBridgeError.staleRevision)
+      return
+    }
+    request.completion(nil)
   }
 
   func executeEditorCommand(
@@ -490,6 +561,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
   func receiveEditorEvent(_ editorEvent: BridgeEditorEvent) {
     switch editorEvent.type {
+    case .presentationApplied: handlePresentationApplied(editorEvent)
     case .commandsChanged:
       guard editorEvent.documentID == revisionTracker.documentID,
         editorEvent.revision == revisionTracker.latestRevision,
@@ -519,6 +591,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   }
 
   func failPendingRequests(_ error: Error) {
+    failPresentationRequests(error)
     let requests = Array(snapshotRequests.values)
     snapshotRequests.removeAll()
     for request in requests {
@@ -548,6 +621,12 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
   private func handleStateChanged(_ event: BridgeEditorEvent) {
     guard let state = event.state else { return }
+    if event.requestID == pendingLoadRequestID,
+      state.documentID == revisionTracker.documentID,
+      state.revision == revisionTracker.latestRevision
+    {
+      acceptedLoadRequestID = pendingLoadRequestID
+    }
     let exactBindingWasCurrent: Bool
     if let activeEditorCommand,
       activeEditorCommand.request.payload.requiresExactAcknowledgementBinding,
@@ -634,6 +713,12 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       return
     }
     let error = EditorBridgeError.remote(code, action, message)
+    if let requestID = event.requestID,
+      let request = presentationRequests.removeValue(forKey: requestID)
+    {
+      request.completion(error)
+      return
+    }
     let requestRevision = event.requestID.flatMap { snapshotRequests[$0]?.minimumRevision }
     diagnostics.record(
       BridgeDiagnosticEvent(
@@ -833,9 +918,12 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       documentID: currentDocument.documentID,
       revision: currentDocument.revision
     )
+    let loadRequestID = UUID().uuidString
+    pendingLoadRequestID = loadRequestID
+    acceptedLoadRequestID = nil
     sendImmediately(
       .loadDocument(
-        requestID: UUID().uuidString,
+        requestID: loadRequestID,
         documentID: currentDocument.documentID,
         revision: currentDocument.revision,
         text: currentDocument.text
