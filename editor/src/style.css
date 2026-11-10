@@ -825,3 +825,51 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   pointer-events: auto;
   padding: 0;
 }
+
+/* Native and standalone Web share one filename/title tools row. */
+.editor-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  min-height: 28px;
+  padding: 0 14px 0 90px;
+  box-sizing: border-box;
+}
+.editor-document-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.editor-titlebar .editor-corner-tools { position: relative; top: auto; right: auto; margin-left: auto; min-height: 28px; }
+[data-tools-visible="false"] > button,
+[data-tools-visible="false"] > .analysis-stats-popover { opacity: 0; }
+[data-tools-visible="false"] > button { pointer-events: none; }
+[data-tools-visible="true"] > button { opacity: 1; }
+.sidebar-file-extension { font-weight: 400; opacity: .5; }
+.sidebar-current-state { color: AccentColor; font-size: 11px; }
+.sidebar-file-card[aria-current] { background: color-mix(in srgb, AccentColor 8%, Canvas); }
+.sidebar-search-group h3 { margin: 12px 0 4px; font-size: 12px; overflow-wrap: anywhere; }
+.sidebar-stat-choices { display: flex; flex-direction: column; gap: 2px; }
+.sidebar-stat-choices button { text-align: left; white-space: nowrap; }
+.sidebar-stat-choices [aria-checked="true"]::before { content: "✓ "; }
+.sidebar-stat-choices [aria-checked="false"]::before { content: "　"; }
+/* Preserve the original detailed count definition for assistive technology. */
+.analysis-stats-popover .analysis-panel-section { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.analysis-panel { overflow: hidden; transition: flex-basis 220ms ease, padding 220ms ease; }
+.analysis-panel > .sidebar-header,
+.analysis-panel > .analysis-panel-body,
+.analysis-panel > .sidebar-outline-query { transition: opacity 180ms ease; }
+.analysis-panel[data-sidebar-phase="reserving"] > *,
+.analysis-panel[data-sidebar-phase="closing"] > *,
+.analysis-panel[data-sidebar-phase="closed"] > * { opacity: 0; pointer-events: none; }
+.analysis-panel[data-sidebar-phase="open"] > * { opacity: 1; }
+@media (max-width: 640px) {
+  #app:has(.analysis-panel:not(.analysis-panel-collapsed)) .editor-workspace { margin-left: min(240px, 45vw); }
+  .editor-workspace { transition: margin-left 220ms ease; }
+  .analysis-panel { max-width: 45vw; transition: width 220ms ease, padding 220ms ease; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-panel, .analysis-panel > *, .editor-workspace { transition: none !important; }
+}
+@media (hover: none) { [data-tools-visible="false"] > button { opacity: 1; pointer-events: auto; } }
+/* Keep sidebar controls below the shared window title row / traffic lights. */
+.analysis-panel:not(.analysis-panel-collapsed) { padding-top: 40px; }
+.analysis-panel[data-sidebar-phase="reserving"] { background: transparent; border-right-color: transparent; }
