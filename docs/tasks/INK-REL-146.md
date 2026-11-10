@@ -13,3 +13,9 @@
 管理者实际复制同字节候选到本工作树artifacts/candidate，校验两包SHA256/长度、当前app/editor/project Git身份，解出ZIP并只读无浏览/noautoopen挂载DMG，分别核对0.1.0/build4、formal id/14.0、arm64+x86_64、二进制哈希、strict deep codesign、ad-hoc/runtime、精确entitlement与离线bundle。全部通过且DMG已卸载；没有启动App、安装、公证、UI/物理测试。临时脚本/命令日志在artifacts，脚本及JSON机器结果副本在docs/evidence/INK-REL-146，明确区别147作者的archive验证与根的ZIP/DMG独立核对。
 
 新独立148 Standards/149 Spec从固定1e7c838出发，基线c48d717；尚未返回前不填通过。候选包字节固定后不重复打包；后续文档与CI须通过三路径身份关联，精确最终HEAD默认CI仍待管理者执行。现有beta.1资产与正式安装均未改变。
+
+## 审查结算与最终CI接缝
+
+148 Standards：书面硬违规0、Fowler判断0；149 Spec：无确认缺陷，最终精确HEAD CI按契约留给管理者。两轴全文接入，审查者自验静态身份/资产读取与作者、管理者真实包检查分开记录。未为本轮版本/文档变化反复运行功能测试或重打同字节候选。
+
+最终提交对app/editor/project.yml与构建源码a5267f1仍须逐项完全相同，并以默认CI的精确HEAD结算（ui-tests=false、full-bench=false）。版本4来源、包SHA与机器检查通过不能制造Developer ID、公证、quarantine、干净用户或人工AX/paint通过。此时仍未建tag/Release/draft或上传资产，正式安装保持上一轮已验证build3；PR只用于源码版本/候选记录合并。包在本地保留供具体审阅，公开发布需另按用户授权与现有政策结算。
