@@ -1,0 +1,319 @@
+Test Suite 'SidebarNavigationTests' started at 2026-11-11 00:05:24.898.
+Test Case '-[main.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' started.
+Test Case '-[main.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' passed (0.152 seconds).
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' started.
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' passed (0.022 seconds).
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' started.
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' passed (0.001 seconds).
+Test Case '-[main.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' started.
+Test Case '-[main.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' passed (0.310 seconds).
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' started.
+HiddenWK before finish Optional({
+    animations =     (
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        }
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 0px;
+    phase = open;
+    sidebarWidth = 240px;
+    width = 1280;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 0px;
+    phase = open;
+    sidebarWidth = 240px;
+    width = 1292;
+})
+HiddenWK before finish Optional({
+    animations =     (
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        }
+    );
+    classes = "analysis-panel analysis-panel-collapsed";
+    duration = 0s;
+    margin = 0px;
+    phase = closed;
+    sidebarWidth = 240px;
+    width = 1292;
+})
+HiddenWK before finish Optional({
+    animations =     (
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        }
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 0px;
+    phase = open;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 600;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 240px;
+    phase = open;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 612;
+})
+HiddenWK before finish Optional({
+    animations =     (
+                {
+            state = running;
+            time = 0;
+        }
+    );
+    classes = "analysis-panel analysis-panel-collapsed";
+    duration = 0s;
+    margin = 240px;
+    phase = closed;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 612;
+})
+HiddenWK before finish Optional({
+    animations =     (
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        }
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 0px;
+    phase = open;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 480;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = "221.390625px";
+    phase = open;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 492;
+})
+HiddenWK before finish Optional({
+    animations =     (
+                {
+            state = running;
+            time = 0;
+        }
+    );
+    classes = "analysis-panel analysis-panel-collapsed";
+    duration = 0s;
+    margin = "221.390625px";
+    phase = closed;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 492;
+})
+HiddenWK before finish Optional({
+    animations =     (
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        }
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 0px;
+    phaseTest Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' passed (7.527 seconds).
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' started.
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' passed (0.045 seconds).
+Test Case '-[main.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' started.
+Test Case '-[main.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' passed (0.053 seconds).
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' started.
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' passed (0.007 seconds).
+Test Suite 'SidebarNavigationTests' passed at 2026-11-11 00:05:33.018.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 8.117 (8.120) seconds
+ = open;
+    sidebarWidth = 240px;
+    width = 1280;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 0px;
+    phase = open;
+    sidebarWidth = 240px;
+    width = 1292;
+})
+HiddenWK before finish Optional({
+    animations =     (
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        },
+                {
+            state = running;
+            time = 0;
+        }
+    );
+    classes = "analysis-panel analysis-panel-collapsed";
+    duration = 0s;
+    margin = 0px;
+    phase = closed;
+    sidebarWidth = 240px;
+    width = 1292;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 240px;
+    phase = open;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 600;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 240px;
+    phase = open;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 612;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel analysis-panel-collapsed";
+    duration = 0s;
+    margin = 0px;
+    phase = closed;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 612;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = 216px;
+    phase = open;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 480;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel";
+    duration = 0s;
+    margin = "221.390625px";
+    phase = open;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 492;
+})
+HiddenWK before finish Optional({
+    animations =     (
+    );
+    classes = "analysis-panel analysis-panel-collapsed";
+    duration = 0s;
+    margin = 0px;
+    phase = closed;
+    sidebarWidth = "min(240px, 45vw)";
+    width = 492;
+})

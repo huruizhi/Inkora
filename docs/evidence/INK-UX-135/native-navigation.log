@@ -1,0 +1,19 @@
+Test Suite 'SidebarNavigationTests' started at 2026-11-11 00:13:25.046.
+Test Case '-[main.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' started.
+Test Case '-[main.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' passed (0.154 seconds).
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' started.
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' passed (0.023 seconds).
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' started.
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' passed (0.001 seconds).
+Test Case '-[main.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' started.
+Test Case '-[main.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' passed (0.289 seconds).
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' started.
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' passed (7.419 seconds).
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' started.
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' passed (0.037 seconds).
+Test Case '-[main.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' started.
+Test Case '-[main.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' passed (0.050 seconds).
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' started.
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' passed (0.006 seconds).
+Test Suite 'SidebarNavigationTests' passed at 2026-11-11 00:13:33.027.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 7.979 (7.981) seconds

@@ -1,0 +1,23 @@
+Test Suite 'SidebarNavigationTests' started at 2026-11-10 23:56:00.828.
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' started.
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' passed (0.143 seconds).
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' started.
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' passed (0.002 seconds).
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' started.
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:110: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertEqualWithAccuracy failed: ("1.0") is not equal to ("240.0") +/- ("1.0")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:110: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertEqualWithAccuracy failed: ("1.0") is not equal to ("240.0") +/- ("1.0")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:110: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertEqualWithAccuracy failed: ("0.0") is not equal to ("240.0") +/- ("1.0")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:112: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertEqualWithAccuracy failed: ("240.0") is not equal to ("0.0") +/- ("1.0")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:113: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertGreaterThanOrEqual failed: ("1.0") is less than ("240.0")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:110: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertEqualWithAccuracy failed: ("0.0") is not equal to ("216.0") +/- ("1.0")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:112: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertEqualWithAccuracy failed: ("216.0") is not equal to ("0.0") +/- ("1.0")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:113: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertGreaterThanOrEqual failed: ("1.0") is less than ("216.0")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:110: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertEqualWithAccuracy failed: ("1.0") is not equal to ("240.0") +/- ("1.0")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:110: error: -[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons] : XCTAssertEqualWithAccuracy failed: ("1.0") is not equal to ("240.0") +/- ("1.0")
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' failed (7.523 seconds).
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' started.
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' passed (0.037 seconds).
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' started.
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' passed (0.003 seconds).
+Test Suite 'SidebarNavigationTests' failed at 2026-11-10 23:56:08.539.
+	 Executed 5 tests, with 10 failures (0 unexpected) in 7.708 (7.710) seconds
