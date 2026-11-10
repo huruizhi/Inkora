@@ -1,0 +1,2066 @@
+[
+  {
+    "column" : 900,
+    "dark" : false,
+    "dirty" : false,
+    "geometry" : {
+      "contentWidth" : 883,
+      "darkMedia" : false,
+      "editor" : {
+        "bottom" : 900,
+        "color" : "color(srgb 0.16 0.16 0.16)",
+        "font" : "17px",
+        "line" : "30.6px",
+        "marginBottom" : "0px",
+        "marginTop" : "0px",
+        "tag" : "DIV",
+        "text" : "一篇适合连续写作的技术文档这段中文用于比较正文的字重、行高与行宽。好的",
+        "top" : 28,
+        "width" : 1200
+      },
+      "editorClientWidth" : 1183,
+      "editorScrollWidth" : 1183,
+      "headings" : [
+        {
+          "gap" : 17,
+          "heading" : {
+            "bottom" : 131.390625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "34px",
+            "line" : "45.900002px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "H1",
+            "text" : "一篇适合连续写作的技术文档",
+            "top" : 76,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 209.578125,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "这段中文用于比较正文的字重、行高与行宽。好的编辑器应当让注意力留在内容",
+            "top" : 148.390625,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 371.625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "让结构为内容服务",
+            "top" : 328.5625,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 421.5625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 392.875,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 421.5625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 392.875,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 537.78125,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "20.390625px",
+            "marginTop" : "13.59375px",
+            "tag" : "UL",
+            "text" : "第一个要点保持简洁。第二个要点包含更长的句子，观察折行后的缩进与标记是",
+            "top" : 437.5,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 30.59375,
+          "heading" : {
+            "bottom" : 911.484375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "34px",
+            "tag" : "H3",
+            "text" : "表格与代码",
+            "top" : 882.796875,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 1085.859375,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "30.59375px",
+            "marginTop" : "30.59375px",
+            "tag" : "DIV",
+            "text" : "前插行后插行删除行前插列后插列删除列左对齐居中右对齐无对齐删除表格项目",
+            "top" : 942.078125,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 23.796875,
+          "heading" : {
+            "bottom" : 1545.65625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "更丰富的技术表达",
+            "top" : 1502.59375,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 1618.234375,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "23.796875px",
+            "marginTop" : "23.796875px",
+            "tag" : "SECTION",
+            "text" : "E=mc2E = mc^2",
+            "top" : 1569.453125,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 2146.5625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "相邻二级标题",
+            "top" : 2103.5,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 2196.5,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2167.8125,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 2196.5,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2167.8125,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 2243.03125,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "正文与链接。",
+            "top" : 2212.4375,
+            "width" : 883
+          }
+        }
+      ],
+      "identity" : true,
+      "pageWidth" : 1200,
+      "scroll" : [
+        {
+          "client" : 883,
+          "overflow" : "auto",
+          "scroll" : 883,
+          "tag" : "inkora-table-scroll"
+        },
+        {
+          "client" : 881,
+          "overflow" : "auto",
+          "scroll" : 881,
+          "tag" : ""
+        },
+        {
+          "client" : 881,
+          "overflow" : "auto",
+          "scroll" : 881,
+          "tag" : ""
+        },
+        {
+          "client" : 881,
+          "overflow" : "auto",
+          "scroll" : 6963,
+          "tag" : ""
+        },
+        {
+          "client" : 883,
+          "overflow" : "auto",
+          "scroll" : 2994,
+          "tag" : "inkora-table-scroll"
+        }
+      ],
+      "sidebar" : null,
+      "stylesheets" : [
+        null
+      ],
+      "url" : "inkora-editor:\/\/app\/index.html",
+      "viewport" : 1200
+    },
+    "phase" : "production-after",
+    "revision" : 0,
+    "viewport" : 1200,
+    "windowVisible" : false
+  },
+  {
+    "column" : 900,
+    "dark" : true,
+    "dirty" : false,
+    "geometry" : {
+      "contentWidth" : 883,
+      "darkMedia" : true,
+      "editor" : {
+        "bottom" : 900,
+        "color" : "color(srgb 0.858824 0.858824 0.858824)",
+        "font" : "17px",
+        "line" : "30.6px",
+        "marginBottom" : "0px",
+        "marginTop" : "0px",
+        "tag" : "DIV",
+        "text" : "一篇适合连续写作的技术文档这段中文用于比较正文的字重、行高与行宽。好的",
+        "top" : 28,
+        "width" : 1200
+      },
+      "editorClientWidth" : 1183,
+      "editorScrollWidth" : 1183,
+      "headings" : [
+        {
+          "gap" : 17,
+          "heading" : {
+            "bottom" : 131.390625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "34px",
+            "line" : "45.900002px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "H1",
+            "text" : "一篇适合连续写作的技术文档",
+            "top" : 76,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 209.578125,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "这段中文用于比较正文的字重、行高与行宽。好的编辑器应当让注意力留在内容",
+            "top" : 148.390625,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 371.625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "让结构为内容服务",
+            "top" : 328.5625,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 421.5625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 392.875,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 421.5625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 392.875,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 537.78125,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "20.390625px",
+            "marginTop" : "13.59375px",
+            "tag" : "UL",
+            "text" : "第一个要点保持简洁。第二个要点包含更长的句子，观察折行后的缩进与标记是",
+            "top" : 437.5,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 30.59375,
+          "heading" : {
+            "bottom" : 911.484375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "34px",
+            "tag" : "H3",
+            "text" : "表格与代码",
+            "top" : 882.796875,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 1085.859375,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "30.59375px",
+            "marginTop" : "30.59375px",
+            "tag" : "DIV",
+            "text" : "前插行后插行删除行前插列后插列删除列左对齐居中右对齐无对齐删除表格项目",
+            "top" : 942.078125,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 23.796875,
+          "heading" : {
+            "bottom" : 1545.65625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "更丰富的技术表达",
+            "top" : 1502.59375,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 1618.234375,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "23.796875px",
+            "marginTop" : "23.796875px",
+            "tag" : "SECTION",
+            "text" : "E=mc2E = mc^2",
+            "top" : 1569.453125,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 2146.5625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "相邻二级标题",
+            "top" : 2103.5,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 2196.5,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2167.8125,
+            "width" : 883
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 2196.5,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2167.8125,
+            "width" : 883
+          },
+          "next" : {
+            "bottom" : 2243.03125,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "正文与链接。",
+            "top" : 2212.4375,
+            "width" : 883
+          }
+        }
+      ],
+      "identity" : true,
+      "pageWidth" : 1200,
+      "scroll" : [
+        {
+          "client" : 883,
+          "overflow" : "auto",
+          "scroll" : 883,
+          "tag" : "inkora-table-scroll"
+        },
+        {
+          "client" : 881,
+          "overflow" : "auto",
+          "scroll" : 881,
+          "tag" : ""
+        },
+        {
+          "client" : 881,
+          "overflow" : "auto",
+          "scroll" : 881,
+          "tag" : ""
+        },
+        {
+          "client" : 881,
+          "overflow" : "auto",
+          "scroll" : 6963,
+          "tag" : ""
+        },
+        {
+          "client" : 883,
+          "overflow" : "auto",
+          "scroll" : 2994,
+          "tag" : "inkora-table-scroll"
+        }
+      ],
+      "sidebar" : null,
+      "stylesheets" : [
+        null
+      ],
+      "url" : "inkora-editor:\/\/app\/index.html",
+      "viewport" : 1200
+    },
+    "phase" : "production-after",
+    "revision" : 0,
+    "viewport" : 1200,
+    "windowVisible" : false
+  },
+  {
+    "column" : 760,
+    "dark" : false,
+    "dirty" : false,
+    "geometry" : {
+      "contentWidth" : 743,
+      "darkMedia" : false,
+      "editor" : {
+        "bottom" : 900,
+        "color" : "color(srgb 0.16 0.16 0.16)",
+        "font" : "17px",
+        "line" : "30.6px",
+        "marginBottom" : "0px",
+        "marginTop" : "0px",
+        "tag" : "DIV",
+        "text" : "一篇适合连续写作的技术文档这段中文用于比较正文的字重、行高与行宽。好的",
+        "top" : 28,
+        "width" : 1200
+      },
+      "editorClientWidth" : 1183,
+      "editorScrollWidth" : 1183,
+      "headings" : [
+        {
+          "gap" : 17,
+          "heading" : {
+            "bottom" : 131.390625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "34px",
+            "line" : "45.900002px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "H1",
+            "text" : "一篇适合连续写作的技术文档",
+            "top" : 76,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 240.171875,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "这段中文用于比较正文的字重、行高与行宽。好的编辑器应当让注意力留在内容",
+            "top" : 148.390625,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 402.21875,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "让结构为内容服务",
+            "top" : 359.15625,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 452.15625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 423.46875,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 452.15625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 423.46875,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 568.375,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "20.390625px",
+            "marginTop" : "13.59375px",
+            "tag" : "UL",
+            "text" : "第一个要点保持简洁。第二个要点包含更长的句子，观察折行后的缩进与标记是",
+            "top" : 468.09375,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 30.59375,
+          "heading" : {
+            "bottom" : 942.078125,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "34px",
+            "tag" : "H3",
+            "text" : "表格与代码",
+            "top" : 913.390625,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 1116.453125,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "30.59375px",
+            "marginTop" : "30.59375px",
+            "tag" : "DIV",
+            "text" : "前插行后插行删除行前插列后插列删除列左对齐居中右对齐无对齐删除表格项目",
+            "top" : 972.671875,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 23.796875,
+          "heading" : {
+            "bottom" : 1576.25,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "更丰富的技术表达",
+            "top" : 1533.1875,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 1648.828125,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "23.796875px",
+            "marginTop" : "23.796875px",
+            "tag" : "SECTION",
+            "text" : "E=mc2E = mc^2",
+            "top" : 1600.046875,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 2177.15625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "相邻二级标题",
+            "top" : 2134.09375,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 2227.09375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2198.40625,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 2227.09375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2198.40625,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 2273.625,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "正文与链接。",
+            "top" : 2243.03125,
+            "width" : 743
+          }
+        }
+      ],
+      "identity" : true,
+      "pageWidth" : 1200,
+      "scroll" : [
+        {
+          "client" : 743,
+          "overflow" : "auto",
+          "scroll" : 743,
+          "tag" : "inkora-table-scroll"
+        },
+        {
+          "client" : 741,
+          "overflow" : "auto",
+          "scroll" : 741,
+          "tag" : ""
+        },
+        {
+          "client" : 741,
+          "overflow" : "auto",
+          "scroll" : 741,
+          "tag" : ""
+        },
+        {
+          "client" : 741,
+          "overflow" : "auto",
+          "scroll" : 6963,
+          "tag" : ""
+        },
+        {
+          "client" : 743,
+          "overflow" : "auto",
+          "scroll" : 2994,
+          "tag" : "inkora-table-scroll"
+        }
+      ],
+      "sidebar" : null,
+      "stylesheets" : [
+        null
+      ],
+      "url" : "inkora-editor:\/\/app\/index.html",
+      "viewport" : 1200
+    },
+    "phase" : "production-after",
+    "revision" : 0,
+    "viewport" : 1200,
+    "windowVisible" : false
+  },
+  {
+    "column" : 760,
+    "dark" : true,
+    "dirty" : false,
+    "geometry" : {
+      "contentWidth" : 743,
+      "darkMedia" : true,
+      "editor" : {
+        "bottom" : 900,
+        "color" : "color(srgb 0.858824 0.858824 0.858824)",
+        "font" : "17px",
+        "line" : "30.6px",
+        "marginBottom" : "0px",
+        "marginTop" : "0px",
+        "tag" : "DIV",
+        "text" : "一篇适合连续写作的技术文档这段中文用于比较正文的字重、行高与行宽。好的",
+        "top" : 28,
+        "width" : 1200
+      },
+      "editorClientWidth" : 1183,
+      "editorScrollWidth" : 1183,
+      "headings" : [
+        {
+          "gap" : 17,
+          "heading" : {
+            "bottom" : 131.390625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "34px",
+            "line" : "45.900002px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "H1",
+            "text" : "一篇适合连续写作的技术文档",
+            "top" : 76,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 240.171875,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "这段中文用于比较正文的字重、行高与行宽。好的编辑器应当让注意力留在内容",
+            "top" : 148.390625,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 402.21875,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "让结构为内容服务",
+            "top" : 359.15625,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 452.15625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 423.46875,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 452.15625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 423.46875,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 568.375,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "20.390625px",
+            "marginTop" : "13.59375px",
+            "tag" : "UL",
+            "text" : "第一个要点保持简洁。第二个要点包含更长的句子，观察折行后的缩进与标记是",
+            "top" : 468.09375,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 30.59375,
+          "heading" : {
+            "bottom" : 942.078125,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "34px",
+            "tag" : "H3",
+            "text" : "表格与代码",
+            "top" : 913.390625,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 1116.453125,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "30.59375px",
+            "marginTop" : "30.59375px",
+            "tag" : "DIV",
+            "text" : "前插行后插行删除行前插列后插列删除列左对齐居中右对齐无对齐删除表格项目",
+            "top" : 972.671875,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 23.796875,
+          "heading" : {
+            "bottom" : 1576.25,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "更丰富的技术表达",
+            "top" : 1533.1875,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 1648.828125,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "23.796875px",
+            "marginTop" : "23.796875px",
+            "tag" : "SECTION",
+            "text" : "E=mc2E = mc^2",
+            "top" : 1600.046875,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 2177.15625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "相邻二级标题",
+            "top" : 2134.09375,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 2227.09375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2198.40625,
+            "width" : 743
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 2227.09375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2198.40625,
+            "width" : 743
+          },
+          "next" : {
+            "bottom" : 2273.625,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "正文与链接。",
+            "top" : 2243.03125,
+            "width" : 743
+          }
+        }
+      ],
+      "identity" : true,
+      "pageWidth" : 1200,
+      "scroll" : [
+        {
+          "client" : 743,
+          "overflow" : "auto",
+          "scroll" : 743,
+          "tag" : "inkora-table-scroll"
+        },
+        {
+          "client" : 741,
+          "overflow" : "auto",
+          "scroll" : 741,
+          "tag" : ""
+        },
+        {
+          "client" : 741,
+          "overflow" : "auto",
+          "scroll" : 741,
+          "tag" : ""
+        },
+        {
+          "client" : 741,
+          "overflow" : "auto",
+          "scroll" : 6963,
+          "tag" : ""
+        },
+        {
+          "client" : 743,
+          "overflow" : "auto",
+          "scroll" : 2994,
+          "tag" : "inkora-table-scroll"
+        }
+      ],
+      "sidebar" : null,
+      "stylesheets" : [
+        null
+      ],
+      "url" : "inkora-editor:\/\/app\/index.html",
+      "viewport" : 1200
+    },
+    "phase" : "production-after",
+    "revision" : 0,
+    "viewport" : 1200,
+    "windowVisible" : false
+  },
+  {
+    "column" : 900,
+    "dark" : false,
+    "dirty" : false,
+    "geometry" : {
+      "contentWidth" : 415,
+      "darkMedia" : false,
+      "editor" : {
+        "bottom" : 900,
+        "color" : "color(srgb 0.16 0.16 0.16)",
+        "font" : "17px",
+        "line" : "30.6px",
+        "marginBottom" : "0px",
+        "marginTop" : "0px",
+        "tag" : "DIV",
+        "text" : "一篇适合连续写作的技术文档这段中文用于比较正文的字重、行高与行宽。好的",
+        "top" : 28,
+        "width" : 480
+      },
+      "editorClientWidth" : 463,
+      "editorScrollWidth" : 463,
+      "headings" : [
+        {
+          "gap" : 17,
+          "heading" : {
+            "bottom" : 177.28125,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "34px",
+            "line" : "45.900002px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "H1",
+            "text" : "一篇适合连续写作的技术文档",
+            "top" : 76,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 347.25,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "这段中文用于比较正文的字重、行高与行宽。好的编辑器应当让注意力留在内容",
+            "top" : 194.28125,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 570.484375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "让结构为内容服务",
+            "top" : 527.421875,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 620.421875,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 591.734375,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 620.421875,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 591.734375,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 767.234375,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "20.390625px",
+            "marginTop" : "13.59375px",
+            "tag" : "UL",
+            "text" : "第一个要点保持简洁。第二个要点包含更长的句子，观察折行后的缩进与标记是",
+            "top" : 636.359375,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 30.59375,
+          "heading" : {
+            "bottom" : 1140.9375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "34px",
+            "tag" : "H3",
+            "text" : "表格与代码",
+            "top" : 1112.25,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 1315.3125,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "30.59375px",
+            "marginTop" : "30.59375px",
+            "tag" : "DIV",
+            "text" : "前插行后插行删除行前插列后插列删除列左对齐居中右对齐无对齐删除表格项目",
+            "top" : 1171.53125,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 23.796875,
+          "heading" : {
+            "bottom" : 1775.109375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "更丰富的技术表达",
+            "top" : 1732.046875,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 1847.6875,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "23.796875px",
+            "marginTop" : "23.796875px",
+            "tag" : "SECTION",
+            "text" : "E=mc2E = mc^2",
+            "top" : 1798.90625,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 2432.90625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "相邻二级标题",
+            "top" : 2389.84375,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 2482.84375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2454.15625,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 2482.84375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2454.15625,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 2529.375,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "正文与链接。",
+            "top" : 2498.78125,
+            "width" : 415
+          }
+        }
+      ],
+      "identity" : true,
+      "pageWidth" : 480,
+      "scroll" : [
+        {
+          "client" : 415,
+          "overflow" : "auto",
+          "scroll" : 415,
+          "tag" : "inkora-table-scroll"
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 413,
+          "tag" : ""
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 413,
+          "tag" : ""
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 6963,
+          "tag" : ""
+        },
+        {
+          "client" : 415,
+          "overflow" : "auto",
+          "scroll" : 2994,
+          "tag" : "inkora-table-scroll"
+        }
+      ],
+      "sidebar" : null,
+      "stylesheets" : [
+        null
+      ],
+      "url" : "inkora-editor:\/\/app\/index.html",
+      "viewport" : 480
+    },
+    "phase" : "production-after",
+    "revision" : 0,
+    "viewport" : 480,
+    "windowVisible" : false
+  },
+  {
+    "column" : 900,
+    "dark" : true,
+    "dirty" : false,
+    "geometry" : {
+      "contentWidth" : 415,
+      "darkMedia" : true,
+      "editor" : {
+        "bottom" : 900,
+        "color" : "color(srgb 0.858824 0.858824 0.858824)",
+        "font" : "17px",
+        "line" : "30.6px",
+        "marginBottom" : "0px",
+        "marginTop" : "0px",
+        "tag" : "DIV",
+        "text" : "一篇适合连续写作的技术文档这段中文用于比较正文的字重、行高与行宽。好的",
+        "top" : 28,
+        "width" : 480
+      },
+      "editorClientWidth" : 463,
+      "editorScrollWidth" : 463,
+      "headings" : [
+        {
+          "gap" : 17,
+          "heading" : {
+            "bottom" : 177.28125,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "34px",
+            "line" : "45.900002px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "H1",
+            "text" : "一篇适合连续写作的技术文档",
+            "top" : 76,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 347.25,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "这段中文用于比较正文的字重、行高与行宽。好的编辑器应当让注意力留在内容",
+            "top" : 194.28125,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 570.484375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "让结构为内容服务",
+            "top" : 527.421875,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 620.421875,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 591.734375,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 620.421875,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 591.734375,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 767.234375,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "20.390625px",
+            "marginTop" : "13.59375px",
+            "tag" : "UL",
+            "text" : "第一个要点保持简洁。第二个要点包含更长的句子，观察折行后的缩进与标记是",
+            "top" : 636.359375,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 30.59375,
+          "heading" : {
+            "bottom" : 1140.9375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "34px",
+            "tag" : "H3",
+            "text" : "表格与代码",
+            "top" : 1112.25,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 1315.3125,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "30.59375px",
+            "marginTop" : "30.59375px",
+            "tag" : "DIV",
+            "text" : "前插行后插行删除行前插列后插列删除列左对齐居中右对齐无对齐删除表格项目",
+            "top" : 1171.53125,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 23.796875,
+          "heading" : {
+            "bottom" : 1775.109375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "更丰富的技术表达",
+            "top" : 1732.046875,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 1847.6875,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "23.796875px",
+            "marginTop" : "23.796875px",
+            "tag" : "SECTION",
+            "text" : "E=mc2E = mc^2",
+            "top" : 1798.90625,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 2432.90625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "相邻二级标题",
+            "top" : 2389.84375,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 2482.84375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2454.15625,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 2482.84375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2454.15625,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 2529.375,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "正文与链接。",
+            "top" : 2498.78125,
+            "width" : 415
+          }
+        }
+      ],
+      "identity" : true,
+      "pageWidth" : 480,
+      "scroll" : [
+        {
+          "client" : 415,
+          "overflow" : "auto",
+          "scroll" : 415,
+          "tag" : "inkora-table-scroll"
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 413,
+          "tag" : ""
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 413,
+          "tag" : ""
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 6963,
+          "tag" : ""
+        },
+        {
+          "client" : 415,
+          "overflow" : "auto",
+          "scroll" : 2994,
+          "tag" : "inkora-table-scroll"
+        }
+      ],
+      "sidebar" : null,
+      "stylesheets" : [
+        null
+      ],
+      "url" : "inkora-editor:\/\/app\/index.html",
+      "viewport" : 480
+    },
+    "phase" : "production-after",
+    "revision" : 0,
+    "viewport" : 480,
+    "windowVisible" : false
+  },
+  {
+    "column" : 760,
+    "dark" : false,
+    "dirty" : false,
+    "geometry" : {
+      "contentWidth" : 415,
+      "darkMedia" : false,
+      "editor" : {
+        "bottom" : 900,
+        "color" : "color(srgb 0.16 0.16 0.16)",
+        "font" : "17px",
+        "line" : "30.6px",
+        "marginBottom" : "0px",
+        "marginTop" : "0px",
+        "tag" : "DIV",
+        "text" : "一篇适合连续写作的技术文档这段中文用于比较正文的字重、行高与行宽。好的",
+        "top" : 28,
+        "width" : 480
+      },
+      "editorClientWidth" : 463,
+      "editorScrollWidth" : 463,
+      "headings" : [
+        {
+          "gap" : 17,
+          "heading" : {
+            "bottom" : 177.28125,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "34px",
+            "line" : "45.900002px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "H1",
+            "text" : "一篇适合连续写作的技术文档",
+            "top" : 76,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 347.25,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "这段中文用于比较正文的字重、行高与行宽。好的编辑器应当让注意力留在内容",
+            "top" : 194.28125,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 570.484375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "让结构为内容服务",
+            "top" : 527.421875,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 620.421875,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 591.734375,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 620.421875,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 591.734375,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 767.234375,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "20.390625px",
+            "marginTop" : "13.59375px",
+            "tag" : "UL",
+            "text" : "第一个要点保持简洁。第二个要点包含更长的句子，观察折行后的缩进与标记是",
+            "top" : 636.359375,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 30.59375,
+          "heading" : {
+            "bottom" : 1140.9375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "34px",
+            "tag" : "H3",
+            "text" : "表格与代码",
+            "top" : 1112.25,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 1315.3125,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "30.59375px",
+            "marginTop" : "30.59375px",
+            "tag" : "DIV",
+            "text" : "前插行后插行删除行前插列后插列删除列左对齐居中右对齐无对齐删除表格项目",
+            "top" : 1171.53125,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 23.796875,
+          "heading" : {
+            "bottom" : 1775.109375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "更丰富的技术表达",
+            "top" : 1732.046875,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 1847.6875,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "23.796875px",
+            "marginTop" : "23.796875px",
+            "tag" : "SECTION",
+            "text" : "E=mc2E = mc^2",
+            "top" : 1798.90625,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 2432.90625,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "相邻二级标题",
+            "top" : 2389.84375,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 2482.84375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2454.15625,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 2482.84375,
+            "color" : "color(srgb 0.1 0.1 0.1)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2454.15625,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 2529.375,
+            "color" : "color(srgb 0.16 0.16 0.16)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "正文与链接。",
+            "top" : 2498.78125,
+            "width" : 415
+          }
+        }
+      ],
+      "identity" : true,
+      "pageWidth" : 480,
+      "scroll" : [
+        {
+          "client" : 415,
+          "overflow" : "auto",
+          "scroll" : 415,
+          "tag" : "inkora-table-scroll"
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 413,
+          "tag" : ""
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 413,
+          "tag" : ""
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 6963,
+          "tag" : ""
+        },
+        {
+          "client" : 415,
+          "overflow" : "auto",
+          "scroll" : 2994,
+          "tag" : "inkora-table-scroll"
+        }
+      ],
+      "sidebar" : null,
+      "stylesheets" : [
+        null
+      ],
+      "url" : "inkora-editor:\/\/app\/index.html",
+      "viewport" : 480
+    },
+    "phase" : "production-after",
+    "revision" : 0,
+    "viewport" : 480,
+    "windowVisible" : false
+  },
+  {
+    "column" : 760,
+    "dark" : true,
+    "dirty" : false,
+    "geometry" : {
+      "contentWidth" : 415,
+      "darkMedia" : true,
+      "editor" : {
+        "bottom" : 900,
+        "color" : "color(srgb 0.858824 0.858824 0.858824)",
+        "font" : "17px",
+        "line" : "30.6px",
+        "marginBottom" : "0px",
+        "marginTop" : "0px",
+        "tag" : "DIV",
+        "text" : "一篇适合连续写作的技术文档这段中文用于比较正文的字重、行高与行宽。好的",
+        "top" : 28,
+        "width" : 480
+      },
+      "editorClientWidth" : 463,
+      "editorScrollWidth" : 463,
+      "headings" : [
+        {
+          "gap" : 17,
+          "heading" : {
+            "bottom" : 177.28125,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "34px",
+            "line" : "45.900002px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "H1",
+            "text" : "一篇适合连续写作的技术文档",
+            "top" : 76,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 347.25,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "这段中文用于比较正文的字重、行高与行宽。好的编辑器应当让注意力留在内容",
+            "top" : 194.28125,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 570.484375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "让结构为内容服务",
+            "top" : 527.421875,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 620.421875,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 591.734375,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 620.421875,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "列表与引用",
+            "top" : 591.734375,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 767.234375,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "20.390625px",
+            "marginTop" : "13.59375px",
+            "tag" : "UL",
+            "text" : "第一个要点保持简洁。第二个要点包含更长的句子，观察折行后的缩进与标记是",
+            "top" : 636.359375,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 30.59375,
+          "heading" : {
+            "bottom" : 1140.9375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "34px",
+            "tag" : "H3",
+            "text" : "表格与代码",
+            "top" : 1112.25,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 1315.3125,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "30.59375px",
+            "marginTop" : "30.59375px",
+            "tag" : "DIV",
+            "text" : "前插行后插行删除行前插列后插列删除列左对齐居中右对齐无对齐删除表格项目",
+            "top" : 1171.53125,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 23.796875,
+          "heading" : {
+            "bottom" : 1775.109375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "更丰富的技术表达",
+            "top" : 1732.046875,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 1847.6875,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "23.796875px",
+            "marginTop" : "23.796875px",
+            "tag" : "SECTION",
+            "text" : "E=mc2E = mc^2",
+            "top" : 1798.90625,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 21.25,
+          "heading" : {
+            "bottom" : 2432.90625,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "25.5px",
+            "line" : "34.424999px",
+            "marginBottom" : "19.125px",
+            "marginTop" : "40.796875px",
+            "tag" : "H2",
+            "text" : "相邻二级标题",
+            "top" : 2389.84375,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 2482.84375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2454.15625,
+            "width" : 415
+          }
+        },
+        {
+          "gap" : 15.9375,
+          "heading" : {
+            "bottom" : 2482.84375,
+            "color" : "color(srgb 0.911765 0.911765 0.911765)",
+            "font" : "21.25px",
+            "line" : "28.6875px",
+            "marginBottom" : "15.9375px",
+            "marginTop" : "21.25px",
+            "tag" : "H3",
+            "text" : "相邻三级标题",
+            "top" : 2454.15625,
+            "width" : 415
+          },
+          "next" : {
+            "bottom" : 2529.375,
+            "color" : "color(srgb 0.858824 0.858824 0.858824)",
+            "font" : "17px",
+            "line" : "30.6px",
+            "marginBottom" : "17px",
+            "marginTop" : "0px",
+            "tag" : "P",
+            "text" : "正文与链接。",
+            "top" : 2498.78125,
+            "width" : 415
+          }
+        }
+      ],
+      "identity" : true,
+      "pageWidth" : 480,
+      "scroll" : [
+        {
+          "client" : 415,
+          "overflow" : "auto",
+          "scroll" : 415,
+          "tag" : "inkora-table-scroll"
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 413,
+          "tag" : ""
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 413,
+          "tag" : ""
+        },
+        {
+          "client" : 413,
+          "overflow" : "auto",
+          "scroll" : 6963,
+          "tag" : ""
+        },
+        {
+          "client" : 415,
+          "overflow" : "auto",
+          "scroll" : 2994,
+          "tag" : "inkora-table-scroll"
+        }
+      ],
+      "sidebar" : null,
+      "stylesheets" : [
+        null
+      ],
+      "url" : "inkora-editor:\/\/app\/index.html",
+      "viewport" : 480
+    },
+    "phase" : "production-after",
+    "revision" : 0,
+    "viewport" : 480,
+    "windowVisible" : false
+  }
+]

@@ -1,0 +1,27 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-138-context-table-menu/editor
+
+ ❯ src/table-menu.test.ts (1 test | 1 failed) 62ms
+   ❯ production context tools (1)
+     × follows table/code caret selection without changing raw, history or save eligibility 62ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/table-menu.test.ts > production context tools > follows table/code caret selection without changing raw, history or save eligibility
+AssertionError: expected null not to be null
+ ❯ src/table-menu.test.ts:47:22
+     45|     expect(shortcut.defaultPrevented).toBe(true);
+     46|     const more = parent.querySelector<HTMLButtonElement>("[aria-haspop…
+     47|     expect(more).not.toBeNull();
+       |                      ^
+     48|     more.click();
+     49|     expect(more.getAttribute("aria-expanded")).toBe("true");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  01:03:59
+   Duration  625ms (import 60%, transform 28%, tests 12%)
+

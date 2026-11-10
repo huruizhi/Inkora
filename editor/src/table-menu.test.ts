@@ -1,0 +1,150 @@
+import { JSDOM } from "jsdom";
+import { TextSelection } from "prosemirror-state";
+import type { EditorView } from "prosemirror-view";
+import { afterEach, describe, expect, it } from "vitest";
+import { createEditorRuntime } from "./editor-runtime";
+
+const originalDocument = globalThis.document;
+const originalWindow = globalThis.window;
+afterEach(() => {
+  Object.defineProperty(globalThis, "document", { configurable: true, value: originalDocument });
+  Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
+});
+
+describe("production context tools", () => {
+  it("follows table/code caret selection without changing raw, history or save eligibility", () => {
+    const dom = new JSDOM("<main></main>", { pretendToBeVisual: true });
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
+    const parent = document.querySelector("main")!;
+    const raw = "\uFEFFIntro\r\n\r\n| A |\r\n| --- |\r\n| B |\r\n\r\n```ts\r\nconst n = 1;\r\n```\r\n";
+    let publications = 0;
+    const runtime = createEditorRuntime(parent, raw, () => { publications++; });
+    const view = (runtime as unknown as { view: EditorView }).view;
+    const before = runtime.status;
+    const positions: Record<string, number> = {};
+    view.state.doc.descendants((node, pos) => {
+      if (!(node.type.name in positions)) positions[node.type.name] = pos;
+    });
+    expect(parent.querySelectorAll(".inkora-context-active")).toHaveLength(0);
+
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, positions.table_header + 1)));
+    expect(parent.querySelector(".inkora-table-shell")?.classList.contains("inkora-context-active")).toBe(true);
+    expect(parent.querySelector(".inkora-code-block")?.classList.contains("inkora-context-active")).toBe(false);
+    view.focus();
+    const composingShortcut = new dom.window.KeyboardEvent("keydown", {
+      key: "F10", altKey: true, isComposing: true, bubbles: true, cancelable: true,
+    });
+    view.dom.dispatchEvent(composingShortcut);
+    expect(composingShortcut.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(view.dom);
+    const shortcut = new dom.window.KeyboardEvent("keydown", {
+      key: "F10", altKey: true, bubbles: true, cancelable: true,
+    });
+    view.dom.dispatchEvent(shortcut);
+    expect(shortcut.defaultPrevented).toBe(true);
+    const more = parent.querySelector<HTMLButtonElement>("[aria-haspopup='menu']")!;
+    expect(more).not.toBeNull();
+    more.click();
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    expect(parent.querySelectorAll("[role='menuitem']")).toHaveLength(9);
+    const stale = parent.querySelector<HTMLButtonElement>("[data-table-command='delete_table']")!;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1)));
+    expect(stale.isConnected).toBe(true);
+    stale.click();
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.status).toEqual(before);
+    expect(publications).toBe(0);
+    document.activeElement!.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "Escape", bubbles: true, cancelable: true,
+    }));
+    expect(document.activeElement).toBe(view.dom);
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, positions.code_block + 1)));
+    expect(parent.querySelector(".inkora-table-shell")?.classList.contains("inkora-context-active")).toBe(false);
+    expect(parent.querySelector(".inkora-code-block")?.classList.contains("inkora-context-active")).toBe(true);
+
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(
+      view.state.doc, positions.table_header + 1, positions.code_block + 2,
+    )));
+    expect(parent.querySelector(".inkora-table-shell")?.classList.contains("inkora-context-active")).toBe(true);
+    expect(parent.querySelector(".inkora-code-block")?.classList.contains("inkora-context-active")).toBe(true);
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1)));
+    expect(parent.querySelectorAll(".inkora-context-active")).toHaveLength(0);
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.snapshotText()).toEqual({ ok: true, value: raw });
+    expect(runtime.status).toEqual(before);
+    expect(publications).toBe(0);
+    runtime.destroy();
+    dom.window.close();
+  });
+  it("executes bound menu commands once and rejects detached actions", () => {
+    const dom = new JSDOM("<main></main>", { pretendToBeVisual: true });
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
+    const raw = "\uFEFF前😀\r\n\r\n| A | B |\r\n| --- | --- |\r\n| 中 | 文 |\r\n\r\n尾é\r\n";
+    const parent = document.querySelector("main")!;
+    let publications = 0;
+    const runtime = createEditorRuntime(parent, raw, () => publications++);
+    const view = (runtime as unknown as { view: EditorView }).view;
+    let pos = 0;
+    view.state.doc.descendants((node, at) => { if (node.type.name === "table_cell" && !pos) pos = at + 1; });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+    view.focus();
+    const before = runtime.status;
+    const open = () => parent.querySelector<HTMLButtonElement>("[aria-haspopup='menu']")!.click();
+    open();
+    const stale = parent.querySelector<HTMLButtonElement>("[data-table-command='delete_table']")!;
+    const menu = parent.querySelector<HTMLElement>("[role='menu']")!;
+    menu.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "End", bubbles: true }));
+    expect(document.activeElement).toBe(stale);
+    menu.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(menu.hidden).toBe(true);
+    expect(document.activeElement).toBe(view.dom);
+    expect(runtime.status).toEqual(before);
+    expect(publications).toBe(0);
+    open();
+    menu.dispatchEvent(new dom.window.Event("scroll", { bubbles: false }));
+    expect(menu.hidden).toBe(false);
+    view.dom.dispatchEvent(new dom.window.Event("scroll", { bubbles: false }));
+    expect(menu.hidden).toBe(true);
+    expect(runtime.status).toEqual(before);
+    expect(publications).toBe(0);
+    open();
+    document.body.dispatchEvent(new dom.window.Event("pointerdown", { bubbles: true }));
+    stale.click();
+    expect(runtime.getText()).toBe(raw);
+    open();
+    parent.querySelector<HTMLButtonElement>("[data-table-command='align_center']")!.click();
+    const changed = raw.replace("| --- | --- |", "| :---: | --- |");
+    expect(runtime.getText()).toBe(changed);
+    expect(runtime.undo()).toBe(true);
+    expect(runtime.getText()).toBe(raw);
+    stale.click();
+    expect(runtime.getText()).toBe(raw);
+    expect(runtime.redo()).toBe(true);
+    expect(runtime.getText()).toBe(changed);
+    open();
+    const composingKey = new dom.window.KeyboardEvent("keydown", {
+      key: "Escape", isComposing: true, bubbles: true, cancelable: true,
+    });
+    const currentMenu = parent.querySelector<HTMLElement>("[role=menu]")!;
+    currentMenu.dispatchEvent(composingKey);
+    expect(composingKey.defaultPrevented).toBe(false);
+    expect(currentMenu.hidden).toBe(false);
+    const currentAction = parent.querySelector<HTMLButtonElement>("[data-table-command='delete_table']")!;
+    view.dom.dispatchEvent(new dom.window.Event("compositionstart", { bubbles: true }));
+    const pointer = new dom.window.Event("pointerdown", { bubbles: true, cancelable: true });
+    currentAction.dispatchEvent(pointer);
+    expect(pointer.defaultPrevented).toBe(true);
+    currentAction.click();
+    expect(runtime.getText()).toBe(changed);
+    view.dom.dispatchEvent(new dom.window.Event("compositionend", { bubbles: true }));
+    expect(runtime.enterSourceMode()).toBe(true);
+    currentAction.click();
+    expect(runtime.getText()).toBe(changed);
+    runtime.destroy();
+    stale.click();
+    dom.window.close();
+  });
+
+});

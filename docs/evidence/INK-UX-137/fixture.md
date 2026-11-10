@@ -1,0 +1,79 @@
+# 一篇适合连续写作的技术文档
+
+这段中文用于比较正文的字重、行高与行宽。好的编辑器应当让注意力留在内容上，而不是被工具按钮、边框和提示打断。English words、数字 2026，以及 **重要概念**、*补充说明* 和 `inlineCode()` 都应自然地融入段落。
+
+这是第二个段落。我们会在相同的窗口宽度下比较首行位置、段落之间的留白，以及标题、列表和引用是否形成清楚的层次。[一个普通链接](https://example.com)不应该像一组编辑控件那样突出。
+
+## 让结构为内容服务
+
+### 列表与引用
+
+- 第一个要点保持简洁。
+- 第二个要点包含更长的句子，观察折行后的缩进与标记是否对齐。
+  - 这是一个嵌套要点。
+
+1. 打开一篇文档。
+2. 修改一段内容。
+3. 保存并继续写作。
+
+- [ ] 整理草稿
+- [x] 完成一次修改
+
+> 引用应该与正文有关联，又能被一眼区分。
+>
+> 不需要把每一种内容都装进突出的卡片。
+
+### 表格与代码
+
+| 项目 | 当前状态 | 备注 |
+| :--- | :---: | ---: |
+| 正文编辑 | 可用 | 以阅读为中心 |
+| 内容结构 | 可用 | 保留原始写法 |
+
+```typescript
+interface Document {
+  title: string;
+  content: string;
+}
+
+const document: Document = {
+  title: "继续写作",
+  content: "让工具退到内容后面。",
+};
+```
+
+---
+
+## 更丰富的技术表达
+
+$$
+E = mc^2
+$$
+
+```mermaid
+flowchart LR
+  A[想法] --> B[草稿] --> C[修改] --> D[交付]
+```
+
+这一段带有一个脚注[^note]，用于区分“样式接近”和“内容实际呈现”这两种不同的目标。
+
+[^note]: 这是一条脚注。它的原文应该可以保存，但阅读时不必始终显示全部定界符。
+
+![文档中的本地图片](reference.png "本地示例")
+
+
+## 相邻二级标题
+
+### 相邻三级标题
+
+正文与[链接](https://example.com)。
+
+> 引用内容
+
+```text
+long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_long_code_
+```
+
+| 宽表格 | 第二列 |
+| --- | --- |
+| widewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewidewide | 内容 |

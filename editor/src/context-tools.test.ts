@@ -43,7 +43,7 @@ describe("production context tools", () => {
     });
     view.dom.dispatchEvent(shortcut);
     expect(shortcut.defaultPrevented).toBe(true);
-    expect(document.activeElement).toBe(parent.querySelector("[data-table-command='add_row_before']"));
+    expect(document.activeElement).toBe(parent.querySelector("[data-table-command='add_row_after']"));
     document.activeElement!.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
       key: "Escape", bubbles: true, cancelable: true,
     }));

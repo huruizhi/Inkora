@@ -1,0 +1,16 @@
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-138-context-table-menu/.tools/node_modules/.bin/pnpm --dir editor build
+$ node scripts/prepare-renderers.mjs && tsc --noEmit && vite build
+vite v8.3.6 building client environment for production...
+transforming...
+✓ 153 modules transformed.
+rendering chunks...
+computing gzip size...
+../build/editor/index.html                  0.62 kB │ gzip:   0.36 kB
+../build/editor/assets/index-AQPw1spg.js  968.60 kB │ gzip: 307.32 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 109ms
