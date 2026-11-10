@@ -45,6 +45,10 @@ declare global {
       receive(serialized: string): void;
     };
     inkoraSidebar: { receive(serialized: string): void };
+    inkoraPresentation: {
+      setTitle(documentID: string, title: string, serial?: number): boolean;
+      locate(documentID: string, revision: number, raw: string, from: number, to: number): boolean;
+    };
     webkit?: {
       messageHandlers?: {
         inkora?: { postMessage(serialized: string): void };
@@ -69,7 +73,13 @@ topBar.className = "editor-topbar";
 workspace.append(topBar);
 const cornerTools = document.createElement("div");
 cornerTools.className = "editor-corner-tools";
-workspace.append(cornerTools);
+const titlebar = document.createElement("header");
+titlebar.className = "editor-titlebar";
+const documentTitle = document.createElement("span");
+documentTitle.className = "editor-document-title";
+documentTitle.textContent = "未命名";
+titlebar.append(documentTitle, cornerTools);
+workspace.prepend(titlebar);
 const findBar = document.createElement("div");
 findBar.className = "find-bar";
 topBar.append(findBar);
@@ -382,9 +392,51 @@ const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
     return { ok: false, message: "文档已变化，请等待大纲刷新" };
   }
   return activeRuntime.navigateToHeading(snapshot.raw, target);
-}, () => !runtime?.composing && !searchPanel.isInputComposing &&
+}, () => !runtime?.composing && !searchPanel.isInputComposing && !panel.isInputComposing &&
   !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)), cornerTools,
-  action => sidebarConnection.perform(action));
+  action => {
+    if (runtime?.composing || searchPanel.isInputComposing || panel.isInputComposing ||
+        (activeLinkEditor && composingLinkEditors.has(activeLinkEditor))) {
+      panel.showWorkspaceError("请先完成输入。");
+      return;
+    }
+    if ((action.type === "open" || action.type === "chooseFolder") &&
+        (runtime?.status.draftDirty || runtime?.status.unresolved)) {
+      const epoch = loadEpoch;
+      const revision = activeRevision;
+      const review = document.createElement("div");
+      review.className = "sidebar-navigation-review";
+      review.setAttribute("role", "dialog");
+      review.setAttribute("aria-label", "处理未提交的编辑");
+      const message = document.createElement("p");
+      message.textContent = "请先处理未提交的编辑，再切换文档。";
+      review.append(message);
+      const choices = runtime.status.draftDirty
+        ? [["提交源码并继续", "applySource"], ["放弃源码草稿并继续", "cancelSource"], ["返回编辑", "return"]]
+        : [["在源码中处理", "sourceMode"], ["返回编辑", "return"]];
+      for (const [label, command] of choices) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label!;
+        button.addEventListener("click", () => {
+          if (epoch !== loadEpoch || revision !== activeRevision || runtime?.composing ||
+              searchPanel.isInputComposing || panel.isInputComposing) return;
+          if (command === "return") { review.remove(); runtime?.focus(); return; }
+          if (!performEditorAction(command as EditorCommand)) return;
+          updateModeControls();
+          review.remove();
+          if (command !== "sourceMode" && !runtime?.status.draftDirty && !runtime?.status.unresolved) {
+            sidebarConnection.perform(action);
+          }
+        });
+        review.append(button);
+      }
+      linkEditorHost.querySelector(".sidebar-navigation-review")?.remove();
+      linkEditorHost.append(review);
+      return;
+    }
+    sidebarConnection.perform(action);
+  });
 
 const sidebarConnection = new SidebarConnection({
   binding: () => activeDocumentID !== undefined && activeRevision !== undefined
@@ -395,11 +447,56 @@ const sidebarConnection = new SidebarConnection({
     handler.postMessage(serialized);
     return true;
   },
+  reset: () => panel.resetWorkspace(),
   catalog: value => panel.updateWorkspace(value),
   result: (query, result) => panel.updateFileSearch(query, result),
   error: message => panel.showWorkspaceError(message),
 });
 window.inkoraSidebar = { receive: serialized => sidebarConnection.receive(serialized) };
+let presentationSerial = -1;
+window.inkoraPresentation = {
+  setTitle(documentID, title, serial) {
+    if (documentID !== activeDocumentID ||
+        (serial !== undefined && (!Number.isSafeInteger(serial) || serial <= presentationSerial))) return false;
+    if (serial !== undefined) presentationSerial = serial;
+    documentTitle.textContent = title;
+    titlebar.dataset.native = "true";
+    return true;
+  },
+  locate(documentID, revision, raw, from, to) {
+    if (!runtime || documentID !== activeDocumentID || revision !== activeRevision ||
+        runtime.getText() !== raw || runtime.composing || searchPanel.isInputComposing ||
+        panel.isInputComposing || runtime.status.draftDirty || runtime.status.unresolved ||
+        (activeLinkEditor && composingLinkEditors.has(activeLinkEditor))) return false;
+    if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to) || from < 0 || to < from || to > raw.length) {
+      panel.showWorkspaceError("搜索位置不属于当前可编辑原文（可能是文件编码标记）。请刷新搜索。");
+      return false;
+    }
+    const outcome = runtime.navigateRawRange(raw, { anchor: from, head: to });
+    if (outcome.ok) return true;
+    // A protected or syntax-only range needs an explicit source-mode choice.
+    const epoch = loadEpoch;
+    const choice = document.createElement("button");
+    choice.type = "button";
+    choice.className = "sidebar-source-location";
+    choice.textContent = "在源码中定位搜索结果";
+    choice.addEventListener("click", () => {
+      if (epoch !== loadEpoch || documentID !== activeDocumentID || revision !== activeRevision ||
+          runtime?.getText() !== raw || runtime.composing || panel.isInputComposing ||
+          searchPanel.isInputComposing || runtime.status.draftDirty || runtime.status.unresolved ||
+          (activeLinkEditor && composingLinkEditors.has(activeLinkEditor))) return;
+      if (runtime.enterSourceMode() && runtime.selectSourceRange(raw, { anchor: from, head: to }).ok) {
+        runtime.focus();
+        choice.remove();
+        updateModeControls();
+      }
+    });
+    linkEditorHost.querySelector(".sidebar-source-location")?.remove();
+    linkEditorHost.append(choice);
+    panel.showWorkspaceError(outcome.message);
+    return false;
+  },
+};
 
 // 查找面板：原生菜单的 Cmd-F 打开查找模式，面板内可显式切换到替换模式。
 // 查询、展示与导航不产生 Bridge 正文消息；只有有效替换会进入既有正文事务。
@@ -728,6 +825,8 @@ window.inkora = {
               // 面板开关保留）。被拒 load 不走这里，查找状态原样保留。
               searchPanel.resetForNewDocument();
               loadEpoch += 1;
+              linkEditorHost.querySelector(".sidebar-source-location")?.remove();
+              linkEditorHost.querySelector(".sidebar-navigation-review")?.remove();
               closeLinkEditor();
               assetEpoch = undefined;
               runtime?.destroy();

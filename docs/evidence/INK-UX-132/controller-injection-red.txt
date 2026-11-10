@@ -1,0 +1,21 @@
+Test Suite 'SidebarNavigationTests' started at 2026-11-10 23:25:24.201.
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' started.
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' passed (0.164 seconds).
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' started.
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:107: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertNil failed: "Error Domain=NSCocoaErrorDomain Code=256 "The file couldn’t be opened.""
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:109: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertFalse failed
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:112: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertTrue failed
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:113: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertEqual failed: ("原文
+") is not equal to ("目标
+")
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:114: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertTrue failed
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' failed (0.019 seconds).
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' started.
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' passed (0.004 seconds).
+Test Suite 'SidebarNavigationTests' failed at 2026-11-10 23:25:24.390.
+	 Executed 3 tests, with 5 failures (0 unexpected) in 0.187 (0.188) seconds
+DOC CLASS NSDocumentController Optional<NSDocument>
+ALLOW REVIEW
+before success 0 false
+ALLOW REVIEW
+after success Optional(Error Domain=NSCocoaErrorDomain Code=256 "The file couldn’t be opened.") true

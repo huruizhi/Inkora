@@ -20,6 +20,8 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
 
   weak var document: InkoraDocument?
 
+  let sidebarDocumentController: NSDocumentController
+  private let sidebarDocumentFactory: ((String) throws -> NSDocument)?
   private let resourceBundle: Bundle
   private let requestTimeout: Duration
   private let diagnostics: BridgeDiagnostics
@@ -43,9 +45,13 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     resourceBundle: Bundle = .main,
     requestTimeout: Duration = .seconds(5),
     diagnostics: BridgeDiagnostics = BridgeDiagnostics(),
-    imageSaveDirectoryAuthorizer: ImageSaveDirectoryAuthorizer? = nil
+    imageSaveDirectoryAuthorizer: ImageSaveDirectoryAuthorizer? = nil,
+    sidebarDocumentController: NSDocumentController = .shared,
+    sidebarDocumentFactory: ((String) throws -> NSDocument)? = nil
   ) {
     self.document = document
+    self.sidebarDocumentController = sidebarDocumentController
+    self.sidebarDocumentFactory = sidebarDocumentFactory
     self.resourceBundle = resourceBundle
     self.requestTimeout = requestTimeout
     self.diagnostics = diagnostics
@@ -95,7 +101,8 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       current: { [weak self] in
         guard let document = self?.document else { return nil }
         return SidebarWorkspaceBridge.Context(
-          documentID: document.bridgeDocumentID, revision: document.bridgeRevision)
+          documentID: document.bridgeDocumentID, revision: document.bridgeRevision,
+          fileURL: document.fileURL)
       },
       chooseFolder: { [weak self] completion in
         guard let self, let window = self.view.window, window.attachedSheet == nil else {
@@ -124,19 +131,13 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
           completion(true)
         }
       },
-      openFile: { [weak self] url, access, completion in
-        self?.document?.sidebarFolderAccess = access
-        NSDocumentController.shared.openDocument(withContentsOf: url, display: false) {
-          document, _, error in
-          guard let opened = document as? InkoraDocument, error == nil else {
-            completion(error ?? SidebarCatalogError.unavailable)
-            return
-          }
-          opened.sidebarFolderAccess = access
-          if opened.windowControllers.isEmpty { opened.makeWindowControllers() }
-          opened.showWindows()
-          completion(nil)
+      openFile: { _, _, completion in completion(SidebarCatalogError.unavailable) },
+      openVerifiedFile: { [weak self] file, access, completion in
+        guard let self else {
+          completion(EditorBridgeError.editorUnavailable)
+          return
         }
+        self.navigateSidebarFile(file, access: access, completion: completion)
       })
     sidebarBridge.useFolder(document?.sidebarFolderAccess)
     configuration.userContentController.add(sidebarBridge, name: "inkoraSidebar")
@@ -219,8 +220,151 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     NSApplication.shared.mainMenu?.update()
   }
 
+  func prepareSidebarImagesForSave(
+    to url: URL, snapshot: BridgeSnapshot,
+    completion: @escaping (Result<DocumentImageSavePreparation?, Error>) -> Void
+  ) {
+    prepareImagesForSave(to: url, snapshot: snapshot, completion: completion)
+  }
+
+  private var presentationSerial = 0
+  private var pendingSidebarLocation: (documentID: String, raw: String, from: Int, to: Int)?
+
+  func publishDocumentPresentation() {
+    presentationSerial += 1
+    guard let document, editorState?.documentID == document.bridgeDocumentID,
+      let data = try? JSONSerialization.data(withJSONObject: [
+        document.bridgeDocumentID, document.displayName,
+      ]),
+      let args = String(data: data, encoding: .utf8)
+    else { return }
+    webView?.evaluateJavaScript(
+      "window.inkoraPresentation?.setTitle(...\(args))", completionHandler: nil)
+    if let location = pendingSidebarLocation, location.documentID == document.bridgeDocumentID {
+      pendingSidebarLocation = nil
+      guard document.text == location.raw,
+        let data = try? JSONSerialization.data(withJSONObject: [
+          location.documentID, document.bridgeRevision, location.raw, location.from, location.to,
+        ]), let args = String(data: data, encoding: .utf8)
+      else { return }
+      webView?.evaluateJavaScript(
+        "window.inkoraPresentation?.locate(...\(args))", completionHandler: nil)
+    }
+  }
+
+  func navigateSidebarFile(
+    _ file: SidebarCatalog.OpenedFile, access: SidebarWorkspaceBridge.FolderAccess,
+    completion: @escaping (Error?) -> Void
+  ) {
+    guard let source = document else {
+      completion(EditorBridgeError.editorUnavailable)
+      return
+    }
+    let epoch = documentEpoch
+    source.reviewSidebarNavigation { [weak self, weak source] allowed in
+      guard let self, let source, allowed, self.document === source, self.documentEpoch == epoch
+      else {
+        completion(CocoaError(.userCancelled))
+        return
+      }
+      let reviewedRevision = source.bridgeRevision
+      do {
+        let documents = self.sidebarDocumentController
+        let target: InkoraDocument
+        if let existing = documents.document(for: file.url) {
+          guard let existing = existing as? InkoraDocument else {
+            throw SidebarCatalogError.unavailable
+          }
+          target = existing
+        } else {
+          guard
+            let created = try
+              (self.sidebarDocumentFactory?("net.daringfireball.markdown")
+              ?? documents.makeUntitledDocument(ofType: "net.daringfireball.markdown"))
+              as? InkoraDocument
+          else { throw SidebarCatalogError.unavailable }
+          try created.readSidebarFile(data: file.data, url: file.url, modified: file.modified)
+          target = created
+        }
+        if let controller = target.windowControllers.first?.window?.contentViewController
+          as? EditorViewController
+        {
+          controller.requestSnapshot { [weak self, weak source] result in
+            guard let self, let source, self.document === source, self.documentEpoch == epoch,
+              source.bridgeRevision == reviewedRevision,
+              case .success(let snapshot) = result,
+              (file.data.starts(with: [0xEF, 0xBB, 0xBF]) ? Data([0xEF, 0xBB, 0xBF]) : Data())
+                + Data(snapshot.text.utf8) == file.data
+            else {
+              completion(SidebarCatalogError.unavailable)
+              return
+            }
+            self.finishSidebarNavigation(
+              file, access: access, source: source, target: target, completion: completion)
+          }
+        } else {
+          self.finishSidebarNavigation(
+            file, access: access, source: source, target: target, completion: completion)
+        }
+      } catch { completion(error) }
+    }
+  }
+
+  private func finishSidebarNavigation(
+    _ file: SidebarCatalog.OpenedFile, access: SidebarWorkspaceBridge.FolderAccess,
+    source: InkoraDocument, target: InkoraDocument, completion: @escaping (Error?) -> Void
+  ) {
+    let documents = sidebarDocumentController
+    target.sidebarFolderAccess = access
+    if target !== source, let existing = target.windowControllers.first {
+      // Existing document identity and its editing session remain authoritative.
+      if let controller = existing.window?.contentViewController as? EditorViewController {
+        controller.queueSidebarLocation(file, for: target)
+      }
+      existing.window?.makeKeyAndOrderFront(nil)
+      completion(nil)
+      return
+    }
+    if target !== source {
+      guard
+        let windowController = source.windowControllers.first(where: {
+          $0.window?.contentViewController === self
+        })
+      else {
+        completion(SidebarCatalogError.unavailable)
+        return
+      }
+      source.removeWindowController(windowController)
+      source.detachSidebarEditor()
+      if !documents.documents.contains(where: { $0 === target }) {
+        documents.addDocument(target)
+      }
+      target.addWindowController(windowController)
+      self.document = target
+      target.attachSidebarEditor(self)
+      target.windowControllers.first?.window?.title = target.displayName
+      self.reloadDocument()
+      source.close()
+    }
+    self.queueSidebarLocation(file, for: target)
+    completion(nil)
+  }
+
+  private func queueSidebarLocation(_ file: SidebarCatalog.OpenedFile, for target: InkoraDocument) {
+    if let location = file.location {
+      let bom = file.data.starts(with: [0xEF, 0xBB, 0xBF]) ? 1 : 0
+      pendingSidebarLocation = (
+        target.bridgeDocumentID,
+        String(decoding: file.data.dropFirst(bom == 1 ? 3 : 0), as: UTF8.self),
+        location.utf16Location - bom, location.utf16Location + location.utf16Length - bom
+      )
+    }
+    publishDocumentPresentation()
+  }
+
   func confirmSaved(_ snapshot: BridgeSnapshot) {
     bridge?.confirmSaved(snapshot)
+    publishDocumentPresentation()
     refreshImageDescriptors(using: snapshot)
   }
 
@@ -331,6 +475,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     editorState = state
     captureTestSnapshot(state, bridge: bridge)
     document?.editorDidChangeState(state)
+    publishDocumentPresentation()
     NSApplication.shared.mainMenu?.update()
   }
 

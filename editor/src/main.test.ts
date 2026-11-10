@@ -2948,3 +2948,95 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.searchResultsText()).toContain("1 处匹配");
   });
 });
+
+it("标题元数据绑定当前文档，工具与文件名同行且不改变正文", async () => {
+  const h = await bootMain();
+  const raw = "# 正文标题\r\n\r\n内容\r\n";
+  h.receive({ type: "loadDocument", requestID: "title-load", documentID: "title-doc", revision: 0, text: raw });
+  const ui = (h.dom.window as unknown as Window).inkoraPresentation;
+  expect(ui.setTitle("old-doc", "迟到.md")).toBe(false);
+  expect(ui.setTitle("title-doc", "真实文件.md", 2)).toBe(true);
+  expect(ui.setTitle("title-doc", "旧文件.md", 1)).toBe(false);
+  const title = h.dom.window.document.querySelector(".editor-document-title")!;
+  expect(title.textContent).toBe("真实文件.md");
+  expect(title.parentElement).toBe(h.dom.window.document.querySelector(".editor-corner-tools")!.parentElement);
+  expect(h.editorHost().textContent).toContain("正文标题");
+  h.receive({ type: "createSnapshot", requestID: "title-snapshot", documentID: "title-doc", revision: 0 });
+  await settle();
+  expect(h.sent.find(message => message.requestID === "title-snapshot")).toMatchObject({ text: raw, revision: 0 });
+});
+
+it("原始UTF16位置准确定位重复内容，旧绑定拒绝，语法位置显式选择源码", async () => {
+  const h = await bootMain();
+  const raw = "# 标题\r\n\r\n相同 **相同** 末尾\r\n";
+  h.receive({ type: "loadDocument", requestID: "loc-load", documentID: "loc", revision: 0, text: raw });
+  const ui = (h.dom.window as unknown as Window).inkoraPresentation;
+  const from = raw.lastIndexOf("相同");
+  expect(ui.locate("old", 0, raw, from, from + 2)).toBe(false);
+  expect(ui.locate("loc", 1, raw, from, from + 2)).toBe(false);
+  expect(ui.locate("loc", 0, raw, -1, 0)).toBe(false);
+  expect(ui.locate("loc", 0, raw, 0, raw.length + 1)).toBe(false);
+  expect(ui.locate("loc", 0, raw, from, from + 2)).toBe(true);
+  expect(h.dom.window.getSelection()?.toString()).toBe("相同");
+  const syntax = raw.indexOf("**");
+  expect(ui.locate("loc", 0, raw, syntax, syntax + 2)).toBe(false);
+  const choice = h.dom.window.document.querySelector<HTMLButtonElement>(".sidebar-source-location")!;
+  expect(choice).not.toBeNull();
+  choice.click();
+  expect(h.editorHost().querySelector("textarea")).not.toBeNull();
+  h.receive({ type: "createSnapshot", requestID: "loc-snapshot", documentID: "loc", revision: 0 });
+  await settle();
+  expect(h.sent.find(message => message.requestID === "loc-snapshot")).toMatchObject({ text: raw, revision: 0 });
+});
+
+it("侧栏选目录前草稿须明确选择，返回保留内容且不发Native请求", async () => {
+  const h = await bootMain();
+  const sidebar: Array<Record<string, unknown>> = [];
+  const w = h.dom.window as unknown as Window;
+  w.webkit!.messageHandlers!.inkoraSidebar = { postMessage: text => { sidebar.push(JSON.parse(text)); } };
+  h.receive({ type: "loadDocument", requestID: "draft-side-load", documentID: "draft-side", revision: 0, text: "原文\n" });
+  const ready = sidebar.at(-1)!;
+  w.inkoraSidebar.receive(JSON.stringify({ kind: "ready", requestID: ready.requestID, documentID: "draft-side", contextID: "ctx" }));
+  h.receive({ type: "executeCommand", requestID: "draft-side-source", documentID: "draft-side", revision: 0, command: "sourceMode" });
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  area.value = "未提交草稿\n";
+  area.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, inputType: "insertText", data: "草稿" }));
+  const folder = h.dom.window.document.querySelector<HTMLButtonElement>(".sidebar-folder-button")!;
+  folder.click();
+  const review = h.dom.window.document.querySelector(".sidebar-navigation-review")!;
+  expect(review).not.toBeNull();
+  expect(sidebar.filter(message => message.action === "chooseFolder")).toHaveLength(0);
+  Array.from(review.querySelectorAll("button")).find(button => button.textContent === "返回编辑")!.click();
+  expect(area.value).toBe("未提交草稿\n");
+  expect(h.lastRevision()).toBe(0);
+  folder.click();
+  Array.from(h.dom.window.document.querySelectorAll<HTMLButtonElement>(".sidebar-navigation-review button"))
+    .find(button => button.textContent === "提交源码并继续")!.click();
+  expect(sidebar.filter(message => message.action === "chooseFolder")).toHaveLength(1);
+  h.receive({ type: "createSnapshot", requestID: "draft-side-snap", documentID: "draft-side", revision: 1 });
+  await settle();
+  expect(h.sent.find(message => message.requestID === "draft-side-snap")).toMatchObject({ text: "未提交草稿\n", revision: 1 });
+});
+
+it("侧栏输入持焦和composition时原生Undo与模式命令不越过输入框", async () => {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "side-focus-load", documentID: "side-focus", revision: 0, text: "原文\n" });
+  h.sourceMode().click();
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  area.value = "当前原文\n";
+  area.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, inputType: "insertText", data: "当前" }));
+  h.sourceApply().click();
+  const query = h.dom.window.document.querySelector<HTMLInputElement>(".sidebar-outline-query")!;
+  query.hidden = false;
+  query.focus();
+  const revision = h.lastRevision();
+  h.receive({ type: "executeCommand", requestID: "side-focus-undo", documentID: "side-focus", revision, command: "undo" });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  query.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  h.receive({ type: "executeCommand", requestID: "side-focus-mode", documentID: "side-focus", revision, command: "visualMode" });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  query.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  h.receive({ type: "createSnapshot", requestID: "side-focus-snap", documentID: "side-focus", revision });
+  await settle();
+  expect(h.sent.find(message => message.requestID === "side-focus-snap")).toMatchObject({ text: "当前原文\n", revision });
+});

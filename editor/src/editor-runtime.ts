@@ -19,6 +19,7 @@ import {
 import { searchSource, type DirectedSelection, type SourceReplacementPlan, type SourceSearchResult, type SearchOptions } from "./source-search";
 import { indexVisualText, locateVisualMatch, mapVisualMatches, sameSearchResult, searchVisualText, type VisualSearchNavigation, type VisualSearchLocation } from "./visual-search";
 import { validateSourceReplacementPlan } from "./source-replacement";
+import { buildSourceLedger, sourceToVisual } from "./source-ledger";
 import { SourceAuthoritySession } from "./source-authority";
 import type { ManagedImageInsertion, ManagedImageRewrite } from "./source-authority";
 import type { CanonicalImageOwnership } from "./source-authority";
@@ -125,6 +126,7 @@ export interface EditorRuntime {
     binding: LinkEditBinding,
     attrs: LinkAttrs | null,
   ): SourceNavigationResult<{ readonly changed: boolean }>;
+  navigateRawRange(raw: string, selection: DirectedSelection): SourceNavigationResult;
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult;
   focus(): void;
   destroy(): void;
@@ -521,6 +523,27 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       return { ok: false, message: this.session.diagnostic || "无法安全应用链接编辑" };
     }
     return { ok: true, value: { changed: before !== this.session.currentRaw } };
+  }
+
+  navigateRawRange(raw: string, selection: DirectedSelection): SourceNavigationResult {
+    if (this.mode === "source") return this.selectSourceRange(raw, selection);
+    if (this.composing || this.session.draftDirty || this.status.unresolved || raw !== this.session.currentRaw) {
+      return { ok: false, message: "输入或文档已变化，无法定位" };
+    }
+    const parsed = parseCanonicalSource(raw);
+    if (!parsed.doc.eq(this.session.state.doc)) return { ok: false, message: "请在源码中定位该结果" };
+    const built = buildSourceLedger(raw, parsed.doc, parsed.ranges, parsed.tokenEvidence);
+    if (!built.ok) return { ok: false, message: "请在源码中定位该结果" };
+    const mapped = sourceToVisual(built.ledger, selection.anchor, selection.head);
+    if (!mapped.ok || mapped.snapped.length ||
+        this.session.state.doc.textBetween(mapped.anchor, mapped.head) !== raw.slice(selection.anchor, selection.head)) {
+      return { ok: false, message: "该范围包含受保护内容或Markdown语法，请选择源码定位" };
+    }
+    this.view?.dispatch(this.view.state.tr.setSelection(
+      TextSelection.create(this.view.state.doc, mapped.anchor, mapped.head)
+    ).scrollIntoView().setMeta("addToHistory", false));
+    this.view?.focus();
+    return { ok: true, value: undefined };
   }
 
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
@@ -1056,6 +1079,10 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   ): SourceNavigationResult<never> {
     return { ok: false, message: "只读文档不能编辑链接" };
   }
+  navigateRawRange(raw: string, selection: DirectedSelection): SourceNavigationResult {
+    return this.selectSourceRange(raw, selection);
+  }
+
   navigateToHeading(raw: string, target: HeadingNavigationTarget): HeadingNavigationResult {
     if (this.text !== raw) return { ok: false, message: "文档已变化，请等待大纲刷新" };
     const analyzed = analyzeDocument({ raw, revision: 0 }).headings;
