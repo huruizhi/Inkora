@@ -201,7 +201,7 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
       let request = try? JSONDecoder().decode(Request.self, from: Data(text.utf8)),
       !request.requestID.isEmpty, request.requestID.utf8.count <= 200,
       let binding = current(), request.documentID == binding.documentID,
-      request.revision == binding.revision, request.revision >= 0,
+      request.revision <= binding.revision, request.revision >= 0,
       request.revision <= BridgeProtocolV1.maxSafeRevision
     else { return }
     if request.action == .ready {
@@ -228,13 +228,13 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
       let generation = UUID()
       navigationID = generation
       mayOpen(binding) { [weak self] allowed in
-        guard let self, allowed, self.current() == binding, self.navigationID == generation else {
+        guard let self, allowed, self.matches(request), self.navigationID == generation else {
           return
         }
         let context = self.contextID
         self.chooseFolder { [weak self] url in
           guard let self, let url, self.current()?.documentID == binding.documentID,
-            self.contextID == context, self.navigationID == generation, self.current() == binding
+            self.contextID == context, self.navigationID == generation
           else { return }
           self.useFolder(FolderAccess(url))
           self.scan(request)
@@ -295,6 +295,12 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
         else { return }
         do {
           let file = try catalog.openFile(id: fileID, catalogID: catalog.id, hit: hit)
+            .validatingNavigation { [weak self, access] in
+              guard let self, !self.invalidated, self.matches(request), self.current() == binding,
+                self.navigationID == generation, self.catalog?.id == catalog.id,
+                self.access === access
+              else { throw SidebarCatalogError.staleFile }
+            }
           let completion: (Error?) -> Void = { [weak self] error in
             guard let self, self.navigationID == generation, self.matches(request),
               self.catalog?.id == catalog.id
@@ -399,8 +405,7 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   }
 
   private func matches(_ request: Request) -> Bool {
-    current()?.documentID == request.documentID && current()?.revision == request.revision
-      && request.contextID == contextID
+    current()?.documentID == request.documentID && request.contextID == contextID
   }
 
   private func sendCatalog(_ catalog: SidebarCatalog, request: Request) {
