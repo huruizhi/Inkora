@@ -1,0 +1,33 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-142-node-tools/editor
+
+ ❯ src/image-view.test.ts (4 tests | 1 failed) 172ms
+   × offers image tools from the adjacent caret with Option+F10 and Escape returns to editing 12ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/image-view.test.ts > offers image tools from the adjacent caret with Option+F10 and Escape returns to editing
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/image-view.test.ts:82:33
+     80|  const event=new dom.window.KeyboardEvent('keydown',{key:'F10',altKey:…
+     81|  dom.window.document.querySelector('#editor')!.dispatchEvent(event);
+     82|  expect(event.defaultPrevented).toBe(true);
+       |                                 ^
+     83|  expect((dom.window.document.activeElement as HTMLElement).className).…
+     84|  dom.window.document.activeElement!.dispatchEvent(new dom.window.Keybo…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  01:46:14
+   Duration  570ms (import 55%, tests 36%, transform 8%)
+

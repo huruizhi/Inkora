@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { EditorView } from "prosemirror-view";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
@@ -221,12 +222,31 @@ describe("code block node view", () => {
     expect(views[0].ignoreMutation({ target: code })).toBe(false);
   });
 
+  it("opens an offline notice and returns focus without replacing language or document", () => {
+    const h = mount("```js\nx\n```\n");
+    const select = selectOf(h);
+    const before = h.view.state;
+    const trigger = h.view.dom.querySelector<HTMLButtonElement>("button.inkora-code-license")!;
+    expect(trigger).not.toBeNull();
+    expect(h.view.dom.querySelector(".inkora-code-notices pre")!.textContent).toBe("");
+    trigger.click();
+    const panel = h.view.dom.querySelector<HTMLElement>('[role="dialog"]')!;
+    expect(panel.hidden).toBe(false);
+    expect(panel.querySelector("pre")!.textContent).toBe(readFileSync(new URL("../public/RENDERER_NOTICES.txt", import.meta.url), "utf8"));
+    panel.dispatchEvent(new dom.window.KeyboardEvent("keydown", {key:"Escape", bubbles:true,cancelable:true}));
+    expect(panel.hidden).toBe(true);
+    expect(dom.window.document.activeElement).toBe(trigger);
+    expect(selectOf(h)).toBe(select);
+    expect(h.view.state).toBe(before);
+  });
+
   it("exposes the shipped third-party notice for the bundled highlighter", () => {
     const harness = mount("```python\nx = 1\n```\n");
-    const link = harness.view.dom.querySelector<HTMLAnchorElement>("a.inkora-code-license");
+    const link = harness.view.dom.querySelector<HTMLButtonElement>("button.inkora-code-license");
     expect(link).not.toBeNull();
-    expect(link!.getAttribute("href")).toBe("./RENDERER_NOTICES.txt");
-    expect(link!.textContent).toContain("第三方许可");
+    link!.click();
+    expect(harness.view.dom.querySelector(".inkora-code-notices pre")!.textContent).toContain("Inkora production dependency licenses");
+    expect(link!.getAttribute("aria-label")).toBe("第三方许可");
   });
 
   it("syncs the selector when the node updates externally", () => {
