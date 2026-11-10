@@ -52,6 +52,7 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
 
   final class FolderAccess: @unchecked Sendable {
     let url: URL
+    let identity: SidebarCatalog.RootIdentity?
     private let active: Bool
     private let stopAccess: @Sendable (URL) -> Void
     init(
@@ -62,6 +63,7 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
       self.url = url
       self.stopAccess = stopAccess
       active = startAccess(url)
+      identity = try? SidebarCatalog.rootIdentity(folder: url)
     }
     deinit { if active { stopAccess(url) } }
   }
@@ -277,7 +279,7 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   }
 
   private func scan(_ request: Request) {
-    guard let access else {
+    guard let access, access.identity != nil else {
       reject(request, "请先打开一个文件夹。")
       return
     }
@@ -295,7 +297,8 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
     let task = Task.detached(priority: .userInitiated) {
       // Capturing the lease keeps its grant active through cancellation and read completion.
       try withExtendedLifetime(access) {
-        try SidebarCatalog.scan(folder: access.url, cancelled: { Task.isCancelled })
+        try SidebarCatalog.scan(
+          folder: access.url, expectedRoot: access.identity, cancelled: { Task.isCancelled })
       }
     }
     scanTask = task
@@ -325,13 +328,16 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   }
 
   func pollChanges() {
-    guard !invalidated, watchTask == nil, let access, let catalog, let binding = current() else {
+    guard !invalidated, watchTask == nil, let access, access.identity != nil, let catalog,
+      let binding = current()
+    else {
       return
     }
     let context = contextID
     let task = Task.detached(priority: .utility) {
       try withExtendedLifetime(access) {
-        try SidebarCatalog.scan(folder: access.url, cancelled: { Task.isCancelled })
+        try SidebarCatalog.scan(
+          folder: access.url, expectedRoot: access.identity, cancelled: { Task.isCancelled })
       }
     }
     watchTask = task
@@ -366,7 +372,9 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
     let currentURL = current()?.fileURL?.standardizedFileURL.resolvingSymlinksInPath()
     let files = catalog.files.map { file in
       var value = file
-      value.isCurrent = currentURL == catalog.root.appendingPathComponent(file.relativePath)
+      value.isCurrent =
+        currentURL
+        == catalog.root.appendingPathComponent(file.relativePath).resolvingSymlinksInPath()
       return value
     }
     send(
