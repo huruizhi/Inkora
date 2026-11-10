@@ -17,7 +17,7 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   }
 
   private struct Request: Decodable {
-    enum Action: String, Decodable { case ready, chooseFolder, refresh, search, open }
+    enum Action: String, Decodable { case ready, chooseFolder, refresh, search, open, cancelSearch }
     let action: Action
     let requestID: String
     let documentID: String
@@ -26,6 +26,8 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
     let catalogID: String?
     let fileID: String?
     let hitID: String?
+    let targetSearchRequestID: String?
+    let targetOpenRequestID: String?
     let query: String?
     let options: SidebarSearchOptions?
   }
@@ -48,6 +50,8 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
     var query: String?
     var message: String?
     var catalogID: String?
+    var cancelledSearch: Bool?
+    var cancelledOpen: Bool?
   }
 
   final class FolderAccess: @unchecked Sendable {
@@ -84,6 +88,8 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
   private var scanID = UUID()
   private var searchID = UUID()
   private var navigationID = UUID()
+  private var activeSearchRequestID: String?
+  private var activeOpenRequestID: String?
   private var searchHits: [String: SidebarSearchHit] = [:]
   // Foundation requires invalidation on the timer's installation thread. The
   // registration is main-actor-only; the Sendable owner can be released anywhere.
@@ -180,6 +186,8 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
     searchID = UUID()
     navigationID = UUID()
     searchHits.removeAll()
+    activeSearchRequestID = nil
+    activeOpenRequestID = nil
   }
 
   func userContentController(
@@ -225,6 +233,7 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
     switch request.action {
     case .ready: break
     case .chooseFolder:
+      activeOpenRequestID = nil
       let generation = UUID()
       navigationID = generation
       mayOpen(binding) { [weak self] allowed in
@@ -242,6 +251,8 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
       }
     case .refresh: scan(request)
     case .search:
+      activeSearchRequestID = request.requestID
+      activeOpenRequestID = nil
       navigationID = UUID()
       searchTask?.cancel()
       searchID = UUID()
@@ -275,6 +286,35 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
         case .failure(let error): self.reject(request, error.localizedDescription)
         }
       }
+    case .cancelSearch:
+      guard let catalog, request.catalogID == catalog.id else { return }
+      func validTarget(_ id: String?) -> Bool {
+        guard let id else { return false }
+        return !id.isEmpty && id.utf8.count <= 200
+      }
+      guard validTarget(request.targetSearchRequestID) || validTarget(request.targetOpenRequestID)
+      else { return }
+      let cancelSearch =
+        request.targetSearchRequestID != nil
+        && request.targetSearchRequestID == activeSearchRequestID
+      let cancelOpen =
+        request.targetOpenRequestID != nil
+        && request.targetOpenRequestID == activeOpenRequestID
+      if cancelSearch {
+        searchTask?.cancel()
+        searchID = UUID()
+        activeSearchRequestID = nil
+        searchHits.removeAll()
+      }
+      if cancelOpen {
+        navigationID = UUID()
+        activeOpenRequestID = nil
+      }
+      send(
+        Reply(
+          requestID: request.requestID, documentID: request.documentID,
+          contextID: contextID, kind: "cancelled", catalogID: catalog.id,
+          cancelledSearch: cancelSearch, cancelledOpen: cancelOpen))
     case .open:
       guard !invalidated, request.revision == binding.revision, let catalog, let access,
         request.catalogID == catalog.id, let fileID = request.fileID
@@ -284,6 +324,7 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
       }
       let generation = UUID()
       navigationID = generation
+      activeOpenRequestID = request.requestID
       let hit = request.hitID.flatMap { searchHits[$0] }
       guard request.hitID == nil || hit?.fileID == fileID else {
         reject(request, "搜索结果已变化，请重新搜索。")
@@ -329,6 +370,8 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
     searchID = UUID()
     navigationID = UUID()
     searchHits.removeAll()
+    activeSearchRequestID = nil
+    activeOpenRequestID = nil
     watcher?.invalidate()
     watchTask?.cancel()
     watchTask = nil
@@ -397,6 +440,8 @@ final class SidebarWorkspaceBridge: NSObject, WKScriptMessageHandler {
       self.searchID = UUID()
       self.navigationID = UUID()
       self.searchHits.removeAll()
+      self.activeSearchRequestID = nil
+      self.activeOpenRequestID = nil
       self.send(
         Reply(
           requestID: UUID().uuidString, documentID: binding.documentID,
