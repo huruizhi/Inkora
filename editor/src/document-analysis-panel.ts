@@ -195,8 +195,7 @@ export class DocumentAnalysisPanel {
     this.collapsed = collapsed;
     this.layout.setCollapsed(collapsed);
     this.toggleButton.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    this.toggleButton.setAttribute("aria-label", collapsed ? "展开大纲" : "收起大纲");
-    this.toggleButton.title = collapsed ? "大纲" : "收起大纲";
+    this.updateToggleLabel();
     this.body.hidden = collapsed;
     this.header.hidden = collapsed || this.view === "files" && this.library.isSearching;
     if (collapsed) this.outlineQuery.hidden = true;
@@ -226,7 +225,14 @@ export class DocumentAnalysisPanel {
     this.renderStatChoices(state.analysis, state.raw);
   }
 
+  private updateToggleLabel(): void {
+    const name = this.view === "outline" ? "大纲" : this.library.isSearching ? "文件搜索" : "文档列表";
+    this.toggleButton.setAttribute("aria-label", `${this.collapsed ? "展开" : "收起"}${name}`);
+    this.toggleButton.title = this.collapsed ? name : `收起${name}`;
+  }
+
   private updateHeader(): void {
+    this.updateToggleLabel();
     this.header.hidden = this.collapsed || this.view === "files" && this.library.isSearching;
     this.sidebarTitle.textContent = this.view === "outline" ? "大纲" : "文档";
     const action = this.view === "outline" ? "切换到文档列表视图" : "切换到大纲视图";

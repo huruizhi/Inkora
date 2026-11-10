@@ -225,6 +225,31 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
 });
 
 describe("侧栏真实交互", () => {
+  it("整个侧栏开关在大纲、文档列表和文件搜索中使用当前上下文文案", () => {
+    const { parent } = stubDom();
+    const panel = new DocumentAnalysisPanel(parent);
+    const toggle = panel.element.querySelector<HTMLButtonElement>(".analysis-panel-toggle")!;
+    const switchView = panel.element.querySelector<HTMLButtonElement>(".sidebar-view-toggle")!;
+    const search = panel.element.querySelector<HTMLButtonElement>(".sidebar-search-toggle")!;
+    function expectLabel(label: string, title: string): void {
+      expect(toggle.getAttribute("aria-label")).toBe(label);
+      expect(toggle.title).toBe(title);
+    }
+    expectLabel("展开大纲", "大纲");
+    toggle.click(); expectLabel("收起大纲", "收起大纲");
+    switchView.click(); expectLabel("收起文档列表", "收起文档列表");
+    toggle.click(); expectLabel("展开文档列表", "文档列表");
+    toggle.click(); expectLabel("收起文档列表", "收起文档列表");
+    search.click(); expectLabel("收起文件搜索", "收起文件搜索");
+    toggle.click(); expectLabel("展开文件搜索", "文件搜索");
+    toggle.click(); expectLabel("收起文件搜索", "收起文件搜索");
+    panel.element.querySelector<HTMLButtonElement>('[aria-label="返回文档列表"]')!.click();
+    expectLabel("收起文档列表", "收起文档列表");
+    switchView.click(); expectLabel("收起大纲", "收起大纲");
+    search.click(); expectLabel("收起大纲", "收起大纲");
+    toggle.click(); expectLabel("展开大纲", "大纲");
+    panel.destroy();
+  });
   it("过滤保留原始标题index，候选阶段不提前过滤，旧按钮不导航", () => {
     const { parent } = stubDom(); const requests: unknown[] = [];
     const panel = new DocumentAnalysisPanel(parent, (_, target) => { requests.push(target); return { ok: true }; });
