@@ -1,0 +1,11 @@
+GEOMETRY {"complete":true,"width":320,"height":180,"image":{"x":52.0625,"y":64,"width":320,"height":180,"top":64,"right":372.0625,"bottom":244,"left":52.0625},"button":{"x":384.0625,"y":142.5,"width":46.796875,"height":23,"top":142.5,"right":430.859375,"bottom":165.5,"left":384.0625},"tabIndex":0,"text":"描述…"}
+KEYBOARD_ENTRY {"result":{"ok":false,"message":"该范围包含受保护内容或Markdown语法，请选择源码定位"},"consumed":false,"focus":"image-edit-button"}
+KEYBOARD_FOCUS image-edit-button
+LICENSE 0 0 前 ![旧](./a.png "旧题") 后
+
+```js
+x
+```
+
+FORM {"afterRefresh":{"detached":false,"value":"未确认拼音","focusLost":false},"rawAfterDetachedSubmit":"前 ![未确认拼音](./a.png \"旧题\") 后\n\n```js\nx\n```\n","status":{"dirty":true,"canUndo":true,"canRedo":false,"draftDirty":false,"unresolved":false,"saveEligible":true}}
+VISIBLE false

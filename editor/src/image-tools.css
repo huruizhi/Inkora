@@ -1,0 +1,37 @@
+/* 只有实际解码成功才采用阅读态浮动工具；失败态继续保留明显入口。 */
+.image-node.image-decoded { position: relative; display: inline-block; }
+.image-node.image-decoded > .image-controls {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  right: 0;
+  margin: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.image-node.image-decoded.inkora-context-active > .image-controls,
+.image-node.image-decoded.ProseMirror-selectednode > .image-controls,
+.image-node.image-decoded:focus-within > .image-controls {
+  visibility: visible;
+  pointer-events: auto;
+}
+.image-node .image-attributes-form {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: 0;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(520px, calc(100vw - 48px));
+  flex-wrap: wrap;
+  white-space: normal;
+}
+.image-node .image-attributes-form input { min-width: 0; }
+
+.image-node .image-attributes-form:popover-open {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+}

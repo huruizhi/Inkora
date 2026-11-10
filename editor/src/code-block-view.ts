@@ -1,3 +1,5 @@
+import notices from "../public/RENDERER_NOTICES.txt?raw";
+import "./code-tools.css";
 import type { Node as PMNode } from "prosemirror-model";
 import type { EditorView, NodeView } from "prosemirror-view";
 import { bindContextToolbar } from "./context-tools";
@@ -76,13 +78,57 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     message.setAttribute("role", "status");
     message.setAttribute("aria-live", "polite");
 
-    const license = document.createElement("a");
+    const license = document.createElement("button");
+    license.type = "button";
     license.className = "inkora-code-license";
-    license.href = "./RENDERER_NOTICES.txt";
-    license.textContent = "第三方许可";
-    license.target = "_blank";
-    license.rel = "noreferrer";
-    toolbar.append(label, message, license);
+    license.textContent = "许可…";
+    license.setAttribute("aria-label", "第三方许可");
+    license.title = "查看第三方许可（只读）";
+    license.setAttribute("aria-haspopup", "dialog");
+    license.setAttribute("aria-expanded", "false");
+    const noticePanel = document.createElement("dialog");
+    noticePanel.className = "inkora-code-notices";
+    noticePanel.setAttribute("role", "dialog");
+    noticePanel.setAttribute("aria-label", "第三方许可（只读）");
+    noticePanel.hidden = true;
+    const closeNotice = document.createElement("button");
+    closeNotice.type = "button";
+    closeNotice.textContent = "关闭许可";
+    const noticeText = document.createElement("pre");
+    noticeText.tabIndex = 0;
+    noticeText.setAttribute("aria-label", "第三方许可全文");
+    noticePanel.append(closeNotice, noticeText);
+    const closeNotices = (): void => {
+      if (noticePanel.open) noticePanel.close();
+      noticePanel.hidden = true;
+      noticeText.textContent = "";
+      license.setAttribute("aria-expanded", "false");
+      license.focus();
+      toolbar.classList.remove("has-notices");
+    };
+    license.addEventListener("click", () => {
+      if (context.isComposing() || !license.isConnected) return;
+      toolbar.classList.add("has-notices");
+      noticeText.textContent = notices;
+      noticePanel.hidden = false;
+      if (typeof noticePanel.showModal === "function") noticePanel.showModal();
+      license.setAttribute("aria-expanded", "true");
+      closeNotice.focus();
+    });
+    closeNotice.addEventListener("click", () => {
+      if (!context.isComposing()) closeNotices();
+    });
+    noticePanel.addEventListener("cancel", event => {
+      event.preventDefault();
+      if (!context.isComposing()) closeNotices();
+    });
+    noticePanel.addEventListener("keydown", event => {
+      if (event.key !== "Escape" || event.isComposing || context.isComposing()) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeNotices();
+    });
+    toolbar.append(label, message, license, noticePanel);
 
     const pre = document.createElement("pre");
     const code = document.createElement("code");

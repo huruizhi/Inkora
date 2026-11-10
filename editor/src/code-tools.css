@@ -1,0 +1,33 @@
+.inkora-code-license {
+  margin-inline-start: auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  opacity: .75;
+  cursor: pointer;
+}
+.inkora-code-notices:not([hidden]) {
+  position: fixed;
+  z-index: 8;
+  inset: 0;
+  margin: auto;
+  width: min(720px, calc(100vw - 48px));
+  box-sizing: border-box;
+  padding: 12px;
+  background: Canvas;
+  color: CanvasText;
+  border: 1px solid GrayText;
+  border-radius: 6px;
+  max-height: min(75vh, 600px);
+  white-space: normal;
+  overflow: auto;
+}
+.inkora-code-notices pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.inkora-code-toolbar.has-notices { visibility: visible; pointer-events: auto; }
