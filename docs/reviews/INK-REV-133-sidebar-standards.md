@@ -17,3 +17,20 @@
 **外部借用：** `docs/tasks/INK-UX-130.md`、`INK-UX-131.md`、`INK-UX-132.md` 及关联 evidence 日志、`docs/reviews/INK-UX-129-acceptance-matrix.md` 只提供作者/集成者历史记录；其中 passed 数量不是本审查独立证明，也不外推为固定 HEAD 通过。
 
 Standards 共 1 项硬偏离、2 项判断性异味；S1 已提前通知父会话，待协议归属裁定。只审不修。
+
+## Post-fix 独立复审（2026-11-11）
+
+本节保留首稿，另审固定产品 `caab97a9b3a03bf2dbc6bcecf66d27d201eccd87` 相对首稿受检 `d3edf8803c661d1fb2dbebf9e8abdd826720f69d` 的修正；主基线仍为 `30e2f5fae0e43b7c5ac5e879dd944a28d8b72c53`。产品通过 `git archive` 解包到自身 ignored 冻结副本，未读取动态根产品源码。
+
+### 主要结论（少于400词）
+
+- **S1 关闭。** `app/Sources/EditorViewController.swift:244–257` 已改用 `bridge.presentDocument`，不传 raw；`EditorBridge.swift:347–401` 生成唯一 requestID、固定 doc/revision/accepted loadID，匹配回执并处理超时；`267–272,592–594` 在重载及生命周期失效时取消请求。`editor/src/bridge.ts:194–213,505–520` 校验正式命令、拒绝正文夹带与旧 load/重复请求；`main.ts:803–812` 经既有 receive 执行并回执。故不是仅靠改文档消除偏离。
+- **书面扩展自洽。** `docs/bridge-protocol.md:227–267` 与 `docs/design/typora-sidebar.md:47` 明确 additive v1 和目录元数据限定例外；既有正文、事务及保存权威未转移。标题/选区明确排除在目录 UI 例外之外，保留纯元数据与范围命令的区别。
+- **取消边界符合本轮规则。** `sidebar-connection.ts:42–56,63,85` 保留已完成搜索意图并传两个 target ID；`SidebarWorkspaceBridge.swift:289–317` 只撤销匹配目标，`338–344` 将导航代际嵌入票据；`EditorViewController.swift:280,329` 在异步审查后及转交前重验。依据为上述协议 `263–267` 的“迟到取消不能撤销新请求”。有限实际探针验证了这一边界。
+- **本轮未发现新增硬违规。** 原 S2/S3 仍为 P3 judgement，不要求本轮重构。结论仅覆盖冻结修正范围，不作 Spec、GUI 或发布通过判断。
+
+### 本轮证据归属
+
+自跑：冻结 SHA/blob 校验、修正 diff 核查、Node 执行真实冻结 Bridge session 与 Web connection 公共反例、Swift 6 编译并执行真实冻结 Foundation 协议/Catalog/WorkspaceBridge 探针。正文夹带/非法坐标/旧 load/重复请求被拒绝，呈现不改会话状态，取消命中已完成 search 和 pending open、旧票据失效、迟到旧目标不撤销新搜索。编译及最终两组执行均退出0；未实例化 WebView/窗口或展示面板。Native 完整 EditorBridge 的超时/重载路径为源码核查，未冒称已自跑该类全部行为。
+
+借用：固定副本中的 `docs/evidence/INK-UX-135/` 与130取消证据是其他 Agent 的历史结果；根会话本轮 `make lint/test-non-ui/release-bundle-check` 是其负责的门禁，本审查未执行、未据其通过数量作独立证明。命令、启动探针的工具链失败及边界见[任务追加记录](../tasks/INK-REV-133.md)。
