@@ -36,3 +36,9 @@
 已向原执行Agent分派限定补正：A修异步绑定及受限二次文件验证；B修共享布局宽度；C修转交前重验、普通卡片复用、正式定位协议及隐藏WK几何。协议扩展决定同步于交接契约；不靠扩大“纯UI”豁免掩盖正文旁路。补正未交付前不合main、不替换正式安装。
 
 A的Timer安装线程补正`554d50c`已吸收为`140438c`；管理者独立重跑`tests/InkoraTests/SidebarHostless.sh`，15/15、0失败，日志`artifacts/delegation/root-sidebar-timer-fix.log`。该专项证明有限线程/生命周期行为，不代表上述审查问题已关闭。后续仍须固定补正SHA复审、组合门禁与精确HEAD CI。
+
+## 集成执行通道恢复
+
+2026-11-11，原C在原生8项及Web定向137项已结束后连续两次provider `Bad Request`。管理者实际核对其状态`error/activeTurn=null`、无残留132测试进程；没有按观察超时重启测试。原工作树10个修改完整保留，另冻结binary patch，SHA256为`7367dca931cdecf416cdcee657aa064ea42e96d70cf03100cde245a2c92149ef`，源HEAD为`e18d8d0e9bee72282b0668c5c645ae355a64f4b6`。
+
+新增独立`task/INK-UX-135-sidebar-integration-recovery`从组合`cb14288`承接该精确patch，apply前检查通过；原作者日志复制至新工作树`artifacts/inherited-INK-UX-132`并注明借用证据。新Agent仅完成同一范围的检查、必要补正、文档及固定提交，不重写产品或缩小原要求。原C分支、未提交修改和证据先保留，待新提交与远端备份核实后回收。此provider失败不属于产品测试失败。

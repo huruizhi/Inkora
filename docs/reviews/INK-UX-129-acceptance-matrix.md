@@ -72,3 +72,7 @@ A后续`f9f73a1`已吸收为`8e64424f2fd8b0c54faf449b418551d1761a8551`；管理�
 Spec独立后验报告`1bb5a3f`已原样吸收：固定`8e64424`的6个Foundation公共正反例通过，原发现2在有限范围关闭；600/640px静态宽度分歧关闭，WK几何及原导航发现1/3仍待验证。
 
 管理者随后发现Web的`cancelSearch`只清本地ID。A用固定`8e64424`真实Web发送路径加生产Native公共接缝复现：取消前后发包数均为2，Native延迟`mayOpen(true)`仍打开一次、旧导航票据仍有效；真正新search则能使其失效。这是A实际运行的反例，根仅核读回报，不冒称自跑。已授权A/B增加目标requestID绑定的取消消息，保留catalog/watch，不让迟到取消误伤新请求；C在转交前消费失效票据。SB-07/08须等待此跨层闭环，不能只忽略旧open错误即判完成。
+
+A取消补正`61325b5`吸收为`cb14288`，B真实传输`1799561`已吸收为`4cb1d30`。管理者自跑原生专项22/22、Web四文件31/31，并执行真实当前Connection序列化→当前Native receive的两个跨层probe：pending模式取消后打开0次；ticket模式重验拒绝；两者均撤销completed-search旧hit，全部退出0。日志`artifacts/delegation/root-sidebar-cancel-{native,web}.log`及`root-cancel-cross-layer.log`。该probe的TS转译仅用于执行锁定源，`--noCheck`不作为类型检查；既有lint/最终tsc另结算。C真实关闭协调器的组合结果仍待固定交付。
+
+B的`746a63e`有效UI测试维护已吸收为`7ffa0b2`，根独立Swift strict格式通过；作者另有完整Swift6文件typecheck。真实XCU未执行，不能将编译通过写成hover/AX实机通过。原有查找、字节、保存/重开断言保留。
