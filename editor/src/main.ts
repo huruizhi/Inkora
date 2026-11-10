@@ -390,7 +390,7 @@ const sidebarConnection = new SidebarConnection({
   binding: () => activeDocumentID !== undefined && activeRevision !== undefined
     ? { documentID: activeDocumentID, revision: activeRevision } : undefined,
   send: serialized => {
-    const handler = window.webkit?.messageHandlers.inkoraSidebar;
+    const handler = window.webkit?.messageHandlers?.inkoraSidebar;
     if (!handler) return false;
     handler.postMessage(serialized);
     return true;
