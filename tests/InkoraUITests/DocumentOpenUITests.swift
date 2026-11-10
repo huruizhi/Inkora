@@ -73,7 +73,11 @@ final class DocumentOpenUITests: AcceptanceTestCase {
     let stats = window.buttons["显示文档统计"]
     XCTAssertTrue(stats.waitForExistence(timeout: 5))
     XCTAssertTrue(window.buttons["展开大纲"].exists)
-    XCTAssertTrue(window.buttons["切换到源码模式"].exists)
+    XCTAssertFalse(window.buttons["切换到源码模式"].exists)
+    window.buttons["展开大纲"].click()
+    XCTAssertTrue(window.buttons["收起大纲"].exists)
+    window.buttons["收起大纲"].click()
+    XCTAssertTrue(window.buttons["展开大纲"].exists)
     stats.click()
     XCTAssertTrue(window.descendants(matching: .any)["文档统计"].waitForExistence(timeout: 5))
     window.buttons["隐藏文档统计"].click()

@@ -373,7 +373,6 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 .editor-corner-tools button:disabled { opacity: 0.38; }
 .analysis-stats-toggle { order: 1; display: inline-flex; align-items: center; gap: 5px; }
 .analysis-panel-toggle { order: 2; }
-.corner-mode-toggle { order: 3; }
 .analysis-stats-summary {
   min-width: 3.4em;
   font-size: 13px;
@@ -405,24 +404,10 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   height: 17px;
   color: currentColor;
 }
-.corner-icon-outline {
-  background: repeating-linear-gradient(to bottom, currentColor 0 2px, transparent 2px 6px);
-  clip-path: inset(1px 0 1px 5px);
-}
-.corner-icon-outline::before {
-  position: absolute;
-  inset: 1px auto 1px 0;
-  width: 3px;
-  background: repeating-linear-gradient(to bottom, currentColor 0 2px, transparent 2px 6px);
-  content: "";
-}
-.corner-icon-mode {
+.corner-icon-sidebar {
   box-sizing: border-box;
   border: 2px solid currentColor;
-  background: linear-gradient(to right, transparent 52%, currentColor 52%);
-}
-.corner-mode-toggle[data-mode="source"] .corner-icon-mode {
-  background: linear-gradient(to right, currentColor 48%, transparent 48%);
+  background: linear-gradient(to right, currentColor 32%, transparent 32%);
 }
 .analysis-panel-toggle {
   cursor: pointer;

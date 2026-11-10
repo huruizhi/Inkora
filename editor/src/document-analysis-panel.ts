@@ -67,7 +67,7 @@ export class DocumentAnalysisPanel {
     toggle.setAttribute("aria-label", "展开大纲");
     toggle.title = "大纲";
     const outlineIcon = document.createElement("span");
-    outlineIcon.className = "corner-icon corner-icon-outline";
+    outlineIcon.className = "corner-icon corner-icon-sidebar";
     outlineIcon.setAttribute("aria-hidden", "true");
     toggle.append(outlineIcon);
     toggle.addEventListener("pointerdown", event => event.preventDefault());

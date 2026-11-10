@@ -1,13 +1,17 @@
 # 大纲与统计面板（document-analysis-panel）
 
-产品面板：左侧按需展开文档大纲（默认收起），底部显示内容口径统计，由标题按钮安全定位正文。基于 `analyzeDocument` 纯模块（见 `document-analysis.md`），不新增第二套统计口径，不改动 session/Bridge 协议。
+产品面板：左侧按需展开文档大纲（默认收起），右上角显示阅读时间并按需展开内容口径统计，由标题按钮安全定位正文。基于 `analyzeDocument` 纯模块（见 `document-analysis.md`），不新增第二套统计口径，不改动 session/Bridge 协议。
+
+## 右上角入口
+
+按用户在INK-UX-128的更正，右上角依次为阅读时间/统计按钮、侧栏图标按钮。最右侧侧栏按钮只展开或收起左侧大纲，不切换可视/源码模式；不再显示三横线按钮。源码切换沿用“显示”原生菜单、既有快捷键及独立Web环境的模式入口。侧栏按钮保留`aria-expanded`、可访问名称、pointerdown焦点保护及正文/查找/链接composition守卫。
 
 ## 组成
 
 - `editor/src/document-analysis-panel.ts`：`DocumentAnalysisPanel` DOM 组件。
 - `editor/src/heading-navigation.ts`：标题快照相等性与原文到 textarea 的 UTF-16/EOL 映射。
   - 状态 `AnalysisPanelState = empty | document | error`；`update()` 只通过 `createElement`/`textContent` 重绘，不执行 HTML、不加载资源。
-  - 收起/展开：唯一的 `<button>`（可访问名称“收起大纲/展开大纲”，`aria-expanded`/`aria-controls`，原生键盘可达）；收起只隐藏标题列表，底部统计始终保留。pointerdown 保留正文焦点；正文/查找/链接组合输入中拒绝切换。
+  - 收起/展开：唯一的大纲侧栏按钮（可访问名称“收起大纲/展开大纲”，`aria-expanded`/`aria-controls`，原生键盘可达）；收起只隐藏标题列表，右上角统计入口保留。pointerdown 保留正文焦点；正文/查找/链接组合输入中拒绝切换。
   - 空文档显示“空文档：暂无标题”；无标题文档显示“本文档没有标题”；分析失败显示“分析失败：…”。
 - `editor/src/main.ts`：接入调度。
   - `#app` 内创建稳定子宿主 `.editor-host`（活编辑器 DOM 只在 loadDocument 重建，分析更新绝不重建/移动）；面板挂在宿主之后。

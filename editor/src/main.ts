@@ -67,14 +67,6 @@ workspace.append(topBar);
 const cornerTools = document.createElement("div");
 cornerTools.className = "editor-corner-tools";
 workspace.append(cornerTools);
-const cornerModeButton = document.createElement("button");
-cornerModeButton.type = "button";
-cornerModeButton.className = "corner-mode-toggle";
-const cornerModeIcon = document.createElement("span");
-cornerModeIcon.className = "corner-icon corner-icon-mode";
-cornerModeIcon.setAttribute("aria-hidden", "true");
-cornerModeButton.append(cornerModeIcon);
-cornerTools.append(cornerModeButton);
 const findBar = document.createElement("div");
 findBar.className = "find-bar";
 topBar.append(findBar);
@@ -294,11 +286,6 @@ function updateModeControls(): void {
     !activeRuntime || activeRuntime.composing;
   sourceCancelButton.disabled = !activeRuntime || activeRuntime.composing;
   insertTableButton.disabled = !activeRuntime || mode !== "visual" || activeRuntime.composing;
-  cornerModeButton.disabled = !activeRuntime || mode === "read_only" || activeRuntime.composing ||
-    (mode === "source" && activeRuntime.status.draftDirty);
-  cornerModeButton.dataset.mode = mode ?? "none";
-  cornerModeButton.setAttribute("aria-label", mode === "source" ? "切换到可视模式" : "切换到源码模式");
-  cornerModeButton.title = mode === "source" ? "可视模式" : "源码模式";
   modeStatus.textContent = activeRuntime?.status.unresolved
     ? activeRuntime.status.saveEligible
       ? "源码已提交；未识别的语法只读保留，可按原文保存"
@@ -373,11 +360,6 @@ sourceApplyButton.addEventListener("click", () => { performEditorAction("applySo
 sourceCancelButton.addEventListener("click", () => { performEditorAction("cancelSource"); updateModeControls(); });
 insertTableButton.addEventListener("pointerdown", (event) => event.preventDefault());
 insertTableButton.addEventListener("click", () => { performEditorAction("insertTable"); updateModeControls(); });
-cornerModeButton.addEventListener("pointerdown", event => event.preventDefault());
-cornerModeButton.addEventListener("click", () => {
-  performEditorAction(runtime?.mode === "source" ? "visualMode" : "sourceMode");
-  updateModeControls();
-});
 updateModeControls();
 
 const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {

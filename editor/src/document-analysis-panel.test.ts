@@ -163,7 +163,7 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     expect(panel.isCollapsed).toBe(false);
     expect(toggle?.getAttribute("aria-expanded")).toBe("true");
     expect(toggle?.getAttribute("aria-label")).toBe("收起大纲");
-    expect(toggle?.querySelector(".corner-icon-outline")).not.toBeNull();
+    expect(toggle?.querySelector(".corner-icon-sidebar")).not.toBeNull();
     expect(panel.element.querySelector<HTMLElement>("#analysis-panel-body")?.hidden).toBe(false);
     expect(panel.element.classList.contains("analysis-panel-collapsed")).toBe(false);
     expect(

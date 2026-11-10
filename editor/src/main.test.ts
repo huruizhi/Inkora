@@ -221,7 +221,7 @@ it("原生命令切换源码和阅读宽度不改变字节、版本或历史", a
   expect(h.sent.find(message => message.requestID === "snap-quiet")).toMatchObject({ text: raw, revision: 4 });
 });
 
-it("原生 ⌘F 打开单行查找，右上角统计/大纲/模式入口不改变文档", async () => {
+it("原生 ⌘F 打开单行查找，最右侧唯一侧栏按钮展开左侧大纲且不切换模式", async () => {
   const h = await bootMain();
   const raw = "# 标题\r\n\r\n正文。\r\n";
   h.receive({ type: "loadDocument", requestID: "chrome-load", documentID: "chrome", revision: 2, text: raw });
@@ -248,13 +248,28 @@ it("原生 ⌘F 打开单行查找，右上角统计/大纲/模式入口不改�
   expect(popover.textContent).toContain("字符数");
 
   h.searchClose().click();
-  const mode = h.dom.window.document.querySelector<HTMLButtonElement>(".corner-mode-toggle")!;
-  expect(mode.dataset.mode).toBe("visual");
-  mode.click();
-  expect(mode.dataset.mode).toBe("source");
-  expect(h.editorHost().querySelector("textarea#editor")).not.toBeNull();
-  h.toggle().click();
+  const tools = h.dom.window.document.querySelector<HTMLElement>(".editor-corner-tools")!;
+  const buttons = Array.from(tools.children).filter(node => node.tagName === "BUTTON");
+  expect(buttons).toEqual([stats, h.toggle()]);
+  expect(tools.querySelector(".corner-mode-toggle")).toBeNull();
+  expect(tools.querySelector(".corner-icon-outline")).toBeNull();
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.focus();
+  const before = h.sent.length;
+  const sidebar = h.toggle();
+  const pointer = new h.dom.window.Event("pointerdown", { bubbles: true, cancelable: true });
+  sidebar.dispatchEvent(pointer);
+  expect(pointer.defaultPrevented).toBe(true);
+  sidebar.click();
   expect(h.panel().classList.contains("analysis-panel-collapsed")).toBe(false);
+  expect(sidebar.getAttribute("aria-expanded")).toBe("true");
+  expect(sidebar.getAttribute("aria-label")).toBe("收起大纲");
+  expect(h.editorHost().querySelector("textarea#editor")).toBeNull();
+  expect(h.dom.window.document.activeElement).toBe(editor);
+  sidebar.click();
+  expect(h.panel().classList.contains("analysis-panel-collapsed")).toBe(true);
+  expect(sidebar.getAttribute("aria-expanded")).toBe("false");
+  expect(h.sent).toHaveLength(before);
 
   h.receive({ type: "createSnapshot", requestID: "chrome-snapshot", documentID: "chrome", revision: 2 });
   expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw, revision: 2 });

@@ -69,9 +69,16 @@ final class EditorWebViewTests: XCTestCase {
     let sourceFocused = try await webView.evaluateJavaScript(
       "document.activeElement === document.querySelector('textarea#editor')")
     XCTAssertEqual(sourceFocused as? Bool, true)
-    let cornerMode = try await webView.evaluateJavaScript(
-      "document.querySelector('.corner-mode-toggle').dataset.mode")
-    XCTAssertEqual(cornerMode as? String, "source")
+    let cornerTools = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const tools = document.querySelector('.editor-corner-tools');
+        return tools.querySelectorAll(':scope > button').length === 2 &&
+          !tools.querySelector('.corner-mode-toggle, .corner-icon-outline') &&
+          !!tools.querySelector('.analysis-panel-toggle .corner-icon-sidebar');
+      })()
+      """)
+    XCTAssertEqual(cornerTools as? Bool, true)
     _ = try await webView.evaluateJavaScript(
       """
       (() => {
