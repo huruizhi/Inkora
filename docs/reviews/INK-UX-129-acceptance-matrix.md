@@ -68,3 +68,7 @@ B独立补正`102a9a2`已吸收为`3ddfaef`，侧栏与正文使用共享宽度�
 管理者另发现当前标题几何测试只在设置`INKORA_SIDEBAR_RESOURCE_BUNDLE`时执行，默认Native/CI会skip。已要求C保留CLI覆盖并默认使用测试bundle资源，避免专项绿而正式门禁未覆盖。此项未修复前，不能用默认Native总数证明SB-11/SB-14。
 
 A后续`f9f73a1`已吸收为`8e64424f2fd8b0c54faf449b418551d1761a8551`；管理者实际重跑`tests/InkoraTests/SidebarHostless.sh`：21/21，0失败，日志`artifacts/delegation/root-sidebar-ticket-fix.log`。普通typing与目录完成解绑、open仍要求即时revision，受限导航票据保持root/file及请求守卫。已请求原Spec审查者从该固定SHA复核原scan/search反例；C仍须消费二次验证API才能关闭导航P1，不能用A专项替代生产转交证据。
+
+Spec独立后验报告`1bb5a3f`已原样吸收：固定`8e64424`的6个Foundation公共正反例通过，原发现2在有限范围关闭；600/640px静态宽度分歧关闭，WK几何及原导航发现1/3仍待验证。
+
+管理者随后发现Web的`cancelSearch`只清本地ID。A用固定`8e64424`真实Web发送路径加生产Native公共接缝复现：取消前后发包数均为2，Native延迟`mayOpen(true)`仍打开一次、旧导航票据仍有效；真正新search则能使其失效。这是A实际运行的反例，根仅核读回报，不冒称自跑。已授权A/B增加目标requestID绑定的取消消息，保留catalog/watch，不让迟到取消误伤新请求；C在转交前消费失效票据。SB-07/08须等待此跨层闭环，不能只忽略旧open错误即判完成。
