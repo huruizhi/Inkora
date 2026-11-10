@@ -870,6 +870,9 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     if (this.session.status.revision > this.publishedLogicalRevision) {
       this.publishedLogicalRevision = this.session.status.revision;
       this.onChange(this.status, "document");
+    } else {
+      // A canceled/no-op session still changes command eligibility once idle.
+      this.onChange(this.status, "status");
     }
     this.resolveStabilityWaiters(true);
   }

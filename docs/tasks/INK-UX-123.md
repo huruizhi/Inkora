@@ -57,3 +57,5 @@
 - 新订阅用例增加至Web 768项（不含Bridge）；最终补正门禁在后续结算，不以此前绿灯替代。
 
 - 快捷键冲突核对发现⌘⌥1/2已用于标题1/2；模式入口改为⌘⌥⇧1/2，保留原格式命令。Native菜单测试同步核对修饰键，不声称物理键盘已验。
+
+- bd8b9eb限定后验又发现P2：视觉composition取消且无内容变化时，24ms稳定封口没有status通知，资格可能停在空数组。根新增main公共回归先红（取消后仍[]），仅在runtime真实settle的无内容分支补status通知后转绿；不增加revision/history、不改变既有IME分组/quiet window。NativeWK补synthetic取消后缓存自动恢复控制，不冒称物理输入。

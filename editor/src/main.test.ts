@@ -281,6 +281,22 @@ it("Native订阅后草稿资格即时同步，UI资格事件不冒充正文发�
   expect(h.lastRevision()).toBe(0);
 });
 
+it("取消正文composition后菜单资格自动恢复且不发布内容版本", async () => {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "cancel-load", documentID: "cancel", revision: 0, text: "正文\n" });
+  h.receive({ type: "queryState", requestID: "cancel-observe", observeCommands: true });
+  const before = h.stateMessages().length;
+  const editor = h.editorHost().querySelector<HTMLElement>("#editor")!;
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionstart", { bubbles: true }));
+  await settle(1);
+  expect(h.sent.at(-1)).toMatchObject({ type: "commandsChanged", availableCommands: [] });
+  editor.dispatchEvent(new h.dom.window.CompositionEvent("compositionend", { bubbles: true }));
+  await settle();
+  expect(h.sent.at(-1)).toMatchObject({ type: "commandsChanged", revision: 0,
+    availableCommands: expect.arrayContaining(["sourceMode", "find"]) });
+  expect(h.stateMessages()).toHaveLength(before);
+});
+
 it("原生模式入口保留未提交草稿，取消后恢复可信正文和future", async () => {
   const h = await bootMain();
   const raw = "正文\n";

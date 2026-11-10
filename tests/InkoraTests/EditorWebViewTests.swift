@@ -92,6 +92,14 @@ final class EditorWebViewTests: XCTestCase {
     ) {
       $0 as? Bool == true
     }
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('#editor').dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))"
+    )
+    try await waitForEditorCommand(.sourceMode, enabled: false, in: controller)
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('#editor').dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))"
+    )
+    try await waitForEditorCommand(.sourceMode, enabled: true, in: controller)
     let chrome =
       try await webView.evaluateJavaScript(
         """
