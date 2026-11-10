@@ -25,6 +25,7 @@ import type { CanonicalImageOwnership } from "./source-authority";
 import { parse as parseCanonicalSource } from "./source-document";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
+import { contextToolDecorations } from "./context-tools";
 import { createCodeBlockNodeViews } from "./code-block-view";
 import { createTableNodeViews, handleTableTab, insertDefaultTable } from "./table-editing";
 import { createTaskListItemNodeViews } from "./task-list-view";
@@ -661,7 +662,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     });
     view = new EditorView(this.parent, {
       state: this.session.state,
-      decorations: codeDecorations,
+      decorations: state => codeDecorations(state).add(state.doc, contextToolDecorations(state)),
       nodeViews: {
         code_block: codeBlockNodeView,
         image: createImageNodeViews(

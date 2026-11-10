@@ -1,0 +1,102 @@
+/* 只定义可编辑投影的呈现；不改变 Markdown 原文或源码草稿。 */
+div#editor {
+  font-size: 17px;
+  line-height: 1.8;
+  color: color-mix(in srgb, CanvasText 84%, Canvas);
+  overflow-wrap: break-word;
+  caret-color: CanvasText;
+}
+div#editor > :first-child { margin-top: 0; }
+div#editor p { margin: 0 0 1em; }
+div#editor h1, div#editor h2, div#editor h3,
+div#editor h4, div#editor h5, div#editor h6 {
+  line-height: 1.35;
+  font-weight: 650;
+  margin: 1.6em 0 .75em;
+  color: color-mix(in srgb, CanvasText 90%, Canvas);
+}
+div#editor h1 { font-size: 2em; padding-bottom: .25em; }
+div#editor h2 { font-size: 1.5em; padding-bottom: .3em; }
+div#editor h1, div#editor h2 {
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 9%, transparent);
+}
+div#editor h3 { font-size: 1.25em; }
+div#editor h4 { font-size: 1.1em; }
+div#editor h5, div#editor h6 { font-size: 1em; }
+div#editor h6 { color: color-mix(in srgb, CanvasText 58%, Canvas); }
+div#editor ul, div#editor ol { margin: .8em 0 1.2em; padding-left: 1.7em; }
+div#editor li > p { margin: .25em 0; }
+div#editor li[data-task-state] p { margin: .15em 0; }
+div#editor li > ul, div#editor li > ol { margin: .25em 0; }
+div#editor blockquote {
+  margin: 1.2em 0;
+  padding: 0 1em;
+  border-left: 4px solid color-mix(in srgb, CanvasText 15%, Canvas);
+  color: color-mix(in srgb, CanvasText 56%, Canvas);
+}
+div#editor blockquote > :last-child { margin-bottom: 0; }
+div#editor a { color: #356b9d; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+div#editor :not(pre) > code {
+  padding: .15em .35em;
+  border-radius: 4px;
+  background: color-mix(in srgb, CanvasText 5%, Canvas);
+  font: .86em/1.6 ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+div#editor hr {
+  border: 0;
+  border-top: 2px solid color-mix(in srgb, CanvasText 10%, Canvas);
+  margin: 2em 0;
+}
+div#editor .inkora-table th {
+  font-weight: 600;
+  background: color-mix(in srgb, CanvasText 3%, Canvas);
+}
+div#editor .inkora-table th, div#editor .inkora-table td {
+  padding: 8px 14px;
+  border-color: color-mix(in srgb, CanvasText 12%, Canvas);
+}
+div#editor .inkora-table td > p { margin: 0; }
+div#editor .inkora-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, CanvasText 2%, Canvas);
+}
+div#editor .inkora-code-block {
+  position: relative;
+  overflow: visible;
+  margin: 1.8em 0;
+  border-radius: 5px;
+  border-color: color-mix(in srgb, CanvasText 8%, transparent);
+  background: color-mix(in srgb, CanvasText 3%, Canvas);
+}
+div#editor .inkora-code-block pre { padding: 16px 20px; border-radius: 5px; }
+div#editor .inkora-code-block code { font-size: 14px; line-height: 1.7; }
+
+/* 工具浮在块边界，不随显隐推移正文；选区与焦点共同决定可见性。 */
+.inkora-table-toolbar, .inkora-code-toolbar {
+  position: absolute;
+  z-index: 2;
+  bottom: 100%;
+  right: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-bottom: 4px;
+  padding: 4px 6px;
+  min-height: 30px;
+  border: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
+  border-radius: 6px;
+  background: Canvas;
+  box-shadow: 0 2px 8px #0001;
+  visibility: hidden;
+  pointer-events: none;
+}
+#editor.ProseMirror-focused .inkora-context-active > .inkora-table-toolbar,
+#editor.ProseMirror-focused .inkora-context-active > .inkora-code-toolbar,
+.inkora-table-shell:focus-within > .inkora-table-toolbar,
+.inkora-code-block:focus-within > .inkora-code-toolbar {
+  visibility: visible;
+  pointer-events: auto;
+}
+.inkora-code-toolbar { white-space: nowrap; width: max-content; }
+.inkora-code-message:empty { display: none; }
+@media (prefers-color-scheme: dark) {
+  div#editor a { color: #8bb9df; }
+}

@@ -143,31 +143,38 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     const { parent } = stubDom();
     const panel = new DocumentAnalysisPanel(parent);
     const toggle = panel.element.querySelector<HTMLButtonElement>(".analysis-panel-toggle");
-    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
-    expect(toggle?.getAttribute("aria-controls")).toBe("analysis-panel-body");
-
-    toggle?.click();
-    expect(panel.isCollapsed).toBe(true);
     expect(toggle?.getAttribute("aria-expanded")).toBe("false");
-    expect(toggle?.textContent).toBe("展开面板");
-    expect(panel.element.classList.contains("analysis-panel-collapsed")).toBe(true);
-    expect(
-      panel.element
-        .querySelector("#analysis-panel-body")
-        ?.classList.contains("analysis-panel-collapsed"),
-    ).toBe(true);
+    expect(toggle?.getAttribute("aria-controls")).toBe("analysis-panel-body");
+    expect(panel.isCollapsed).toBe(true);
+    expect(panel.element.querySelector<HTMLElement>("#analysis-panel-body")?.hidden).toBe(true);
+    panel.update(documentState("# 甲\n"));
+    expect(panel.element.querySelector(".document-status-bar .analysis-panel-stats")?.textContent)
+      .toContain("字数");
 
     toggle?.click();
     expect(panel.isCollapsed).toBe(false);
     expect(toggle?.getAttribute("aria-expanded")).toBe("true");
-    expect(toggle?.textContent).toBe("收起面板");
+    expect(toggle?.textContent).toBe("收起大纲");
+    expect(panel.element.querySelector<HTMLElement>("#analysis-panel-body")?.hidden).toBe(false);
     expect(panel.element.classList.contains("analysis-panel-collapsed")).toBe(false);
+    expect(
+      panel.element
+        .querySelector("#analysis-panel-body")
+        ?.classList.contains("analysis-panel-collapsed"),
+    ).toBe(false);
+
+    toggle?.click();
+    expect(panel.isCollapsed).toBe(true);
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle?.textContent).toBe("大纲");
+    expect(panel.element.classList.contains("analysis-panel-collapsed")).toBe(true);
   });
 
-  it("收起 root 在宽窗释放宽度、窄窗释放高度的 CSS 契约存在", () => {
+  it("收起大纲释放全部侧栏宽度，窄窗从左侧展开并留出底栏", () => {
     const css = readFileSync(new URL("./style.css", import.meta.url), "utf8");
-    expect(css).toMatch(/\.analysis-panel\.analysis-panel-collapsed\s*\{[^}]*flex-basis:\s*96px/s);
-    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*\.analysis-panel\.analysis-panel-collapsed\s*\{[^}]*max-height:\s*44px/s);
+    expect(css).toMatch(/\.analysis-panel\.analysis-panel-collapsed\s*\{[^}]*flex-basis:\s*0/s);
+    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*\.analysis-panel\s*\{[^}]*left:\s*0/s);
+    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*\.analysis-panel\s*\{[^}]*bottom:\s*30px/s);
   });
 
   it("更新不偷焦点、不改既有选区", () => {

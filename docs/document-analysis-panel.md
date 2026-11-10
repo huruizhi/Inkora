@@ -1,13 +1,13 @@
 # 大纲与统计面板（document-analysis-panel）
 
-产品面板：在编辑器旁显示文档大纲（标题层级列表）与内容口径统计，并由标题按钮安全定位正文。基于已通过的 `analyzeDocument` 纯模块（见 `document-analysis.md`），不新增第二套统计口径，不改动 session/Bridge 协议。
+产品面板：左侧按需展开文档大纲（默认收起），底部显示内容口径统计，由标题按钮安全定位正文。基于 `analyzeDocument` 纯模块（见 `document-analysis.md`），不新增第二套统计口径，不改动 session/Bridge 协议。
 
 ## 组成
 
 - `editor/src/document-analysis-panel.ts`：`DocumentAnalysisPanel` DOM 组件。
 - `editor/src/heading-navigation.ts`：标题快照相等性与原文到 textarea 的 UTF-16/EOL 映射。
-  - 状态 `AnalysisPanelState = empty | document | error`；`update()` 只通过 `createElement`/`textContent` 重绘，不执行 HTML、不加载资源、不渲染跳转按钮（标题定位是后续 M1 必需能力，未实现前明确不冒充导航）。
-  - 收起/展开：唯一的 `<button>`（明确名称“收起面板/展开面板”，`aria-expanded`/`aria-controls`，原生键盘可达）；收起仅隐藏面板内容。
+  - 状态 `AnalysisPanelState = empty | document | error`；`update()` 只通过 `createElement`/`textContent` 重绘，不执行 HTML、不加载资源。
+  - 收起/展开：唯一的 `<button>`（可访问名称“收起大纲/展开大纲”，`aria-expanded`/`aria-controls`，原生键盘可达）；收起只隐藏标题列表，底部统计始终保留。pointerdown 保留正文焦点；正文/查找/链接组合输入中拒绝切换。
   - 空文档显示“空文档：暂无标题”；无标题文档显示“本文档没有标题”；分析失败显示“分析失败：…”。
 - `editor/src/main.ts`：接入调度。
   - `#app` 内创建稳定子宿主 `.editor-host`（活编辑器 DOM 只在 loadDocument 重建，分析更新绝不重建/移动）；面板挂在宿主之后。
@@ -26,10 +26,10 @@
 
 ## 折叠空间
 
-折叠状态同时落在面板 root 与 body。宽窗将侧栏基宽从 264px 缩至 96px；窄窗将底部面板限制为 44px，仅保留可键盘聚焦的展开按钮。展开时沿用原内容 DOM 状态与内部滚动布局，不重建正文。
+折叠状态同时落在面板 root 与 body，并将 body.hidden 设为 true。宽窗左侧大纲为 240px，收起后宽度归零；展开入口保留在顶栏。窄窗从左侧覆盖展开，保留正文和底栏的独立布局。展开时沿用原内容 DOM，不重建正文。统计置于固定 30px 底栏；计数说明由可键盘展开的“计数规则”展示。
   - 分析异常被捕获并显示为面板错误态，绝不转发为 `editorError`、不阻断保存/编辑。
   - `recordRuntimeChange` 的 `executingCommand` 防重复规则原样保留：显式 `markSaved`/`executeCommand` 的响应本身即 stateChanged，面板据此刷新。
-- `editor/src/style.css`：`#app` 双栏 flex；面板固定宽、自身滚动（INK-055：页面不滚动，编辑区与面板各自内层滚动）；≤640px 窄窗改底部条带；颜色全部走系统 `Canvas/CanvasText` 系（跟随深浅色）。
+- `editor/src/style.css`：`#app` 双栏 flex；左侧面板自身滚动（INK-055：页面不滚动，编辑区与面板各自内层滚动）；≤640px 为左侧展开层；颜色走系统 `Canvas/CanvasText` 系（跟随深浅色）。
 
 ## 计数口径（面板展示）
 
@@ -39,6 +39,6 @@
 
 ## 已知边界
 
-- 大纲仅为只读章节列表，点击标题不会定位/滚动（后续 M1 必需，见 `docs/tasks/INK-M1-004.md`）。
+- 大纲列表为只读导航；定位必须通过上述快照、epoch、原文及 composition 守卫。
 - 分析在主线程同步执行（`setTimeout(0)` 合并）；无 Worker、无网络、无新依赖。
 - 真实 WKWebView 渲染、VoiceOver 与真实 IME 组合的最终体验验收保留给管理者阶段；自动化验证为 jsdom DOM 级。

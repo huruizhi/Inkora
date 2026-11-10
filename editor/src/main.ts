@@ -34,6 +34,7 @@ import {
 } from "./source-search";
 import "./style.css";
 import "./code-highlighting.css";
+import "./writing-surface.css";
 
 declare global {
   interface Window {
@@ -58,9 +59,12 @@ if (!app) {
 const workspace = document.createElement("div");
 workspace.className = "editor-workspace";
 app.append(workspace);
+const topBar = document.createElement("header");
+topBar.className = "editor-topbar";
+workspace.append(topBar);
 const findBar = document.createElement("div");
 findBar.className = "find-bar";
-workspace.append(findBar);
+topBar.append(findBar);
 const modeBar = document.createElement("div");
 modeBar.className = "editor-mode-bar";
 modeBar.setAttribute("role", "toolbar");
@@ -97,7 +101,7 @@ modeBar.append(
   insertTableButton,
   modeStatus,
 );
-workspace.append(modeBar);
+topBar.append(modeBar);
 const linkEditorHost = document.createElement("div");
 linkEditorHost.className = "link-editor-host";
 workspace.append(linkEditorHost);
@@ -327,7 +331,8 @@ const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
     return { ok: false, message: "文档已变化，请等待大纲刷新" };
   }
   return activeRuntime.navigateToHeading(snapshot.raw, target);
-});
+}, () => !runtime?.composing && !searchPanel.isInputComposing &&
+  !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)));
 
 // 查找面板（INK-M1-009 阶段 A）：只做查询与结果列表，不做定位/替换。
 // 面板动作自身不产生任何 Bridge 消息，也不改正文/历史/保存点。

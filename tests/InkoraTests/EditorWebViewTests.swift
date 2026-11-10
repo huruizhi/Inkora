@@ -3,6 +3,54 @@ import XCTest
 
 final class EditorWebViewTests: XCTestCase {
   @MainActor
+  func testWritingLayoutKeepsOutlineOptionalAndStatisticsVisible() async throws {
+    let raw = "# 标题\n\n正文。\n\n```ts\nconst x = 1;\n```\n"
+    let document = InkoraDocument()
+    try document.read(from: Data(raw.utf8), ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(
+      document: document, resourceBundle: Bundle(for: Self.self))
+    controller.loadViewIfNeeded()
+    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('.document-status-bar dd')"
+    ) { $0 as? Bool == true }
+    for width in [900, 480] {
+      webView.setFrameSize(NSSize(width: width, height: 700))
+      _ = try await waitForJavaScriptValue(
+        in: webView, script: "document.documentElement.clientWidth"
+      ) { ($0 as? Int) == width }
+      let metrics =
+        try await webView.evaluateJavaScript(
+          """
+          (() => {
+            const rect = selector => document.querySelector(selector).getBoundingClientRect();
+            const root = document.scrollingElement;
+            const footer = rect('.document-status-bar');
+            return [rect('.analysis-panel').width, footer.height, footer.bottom,
+                    root.scrollWidth, root.clientWidth, root.scrollHeight, root.clientHeight,
+                    rect('.insert-table').right,
+                    getComputedStyle(document.querySelector('.inkora-code-toolbar')).visibility];
+          })()
+          """) as! [Any]
+      XCTAssertEqual(metrics[0] as? Int, 0, "Closed outline must release its entire width")
+      XCTAssertEqual(metrics[1] as? Int, 30)
+      XCTAssertEqual(metrics[2] as? Int, 700)
+      XCTAssertLessThanOrEqual(metrics[3] as! Int, metrics[4] as! Int)
+      XCTAssertLessThanOrEqual(metrics[5] as! Int, metrics[6] as! Int)
+      XCTAssertLessThanOrEqual((metrics[7] as! NSNumber).doubleValue, Double(width - 110))
+      XCTAssertEqual(metrics[8] as? String, "hidden")
+    }
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.analysis-panel-toggle').click()")
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('.analysis-panel-body').hidden"
+    ) { $0 as? Bool == false }
+    let snapshot = try await requestText(from: controller)
+    XCTAssertEqual(snapshot, raw)
+  }
+
+  @MainActor
   func testLongDocumentsHaveOneScrollOwner() async throws {
     for prefix in ["<custom>source</custom>\n\n", "# Structured\n\n"] {
       let text = prefix + String(repeating: "长正文内容\n\n", count: 200)

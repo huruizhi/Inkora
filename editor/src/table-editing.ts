@@ -198,6 +198,7 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
     dom.className = "inkora-table-shell";
     const toolbar = document.createElement("div");
     toolbar.className = "inkora-table-toolbar";
+    toolbar.contentEditable = "false";
     toolbar.setAttribute("role", "toolbar");
     toolbar.setAttribute("aria-label", "表格操作");
     const commands: Array<[string, TableCommandType]> = [
@@ -225,7 +226,10 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
     updateAvailability(node);
     const contentDOM = document.createElement("table");
     contentDOM.className = "inkora-table";
-    dom.append(toolbar, contentDOM);
+    const scroll = document.createElement("div");
+    scroll.className = "inkora-table-scroll";
+    scroll.append(contentDOM);
+    dom.append(toolbar, scroll);
     return {
       dom,
       contentDOM,

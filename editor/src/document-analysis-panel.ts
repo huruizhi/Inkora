@@ -20,7 +20,8 @@ export type AnalysisPanelState =
 
 export class DocumentAnalysisPanel {
   private readonly body: HTMLElement;
-  private collapsed = false;
+  private readonly stats: HTMLElement;
+  private collapsed = true;
 
   constructor(
     parent: HTMLElement,
@@ -28,6 +29,7 @@ export class DocumentAnalysisPanel {
       snapshot: { documentID: string; revision: number; epoch: number; raw: string },
       target: HeadingNavigationTarget,
     ) => HeadingNavigationResult = () => ({ ok: false, message: "导航尚未连接" }),
+    private readonly canToggle: () => boolean = () => true,
   ) {
     const root = document.createElement("aside");
     root.className = "analysis-panel";
@@ -38,14 +40,17 @@ export class DocumentAnalysisPanel {
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "analysis-panel-toggle";
-    toggle.setAttribute("aria-expanded", "true");
+    toggle.setAttribute("aria-expanded", "false");
     toggle.setAttribute("aria-controls", "analysis-panel-body");
-    toggle.textContent = "收起面板";
-    toggle.addEventListener("click", () => this.setCollapsed(!this.collapsed));
+    toggle.textContent = "大纲";
+    toggle.addEventListener("pointerdown", event => event.preventDefault());
+    toggle.addEventListener("click", () => {
+      if (this.canToggle()) this.setCollapsed(!this.collapsed);
+    });
 
     const title = document.createElement("span");
     title.className = "analysis-panel-title";
-    title.textContent = "大纲与统计";
+    title.textContent = "文档大纲";
 
     header.append(toggle, title);
 
@@ -53,10 +58,14 @@ export class DocumentAnalysisPanel {
     this.body.id = "analysis-panel-body";
     this.body.className = "analysis-panel-body";
 
-    root.append(header, this.body);
+    this.stats = document.createElement("footer");
+    this.stats.className = "document-status-bar";
+    this.stats.setAttribute("aria-label", "文档统计");
+    root.append(header, this.body, this.stats);
     this.root = root;
     this.toggleButton = toggle;
     parent.append(root);
+    this.setCollapsed(true);
     this.update({ kind: "empty", message: "尚未打开文档" });
   }
 
@@ -74,7 +83,9 @@ export class DocumentAnalysisPanel {
   setCollapsed(collapsed: boolean): void {
     this.collapsed = collapsed;
     this.toggleButton.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    this.toggleButton.textContent = collapsed ? "展开面板" : "收起面板";
+    this.toggleButton.textContent = collapsed ? "大纲" : "收起大纲";
+    this.toggleButton.setAttribute("aria-label", collapsed ? "展开大纲" : "收起大纲");
+    this.body.hidden = collapsed;
     this.body.classList.toggle("analysis-panel-collapsed", collapsed);
     this.root.classList.toggle("analysis-panel-collapsed", collapsed);
   }
@@ -82,15 +93,19 @@ export class DocumentAnalysisPanel {
   /** 只重绘面板内容；不触碰焦点、选区或编辑器状态。 */
   update(state: AnalysisPanelState): void {
     this.body.replaceChildren();
+    this.stats.replaceChildren();
     if (state.kind === "empty" || state.kind === "error") {
       const note = document.createElement("p");
       note.className =
         state.kind === "error" ? "analysis-panel-note analysis-panel-error" : "analysis-panel-note";
       note.textContent = state.kind === "error" ? `分析失败：${state.message}` : state.message;
       this.body.append(note);
+      const status = note.cloneNode(true);
+      this.stats.append(status);
       return;
     }
-    this.body.append(this.renderOutline(state), this.renderStats(state.analysis));
+    this.body.append(this.renderOutline(state));
+    this.stats.append(this.renderStats(state.analysis));
   }
 
   destroy(): void {
@@ -150,10 +165,6 @@ export class DocumentAnalysisPanel {
     section.className = "analysis-panel-section";
     section.setAttribute("aria-label", "统计");
 
-    const heading = document.createElement("h2");
-    heading.textContent = "统计";
-    section.append(heading);
-
     const list = document.createElement("dl");
     list.className = "analysis-panel-stats";
 
@@ -175,7 +186,12 @@ export class DocumentAnalysisPanel {
     hint.textContent =
       "字符数按内容文本计（不计空白，组合表情算一个字符）；" +
       "字数中文逐字计数，英文与数字的连续串按一个词计，标点与表情不计入字数。";
-    section.append(hint);
+    const rules = document.createElement("details");
+    rules.className = "analysis-panel-count-rules";
+    const summary = document.createElement("summary");
+    summary.textContent = "计数规则";
+    rules.append(summary, hint);
+    section.append(rules);
     return section;
   }
 }

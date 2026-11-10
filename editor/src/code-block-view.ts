@@ -56,6 +56,8 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     const toolbar = document.createElement("div");
     toolbar.className = "inkora-code-toolbar";
     toolbar.contentEditable = "false";
+    toolbar.setAttribute("role", "toolbar");
+    toolbar.setAttribute("aria-label", "代码块操作");
 
     const label = document.createElement("label");
     label.className = "inkora-code-language-label";
