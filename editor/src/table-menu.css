@@ -1,0 +1,29 @@
+/* 菜单脱离正文流，工具与表格滚动分别处理。 */
+div#editor .inkora-table-shell > .inkora-table-toolbar {
+  overflow: visible;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+div#editor .inkora-table-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 3;
+  display: grid;
+  min-width: 120px;
+  max-height: min(320px, 60vh);
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  border-radius: 6px;
+  background: Canvas;
+  box-shadow: 0 3px 12px #0002;
+}
+div#editor .inkora-table-menu[hidden] { display: none; }
+div#editor .inkora-table-menu button { text-align: left; }
+div#editor .inkora-table-shell > .inkora-table-toolbar {
+  min-height: 24px;
+  padding: 2px 4px;
+  line-height: 1.2;
+}
+div#editor .inkora-table-toolbar button { line-height: 1.2; }
