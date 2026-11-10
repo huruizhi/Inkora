@@ -1,0 +1,20 @@
+[INK151-stage] load begin small iteration=-1
+[INK151-stage] accepted load; attaching provider
+[INK151-stage] save begin
+[INK151-stage] save completion error=nil
+[INK151-stage] markSaved fence begin
+[INK151-stage] close begin
+[INK151-stage] close end
+[INK151-stage] load begin small iteration=0
+[INK151-stage] accepted load; attaching provider
+[INK151-stage] save begin
+[INK151-stage] save completion error=nil
+[INK151-stage] markSaved fence begin
+[INK151-stage] close begin
+[INK151-stage] close end
+[INK151-stage] load begin small iteration=1
+[INK151-stage] accepted load; attaching provider
+[INK151-stage] save begin
+[INK151-stage] save completion error=Optional(Error Domain=NSCocoaErrorDomain Code=3072 "操作已被取消。")
+[INK151-stage] close begin
+[INK151-stage] close end

@@ -1,0 +1,25 @@
+node scripts/perf/generate-samples.mjs --output "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/build/perf-samples"
+Samples written to /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/build/perf-samples (seed 114910):
+small: 12026 bytes, 321 lines, sha256 9f9cc548a855
+medium: 150510 bytes, 3778 lines, sha256 537de771ad9f
+large: 1000064 bytes, 24601 lines, sha256 6036a7aee026
+large-crlf: 1024664 bytes, 24601 lines, sha256 d0ee2ab272e0
+mkdir -p "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/build/production-perf"
+node scripts/perf/env-info.mjs --output "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/build/production-perf/environment.json"
+{
+  "schema": 1,
+  "model": "Mac18,5",
+  "chip": "Apple M6",
+  "memoryGB": 32,
+  "macOS": "27.2",
+  "xcode": "Xcode 27.2",
+  "xcodeBuild": "Build version 27B52",
+  "node": "v26.13.0"
+}
+env INKORA_PERF_SAMPLES_DIR="/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/build/perf-samples" \
+		python3 scripts/perf/run-production-model.py --pnpm "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/.tools/node_modules/.bin/pnpm"
+small: passed (0.77s)
+medium: passed (1.08s)
+large: passed (6.64s)
+large-crlf: passed (6.46s)
+mixed: passed (0.54s)

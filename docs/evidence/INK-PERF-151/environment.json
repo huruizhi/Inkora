@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "model": "Mac18,5",
+  "chip": "Apple M6",
+  "memoryGB": 32,
+  "macOS": "27.2",
+  "xcode": "Xcode 27.2",
+  "xcodeBuild": "Build version 27B52",
+  "node": "v26.13.0"
+}

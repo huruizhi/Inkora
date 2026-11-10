@@ -1,0 +1,43 @@
+Writing result bundle at path:
+	/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/artifacts/test-results/safe-save-151-1794337645.xcresult
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+error: the following command failed with exit code 0 but produced no further output
+SwiftCompile normal arm64 (in target 'InkoraTests' from project 'Inkora')
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/tests/InkoraTests/SidebarWorkspaceBridgeTests.swift:168:14: warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+166 |       current: { .init(documentID: "document", revision: 0) }, chooseFolder: { _ in },
+167 |       mayOpen: { _, done in done(true) }, openFile: { _, _, _ in })
+168 |     weak var weakBridge = bridge
+    |              `- warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+169 |     bridge?.useFolder(
+170 |       .init(
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/tests/InkoraTests/SidebarWorkspaceBridgeTests.swift:247:14: warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+245 |           invalidations += 1
+246 |         }))
+247 |     weak var weakOwner = owner.timer
+    |              `- warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+248 |     await Task.detached {
+249 |       XCTAssertFalse(Thread.isMainThread)
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
+note: Disabling hardened runtime with ad-hoc codesigning. (in target 'Inkora' from project 'Inkora')
+note: Run script build phase 'Build Editor' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Inkora' from project 'Inkora')
+2026-11-11 03:07:27.772 xcodebuild[81951:15067256]  DVTAssertions: Warning in IDEFrameworks/IDEFoundation/Execution/LaunchSystem/IDELaunchSession.m:395
+Details:  setRunnablePIDWithDiagnostics:logSection:andCompletionHandler: called without a completion handler - blocking until diagnostics setup completes. Callers should migrate to using a completion handler for better performance.
+Object:   <IDELaunchSession: 0x74b1b4d680>
+Method:   -setRunnablePIDWithDiagnostics:logSection:andCompletionHandler:
+Thread:   <NSThread: 0x74b32e1c80>{number = 2, name = (null)}
+Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
+2026-11-11 03:07:35.450 xcodebuild[81951:15067255] [MT] IDETestOperationsObserverDebug: 7.696 elapsed -- Testing started completed.
+2026-11-11 03:07:35.450 xcodebuild[81951:15067255] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-11 03:07:35.450 xcodebuild[81951:15067255] [MT] IDETestOperationsObserverDebug: 7.696 sec, +7.696 sec -- end
+Failing tests:
+	PerformanceWebViewTests.testProductionSafeSaveBenchmarks()
+
+** TEST FAILED **
+
+Testing started

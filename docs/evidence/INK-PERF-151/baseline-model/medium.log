@@ -1,0 +1,9 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-perf-151-current-production-measurement/editor
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  03:03:12
+   Duration  730ms (tests 93%, import 5%, transform 1%)
+

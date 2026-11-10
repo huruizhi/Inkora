@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "seed": 114910,
+  "files": {
+    "small": {
+      "bytes": 12026,
+      "lines": 321,
+      "blocks": 57,
+      "sha256": "9f9cc548a855e8676abc858262e6f3c94dd08d1d64a0ac03e09dca4e32740881"
+    },
+    "medium": {
+      "bytes": 150510,
+      "lines": 3778,
+      "blocks": 770,
+      "sha256": "537de771ad9fbbf21c35c3573fa6ffd3e6276c21e1ad0b966c2fbcc867963018"
+    },
+    "large": {
+      "bytes": 1000064,
+      "lines": 24601,
+      "blocks": 5061,
+      "sha256": "6036a7aee026f60a96581c686e0fc8c0ef50cf0d7ec12ad74a1d5e6eeb53f9f0"
+    },
+    "large-crlf": {
+      "bytes": 1024664,
+      "lines": 24601,
+      "blocks": 1,
+      "sha256": "d0ee2ab272e06fd6b5349ada7824bb352b24b3433b14f9094f508f6104481128"
+    }
+  }
+}
