@@ -3,16 +3,12 @@ import MarkdownIt from "markdown-it";
 
 const footnoteMarkdown = new MarkdownIt("commonmark", { html: false }).disable("image");
 
-function navigateFootnote(element: HTMLElement, label: string, toDefinition: boolean): void {
-  const root = element.closest("#editor");
-  const candidates = root?.querySelectorAll<HTMLElement>(
-    toDefinition ? ".footnote-definition" : ".footnote-reference",
-  );
-  const target = Array.from(candidates ?? []).find(item => item.dataset.footnoteLabel === label);
-  target?.scrollIntoView?.({ block: "center" });
+export interface TechnicalPreviewActions {
+  edit?: () => void;
+  navigate?: (element: HTMLElement, toDefinition: boolean) => void;
 }
 
-export function footnoteReference(raw: string): HTMLElement | undefined {
+export function footnoteReference(raw: string, actions: TechnicalPreviewActions = {}): HTMLElement | undefined {
   const match = /^\[\^([A-Za-z0-9_-]+)\]$/.exec(raw);
   if (!match) return undefined;
   const sup = document.createElement("sup");
@@ -26,7 +22,7 @@ export function footnoteReference(raw: string): HTMLElement | undefined {
   button.addEventListener("pointerdown", event => event.preventDefault());
   button.addEventListener("click", event => {
     event.stopPropagation();
-    navigateFootnote(sup, match[1], true);
+    actions.navigate?.(sup, true);
   });
   sup.append(button);
   return sup;
@@ -35,7 +31,18 @@ export function footnoteReference(raw: string): HTMLElement | undefined {
 /** Only called for canonical accepted opaque kinds; never classifies source. */
 export function renderTechnicalPreview(
   element: HTMLElement, raw: string, kind: string, mathContent?: string,
+  actions: TechnicalPreviewActions = {},
 ): boolean {
+  if (actions.edit) {
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "technical-edit";
+    edit.textContent = "在源码中修改";
+    edit.addEventListener("pointerdown", event => event.preventDefault());
+    edit.addEventListener("keydown", event => event.stopPropagation());
+    edit.addEventListener("click", event => { event.stopPropagation(); actions.edit?.(); });
+    element.append(edit);
+  }
   const normalized = raw.replace(/\r\n?/g, "\n");
   if (kind === "math") {
     const lines = normalized.split("\n");
@@ -86,8 +93,10 @@ export function renderTechnicalPreview(
   back.addEventListener("pointerdown", event => event.preventDefault());
   back.addEventListener("click", event => {
     event.stopPropagation();
-    navigateFootnote(element, match[1], false);
+    actions.navigate?.(element, false);
   });
   element.append(label, body, back);
+  const edit = element.querySelector(".technical-edit");
+  if (edit) element.append(edit);
   return true;
 }

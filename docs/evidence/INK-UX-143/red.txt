@@ -1,0 +1,36 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-143-technical-navigation/editor
+
+ ❯ src/technical-navigation-runtime.test.ts (1 test | 1 failed) 39ms
+   × returns to the actual reference and exposes source editing 39ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/technical-navigation-runtime.test.ts > returns to the actual reference and exposes source editing
+AssertionError: expected [ 'definition', 'reference-1' ] to deeply equal [ 'definition', 'reference-2' ]
+
+- Expected
++ Received
+
+  [
+    "definition",
+-   "reference-2",
++   "reference-1",
+  ]
+
+ ❯ src/technical-navigation-runtime.test.ts:19:18
+     17|  const before={status:r.status,selection:r.directedSelection,raw:r.sna…
+     18|  refs[1].querySelector('button')!.click(); def.querySelector('button')…
+     19|  expect(scrolls).toEqual(['definition','reference-2']);
+       |                  ^
+     20|  expect({status:r.status,selection:r.directedSelection,raw:r.snapshotT…
+     21|  expect(changes).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  01:41:41
+   Duration  536ms (import 64%, transform 27%, tests 9%)
+

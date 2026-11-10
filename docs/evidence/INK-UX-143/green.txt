@@ -1,0 +1,129 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-143-technical-navigation/editor
+
+ ✓ src/protected-oracles.test.ts > V2-001 frozen production source/opaque/edit oracle 8ms
+ ✓ src/protected-oracles.test.ts > V2-002 frozen production source/opaque/edit oracle 1ms
+ ✓ src/protected-oracles.test.ts > V2-003 frozen production source/opaque/edit oracle 1ms
+ ✓ src/protected-oracles.test.ts > V2-004 frozen production source/opaque/edit oracle 0ms
+ ✓ src/protected-oracles.test.ts > V2-005 frozen production source/opaque/edit oracle 1ms
+ ✓ src/protected-oracles.test.ts > V2-006 frozen production source/opaque/edit oracle 1ms
+ ✓ src/protected-oracles.test.ts > V2-007 frozen production source/opaque/edit oracle 0ms
+ ✓ src/protected-oracles.test.ts > V2-008 frozen production source/opaque/edit oracle 1ms
+ ✓ src/protected-oracles.test.ts > V2-009 frozen production source/opaque/edit oracle 1ms
+ ✓ src/protected-oracles.test.ts > V2-010 frozen production source/opaque/edit oracle 1ms
+ ✓ src/protected-oracles.test.ts > V2-011 frozen production source/opaque/edit oracle 0ms
+ ✓ src/protected-oracles.test.ts > V2-012 frozen production source/opaque/edit oracle 0ms
+ ✓ src/protected-oracles.test.ts > V2-013 frozen production source/opaque/edit oracle 0ms
+ ✓ src/protected-oracles.test.ts > V2-014 frozen production source/opaque/edit oracle 0ms
+ ✓ src/protected-oracles.test.ts > V2-015 frozen production source/opaque/edit oracle 0ms
+ ✓ src/protected-oracles.test.ts > V2-016 frozen production source/opaque/edit oracle 1ms
+ ✓ src/protected-oracles.test.ts > V2-017 frozen production source/opaque/edit oracle 0ms
+ ✓ src/protected-oracles.test.ts > V2-018 frozen production source/opaque/edit oracle 0ms
+ ✓ src/protected-source-runtime.test.ts > renders accepted footnote and callout previews in a read-only atom with exact source 39ms
+ ✓ src/protected-source-runtime.test.ts > assigns footnote bytes only to their accepted opaque block 2ms
+ ✓ src/protected-source-runtime.test.ts > still rejects a mismatched nested opaque atom after accepting its canonical block token 0ms
+ ✓ src/protected-source-runtime.test.ts > requires a matching TOML closing fence and treats its contents as opaque 1ms
+ ✓ src/protected-source-runtime.test.ts > keeps malformed callout and footnote definitions behind the unsafe gate 1ms
+ ✓ src/protected-source-runtime.test.ts > keeps supported horizontal-rule source saveable through the canonical ledger 0ms
+ ✓ src/protected-source-runtime.test.ts > maps a horizontal-rule selection and deletion as one source history unit 2ms
+ ✓ src/protected-source-runtime.test.ts > retains a canonical footnote definition as visible opaque source 0ms
+ ✓ src/protected-source-runtime.test.ts > blocks an unclosed opening front matter candidate and permits source repair 0ms
+ ✓ src/protected-source-runtime.test.ts > ends a callout before a non-quote lazy continuation line 0ms
+ ✓ src/protected-source-runtime.test.ts > keeps ordinary text beside an opaque wiki fragment directly editable 1ms
+ ✓ src/protected-source-runtime.test.ts > rejects full visual deletion of a read-only inline atom and retains the intent 0ms
+ ✓ src/protected-source-runtime.test.ts > keeps emphasis outside a wiki atom independent of its opaque delimiters 1ms
+ ✓ src/protected-source-runtime.test.ts > preserves exact repeated and container wiki atoms through adjacent edits and history 3ms
+ ✓ src/protected-source-runtime.test.ts > indexes editable text on each side without searching through opaque preview text 0ms
+ ✓ src/protected-source-runtime.test.ts > lets earlier complete links own their labels while footnotes win reference collisions 0ms
+ ✓ src/protected-source-runtime.test.ts > owns physical quote prefixes inside a multiline opaque comment exactly once 0ms
+ ✓ src/protected-source-runtime.test.ts > keeps a parser-owned HTML block inside a quote beside editable paragraphs 1ms
+ ✓ src/protected-source-runtime.test.ts > retains canonical U005 candidates with diagnostics and an explicit source-save path 1ms
+ ✓ src/protected-source-runtime.test.ts > never pairs a low-priority U marker through a complete higher-priority owner 1ms
+ ✓ src/protected-source-runtime.test.ts > does not confuse raw HTML anchor state with a complete Markdown link label 0ms
+ ✓ src/protected-source-runtime.test.ts > locks BOM-prefixed metadata on normalized parser input while keeping exact raw offsets 0ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > captures canonical image owners from the accepted semantic projection 90ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > rebuilds auditable projections after source, history, reopen, and image owner changes 3ms
+ ✓ src/technical-navigation-runtime.test.ts > returns to the actual reference and exposes source editing 65ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > renders canonical container math without rewriting its physical raw 40ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > renders canonical container math without rewriting its physical raw 6ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > renders canonical container math without rewriting its physical raw 6ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > refreshes canonical math content after source editing and Undo/Redo 9ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > renders math and footnotes while preserving exact raw and a source no-op roundtrip 6ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > keeps invalid TeX and hostile footnote text inert without blocking an accepted document 6ms
+ ✓ src/technical-navigation-runtime.test.ts > binds repeated and quoted CRLF math, restores directed selection, and expires old controls 41ms
+ ✓ src/technical-navigation-runtime.test.ts > edits invalid math and clears the technical return after a no-op apply 4ms
+ ✓ src/technical-navigation-runtime.test.ts > keeps a connected technical control usable after ordinary visual typing 6ms
+ ✓ src/technical-navigation-runtime.test.ts > preserves the accepted PM selection after a node selection request and dirty cancellation 4ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > footnote navigation only scrolls the matching preview and waits for composition 41ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > rejects Mermaid configuration previews without loading a script or changing raw 8ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > cancels queued Mermaid work when the runtime is destroyed 5ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > types in the unchanged code caret after a language attribute change 13ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > accepts one managed image import as one raw/history/revision transaction 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > refreshes image capabilities and layered placeholders without changing document state 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > offers a real inline alt/title editor backed by the source transaction 14ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > rewrites only the unique draft owner as an explicit first-save history unit 6ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > retries a published first-save owner without undo or a phantom history step 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > does not retarget a managed asset after source editing removed its real image owner 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > refuses a managed rewrite when source editing changed the draft URI into a normal link 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > deletes and restores one image owner without rewriting adjacent marks 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > edits a linked image in a BOM CRLF table without touching its outer link 4ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > edits one image alt/title as one source history unit without touching neighbours 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the heading input rule on the source projection 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the blockquote input rule on the source projection 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the bullet list input rule on the source projection 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the ordered list input rule on the source projection 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the code fence input rule on the source projection 8ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the horizontal rule input rule on the source projection 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the metadata opener input rule on the source projection 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the strong inline input rule on the source projection 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the em inline input rule on the source projection 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the strike inline input rule on the source projection 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the code inline input rule on the source projection 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the link inline input rule on the source projection 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > adds and removes the strong mark through local source patches 6ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > adds and removes the em mark through local source patches 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > adds and removes the strike mark through local source patches 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > adds and removes the code mark through local source patches 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > adds and removes an inline link without serializing untouched bytes 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > edits only the source-ledger owner under a collapsed caret 12ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > edits the existing link owner in a top-level table header 4ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > counts reference uses inside tables when editing an outside shared link 4ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > isolates one indexed owner without changing neighboring links or history contracts 7ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > preserves backward selection and a unique reference link spelling 4ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > preserves inline spacing and isolates one use of a shared reference 4ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > rolls back source and history when the accepted link cannot restore its owner 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > removes an inline link through the real Mod-Shift-K keymap 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > removes a mark from only the selected middle and preserves both marked sides 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > adds and removes strong across paragraphs with independent local delimiters 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > applies the heading command with a bounded source patch 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > applies the blockquote command with a bounded source patch 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > applies the bullet list command with a bounded source patch 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > applies the ordered list command with a bounded source patch 1ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > applies the code block command with a bounded source patch 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > converts an ATX heading back to paragraph 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > lifts a blockquote with a local prefix patch 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps code-block Enter and Tab exact 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > converts only the active paragraph to a code block in a multi-block document 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps a requested code language when converting one block among siblings 2ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > preserves BOM, CRLF, neighbours, selection and missing final newline on conversion 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > exits a fenced code block through the real Mod-Enter keymap 4ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > exits a CRLF fenced block without changing BOM, fence or trailing neighbour 6ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > synthetically aggregates final-before-end, replacement and no-op composition sessions 56ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps list Enter, indent and outdent on the source-authoritative history 6ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > synthetically closes one late-final composition as one document publication 41ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > seals consecutive compositions and the next ordinary edit as distinct publications 29ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > rejects an unended composition drain and resolves pending drains on destroy 162ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > patches only the edited source range in a BOM CRLF document 6ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > applies or cancels a source draft and keeps one cross-mode history 8ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps the current raw dirty when an older saved snapshot is acknowledged 9ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > extends an inherited strong mark at EOF without rejecting the edit 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps plain-text paste on the source-authoritative history path 3ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > uses frozen byte literals for tasks, references, inline code and fence language 12ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > inherits mixed EOL locally and preserves the paragraph split history 5ms
+ ✓ src/source-authority-runtime.test.ts > production source authority runtime > keeps a local edit exact in a long document with adversarial delimiters 101ms
+
+ Test Files  5 passed (5)
+      Tests  120 passed (120)
+   Start at  01:47:44
+   Duration  1.06s (tests 51%, import 43%, transform 6%)
+
