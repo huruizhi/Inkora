@@ -37,3 +37,16 @@
 **自跑证据**仅为任务记录中两段临时公共接缝probe：当前生产源编译成功，进程退出0，断言确认不良行为；导航窗口始终不可见。它们是反例，不是产品通过测试。**借用证据**为task130/131/132、既有tests与docs/evidence日志，以及矩阵中父会话历史自跑记录；本次均仅阅读，未独立重跑，不累计作者“通过数量”。
 
 按授权未做GUI/App启动/CUA/浏览器/XCU/实际面板/物理输入/全量Native/Release/CI，未安装依赖、未修改实现或有效测试。截图像素、物理IME、macOS14专项不单列为缺陷；相称后台证据尚不足的范围已逐项说明。
+
+## Post-fix：固定8e64424限定后验复核
+
+本节追加，不改写以上固定`d3edf880`首稿。后验产品完整SHA：`8e64424f2fd8b0c54faf449b418551d1761a8551`。仅从该commit的`git archive`冻结副本核读/编译A/B文件，不读动态根工作树，不审尚未完成的C导航文件。复核范围与有限公共probe源码/命令/输出见[任务记录后验段](../tasks/INK-REV-134.md#post-fix固定8e64424限定后验复核)。
+
+| 原发现 | 后验裁定及依据 |
+|---|---|
+| 2：typing导致scan/search无回包 | **该缺陷在本次限定公共接缝范围关闭。** 冻结`SidebarWorkspaceBridge.swift:203–205`接受不超前revision，`:407–408`的完成匹配保留document/context而不再绑定正文revision；scan/search自身generation仍参与过滤（`:265–267,348`）。独立编译冻结生产Catalog/Bridge，scan及search分别在请求后、MainActor完成前将revision 0→1，均收到原请求对应的catalog/search；search返回真实文件中的1个命中。各自另跑跨doc、跨context负控制，旧完成均未回包，重新ready后的catalog可达。共6个有限情形通过，非全量门禁或真实WK来源验证。 |
+| 4：600/640数值分歧 | **原静态宽度分歧已消除；SB-14实际WK证据仍未关闭。** 冻结`style.css:171,324,617,624,868`统一使用`--sidebar-width`，窄窗定义为`min(240px,45vw)`。600/640px时侧栏与正文让位均240px，480px均216px；不再是首稿270/240与280/240。`:870–872`将稳定态resize与切换动画区分。仅核读声明及静态数值，不声称测得WK最终几何、resize/快速反向或像素动画通过。 |
+| 1：关闭确认后过期目标 | **仍未关闭，等待C补正与独立复核。** A新增ticket仅是可用接缝：冻结`SidebarCatalog.swift:104–118,319–325`提供基于原catalog capability的再次读取及守卫延续；Bridge`:297–303`包装document/context、revision、navigation generation、catalog、lease身份。仅核读，不运行ticket新测试，不据此宣称C在每个异步门后消费ticket。未读取动态C旧路径或重复报旧缺陷。 |
+| 3：dirty目标普通卡片无法复用 | **仍未关闭，等待C补正与独立复核。** 本次未审导航集成，不对尚未完成的C动态代码作新判断。 |
+
+本次实跑只含1个Foundation/Bridge hostless可执行文件的6个情形，编译与执行均退出0，无窗口/App/系统面板/GUI/新Agent/依赖安装；没有复跑首稿导航窗口反例或全量门禁。原发现1/3与WK证明边界继续保留，不能把本次A/B限定复核外推为产品Spec整体通过。
