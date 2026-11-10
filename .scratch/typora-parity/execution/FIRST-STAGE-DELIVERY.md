@@ -6,7 +6,7 @@
 
 当前macOS27.2桌面预检通过，root持生产UI锁，仅操作冻结UITesting Release bundle与唯一scratch样稿。实际系统Open→任务checkbox→表格单元格→Python语言→两处alpha替换beta→单步Undo/Redo→Cmd-S→源码no-op→关闭/Open重开均已观察；186bytes与独立预期逐字节相等，SHA `09b3933fadd1bde1511c4b0621bfe1bba8821f51da0bbc239480f49a2a4f96c7`，原样本及冻结包未改。证据在main docs/evidence/INK-PLAN-109，是真实桌面自动操作，不是实体输入法。
 
-`01-IME.md` 已定位Input here.后，并已向用户请求两次实体搜狗上屏；尚未收到操作结果，不标记IME通过。用户此前“稍后”的桌面延期已由本轮继续推进恢复；其他授权/书签/文件/AX/显示/可见性能门槛仍逐项保留。原后文最低系统阻塞是历史时点，不再适用本轮14专门验收。109分支/remote/clean及641文件tar/Git bundle已核验，tar SHA `2e44a207fbbdca92422f6cbf2bd650f503a561d652c34c4b10f49f9eec2a52fc`；当前不回收持有活动验收记录的109工作区，managed仍92。
+用户随后明确“不需要再重复测试”：停止本轮重复中文上屏请求，不再等待该问题，也不再以复做同一路径阻塞推进。已有物理与自动证据按原版本/范围保留；本轮没有追加实体输入，不伪称新bundle重新实测通过。已关闭01-IME和已保存的02-Structure两个临时窗口、回到原先051窗口，释放root UI锁，未关闭用户正式App。其他尚未执行的非重复项目与真实缺陷继续分别结算；macOS14专门验收和重复上屏均不再是本轮阻塞。109分支/remote/clean及641文件tar/Git bundle已核验，tar SHA `2e44a207fbbdca92422f6cbf2bd650f503a561d652c34c4b10f49f9eec2a52fc`；原始证据已归档后回收109工作区，managed仍92。
 
 ## PR78交付记录
 
