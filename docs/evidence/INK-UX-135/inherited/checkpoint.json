@@ -1,0 +1,8 @@
+{
+  "originalHead": "e18d8d0e9bee72282b0668c5c645ae355a64f4b6",
+  "newBase": "cb14288",
+  "patchSha256": "7367dca931cdecf416cdcee657aa064ea42e96d70cf03100cde245a2c92149ef",
+  "source": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration",
+  "evidenceCopy": "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-135-sidebar-integration-recovery/artifacts/inherited-INK-UX-132",
+  "note": "Inherited author evidence; not independently rerun by recovery agent or root."
+}

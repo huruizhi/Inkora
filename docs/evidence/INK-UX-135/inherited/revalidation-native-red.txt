@@ -1,0 +1,19 @@
+Test Suite 'SidebarNavigationTests' started at 2026-11-10 23:52:03.815.
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' started.
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:67: error: -[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow] : XCTAssertNotNil failed
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:68: error: -[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow] : XCTAssertTrue failed
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:69: error: -[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow] : XCTAssertTrue failed
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:67: error: -[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow] : XCTAssertNotNil failed
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:68: error: -[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow] : XCTAssertTrue failed
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:69: error: -[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow] : XCTAssertTrue failed
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' failed (0.194 seconds).
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' started.
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' passed (0.002 seconds).
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' started.
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' passed (0.094 seconds).
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' started.
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' passed (0.012 seconds).
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' started.
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' passed (0.002 seconds).
+Test Suite 'SidebarNavigationTests' failed at 2026-11-10 23:52:04.121.
+	 Executed 5 tests, with 6 failures (0 unexpected) in 0.304 (0.306) seconds
