@@ -12,3 +12,11 @@
 - 152：agent `3d3e60c0-cffc-4f77-b4aa-63eded3853df`，workspace `wks_46f12696a8e86782`，分支 `task/INK-AUDIT-152-completion-evidence`，仅静态需求与证据对照，不运行构建/性能。
 
 两项都禁止新建子Agent、占屏、发布或安装；收到固定结果后再独立核对，不把创建成功当执行完成。
+
+## 实际结果与根核对
+
+152静态完整目标报告 c9c4729 已接回：未确认新的未关闭产品反例，但真实Sandbox/VoiceOver/paint与完整性能预算仍缺失，不把“候选可用”缩成整体完成。用户取消的14专项、重复实体IME单独保留范围。其任务本轮未运行产品测试，报告未冒称自跑。
+
+151基线544bd29与追加dd4ef46已接回。原Node五向量、WK四尺寸、独立五输入完整安全保存均实际通过，所有字节/dirty/revision断言保留。首个保存harness竞争红例与单变量unique-URL绿例留存，不称产品bug修复。根另发现新runner合并旧JSON风险，已交原Agent以真实脚本隔离probe先红后绿，只补runner，不重跑未改变的有效测量。
+
+根实际运行该脚本隔离probe通过，并以只读Python核对：Node/WK/supplement输入SHA相同，两个WK批次resourceHashes完全一致，各工作流N=3、snapshot N=15、median/p95与原samples相符；app/editor/project与main aef514c完全相同。根未冒称本人重跑作者的WK/保存采样。机器结果保存在管理artifacts；完整新分层说明已追加performance文档，历史结果未覆盖。下一步固定组合后做两轴独立复核与默认CI，不重复占屏或完整采样。

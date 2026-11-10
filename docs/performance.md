@@ -159,3 +159,39 @@ PM/ledger的raw、doc identity、projection identity校验不变；批量替换�
 
 这只证明固定样本和工作流在本机的成本改善；正式预算、真实paint、系统IME、最低系统和
 NSDocument安全写盘仍须按票15分层验收，不以中位数或缓存命中数替代。
+
+## 当前生产与完整安全保存补测（INK-PERF-151，2026-11-11）
+
+固定产品为 `main@aef514c501cb33eb10cac121d300b67374c462a5`，测量起点 f09143d 仅增加管理文档，
+app/editor/project.yml 身份相同。保留全部旧基线/输入/阈值；本轮没有性能优化或产品改动。
+环境仍为 M6/32GB/arm64、macOS27.2、Xcode27.2、Node26.13.0。原始分布、输入/源码/bundle
+SHA、红例与 xcresult 摘要见[151证据](evidence/INK-PERF-151/)。
+
+实际依次运行 `make bench-production-model`（原五输入）、`make bench-production-webview`
+（原四尺寸）、`scripts/perf/run-safe-save-151.sh`（独立五输入 supplement）。后者依赖前两项准备的
+样本/工程/构建；仅运行 hostless XCTest，不启动 App。mixed 保持原 530-byte 功能混排，不能作
+150KB 混排支持证明。Node 1预热+5样本；WK 每输入1预热+3工作流，snapshot共15样本。
+
+| 指标（ms，中位数；括号为本批观测p95） | medium | large LF | large CRLF |
+| --- | ---: | ---: | ---: |
+| Node选择+普通输入 | 62.08 (65.07) | 684.65 (766.11) | 665.72 (694.87) |
+| 原WK普通输入→精确snapshot | 109.93 (109.96) | 834.37 (837.97) | 832.60 (855.63) |
+| 原WK打开→snapshot | 278.25 (278.80) | 1436.72 (1459.67) | 1441.09 (1447.81) |
+| 原WK snapshot往返 | 19.45 (22.78) | 152.79 (156.29) | 157.34 (166.07) |
+| 原WK source no-op往返 | 59.38 (60.66) | 419.89 (422.42) | 428.78 (431.16) |
+| 独立supplement save→completion | 199.13 (200.42) | 672.34 (706.35) | 680.34 (711.28) |
+| 同次save→精确验证 | 240.87 (243.45) | 912.26 (941.88) | 930.47 (964.28) |
+
+save起点为真实 `InkoraDocument.save` 调用前，completion包含snapshot provider、图片准备、冲突校验、
+NSDocument及默认AtomicDocumentDataWriter。精确验证继续等待后续Bridge snapshot、Native dirty=false，
+并断言revision不变与磁盘UTF-8 Data精确相等。它不是独立原子writer净耗时；没有用snapshot耗时相减
+伪造Native分层。small/mixed完整结果同样保留。新建WK的open成本也不是严格进程冷启动。
+
+初次保存harness复用同一URL，每轮覆盖前轮仍可能参与文件协调的路径，实际出现exit65及3072取消。
+单变量改为每轮独立临时URL后，small及原五输入全通过，原断言和失败证据均保留；支持夹具竞争解释，
+不称为产品修复。runner曾有旧JSON混入子集风险，现启动前归档旧输出，成功/模拟失败真实脚本隔离检查通过。
+
+当前固定样本普通输入在既有150KB尽量<200ms/1MB尽量<1s方向对照内。N=3/5时记录的p95均为本批
+最大顺序值，不是总体尾延迟保证；旧light的warn也没有因此改绿。本轮补上完整安全保存链路的后台证据，
+但尚不足以冻结整套用户体验预算：真实可见paint、未取消的人工AX/系统授权及其耗时仍无新证据。
+用户取消的14专测与重复实体IME不复做、也不填成通过；正式阶段验收仍按原03/07/15完整范围结算。
