@@ -1,6 +1,6 @@
 import { JSDOM } from "jsdom";
 import { afterEach, describe, expect, it } from "vitest";
-import { createEditorRuntime, type EditorRuntime } from "./editor-runtime";
+import { createEditorRuntime, type EditorRuntime, type RuntimeChangeKind } from "./editor-runtime";
 
 const originalDocument = globalThis.document;
 const originalWindow = globalThis.window;
@@ -15,10 +15,10 @@ function open(raw: string) {
   Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
   Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
   const parent = document.querySelector("main")!;
-  let changes = 0;
-  const runtime = createEditorRuntime(parent, raw, () => { changes++; });
+  const changes: RuntimeChangeKind[] = [];
+  const runtime = createEditorRuntime(parent, raw, (_status, kind = "document") => { changes.push(kind); });
   opened.push({ dom, runtime });
-  return { dom, parent, runtime, changes: () => changes };
+  return { dom, parent, runtime, changes: () => changes.length, changeKinds: () => [...changes] };
 }
 
 describe("production technical previews", () => {
@@ -89,11 +89,14 @@ describe("production technical previews", () => {
     expect(scrolled).toBe(false);
     editor.dispatchEvent(new h.dom.window.Event("compositionend", { bubbles: true }));
     expect(await h.runtime.whenCompositionStable()).toBe(true);
+    const beforeNavigation = h.changes();
     h.parent.querySelector<HTMLButtonElement>(".footnote-reference button")!.click();
     expect(scrolled).toBe(true);
     expect(h.runtime.directedSelection).toEqual(before);
     expect(h.runtime.snapshotText()).toEqual({ ok: true, value: raw });
-    expect(h.changes()).toBe(0);
+    expect(h.changes()).toBe(beforeNavigation);
+    expect(h.changeKinds()).toEqual(["status"]);
+    expect(h.runtime.status).toMatchObject({ dirty: false, canUndo: false, canRedo: false });
   });
 
   it("rejects Mermaid configuration previews without loading a script or changing raw", async () => {

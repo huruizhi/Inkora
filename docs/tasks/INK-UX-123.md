@@ -17,9 +17,9 @@
 
 ## 修改文件
 
-生产：`AppDelegate.swift`、新增`EditorCommandMenus.swift`、`BridgeProtocol.swift`、`EditorBridge.swift`、`EditorViewController.swift`；Web `bridge.ts`、`main.ts`、`style.css`。
+生产：`AppDelegate.swift`、新增`EditorCommandMenus.swift`、`BridgeProtocol.swift`、`EditorBridge.swift`、`EditorViewController.swift`；Web `bridge.ts`、`main.ts`、`style.css`及`editor-runtime.ts`稳定封口的一条status通知。
 
-测试：`main.test.ts`、`BridgeProtocolTests.swift`、`EditorWebViewTests.swift`。
+测试：`main.test.ts`、`BridgeProtocolTests.swift`、`EditorWebViewTests.swift`及`technical-preview-runtime.test.ts`。
 
 文档：`bridge-protocol.md`、第二轮计划确认记录、新增`quiet-chrome.md`与本任务。无依赖、lockfile、entitlement、保存层、schema或parser修改。
 
@@ -40,7 +40,7 @@
 两轴审查、最终门禁及提交SHA在本分支结算后追加；临时依赖均借用主仓锁定目录，没有安装包或修改依赖。
 
 
-## 最终门禁（2026-11-10）
+## 首稿门禁（后续补正结算见末段）
 
 - `make test-editor`：39文件，767/767通过；最终Web代码含raw caret拒绝，之后未再改Web实现。
 - `make test-bridge test-native`：exit0；Bridge Web14/14、Swift16/16；Native192 total / 184 passed / 0 failed / 8既有性能skip。两个xcresult摘要均为Passed。
@@ -59,3 +59,25 @@
 - 快捷键冲突核对发现⌘⌥1/2已用于标题1/2；模式入口改为⌘⌥⇧1/2，保留原格式命令。Native菜单测试同步核对修饰键，不声称物理键盘已验。
 
 - bd8b9eb限定后验又发现P2：视觉composition取消且无内容变化时，24ms稳定封口没有status通知，资格可能停在空数组。根新增main公共回归先红（取消后仍[]），仅在runtime真实settle的无内容分支补status通知后转绿；不增加revision/history、不改变既有IME分组/quiet window。NativeWK补synthetic取消后缓存自动恢复控制，不冒称物理输入。
+
+- 最后全量暴露一条旧脚注用例把任何runtime回调都等同内容变化。现增加明确status封口后，该处期望按新契约改为恰好一条status，并保留导航前后回调数量不变、原文/选区/dirty/Undo/Redo不变的强断言；其余预览零回调用例未改。不删除或绕过导航无副作用覆盖。
+
+
+## 最终结算
+
+最终`make lint test-editor test-bridge test-native build`整体exit0：
+
+| 项目 | 实跑结果 |
+| --- | --- |
+| 严格Swift格式与TypeScript | PASS |
+| editor（不含Bridge） | 39文件，769/769 |
+| Bridge Web / Swift | 14/14、16/16 |
+| Native | 192 total，184 passed、0 failed、8既有性能skip；xcresult Passed |
+| production editor / Debug App | PASS，JS932.48kB/gzip298.68kB，既有chunk/actor警告保留 |
+| 文档链接/范围/diff检查 | 交付前核对 |
+
+两轴报告见[INK-UX-123复核](../reviews/INK-UX-123-native-chrome.md)：Standards原1项judgement已修，最终0 hard；Spec两项P2均经独立固定SHA后验关闭，最终无未关闭finding。审查者没有冒称根的全量测试结果。
+
+最后生产补正`a4bb8359873d341c34ac0e91c0684239904ca80e`；之后只按新status契约维护脚注测试与整理文档，不再改生产实现。完整分支提交以git log为准，最终提交/远端一致性在交付回复回报。临时.tools与editor/node_modules只移除任务内借用symlink，主仓真实依赖不动；无需安装。
+
+本片是非桌面验收完成候选，不表示Typora整体一致。未替换当前安装App、未合并main或发布；改后人工视觉、系统面板及真实键盘路由保持未验。接下来用两档实际阅读对照决定默认宽度，再开展下一片排版节奏优化。
