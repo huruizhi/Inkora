@@ -19,6 +19,13 @@
 7. 点击搜索结果应定位实际命中；原始UTF-16/BOM/CRLF及文件版本须有位置依据。文件已变化时拒绝旧位置并刷新；不可映射的保护片段/定界符要明确提供源码定位选择，不猜位置、不偷偷改正文。
 8. 正文与侧栏搜索分离。侧栏查询持焦时Native文档Undo/Redo不得越过输入框改正文；正文/查找/链接/侧栏composition均须守卫导航、折叠、选目录与模式/资源操作。纯UI变化不改raw/revision/dirty/history/future/保存点。
 
+### 用户追加的四项精确交互（必须交付）
+
+9. 右上角工具与当前文档文件名在同一标题行，平时隐藏，不再常驻在正文上方另一行。应用中应对齐真实窗口标题行；独立Web环境也提供一致的标题行，不能单纯向上挪像素后挡住系统窗口控件。文档标题不是正文H1。
+10. 鼠标移入标题行工具区域立即显示；移出后严格等待5000ms再隐藏，重新进入取消旧计时器。工具/统计菜单被操作、键盘focus位于其中或相关输入composition进行中时保持可用，结束后再从新离开时刻计时；destroy/reload不留timer。不得要求用户重复物理IME。
+11. 统计是可选择的显示口径：阅读时间、行数、词数（沿用既有写作单元定义）、字符数。下拉项显示对应当前数值，当前项有选中标记；选择后右上角摘要切换到该项，菜单收起。选择不改变正文、保存点、revision、history或选区；使用可访问的选择语义和键盘操作，不把静态统计浮层当作完成。
+12. 展开侧栏分两阶段：正文工作区先向右让出空间，再显示侧栏内容；收起有相应平滑过渡，支持快速反复切换、resize、窄窗和prefers-reduced-motion。动画只能改变布局/呈现，不能重挂载EditorView、写入编辑事务或令光标选区跳动；正常完成与取消均恢复正确最终布局。
+
 ## 当前交接状态（未完成，不可合并）
 
 生产基线为`main@30e2f5f`；管理者工作树`.worktrees/INK-UX-129`。当前产品草稿有`SidebarCatalog`、`SidebarWorkspaceBridge`、`SidebarLibrary`、`SidebarConnection`及main/NSDocument初始接线；这些不是已验收实现，Agent应改善、替换或移除缺陷草稿。
@@ -51,9 +58,13 @@
 
 公开`DocumentAnalysisPanel`构造器第五参数接收`SidebarLibraryAction`；保留`isInputComposing/ownsInputFocus/updateWorkspace/updateFileSearch/showWorkspaceError`。跨进程回复按当前request/context/catalog/文档绑定校验。新增当前文档卡片、分组、定位意图等字段应向A/C报告并以可选兼容扩展过渡。
 
+B同时负责统计选择菜单和两阶段侧栏动画的DOM/CSS状态实现，以及5000ms显隐状态模块/测试（可新增`editor/src/sidebar-chrome.ts`等同域模块）。真实窗口标题行的容器/Native接线由C负责；B提供小而稳定的显隐/选择接口，不能自行修改C的main/Native文件。
+
 ### C：INK-UX-132 生产接线与文档导航
 
 拥有`editor/src/main.ts`及`main.test.ts`、`app/Sources/EditorViewController.swift`、`InkoraDocument.swift`、`tests/InkoraTests/EditorWebViewTests.swift`；必要时可新增导航协调器/测试并为准确结果定位调整`editor-runtime.ts`及对应测试，必须保持Markdown权威和既有公开行为。负责当前文档与侧栏focus/composition、加载代际、Native窗口/保存关闭回路、搜索结果准确定位，不能改A/B文件。
+
+C同时负责标题行真实对齐与当前文件名、Native/独立Web一致的工具容器接线；与B协调5000ms显隐、统计选择及动画接口，禁止用伪Native调试入口或全局DOM重建来实现。优先先修已知TypeScript可选链错误，单独提交并通知管理者，解除其他Agent的编译依赖。
 
 ## 验证、提交与禁令
 
