@@ -25,3 +25,5 @@
 构建限制：Vite既有大chunk告警、Swift actor isolation/Any?警告、未设置App category及hdiutil弃用提示仍在原日志。Xcode有一行“command failed with exit code 0 but produced no further output / SwiftCompile arm64”诊断，但原始dry-run最终exit0、双架构与各包结构检查成功；保留这一异常，不据此虚构编译无告警或修改构建参数。
 
 仅借用自己创建的 .tools 与 editor/node_modules symlink，结算时unlink；构建、候选、补充检查解包目录和日志保留待根独立审查和双备份。没有新tag/PR/Issue/Release/draft或公开资产，没有安装/强退/启动Inkora。
+
+根复查后核读当前 toolbar/main，修正发行文案：统计位于标题行右上，查找替换通过快捷键/原生菜单按需进入；明确图片目标或位置失效关闭未应用输入、跨节点草稿恢复未实现。此纯文档修正不重建候选。
