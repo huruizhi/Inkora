@@ -6,6 +6,7 @@ div#editor .inkora-table-shell > .inkora-table-toolbar {
 }
 div#editor .inkora-table-menu {
   position: absolute;
+  box-sizing: border-box;
   top: 100%;
   right: 0;
   z-index: 3;

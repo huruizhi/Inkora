@@ -225,17 +225,49 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
     let alive = true;
     const close = () => {
       binding = null;
+      observer.disconnect();
+      document.removeEventListener("pointerdown", outside, true);
+      view.dom.removeEventListener("compositionstart", invalidate, true);
+      view.dom.ownerDocument.defaultView!.removeEventListener("resize", invalidate);
+      document.removeEventListener("scroll", scrolled, true);
       menu.hidden = true;
       more.setAttribute("aria-expanded", "false");
     };
     const valid = () => alive && dom.isConnected && !view.isDestroyed &&
       !options.isComposing() && !view.composing && view.editable;
+    const focusItem = (item: HTMLButtonElement | undefined) => {
+      if (!item) return;
+      item.focus({ preventScroll: true });
+      const bounds = menu.getBoundingClientRect();
+      const target = item.getBoundingClientRect();
+      const top = bounds.top + menu.clientTop + 4;
+      const bottom = bounds.top + menu.clientTop + menu.clientHeight - 4;
+      if (target.top < top) menu.scrollTop += target.top - top;
+      else if (target.bottom > bottom) menu.scrollTop += target.bottom - bottom;
+    };
     const open = () => {
       if (!valid()) return;
       binding = view.state;
       menu.hidden = false;
       more.setAttribute("aria-expanded", "true");
-      menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+      const ownerWindow = view.dom.ownerDocument.defaultView!;
+      let bottom = ownerWindow.innerHeight;
+      // The editor can be nested in other clipping surfaces. Keep the menu
+      // below its toolbar and scroll it locally rather than moving the page.
+      for (let ancestor: HTMLElement | null = toolbar.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        if (ownerWindow.getComputedStyle(ancestor).overflowY !== "visible") {
+          const rect = ancestor.getBoundingClientRect();
+          bottom = Math.min(bottom, rect.top + ancestor.clientTop + ancestor.clientHeight);
+        }
+      }
+      const available = Math.max(0, bottom - menu.getBoundingClientRect().top - 4);
+      menu.style.maxHeight = `${Math.min(320, available)}px`;
+      observer.observe(view.dom, { subtree: true, childList: true, attributes: true });
+      document.addEventListener("pointerdown", outside, true);
+      view.dom.addEventListener("compositionstart", invalidate, true);
+      ownerWindow.addEventListener("resize", invalidate);
+      document.addEventListener("scroll", scrolled, true);
+      focusItem(menu.querySelector<HTMLButtonElement>("button:not(:disabled)") ?? undefined);
     };
     more.addEventListener("pointerdown", event => event.preventDefault());
     more.addEventListener("click", () => menu.hidden ? open() : close());
@@ -251,8 +283,8 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
       const key = event.key;
       if (["ArrowDown", "ArrowUp", "Home", "End"].includes(key)) {
         event.preventDefault();
-        items[key === "Home" ? 0 : key === "End" ? items.length - 1 :
-          (index + (key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+        focusItem(items[key === "Home" ? 0 : key === "End" ? items.length - 1 :
+          (index + (key === "ArrowDown" ? 1 : -1) + items.length) % items.length]);
       }
       if (key === "Tab") close();
     });
@@ -263,14 +295,14 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
       if (!toolbar.contains(event.relatedTarget as Node | null)) close();
     });
     const invalidate = () => close();
-    document.addEventListener("pointerdown", outside, true);
-    view.dom.addEventListener("compositionstart", invalidate, true);
+    const scrolled = (event: Event) => {
+      if (event.target !== menu && !menu.contains(event.target as Node)) close();
+    };
     // Any accepted selection/content transition invalidates the captured intent,
     // including a move away and back before the next click.
     const observer = new view.dom.ownerDocument.defaultView!.MutationObserver(() => {
       if (binding && (binding !== view.state || !valid())) close();
     });
-    observer.observe(view.dom, { subtree: true, childList: true, attributes: true });
     let deleteColumnButton: HTMLButtonElement | undefined;
     for (const [label, command] of commands) {
       const button = commandButton(label, command);
@@ -312,9 +344,6 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
       destroy() {
         alive = false;
         close();
-        observer.disconnect();
-        document.removeEventListener("pointerdown", outside, true);
-        view.dom.removeEventListener("compositionstart", invalidate, true);
       },
       ignoreMutation(mutation) {
         return mutation.type !== "selection" && toolbar.contains(mutation.target);

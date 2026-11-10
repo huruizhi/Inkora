@@ -1,0 +1,9 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-138-context-table-menu/editor
+
+
+ Test Files  4 passed (4)
+      Tests  88 passed (88)
+   Start at  01:17:56
+   Duration  939ms (import 54%, tests 39%, transform 7%)
+
