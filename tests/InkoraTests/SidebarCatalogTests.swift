@@ -193,4 +193,35 @@ final class SidebarCatalogTests: XCTestCase {
     XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - start, 1)
   }
 
+  @MainActor
+  func testDescriptorNavigationRevalidationRejectsReplacedOrDeletedTargets() async throws {
+    let root = try folder()
+    let sub = root.appendingPathComponent("sub")
+    try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+    let url = sub.appendingPathComponent("a.md")
+    let raw = Data("\u{FEFF}alpha\r\n".utf8)
+    try raw.write(to: url)
+    let catalog = try SidebarCatalog.scan(folder: root)
+    let hit = try XCTUnwrap(catalog.search("alpha", options: .init()).hits.first)
+    let file = try catalog.openFile(id: hit.fileID, catalogID: catalog.id, hit: hit)
+    let fresh = try file.revalidatedForNavigation()
+    XCTAssertEqual(fresh.data, raw)
+    XCTAssertEqual(fresh.location?.utf16Location, 1)
+    // Equal bytes at a different inode are not the original file capability.
+    try raw.write(to: url, options: .atomic)
+    XCTAssertThrowsError(try fresh.revalidatedForNavigation())
+    let next = try SidebarCatalog.scan(folder: root)
+    let nextFile = try next.openFile(id: next.files[0].id, catalogID: next.id)
+    try FileManager.default.removeItem(at: url)
+    XCTAssertThrowsError(try nextFile.revalidatedForNavigation())
+    let outside = try folder()
+    try raw.write(to: outside.appendingPathComponent("a.md"))
+    try FileManager.default.removeItem(at: sub)
+    try FileManager.default.createSymbolicLink(at: sub, withDestinationURL: outside)
+    XCTAssertThrowsError(try nextFile.revalidatedForNavigation())
+    let unsigned = SidebarCatalog.OpenedFile(
+      url: url, data: raw, version: file.version, location: nil)
+    XCTAssertThrowsError(try unsigned.revalidatedForNavigation())
+  }
+
 }

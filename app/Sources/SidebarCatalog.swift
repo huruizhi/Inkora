@@ -96,15 +96,40 @@ struct SidebarCatalog: Sendable {
     let version: String
     let location: SidebarSearchLocation?
     let modified: Date?
+    private let revalidation: (@MainActor @Sendable () throws -> OpenedFile)?
+
+    /// Reopens only the original catalog capability. URL/data are not a durable
+    /// navigation grant; callers must use this again after every asynchronous gate.
+    @MainActor
+    func revalidatedForNavigation() throws -> OpenedFile {
+      guard let revalidation else { throw SidebarCatalogError.staleFile }
+      return try revalidation()
+    }
+
+    func validatingNavigation(
+      _ validate: @escaping @MainActor @Sendable () throws -> Void
+    ) -> OpenedFile {
+      OpenedFile(
+        url: url, data: data, version: version, location: location, modified: modified,
+        revalidation: {
+          try validate()
+          let fresh = try self.revalidatedForNavigation()
+          // A fresh result must keep the request guard for a later await boundary.
+          return fresh.validatingNavigation(validate)
+        })
+    }
 
     init(
-      url: URL, data: Data, version: String, location: SidebarSearchLocation?, modified: Date? = nil
+      url: URL, data: Data, version: String, location: SidebarSearchLocation?,
+      modified: Date? = nil,
+      revalidation: (@MainActor @Sendable () throws -> OpenedFile)? = nil
     ) {
       self.url = url
       self.data = data
       self.version = version
       self.location = location
       self.modified = modified
+      self.revalidation = revalidation
     }
   }
 
@@ -296,7 +321,8 @@ struct SidebarCatalog: Sendable {
       version: entry.version, location: location,
       modified: Date(
         timeIntervalSince1970: Double(read.metadata.st_mtimespec.tv_sec)
-          + Double(read.metadata.st_mtimespec.tv_nsec) / 1_000_000_000))
+          + Double(read.metadata.st_mtimespec.tv_nsec) / 1_000_000_000),
+      revalidation: { try self.openFile(id: fileID, catalogID: catalogID, hit: hit) })
   }
 
   static func version(_ data: Data) -> String {

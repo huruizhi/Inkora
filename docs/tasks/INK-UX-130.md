@@ -42,3 +42,25 @@
 新增 `testTimerReleasedOffMainInvalidatesOnInstallationThread`：真实 RunLoop Timer 在主线程安装，后台 Task 显式取消并释放最后 owner；核验后台执行、owner 真正销毁、实际取消回调在主线程、Timer.isValid 为 false、重复取消仅一次。等待有上限，无 GUI/WebView 实例或 App 启动。
 
 实跑 `tests/InkoraTests/SidebarHostless.sh`：15/15 通过（9 Catalog + 6 Bridge）；`xcrun swift-format lint --strict app/Sources/SidebarWorkspaceBridge.swift tests/InkoraTests/SidebarWorkspaceBridgeTests.swift` 与 `git diff --check` 均通过。未跑全量 Native、GUI、Release 或 CI。证据：[安装线程专项](../evidence/INK-UX-130/timer-installation-thread-green.txt)。
+
+## REV-134 补正：目录完成与转交前重新验证
+
+固定组合参考 `140438ce321776ee3d4641f4cc4c700dc6b81488` 的两个 A 源文件与本分支补正前一致；仅阅读 REV-134 报告和组合 C 接线，未吸收/编辑 C/B 产品代码。
+
+通过公共 `receive/current/replySink` 重现真实问题：ready 后同一 MainActor turn 将 revision 0→1，scan 只留下 ready；search 后同样递增 revision，收不到 search。新回归在修改生产前有 4 个失败断言，见 [red](../evidence/INK-UX-130/typing-completion-red.txt)，保留原断言并修复后通过。
+
+目录 scan/search 的异步完成现在按 document/context 与各自 request 代际（search 另按 catalog）校验，不再比较正文 revision；目录选择返回同样不依赖正文 revision。入口接受不高于当前 revision 的目录请求，未来 revision 仍拒绝；open 分支继续要求即时 revision 完全一致，mayOpen 后仍比较完整绑定。保留跨 doc、ready/load context、catalog、查询和导航的拒绝边界。恢复后的 scan 会安装 watcher，普通 typing 后无需手工补救；回归还验证 queued 旧 revision 的刷新可完成。
+
+给 C 的最小受限接口为 `@MainActor OpenedFile.revalidatedForNavigation() throws -> OpenedFile`：
+
+- Catalog.openFile 签发 closure 只重开该 catalog/file/hit 的 descriptor-rooted capability，重验 root、inode、exact-byte SHA 与命中位置；返回同一次新读取的 data/modified。删除、替换、符号链接、原 mtime 被恢复的内容修改均拒绝。
+- Bridge 在签发对象外包 document/context/catalog/navigation generation/original revision/access identity 校验；closure 持有 lease，弱持 Bridge。重新验证所得 fresh 对象仍带相同导航校验，经过后续 await 不能退化为长久可信 bytes。
+- C 必须在 review 返回后、目标 snapshot 等异步阶段返回后、真正转交前调用，并消费 fresh 数据。仅手工构造的 OpenedFile 默认无验证 capability，方法保守拒绝；不能自行按 URL 重读代替。
+
+实跑验证：
+
+- `tests/InkoraTests/SidebarHostless.sh`：21/21 通过（10 Catalog + 11 Bridge）。新增同文 typing scan/watch、typing search、跨 doc scan/search、导航票据和 descriptor 重验回归；既有旧 context/search/open 回包测试保留。无 GUI/App/WebView 实例、面板或依赖安装。
+- `xcrun swiftc -swift-version 6 -typecheck app/Sources/*.swift`：退出 0，既有 Document 警告见 [typecheck](../evidence/INK-UX-130/ticket-app-typecheck.txt)。这是本分支源级验证，不冒称组合 C 的构建。
+- 四个 A Swift 文件的 `xcrun swift-format lint --strict` 与 `git diff --check`：通过。
+
+[最终专项证据](../evidence/INK-UX-130/typing-ticket-green.txt)。仍由 C 接口接线、根会话组合后验收关闭等待中的目标外改/导航失效；本任务不启动窗口、不跑全量 Native/Release/CI。工作树保留。

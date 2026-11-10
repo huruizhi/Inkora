@@ -263,4 +263,192 @@ final class SidebarWorkspaceBridgeTests: XCTestCase {
     XCTAssertEqual(invalidations, 1)
   }
 
+  func testSameDocumentTypingDoesNotLoseScanCompletionOrWatcher() async throws {
+    let root = try folder()
+    let url = root.appendingPathComponent("a.md")
+    try Data("alpha".utf8).write(to: url)
+    var revision = 0
+    var replies: [[String: Any]] = []
+    let bridge = SidebarWorkspaceBridge(
+      current: { .init(documentID: "document", revision: revision) },
+      chooseFolder: { _ in }, mayOpen: { _, done in done(true) }, openFile: { _, _, _ in },
+      replySink: { replies.append(self.parse($0)) })
+    bridge.useFolder(.init(root))
+    bridge.receive(request("ready"), trustedMainFrame: true)
+    // Completion cannot run until this main-actor turn yields.
+    revision = 1
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "catalog" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    XCTAssertEqual(replies.last?["kind"] as? String, "catalog")
+    try Data("changed".utf8).write(to: url)
+    bridge.pollChanges()
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "invalidated" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    XCTAssertEqual(replies.last?["kind"] as? String, "invalidated")
+    let context = try XCTUnwrap(replies.first?["contextID"] as? String)
+    // A directory request already queued at revision 0 remains valid at revision 1.
+    bridge.receive(request("refresh", context: context), trustedMainFrame: true)
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "catalog" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    XCTAssertEqual(replies.last?["kind"] as? String, "catalog")
+  }
+
+  func testSameDocumentTypingDoesNotLoseSearchCompletion() async throws {
+    let root = try folder()
+    try Data("alpha".utf8).write(to: root.appendingPathComponent("a.md"))
+    var revision = 0
+    var replies: [[String: Any]] = []
+    let bridge = SidebarWorkspaceBridge(
+      current: { .init(documentID: "document", revision: revision) },
+      chooseFolder: { _ in }, mayOpen: { _, done in done(true) }, openFile: { _, _, _ in },
+      replySink: { replies.append(self.parse($0)) })
+    bridge.useFolder(.init(root))
+    bridge.receive(request("ready"), trustedMainFrame: true)
+    let context = try XCTUnwrap(replies.first?["contextID"] as? String)
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "catalog" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    let catalog = try XCTUnwrap(replies.last?["catalog"] as? [String: Any])
+    bridge.receive(
+      request(
+        "search", context: context,
+        extra: [
+          "catalogID": catalog["id"]!,
+          "query": "alpha",
+          "options": ["caseSensitive": false, "wholeWord": false, "regularExpression": false],
+        ]), trustedMainFrame: true)
+    revision = 1
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "search" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    XCTAssertEqual(replies.last?["kind"] as? String, "search")
+    XCTAssertEqual(
+      ((replies.last?["result"] as? [String: Any])?["hits"] as? [[String: Any]])?.count, 1)
+  }
+
+  func testCrossDocumentScanCompletionCannotReply() async throws {
+    let root = try folder()
+    try Data("alpha".utf8).write(to: root.appendingPathComponent("a.md"))
+    var documentID = "document"
+    var replies: [[String: Any]] = []
+    let bridge = SidebarWorkspaceBridge(
+      current: { .init(documentID: documentID, revision: 0) },
+      chooseFolder: { _ in }, mayOpen: { _, done in done(true) }, openFile: { _, _, _ in },
+      replySink: { replies.append(self.parse($0)) })
+    bridge.useFolder(.init(root))
+    bridge.receive(request("ready"), trustedMainFrame: true)
+    documentID = "other-document"
+    try await Task.sleep(for: .milliseconds(100))
+    XCTAssertEqual(replies.map { $0["kind"] as? String }, ["ready"])
+  }
+
+  func testNavigationTicketRechecksBytesAndEveryRequestBoundary() async throws {
+    let root = try folder()
+    let url = root.appendingPathComponent("a.md")
+    let bytes = Data("alpha".utf8)
+    try bytes.write(to: url)
+    var revision = 0
+    var documentID = "document"
+    var replies: [[String: Any]] = []
+    var opened: SidebarCatalog.OpenedFile?
+    let bridge = SidebarWorkspaceBridge(
+      current: { .init(documentID: documentID, revision: revision) },
+      chooseFolder: { _ in }, mayOpen: { _, done in done(true) },
+      openFile: { _, _, _ in XCTFail("unverified fallback") },
+      openVerifiedFile: { file, _, done in
+        opened = file
+        done(nil)
+      },
+      replySink: { replies.append(self.parse($0)) })
+    bridge.useFolder(.init(root))
+    bridge.receive(request("ready"), trustedMainFrame: true)
+    let context = try XCTUnwrap(replies.first?["contextID"] as? String)
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "catalog" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    let catalog = try XCTUnwrap(replies.last?["catalog"] as? [String: Any])
+    let catalogID = try XCTUnwrap(catalog["id"] as? String)
+    let fileID = try XCTUnwrap((catalog["files"] as? [[String: Any]])?.first?["id"] as? String)
+    func openTicket() throws -> SidebarCatalog.OpenedFile {
+      opened = nil
+      bridge.receive(
+        request(
+          "open", context: context,
+          extra: ["revision": revision, "catalogID": catalogID, "fileID": fileID]),
+        trustedMainFrame: true)
+      return try XCTUnwrap(opened)
+    }
+    let first = try openTicket()
+    let fresh = try first.revalidatedForNavigation()
+    XCTAssertEqual(fresh.data, bytes)
+    // Preserve the original mtime: exact content/version must still detect changes.
+    let modified = try XCTUnwrap(first.modified)
+    try Data("other".utf8).write(to: url)
+    try FileManager.default.setAttributes([.modificationDate: modified], ofItemAtPath: url.path)
+    XCTAssertThrowsError(try fresh.revalidatedForNavigation())
+    try bytes.write(to: url)
+    let second = try openTicket()
+    let refreshed = try second.revalidatedForNavigation()
+    revision = 1
+    XCTAssertThrowsError(try refreshed.revalidatedForNavigation())
+    let third = try openTicket()
+    let fourth = try openTicket()
+    XCTAssertThrowsError(try third.revalidatedForNavigation())
+    XCTAssertNoThrow(try fourth.revalidatedForNavigation())
+    documentID = "other"
+    XCTAssertThrowsError(try fourth.revalidatedForNavigation())
+    documentID = "document"
+    let beforeRefresh = try openTicket()
+    bridge.receive(
+      request("refresh", context: context, extra: ["revision": revision]), trustedMainFrame: true)
+    XCTAssertThrowsError(try beforeRefresh.revalidatedForNavigation())
+    for _ in 0..<100 {
+      if (replies.last?["catalog"] as? [String: Any])?["id"] as? String != catalogID { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    // A load/ready rotates context even if the document identity stays the same.
+    bridge.receive(request("ready", extra: ["revision": revision]), trustedMainFrame: true)
+    XCTAssertThrowsError(try fourth.revalidatedForNavigation())
+  }
+
+  func testCrossDocumentSearchCompletionCannotReply() async throws {
+    let root = try folder()
+    try Data("alpha".utf8).write(to: root.appendingPathComponent("a.md"))
+    var documentID = "document"
+    var replies: [[String: Any]] = []
+    let bridge = SidebarWorkspaceBridge(
+      current: { .init(documentID: documentID, revision: 0) },
+      chooseFolder: { _ in }, mayOpen: { _, done in done(true) }, openFile: { _, _, _ in },
+      replySink: { replies.append(self.parse($0)) })
+    bridge.useFolder(.init(root))
+    bridge.receive(request("ready"), trustedMainFrame: true)
+    let context = try XCTUnwrap(replies.first?["contextID"] as? String)
+    for _ in 0..<100 {
+      if replies.last?["kind"] as? String == "catalog" { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    let catalog = try XCTUnwrap(replies.last?["catalog"] as? [String: Any])
+    let count = replies.count
+    bridge.receive(
+      request(
+        "search", context: context,
+        extra: [
+          "catalogID": catalog["id"]!,
+          "query": "alpha",
+          "options": ["caseSensitive": false, "wholeWord": false, "regularExpression": false],
+        ]), trustedMainFrame: true)
+    documentID = "other"
+    try await Task.sleep(for: .milliseconds(100))
+    XCTAssertEqual(replies.count, count)
+  }
+
 }
