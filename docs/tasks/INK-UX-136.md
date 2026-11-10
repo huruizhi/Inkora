@@ -27,3 +27,11 @@ A的Luna medium连续两轮仅阅读规范和现有脚本后结束，实际工�
 复制137最终无候选注入harness到管理者自身build目录，用组合生产bundle重新编译并运行真实不可见WK，8组宽窄/900与760配置/深浅色均通过。独立读取JSON核对：h1→p为17px、h2→h3为21.25px；raw/revision/dirty与实际EditorView DOM身份保持，页面与editor无横向溢出。含17px内部滚动条的实际内容列分别883/743px，480px视口为415px；不把配置宽度冒称实际正文宽度。命令、JSON、编译与运行日志保留于管理者`artifacts/INK-UX-136`及`build/artifacts/INK-UX-137`。该证据不证明屏幕paint或对Typora像素一致。
 
 138顶部菜单几何证据尚不足以覆盖编辑区底边裁切，已由原实现Agent有限补测剩余40–80px、360px横滚及最后命令真实可达性；在取得结果前不固定最终候选，也不重复全量门禁。
+
+## 固定候选与最终本地门禁
+
+138底部裁切补正`bf82294d1943749b7fe0f78d70ee8a9567cb8d4b`已接入，固定产品候选`ce4dd2ff0487ead9d0970f21b81d9d6b84bae009`。按Matt两轴流程创建全新Standards 139和Spec 140独立审查，基线均为PR #87合并点666ef21；报告返回前不预填通过。
+
+管理者自跑`make lint test-non-ui release-bundle-check`退出0：editor 798/798，Web Bridge 16/16，Swift Bridge xcresult 16/16，Native xcresult Passed、214通过/0失败/8既有性能跳过；离线Release bundle smoke通过。日志保留既有InkoraDocument actor-isolation warning及伴随的“command failed with exit code 0”诊断、Vite大chunk提示；最终命令状态与实际xcresult均已核对。未运行UI或full-bench。
+
+管理者复制138最小harness，用组合源重新打包并在不可见WK运行：8种宽/高/底部空间组合，各9项焦点与中心命中全部通过，正文、选区、状态、发布数不变，editor不额外滚动。工具可见态仍按作者约束注入，不声称物理焦点或paint。首次Vite误传不支持的--root、Swift6 harness函数缺MainActor而未启动，完整日志保留；只修正自有临时harness启动及actor注解后通过，产品零改动。最终日志`artifacts/INK-UX-136/menu-geometry-final.log`与harness及首轮错误日志一并保留。
