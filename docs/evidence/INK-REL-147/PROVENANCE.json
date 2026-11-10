@@ -1,0 +1,127 @@
+{
+  "status": "LOCAL CANDIDATE ONLY - NOT PUBLICATION AUTHORIZATION",
+  "source_commit": "a5267f1325753842a868263ec26ae4b055f760b2",
+  "baseline": "2f7a9a226769bf9d34d3266c374ecb8764f588ea",
+  "identities": {
+    "app": "ab263fb180b61de0b399aa2f625e97fee5faf983",
+    "editor": "7bee7c1f70c595e3cfba8dad8d149dc49dad1bcb",
+    "project.yml": "15fc617a6dcd890e2019eff3f6a9a1538ed85b27"
+  },
+  "assets": {
+    "Inkora-0.1.0-beta.2-CANDIDATE-unsigned-universal.zip": {
+      "sha256": "f93d0d5d8355c3cf74f6577440ced348d28cf0170006bad87abda8cd2c677530",
+      "bytes": 2495436,
+      "source": "artifacts/release/dry-run/Inkora-DRY-RUN.zip",
+      "cmp": true
+    },
+    "Inkora-0.1.0-beta.2-CANDIDATE-unsigned-universal.dmg": {
+      "sha256": "73d4f2cab6356638eb35ae39cf81c5f28235429a656d0dae3482f6135729c5a5",
+      "bytes": 3011064,
+      "source": "artifacts/release/dry-run/Inkora-DRY-RUN.dmg",
+      "cmp": true
+    }
+  },
+  "checks": {
+    "archive": {
+      "versions": {
+        "CFBundleIdentifier": "com.huruizhi.Inkora",
+        "CFBundleShortVersionString": "0.1.0",
+        "CFBundleVersion": "4",
+        "LSMinimumSystemVersion": "14.0"
+      },
+      "architectures": [
+        "x86_64",
+        "arm64"
+      ],
+      "binary_sha256": "19997041af726fd600d0735ba3d8488ef7041fd39fbe8d6c27a6041436c67382",
+      "signature": "archive built with CODE_SIGNING_ALLOWED=NO; strict signed validation applies to exported copies"
+    },
+    "export": {
+      "versions": {
+        "CFBundleIdentifier": "com.huruizhi.Inkora",
+        "CFBundleShortVersionString": "0.1.0",
+        "CFBundleVersion": "4",
+        "LSMinimumSystemVersion": "14.0"
+      },
+      "architectures": [
+        "x86_64",
+        "arm64"
+      ],
+      "binary_sha256": "290080d1fc55b864593635f5fa083a3afdf6916d0fb261a4d271096b8f9de909",
+      "strict_codesign": true,
+      "signature": "ad-hoc/runtime",
+      "entitlements_exact": true,
+      "offline_bundle": true
+    },
+    "zip": {
+      "versions": {
+        "CFBundleIdentifier": "com.huruizhi.Inkora",
+        "CFBundleShortVersionString": "0.1.0",
+        "CFBundleVersion": "4",
+        "LSMinimumSystemVersion": "14.0"
+      },
+      "architectures": [
+        "x86_64",
+        "arm64"
+      ],
+      "binary_sha256": "290080d1fc55b864593635f5fa083a3afdf6916d0fb261a4d271096b8f9de909",
+      "strict_codesign": true,
+      "signature": "ad-hoc/runtime",
+      "entitlements_exact": true,
+      "offline_bundle": true
+    },
+    "dmg": {
+      "versions": {
+        "CFBundleIdentifier": "com.huruizhi.Inkora",
+        "CFBundleShortVersionString": "0.1.0",
+        "CFBundleVersion": "4",
+        "LSMinimumSystemVersion": "14.0"
+      },
+      "architectures": [
+        "x86_64",
+        "arm64"
+      ],
+      "binary_sha256": "290080d1fc55b864593635f5fa083a3afdf6916d0fb261a4d271096b8f9de909",
+      "strict_codesign": true,
+      "signature": "ad-hoc/runtime",
+      "entitlements_exact": true,
+      "offline_bundle": true
+    }
+  },
+  "dmg_detached": true,
+  "system": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2\nBuildVersion:\t\t26B123\n",
+  "xcode": "Xcode 27.2\nBuild version 27B52\n",
+  "node": "v26.13.0",
+  "pnpm": "11.25.0",
+  "commands": {
+    "make release-dry-run": 0,
+    "make lint test-ci": 0,
+    "env -u INKORA_SIGN_IDENTITY -u INKORA_TEAM_ID -u INKORA_NOTARY_PROFILE make release": {
+      "make_exit": 2,
+      "script_exit": 78,
+      "expected": "fail closed"
+    },
+    "lipo -archs": "archive/export/zip/dmg passed",
+    "codesign --verify --deep --strict": "export/zip/dmg passed",
+    "metadata exact entitlements": "export/zip/dmg passed",
+    "make release-bundle-check RELEASE_APP_BUNDLE=<existing>": "export/zip/dmg passed",
+    "ditto -x -k": "passed",
+    "hdiutil attach -readonly -nobrowse -noautoopen; detach": "passed",
+    "cmp original copied assets": "passed"
+  },
+  "valid_signing_identity_count": 0,
+  "developer_id_count": 0,
+  "ci": "pending - manager settlement",
+  "not_verified": [
+    "Developer ID",
+    "notarization",
+    "Gatekeeper/quarantine",
+    "clean user",
+    "real paint",
+    "manual VoiceOver",
+    "real system authorization",
+    "macOS14 dedicated acceptance",
+    "physical IME repeat"
+  ],
+  "release_log_sha256": "1f586f694e3c4779b5b7c69276862d8afc73727e61c1b0368a8986367656edfb"
+}
