@@ -16,6 +16,7 @@ import {
   type RuntimeChangeKind,
 } from "./editor-runtime";
 import { DocumentAnalysisPanel } from "./document-analysis-panel";
+import { SidebarConnection } from "./sidebar-connection";
 import { sameSearchResult } from "./visual-search";
 import {
   SEARCH_MAX_RESULTS,
@@ -43,9 +44,11 @@ declare global {
     inkora: {
       receive(serialized: string): void;
     };
+    inkoraSidebar: { receive(serialized: string): void };
     webkit?: {
       messageHandlers?: {
         inkora?: { postMessage(serialized: string): void };
+        inkoraSidebar?: { postMessage(serialized: string): void };
       };
     };
 }
@@ -297,7 +300,7 @@ function updateModeControls(): void {
 
 function availableEditorCommands(): EditorCommand[] {
   const current = runtime;
-  if (!current || current.composing || searchPanel.isInputComposing ||
+  if (!current || current.composing || searchPanel.isInputComposing || panel.isInputComposing ||
       (activeLinkEditor && composingLinkEditors.has(activeLinkEditor))) return [];
   const commands: EditorCommand[] = ["find", "toggleOutline", "readingWidth760", "readingWidth900"];
   if (current.mode === "visual") commands.push("sourceMode");
@@ -308,7 +311,7 @@ function availableEditorCommands(): EditorCommand[] {
       commands.push("applySource");
     }
   }
-  if (searchPanel.ownsFocus || activeLinkEditor?.contains(document.activeElement)) return commands;
+  if (searchPanel.ownsFocus || panel.ownsInputFocus || activeLinkEditor?.contains(document.activeElement)) return commands;
   if (current.status.canUndo) commands.push("undo");
   if (current.status.canRedo) commands.push("redo");
   if (current.mode === "visual") commands.push("insertTable", "insertImage");
@@ -366,7 +369,7 @@ const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
   const activeRuntime = runtime;
   if (!activeRuntime) return { ok: false, message: "尚未打开文档" };
   if (activeRuntime.composing) return { ok: false, message: "请先完成中文输入，再定位标题" };
-  if (searchPanel.isInputComposing) {
+  if (searchPanel.isInputComposing || panel.isInputComposing) {
     return { ok: false, message: "请先完成查找输入，再定位标题" };
   }
   if (snapshot.epoch !== loadEpoch) {
@@ -380,7 +383,23 @@ const panel = new DocumentAnalysisPanel(app, (snapshot, target) => {
   }
   return activeRuntime.navigateToHeading(snapshot.raw, target);
 }, () => !runtime?.composing && !searchPanel.isInputComposing &&
-  !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)), cornerTools);
+  !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)), cornerTools,
+  action => sidebarConnection.perform(action));
+
+const sidebarConnection = new SidebarConnection({
+  binding: () => activeDocumentID !== undefined && activeRevision !== undefined
+    ? { documentID: activeDocumentID, revision: activeRevision } : undefined,
+  send: serialized => {
+    const handler = window.webkit?.messageHandlers.inkoraSidebar;
+    if (!handler) return false;
+    handler.postMessage(serialized);
+    return true;
+  },
+  catalog: value => panel.updateWorkspace(value),
+  result: (query, result) => panel.updateFileSearch(query, result),
+  error: message => panel.showWorkspaceError(message),
+});
+window.inkoraSidebar = { receive: serialized => sidebarConnection.receive(serialized) };
 
 // 查找面板：原生菜单的 Cmd-F 打开查找模式，面板内可显式切换到替换模式。
 // 查询、展示与导航不产生 Bridge 正文消息；只有有效替换会进入既有正文事务。
@@ -401,7 +420,7 @@ function performSearchNavigation(request: SearchNavigationRequest): SearchNaviga
   if (!activeRuntime) {
     return { ok: false, message: "尚未打开文档" };
   }
-  if (activeRuntime.composing || searchPanel.isInputComposing) {
+  if (activeRuntime.composing || searchPanel.isInputComposing || panel.isInputComposing) {
     return { ok: false, message: "请先完成中文输入，再定位查找结果" };
   }
   if (request.binding.documentID !== activeDocumentID ||
@@ -470,7 +489,7 @@ function performSearchReplacement(request: SearchReplacementRequest): SearchRepl
   if (!activeRuntime || (activeRuntime.mode !== "visual" && !activeRuntime.sourceReplacement)) {
     return { ok: false, message: "当前编辑模式不支持原文替换" };
   }
-  if (activeRuntime.composing || searchPanel.isInputComposing) {
+  if (activeRuntime.composing || searchPanel.isInputComposing || panel.isInputComposing) {
     return { ok: false, message: "请先完成中文输入，再执行替换" };
   }
   if (request.binding.documentID !== activeDocumentID ||
@@ -701,7 +720,7 @@ window.inkora = {
             // 取消旧任务并进入"正在打开文档"过渡态。
             const response = session.loadDocument(command);
             if (response.type === "stateChanged") {
-              const queryWasComposing = searchPanel.isInputComposing;
+              const queryWasComposing = searchPanel.isInputComposing || panel.isInputComposing;
               const linkWasComposing = !!activeLinkEditor &&
                 composingLinkEditors.has(activeLinkEditor);
               cancelPendingSearch();
@@ -745,6 +764,7 @@ window.inkora = {
               if (!queryWasComposing && !linkWasComposing) runtime.focus();
             }
             postToNative(response);
+            if (response.type === "stateChanged") sidebarConnection.connect();
           }
           break;
         case "createSnapshot":
@@ -829,7 +849,7 @@ window.inkora = {
             const before = runtime?.getText();
             const historyCommand = command.command === "undo" || command.command === "redo";
             const documentCommandBlocked = runtime?.composing ||
-              searchPanel.ownsFocus || searchPanel.isInputComposing ||
+              searchPanel.ownsFocus || searchPanel.isInputComposing || panel.ownsInputFocus || panel.isInputComposing ||
               !!activeLinkEditor && (composingLinkEditors.has(activeLinkEditor) ||
                 activeLinkEditor.contains(document.activeElement));
             postToNative(session.executeCommand(command, () => {
@@ -867,7 +887,7 @@ window.inkora = {
               && runtime?.directedSelection.selectionHead === command.selectionHead;
             const response = session.executeMutation(
               command,
-              () => epochMatches && selectionMatches && !searchPanel.isInputComposing &&
+              () => epochMatches && selectionMatches && !searchPanel.isInputComposing && !panel.isInputComposing &&
                 !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)) &&
                 (runtime?.insertImage({
                 assetID: command.assetID, uri: command.uri, alt: command.alt, title: command.title,
@@ -898,7 +918,7 @@ window.inkora = {
             const rawBefore = runtime?.getText();
             const response = session.executeMutation(
               command,
-              () => epochMatches && !searchPanel.isInputComposing &&
+              () => epochMatches && !searchPanel.isInputComposing && !panel.isInputComposing &&
                 !(activeLinkEditor && composingLinkEditors.has(activeLinkEditor)) &&
                 (runtime?.rewriteManagedImages(command.rewrites) ?? false),
               () => runtime?.status ?? { dirty: false, canUndo: false, canRedo: false },
@@ -959,7 +979,7 @@ function validateCurrentImageOwnership(
   command: Extract<NativeCommand, { type: "setImageDescriptors" | "prepareImageSave" }>,
 ): EditorMessage | undefined {
   const proof = command.imageOwnership;
-  const composing = runtime?.composing || searchPanel.isInputComposing ||
+  const composing = runtime?.composing || searchPanel.isInputComposing || panel.isInputComposing ||
     !!activeLinkEditor && composingLinkEditors.has(activeLinkEditor);
   if (composing) {
     return {

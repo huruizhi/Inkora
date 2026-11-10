@@ -24,6 +24,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   private let requestTimeout: Duration
   private let diagnostics: BridgeDiagnostics
   private var bridge: EditorBridge?
+  private var sidebarBridge: SidebarWorkspaceBridge?
   private var resourceSchemeHandler: EditorResourceSchemeHandler?
   private let assetBroker = DocumentAssetBroker()
   private var assetSchemeHandler: DocumentAssetSchemeHandler?
@@ -90,6 +91,55 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
       diagnostics: diagnostics
     )
     configuration.userContentController.add(bridge, name: "inkora")
+    let sidebarBridge = SidebarWorkspaceBridge(
+      current: { [weak self] in
+        guard let document = self?.document else { return nil }
+        return SidebarWorkspaceBridge.Context(
+          documentID: document.bridgeDocumentID, revision: document.bridgeRevision)
+      },
+      chooseFolder: { [weak self] completion in
+        guard let self, let window = self.view.window, window.attachedSheet == nil else {
+          completion(nil)
+          return
+        }
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "打开文件夹"
+        panel.message = "选择用于侧栏浏览和搜索的文件夹。"
+        panel.beginSheetModal(for: window) { response in
+          completion(response == .OK ? panel.url : nil)
+        }
+      },
+      mayOpen: { [weak self] binding, completion in
+        self?.bridge?.requestState { result in
+          guard case .success(let state) = result,
+            state.documentID == binding.documentID, state.revision == binding.revision,
+            state.availableCommands?.contains(.toggleOutline) == true
+          else {
+            completion(false)
+            return
+          }
+          completion(true)
+        }
+      },
+      openFile: { [weak self] url, access, completion in
+        self?.document?.sidebarFolderAccess = access
+        NSDocumentController.shared.openDocument(withContentsOf: url, display: false) {
+          document, _, error in
+          guard let opened = document as? InkoraDocument, error == nil else {
+            completion(error ?? SidebarCatalogError.unavailable)
+            return
+          }
+          opened.sidebarFolderAccess = access
+          if opened.windowControllers.isEmpty { opened.makeWindowControllers() }
+          opened.showWindows()
+          completion(nil)
+        }
+      })
+    sidebarBridge.useFolder(document?.sidebarFolderAccess)
+    configuration.userContentController.add(sidebarBridge, name: "inkoraSidebar")
 
     let webView = InkoraWebView(frame: .zero, configuration: configuration)
     webView.imageFileHandler = { [weak self] url in self?.beginImageImport(fileURL: url) }
@@ -99,6 +149,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     webView.navigationDelegate = self
     webView.uiDelegate = self
     bridge.attach(webView: webView)
+    sidebarBridge.attach(webView)
     if let document {
       documentEpoch = assetBroker.beginDocument(documentID: document.bridgeDocumentID)
       bridge.loadDocument(
@@ -109,6 +160,7 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     }
 
     self.bridge = bridge
+    self.sidebarBridge = sidebarBridge
     self.resourceSchemeHandler = resourceSchemeHandler
     self.assetSchemeHandler = assetSchemeHandler
     self.webView = webView

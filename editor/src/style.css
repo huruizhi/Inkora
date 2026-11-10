@@ -335,6 +335,77 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   padding: 0;
   border: 0;
 }
+.sidebar-header {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 40px;
+  margin-bottom: 12px;
+}
+.sidebar-title { text-align: center; font-size: 15px; font-weight: 500; }
+.sidebar-header button, .sidebar-file-search button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+.sidebar-header button { opacity: 0; font-size: 20px; }
+.analysis-panel:hover .sidebar-header button,
+.analysis-panel:focus-within .sidebar-header button { opacity: 1; }
+@media (hover: none) { .sidebar-header button { opacity: 1; } }
+.sidebar-outline-query, .sidebar-file-search input {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid AccentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 6px 2px;
+}
+.sidebar-library { display: flex; flex-direction: column; gap: 6px; }
+.sidebar-header[hidden], .sidebar-library[hidden], .sidebar-file-search[hidden],
+.sidebar-outline-content[hidden] { display: none; }
+.sidebar-file-search { display: flex; align-items: center; gap: 2px; }
+.sidebar-file-search input { flex: 1; }
+.sidebar-file-search button { flex: 0 0 auto; font-size: 11px; }
+.sidebar-file-search button[aria-pressed="true"] { color: AccentColor; background: color-mix(in srgb, AccentColor 10%, transparent); }
+.sidebar-folder-button, .sidebar-refresh {
+  font: inherit;
+  font-size: 12px;
+  background: transparent;
+  color: color-mix(in srgb, CanvasText 65%, Canvas);
+  border: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.sidebar-refresh { align-self: flex-end; }
+.sidebar-file-list { display: flex; flex-direction: column; }
+.sidebar-file-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 0;
+  border-radius: 4px;
+  padding: 12px 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.sidebar-file-card:hover { background: color-mix(in srgb, CanvasText 6%, Canvas); }
+.sidebar-file-card strong { font-size: 13px; font-weight: 600; }
+.sidebar-file-summary, .sidebar-file-snippet { font-size: 12px; line-height: 1.5; white-space: pre-line; color: color-mix(in srgb, CanvasText 68%, Canvas); }
+.sidebar-notice { margin: 4px 0; font-size: 12px; line-height: 1.5; color: color-mix(in srgb, CanvasText 65%, Canvas); }
+.analysis-panel button:focus-visible { outline: 2px solid AccentColor; outline-offset: 1px; }
 .analysis-panel-title {
   display: none;
 }

@@ -59,6 +59,8 @@ final class InkoraDocument: NSDocument {
   private nonisolated static let utf16BEBOM = Data([0xFE, 0xFF])
 
   private(set) var bridgeDocumentID = UUID().uuidString
+  // Window navigation may share an explicit directory grant. It is not document content.
+  var sidebarFolderAccess: SidebarWorkspaceBridge.FolderAccess?
   private var diskVersion: DocumentDiskVersion?
   private var missingOriginal = false
   private(set) var fileState: DocumentFileState = .current
