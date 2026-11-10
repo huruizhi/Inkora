@@ -66,3 +66,5 @@ B独立补正`102a9a2`已吸收为`3ddfaef`，侧栏与正文使用共享宽度�
 已实际fetch远端main，仍为`30e2f5fae0e43b7c5ac5e879dd944a28d8b72c53`，当前分支包含它。最终补正SHA冻结后按`docs/testing.md`执行lint、`make test-non-ui`、`make release-bundle-check`及默认CI（`ui-tests=false`、`full-bench=false`）；不运行会启动App的`make test`/XCU/完整性能目标。
 
 管理者另发现当前标题几何测试只在设置`INKORA_SIDEBAR_RESOURCE_BUNDLE`时执行，默认Native/CI会skip。已要求C保留CLI覆盖并默认使用测试bundle资源，避免专项绿而正式门禁未覆盖。此项未修复前，不能用默认Native总数证明SB-11/SB-14。
+
+A后续`f9f73a1`已吸收为`8e64424f2fd8b0c54faf449b418551d1761a8551`；管理者实际重跑`tests/InkoraTests/SidebarHostless.sh`：21/21，0失败，日志`artifacts/delegation/root-sidebar-ticket-fix.log`。普通typing与目录完成解绑、open仍要求即时revision，受限导航票据保持root/file及请求守卫。已请求原Spec审查者从该固定SHA复核原scan/search反例；C仍须消费二次验证API才能关闭导航P1，不能用A专项替代生产转交证据。
