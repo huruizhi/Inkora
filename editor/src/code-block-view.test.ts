@@ -225,8 +225,8 @@ describe("code block node view", () => {
     const harness = mount("```python\nx = 1\n```\n");
     const link = harness.view.dom.querySelector<HTMLAnchorElement>("a.inkora-code-license");
     expect(link).not.toBeNull();
-    expect(link!.getAttribute("href")).toBe("./THIRD_PARTY_NOTICES.txt");
-    expect(link!.textContent).toContain("高亮许可");
+    expect(link!.getAttribute("href")).toBe("./RENDERER_NOTICES.txt");
+    expect(link!.textContent).toContain("第三方许可");
   });
 
   it("syncs the selector when the node updates externally", () => {

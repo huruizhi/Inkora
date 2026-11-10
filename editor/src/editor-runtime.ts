@@ -748,6 +748,13 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     view.dom.id = "editor";
     view.dom.setAttribute("aria-label", "Markdown editor");
     view.dom.setAttribute("aria-keyshortcuts", "Alt+F10");
+    view.dom.addEventListener("click", event => {
+      if ((this.session.composing || view.composing) &&
+          (event.target as Element).closest(".footnote-reference, .footnote-back")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    }, true);
     view.dom.addEventListener("compositionstart", this.handleCompositionStart);
     view.dom.addEventListener("compositionend", this.handleCompositionEnd);
   }

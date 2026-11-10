@@ -1,0 +1,63 @@
+div#editor .math-preview {
+  border: 0;
+  padding: 16px 0;
+  margin: 1.4em 0;
+  text-align: center;
+  overflow-x: auto;
+}
+.math-output math { font-size: 1.2em; }
+div#editor .technical-preview-error,
+div#editor .technical-preview-status {
+  font: 12px/1.6 -apple-system, sans-serif;
+  color: color-mix(in srgb, CanvasText 56%, Canvas);
+  margin: 0 0 8px;
+}
+div#editor .footnote-definition {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
+  border-radius: 0;
+  padding: 12px 0;
+  font-size: .86em;
+  color: color-mix(in srgb, CanvasText 60%, Canvas);
+}
+.footnote-label { flex: 0 0 auto; }
+.footnote-body { min-width: 0; }
+div#editor .footnote-body > :last-child { margin-bottom: 0; }
+.footnote-reference button, .footnote-back {
+  padding: 0 2px;
+  border: 0;
+  color: #356b9d;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.footnote-reference button:focus-visible, .footnote-back:focus-visible {
+  outline: 2px solid AccentColor;
+}
+div#editor .is-mermaid { background: transparent; border-color: transparent; }
+.mermaid-preview { padding: 20px 12px; text-align: center; overflow-x: auto; cursor: text; }
+.mermaid-preview[hidden] { display: none; }
+.mermaid-preview svg { max-width: 100%; height: auto; }
+.mermaid-edit {
+  margin: 0 12px 8px;
+  padding: 3px 8px;
+  color: color-mix(in srgb, CanvasText 60%, Canvas);
+  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+  border-radius: 4px;
+  background: Canvas;
+  font: 12px/1.5 -apple-system, sans-serif;
+}
+.is-mermaid:has(> .mermaid-preview[data-state="ready"]) > pre { display: none; }
+#editor .is-mermaid.inkora-context-active > pre,
+.is-mermaid:has(> .inkora-code-toolbar:focus-within) > pre { display: block; }
+#editor .is-mermaid.inkora-context-active > .mermaid-preview,
+.is-mermaid:has(> .inkora-code-toolbar:focus-within) > .mermaid-preview { display: none; }
+#editor .is-mermaid.inkora-context-active > .mermaid-edit,
+.is-mermaid:has(> .inkora-code-toolbar:focus-within) > .mermaid-edit { display: none; }
+@media (prefers-color-scheme: dark) {
+  .footnote-reference button, .footnote-back { color: #8bb9df; }
+  .mermaid-preview svg { filter: invert(.88) hue-rotate(180deg); }
+}

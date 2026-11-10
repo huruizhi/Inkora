@@ -3,6 +3,83 @@ import XCTest
 
 final class EditorWebViewTests: XCTestCase {
   @MainActor
+  func testTechnicalPreviewsRenderOfflineWithoutChangingSnapshot() async throws {
+    let raw =
+      "# 技术文档\n\n正文[^note]\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\nA[想法] --> B[草稿]\n```\n\n[^note]: **脚注**内容\n"
+    let document = InkoraDocument()
+    try document.read(from: Data(raw.utf8), ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(
+      document: document, resourceBundle: Bundle(for: Self.self))
+    controller.loadViewIfNeeded()
+    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    webView.setFrameSize(NSSize(width: 900, height: 900))
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('.math-preview math msup')"
+    ) { $0 as? Bool == true }
+    let initial = try await requestText(from: controller)
+    XCTAssertEqual(initial, raw)
+    let revision = document.bridgeRevision
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.mermaid-preview button')?.click()")
+    let state = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('.mermaid-preview').dataset.state",
+      attempts: 200
+    ) { ["ready", "error"].contains($0 as? String ?? "") }
+    let failure = try await webView.evaluateJavaScript(
+      "document.querySelector('.mermaid-preview').dataset.failure || ''")
+    XCTAssertEqual(
+      state as? String, "ready", "Mermaid preview failed: \(String(describing: failure))")
+    let preview =
+      try await webView.evaluateJavaScript(
+        """
+        (() => ({
+          diagram: document.querySelector('.mermaid-preview svg')?.textContent || '',
+          footnote: document.querySelector('.footnote-definition strong')?.textContent || '',
+          inert: !document.querySelector('#editor script, #editor foreignObject, #editor image'),
+          local: [...document.scripts].every(script => !script.src || script.src.startsWith('inkora-editor://app/')),
+          policy: document.querySelector('meta[http-equiv="Content-Security-Policy"]').content,
+        }))()
+        """) as! [String: Any]
+    XCTAssertTrue((preview["diagram"] as? String)?.contains("想法") == true)
+    XCTAssertTrue((preview["diagram"] as? String)?.contains("草稿") == true)
+    XCTAssertEqual(preview["footnote"] as? String, "脚注")
+    XCTAssertEqual(preview["inert"] as? Bool, true)
+    XCTAssertEqual(preview["local"] as? Bool, true)
+    XCTAssertTrue((preview["policy"] as? String)?.contains("connect-src 'none'") == true)
+    let rendered = try await requestText(from: controller)
+    XCTAssertEqual(rendered, raw)
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.mermaid-edit').click()")
+    let editState =
+      try await webView.evaluateJavaScript(
+        """
+        (() => ({
+          display: getComputedStyle(document.querySelector('.is-mermaid pre')).display,
+          selected: document.querySelector('.is-mermaid').classList.contains('inkora-context-active'),
+          focused: document.querySelector('#editor').classList.contains('ProseMirror-focused'),
+          activeElement: document.activeElement.id,
+        }))()
+        """) as! [String: Any]
+    XCTAssertEqual(editState["display"] as? String, "block", String(describing: editState))
+    let editing = try await requestText(from: controller)
+    XCTAssertEqual(editing, raw)
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.editor-mode-source').click()")
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('textarea#editor')"
+    ) { $0 as? Bool == true }
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.editor-mode-visual').click()")
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('.math-preview math')"
+    ) { $0 as? Bool == true }
+    let roundtrip = try await requestText(from: controller)
+    XCTAssertEqual(roundtrip, raw)
+    XCTAssertEqual(document.bridgeRevision, revision)
+  }
+
+  @MainActor
   func testWritingLayoutKeepsOutlineOptionalAndStatisticsVisible() async throws {
     let raw = "# 标题\n\n正文。\n\n```ts\nconst x = 1;\n```\n"
     let document = InkoraDocument()

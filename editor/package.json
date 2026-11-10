@@ -5,8 +5,8 @@
   "type": "module",
   "packageManager": "pnpm@11.25.0",
   "scripts": {
-    "build": "tsc --noEmit && vite build",
-    "dev": "vite",
+    "build": "node scripts/prepare-renderers.mjs && tsc --noEmit && vite build",
+    "dev": "node scripts/prepare-renderers.mjs && vite",
     "lint": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -21,7 +21,9 @@
   },
   "dependencies": {
     "highlight.js": "11.12.0",
+    "katex": "0.19.1",
     "markdown-it": "14.3.3",
+    "mermaid": "11.17.2",
     "prosemirror-commands": "1.7.2",
     "prosemirror-history": "1.5.1",
     "prosemirror-inputrules": "1.5.1",

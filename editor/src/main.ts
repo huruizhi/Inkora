@@ -35,6 +35,7 @@ import {
 import "./style.css";
 import "./code-highlighting.css";
 import "./writing-surface.css";
+import "./technical-preview.css";
 
 declare global {
   interface Window {

@@ -8,7 +8,7 @@ import { NodeSelection } from "prosemirror-state";
 import { deleteSelection } from "prosemirror-commands";
 import { indexVisualText } from "./visual-search";
 
-it("renders accepted footnote and callout source in a read-only EditorView atom", () => {
+it("renders accepted footnote and callout previews in a read-only atom with exact source", () => {
   const dom = new JSDOM("<main></main>", { pretendToBeVisual: true });
   const previousDocument = globalThis.document;
   const previousWindow = globalThis.window;
@@ -21,7 +21,10 @@ it("renders accepted footnote and callout source in a read-only EditorView atom"
       const runtime = createEditorRuntime(host, raw, () => {});
       try {
         expect(runtime.mode).toBe("visual");
-        expect(host.querySelector(".protected-block pre")?.textContent).toBe(opaque);
+        expect((host.querySelector(".protected-block") as HTMLElement).dataset.inkoraRaw).toBe(opaque);
+        if (opaque.startsWith("[^")) {
+          expect(host.querySelector(".footnote-body")?.textContent).toContain("/definition");
+        } else expect(host.querySelector(".protected-block pre")?.textContent).toBe(opaque);
         expect((host.querySelector(".protected-block") as HTMLElement).contentEditable).toBe("false");
         expect(runtime.getText()).toBe(raw);
       } finally { runtime.destroy(); host.replaceChildren(); }
