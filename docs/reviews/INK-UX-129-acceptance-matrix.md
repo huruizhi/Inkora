@@ -58,3 +58,11 @@
 - Spec：1项P1（确认等待后目标版本失效）与3项P2（正文revision丢目录/搜索回包、dirty目标普通卡片限制、窄窗重叠）。两项真实后台反例及两项静态推导分别记录于`INK-REV-134-sidebar-spec.md`，不将probe退出0误写成产品通过。
 - A安装线程修复吸收为`140438c`后，管理者专项15/15通过；仅补足Timer生命周期证据。
 - 所有问题已分派原A/B/C执行Agent；待补正固定SHA与后验审查。正式main及安装版仍保持原状态，未占用屏幕。
+
+## 窄窗补正及最终门禁准备
+
+B独立补正`102a9a2`已吸收为`3ddfaef`，侧栏与正文使用共享宽度。管理者实际运行`pnpm --dir editor exec vitest run src/sidebar-chrome.test.ts src/document-analysis-panel.test.ts`：2 files / 21 passed，日志`artifacts/delegation/root-sidebar-width-fix.log`。CSSOM计算接缝证明1280/640/600/480/320px各宽度使用同一依据；实际WK边缘、反向切换及resize仍待C，不提前关闭SB-14。
+
+已实际fetch远端main，仍为`30e2f5fae0e43b7c5ac5e879dd944a28d8b72c53`，当前分支包含它。最终补正SHA冻结后按`docs/testing.md`执行lint、`make test-non-ui`、`make release-bundle-check`及默认CI（`ui-tests=false`、`full-bench=false`）；不运行会启动App的`make test`/XCU/完整性能目标。
+
+管理者另发现当前标题几何测试只在设置`INKORA_SIDEBAR_RESOURCE_BUNDLE`时执行，默认Native/CI会skip。已要求C保留CLI覆盖并默认使用测试bundle资源，避免专项绿而正式门禁未覆盖。此项未修复前，不能用默认Native总数证明SB-11/SB-14。
