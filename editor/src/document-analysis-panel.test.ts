@@ -223,3 +223,33 @@ describe("DocumentAnalysisPanel：真实分析 + 真实 DOM", () => {
     expect(parent.contains(root)).toBe(false);
   });
 });
+
+describe("侧栏真实交互", () => {
+  it("过滤保留原始标题index，候选阶段不提前过滤，旧按钮不导航", () => {
+    const { parent } = stubDom(); const requests: unknown[] = [];
+    const panel = new DocumentAnalysisPanel(parent, (_, target) => { requests.push(target); return { ok: true }; });
+    panel.setCollapsed(false); panel.update(documentState("# 甲\n# 乙\n# 乙\n"));
+    const stale = panel.element.querySelector<HTMLButtonElement>(".analysis-panel-heading")!;
+    panel.element.querySelector<HTMLButtonElement>(".sidebar-search-toggle")!.click();
+    const query = panel.element.querySelector<HTMLInputElement>(".sidebar-outline-query")!;
+    query.dispatchEvent(new window.CompositionEvent("compositionstart")); query.value = "乙"; query.dispatchEvent(new window.Event("input"));
+    expect(headingTexts(panel)).toEqual(["甲", "乙", "乙"]);
+    panel.element.querySelector<HTMLButtonElement>(".sidebar-view-toggle")!.click(); expect(panel.element.querySelector(".sidebar-title")!.textContent).toBe("大纲");
+    query.dispatchEvent(new window.CompositionEvent("compositionend")); expect(headingTexts(panel)).toEqual(["乙", "乙"]);
+    panel.element.querySelectorAll<HTMLButtonElement>(".analysis-panel-heading")[1].click(); expect(requests).toEqual([expect.objectContaining({ index: 2 })]);
+    panel.update(documentState("# 新\n")); stale.click(); expect(requests).toHaveLength(1); panel.destroy();
+  });
+  it("统计口径可选、选中可访问、刷新保留口径与菜单焦点，不夺取正文caret", () => {
+    const { parent } = stubDom(); const panel = new DocumentAnalysisPanel(parent);
+    const editor = document.createElement("textarea"); editor.value = "abcdef"; parent.append(editor); editor.focus(); editor.setSelectionRange(2, 4);
+    panel.update(documentState("# 甲\n乙")); const toggle = parent.querySelector<HTMLButtonElement>(".analysis-stats-toggle")!; toggle.click();
+    const line = parent.querySelector<HTMLButtonElement>('[data-stat="lines"]')!;
+    line.dispatchEvent(new window.MouseEvent("pointerdown", { cancelable: true })); line.click();
+    expect(document.activeElement).toBe(editor); expect([editor.selectionStart, editor.selectionEnd]).toEqual([2, 4]);
+    expect(toggle.textContent).toContain("2 行"); expect(line.getAttribute("aria-checked")).toBe("true"); expect(line.getAttribute("role")).toBe("menuitemradio"); expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    toggle.dispatchEvent(new window.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); expect(document.activeElement).toBe(line);
+    panel.update(documentState("# 新\n\n乙")); expect(document.activeElement).toBe(line); expect(toggle.textContent).toContain("3 行");
+    line.dispatchEvent(new window.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); expect((document.activeElement as HTMLElement).dataset.stat).toBe("words");
+    document.activeElement!.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })); expect(document.activeElement).toBe(toggle); expect(toggle.getAttribute("aria-expanded")).toBe("false"); panel.destroy();
+  });
+});
