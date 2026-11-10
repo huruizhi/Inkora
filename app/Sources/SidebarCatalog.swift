@@ -1,3 +1,4 @@
+import CryptoKit
 import Darwin
 import Foundation
 
@@ -18,6 +19,15 @@ struct SidebarSearchHit: Codable, Equatable, Sendable {
   let fileID: String
   let line: Int
   let snippet: String
+  let hitID: String
+  let fileVersion: String
+  let utf16Location: Int
+  let utf16Length: Int
+}
+
+struct SidebarSearchLocation: Equatable, Sendable {
+  let utf16Location: Int
+  let utf16Length: Int
 }
 
 struct SidebarSearchResult: Codable, Equatable, Sendable {
@@ -59,16 +69,23 @@ struct SidebarCatalog: Sendable {
     var depth = 32
     var searchHits = 1_000
     var searchSeconds: TimeInterval = 2
+    var scanSeconds: TimeInterval = 10
+    var directoryEntries = 100_000
   }
 
   struct OpenedFile: Sendable {
     let url: URL
     let data: Data
+    let version: String
+    let location: SidebarSearchLocation?
   }
 
   private struct Entry: Sendable {
     let components: [String]
     let text: String
+    let version: String
+    let device: dev_t
+    let inode: ino_t
   }
 
   let id: String
@@ -78,15 +95,29 @@ struct SidebarCatalog: Sendable {
   let skippedFiles: Int
   private let entries: [String: Entry]
   private let limits: Limits
+  private let rootDevice: dev_t
+  private let rootInode: ino_t
+
+  var contentVersion: String {
+    let listing = files.map { file in
+      "\(file.relativePath):\(entries[file.id]?.device ?? 0):\(entries[file.id]?.inode ?? 0):\(entries[file.id]?.version ?? "")"
+    }.joined(separator: "\n")
+    return Self.version(
+      Data("\(rootDevice):\(rootInode):\(incomplete):\(skippedFiles):\(listing)".utf8))
+  }
 
   static func scan(
     folder: URL, limits: Limits = Limits(),
     cancelled: @Sendable () -> Bool = { false }
   ) throws -> SidebarCatalog {
-    let root = folder.standardizedFileURL
+    let root = folder.standardizedFileURL.resolvingSymlinksInPath()
     let descriptor = open(root.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
     guard descriptor >= 0 else { throw SidebarCatalogError.unavailable }
     defer { Darwin.close(descriptor) }
+    var rootMetadata = stat()
+    guard fstat(descriptor, &rootMetadata) == 0 else { throw SidebarCatalogError.unavailable }
+    let deadline = ProcessInfo.processInfo.systemUptime + limits.scanSeconds
+    var visited = 0
     var files: [SidebarFile] = []
     var entries: [String: Entry] = [:]
     var totalBytes = 0
@@ -94,8 +125,15 @@ struct SidebarCatalog: Sendable {
     var skippedFiles = 0
     let extensions: Set<String> = ["md", "markdown", "mdown", "mkd", "txt"]
 
-    func walk(_ parent: Int32, _ components: [String]) throws {
+    func check() throws {
       if cancelled() { throw SidebarCatalogError.cancelled }
+      if ProcessInfo.processInfo.systemUptime > deadline {
+        throw SidebarCatalogError.searchTimedOut
+      }
+    }
+
+    func walk(_ parent: Int32, _ components: [String]) throws {
+      try check()
       guard components.count <= limits.depth else {
         incomplete = true
         return
@@ -109,7 +147,12 @@ struct SidebarCatalog: Sendable {
       defer { closedir(directory) }
       var names: [String] = []
       while let item = readdir(directory) {
-        if cancelled() { throw SidebarCatalogError.cancelled }
+        try check()
+        visited += 1
+        guard visited <= limits.directoryEntries else {
+          incomplete = true
+          return
+        }
         let name = withUnsafePointer(to: item.pointee.d_name) {
           $0.withMemoryRebound(to: CChar.self, capacity: Int(MAXNAMLEN) + 1) {
             String(validatingCString: $0)
@@ -119,7 +162,7 @@ struct SidebarCatalog: Sendable {
       }
       names.sort { $0.localizedStandardCompare($1) == .orderedAscending }
       for name in names {
-        if cancelled() { throw SidebarCatalogError.cancelled }
+        try check()
         guard files.count < limits.files else {
           incomplete = true
           return
@@ -151,8 +194,10 @@ struct SidebarCatalog: Sendable {
             continue
           }
           do {
-            let data = try read(
-              rootDescriptor: descriptor, components: path, maximum: limits.fileBytes)
+            let read = try read(
+              rootDescriptor: descriptor, components: path, maximum: limits.fileBytes,
+              cancelled: cancelled)
+            let data = read.data
             guard let text = decode(data) else {
               skippedFiles += 1
               continue
@@ -163,39 +208,74 @@ struct SidebarCatalog: Sendable {
             }
             totalBytes += data.count
             let token = UUID().uuidString
-            let summary = text.split(whereSeparator: \.isNewline).prefix(2)
+            let displayText = text.first == "\u{FEFF}" ? String(text.dropFirst()) : text
+            let summary = displayText.split(whereSeparator: \.isNewline).prefix(2)
               .map { String($0.prefix(140)) }.joined(separator: "\n")
             files.append(
               SidebarFile(
                 id: token, name: name, relativePath: path.joined(separator: "/"), summary: summary))
-            entries[token] = Entry(components: path, text: text)
-          } catch { skippedFiles += 1 }
+            entries[token] = Entry(
+              components: path, text: text, version: version(data), device: read.metadata.st_dev,
+              inode: read.metadata.st_ino)
+          } catch SidebarCatalogError.cancelled { throw SidebarCatalogError.cancelled } catch {
+            skippedFiles += 1
+          }
         }
       }
     }
     try walk(descriptor, [])
+    try check()
     return SidebarCatalog(
       id: UUID().uuidString, root: root, files: files, incomplete: incomplete,
-      skippedFiles: skippedFiles, entries: entries, limits: limits)
+      skippedFiles: skippedFiles, entries: entries, limits: limits,
+      rootDevice: rootMetadata.st_dev, rootInode: rootMetadata.st_ino)
   }
 
-  func openFile(id fileID: String, catalogID: String) throws -> OpenedFile {
+  func openFile(id fileID: String, catalogID: String, hit: SidebarSearchHit? = nil) throws
+    -> OpenedFile
+  {
     guard catalogID == id, let entry = entries[fileID] else { throw SidebarCatalogError.staleFile }
     let descriptor = open(root.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
     guard descriptor >= 0 else { throw SidebarCatalogError.unavailable }
     defer { Darwin.close(descriptor) }
-    let data = try Self.read(
+    var metadata = stat()
+    guard fstat(descriptor, &metadata) == 0, metadata.st_dev == rootDevice,
+      metadata.st_ino == rootInode
+    else { throw SidebarCatalogError.staleFile }
+    let read = try Self.read(
       rootDescriptor: descriptor, components: entry.components, maximum: limits.fileBytes)
+    let data = read.data
     guard Self.decode(data) != nil else { throw SidebarCatalogError.invalidEncoding }
+    guard read.metadata.st_dev == entry.device, read.metadata.st_ino == entry.inode,
+      Self.version(data) == entry.version
+    else { throw SidebarCatalogError.staleFile }
+    var location: SidebarSearchLocation?
+    if let hit {
+      guard hit.fileID == fileID, hit.fileVersion == entry.version,
+        hit.utf16Location >= 0, hit.utf16Length >= 0,
+        hit.utf16Location <= entry.text.utf16.count,
+        hit.utf16Length <= entry.text.utf16.count - hit.utf16Location
+      else { throw SidebarCatalogError.staleFile }
+      location = SidebarSearchLocation(
+        utf16Location: hit.utf16Location, utf16Length: hit.utf16Length)
+    }
     return OpenedFile(
-      url: entry.components.reduce(root) { $0.appendingPathComponent($1) }, data: data)
+      url: entry.components.reduce(root) { $0.appendingPathComponent($1) }, data: data,
+      version: entry.version, location: location)
+  }
+
+  static func version(_ data: Data) -> String {
+    SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
   }
 
   func search(
     _ query: String, options: SidebarSearchOptions,
     cancelled: @Sendable () -> Bool = { false }
   ) throws -> SidebarSearchResult {
-    guard !query.isEmpty else { return SidebarSearchResult(hits: [], truncated: incomplete) }
+    if cancelled() { throw SidebarCatalogError.cancelled }
+    guard !query.isEmpty else {
+      return SidebarSearchResult(hits: [], truncated: incomplete || skippedFiles > 0)
+    }
     guard query.utf16.count <= 2_000 else { throw SidebarCatalogError.invalidPattern }
     var pattern = options.regularExpression ? query : NSRegularExpression.escapedPattern(for: query)
     if options.wholeWord { pattern = "\\b(?:\(pattern))\\b" }
@@ -205,15 +285,18 @@ struct SidebarCatalog: Sendable {
     guard let expression = try? NSRegularExpression(pattern: pattern, options: flags) else {
       throw SidebarCatalogError.invalidPattern
     }
-    let deadline = Date().addingTimeInterval(limits.searchSeconds)
+    let deadline = ProcessInfo.processInfo.systemUptime + limits.searchSeconds
     var hits: [SidebarSearchHit] = []
-    var truncated = incomplete
+    var truncated = incomplete || skippedFiles > 0
     var timedOut = false
     var wasCancelled = false
     for file in files {
       if cancelled() { throw SidebarCatalogError.cancelled }
-      if Date() > deadline { throw SidebarCatalogError.searchTimedOut }
-      guard let text = entries[file.id]?.text else { continue }
+      if ProcessInfo.processInfo.systemUptime > deadline {
+        throw SidebarCatalogError.searchTimedOut
+      }
+      guard let entry = entries[file.id] else { continue }
+      let text = entry.text
       expression.enumerateMatches(
         in: text, options: [.reportProgress], range: NSRange(text.startIndex..., in: text)
       ) { match, _, stop in
@@ -222,7 +305,7 @@ struct SidebarCatalog: Sendable {
           stop.pointee = true
           return
         }
-        if Date() > deadline {
+        if ProcessInfo.processInfo.systemUptime > deadline {
           timedOut = true
           stop.pointee = true
           return
@@ -241,12 +324,17 @@ struct SidebarCatalog: Sendable {
         let after =
           text[range.lowerBound...].prefix(120).split(whereSeparator: \.isNewline).first.map(
             String.init) ?? ""
-        hits.append(SidebarSearchHit(fileID: file.id, line: line, snippet: before + after))
+        hits.append(
+          SidebarSearchHit(
+            fileID: file.id, line: line, snippet: before + after,
+            hitID: UUID().uuidString, fileVersion: entry.version,
+            utf16Location: match.range.location, utf16Length: match.range.length))
       }
       if wasCancelled { throw SidebarCatalogError.cancelled }
       if timedOut { throw SidebarCatalogError.searchTimedOut }
       if truncated && hits.count >= limits.searchHits { break }
     }
+    if cancelled() { throw SidebarCatalogError.cancelled }
     return SidebarSearchResult(hits: hits, truncated: truncated)
   }
 
@@ -254,17 +342,22 @@ struct SidebarCatalog: Sendable {
     guard !data.starts(with: [0xFF, 0xFE]), !data.starts(with: [0xFE, 0xFF]),
       !data.starts(with: [0x00, 0x00, 0xFE, 0xFF])
     else { return nil }
-    guard var text = String(data: data, encoding: .utf8) else { return nil }
-    if text.first == "\u{FEFF}" { text.removeFirst() }
+    guard let text = String(data: data, encoding: .utf8) else { return nil }
     return text
   }
 
-  private static func read(rootDescriptor: Int32, components: [String], maximum: Int) throws -> Data
-  {
+  private static func read(
+    rootDescriptor: Int32, components: [String], maximum: Int,
+    cancelled: @Sendable () -> Bool = { false }
+  ) throws -> (data: Data, metadata: stat) {
     var current = dup(rootDescriptor)
     guard current >= 0 else { throw SidebarCatalogError.unavailable }
     defer { Darwin.close(current) }
     for (index, name) in components.enumerated() {
+      if cancelled() { throw SidebarCatalogError.cancelled }
+      guard !name.isEmpty, name != ".", name != "..", !name.contains("/") else {
+        throw SidebarCatalogError.unsafeFile
+      }
       let isFile = index == components.count - 1
       let next = openat(
         current, name, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | (isFile ? O_NONBLOCK : O_DIRECTORY))
@@ -280,12 +373,23 @@ struct SidebarCatalog: Sendable {
     var data = Data()
     var bytes = [UInt8](repeating: 0, count: 32_768)
     while true {
+      if cancelled() { throw SidebarCatalogError.cancelled }
       let count = Darwin.read(current, &bytes, bytes.count)
       if count < 0 {
         if errno == EINTR { continue }
         throw SidebarCatalogError.unsafeFile
       }
-      if count == 0 { return data }
+      if count == 0 {
+        var after = stat()
+        guard fstat(current, &after) == 0, metadata.st_size == after.st_size,
+          metadata.st_mtimespec.tv_sec == after.st_mtimespec.tv_sec,
+          metadata.st_mtimespec.tv_nsec == after.st_mtimespec.tv_nsec,
+          metadata.st_ctimespec.tv_sec == after.st_ctimespec.tv_sec,
+          metadata.st_ctimespec.tv_nsec == after.st_ctimespec.tv_nsec,
+          data.count == after.st_size
+        else { throw SidebarCatalogError.staleFile }
+        return (data, after)
+      }
       guard data.count + count <= maximum else { throw SidebarCatalogError.sizeLimit }
       data.append(contentsOf: bytes.prefix(count))
     }
