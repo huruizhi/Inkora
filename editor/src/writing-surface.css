@@ -20,6 +20,9 @@ div#editor h2 { font-size: 1.5em; padding-bottom: .3em; }
 div#editor h1, div#editor h2 {
   border-bottom: 1px solid color-mix(in srgb, CanvasText 9%, transparent);
 }
+/* 仅收紧标题到正文及连续标题的局部留白。 */
+div#editor h1:has(+ p) { margin-bottom: .5em; }
+div#editor h2 + h3, div#editor h3 + h2 { margin-top: 1em; }
 div#editor h3 { font-size: 1.25em; }
 div#editor h4 { font-size: 1.1em; }
 div#editor h5, div#editor h6 { font-size: 1em; }
