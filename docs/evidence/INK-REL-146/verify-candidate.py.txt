@@ -1,0 +1,67 @@
+import datetime
+import hashlib
+import json
+import pathlib
+import plistlib
+import subprocess
+
+root = pathlib.Path.cwd()
+assets = root / 'artifacts/candidate'
+out = root / 'artifacts/manager-candidate-check'
+out.mkdir(parents=True, exist_ok=True)
+provenance = json.loads((assets / 'PROVENANCE.json').read_text())
+results = {}
+
+def command(*args):
+    p = subprocess.run(args, cwd=root, capture_output=True, check=True)
+    with (out / 'commands.log').open('ab') as f:
+        f.write((' '.join(map(str, args)) + '\n').encode())
+        f.write(p.stdout + p.stderr)
+    return p.stdout
+
+for name, entry in provenance['assets'].items():
+    assert pathlib.Path(name).name == name
+    data = (assets / name).read_bytes()
+    assert len(data) == entry['bytes']
+    assert hashlib.sha256(data).hexdigest() == entry['sha256']
+for name, digest in provenance['identities'].items():
+    assert command('git', 'rev-parse', 'HEAD:' + name).decode().strip() == digest
+
+expected = plistlib.loads((root / 'app/Resources/Inkora.entitlements').read_bytes())
+def check_app(app):
+    info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
+    values = {k: info[k] for k in ['CFBundleIdentifier', 'CFBundleShortVersionString', 'CFBundleVersion', 'LSMinimumSystemVersion']}
+    assert values == dict(CFBundleIdentifier='com.huruizhi.Inkora', CFBundleShortVersionString='0.1.0', CFBundleVersion='4', LSMinimumSystemVersion='14.0')
+    binary = app / 'Contents/MacOS/Inkora'
+    arch = command('/usr/bin/lipo', '-archs', str(binary)).decode().split()
+    assert set(arch) == {'arm64', 'x86_64'}
+    digest = hashlib.sha256(binary.read_bytes()).hexdigest()
+    assert digest == provenance['checks']['export']['binary_sha256']
+    command('/usr/bin/codesign', '--verify', '--deep', '--strict', str(app))
+    details = subprocess.run(['/usr/bin/codesign', '-dv', '--verbose=4', str(app)], capture_output=True, check=True)
+    details = (details.stdout + details.stderr).decode()
+    assert 'Signature=adhoc' in details and 'runtime)' in details
+    entitlements = command('/usr/bin/codesign', '-d', '--entitlements', ':-', str(app))
+    assert plistlib.loads(entitlements) == expected
+    command('tests/ci/editor-bundle-smoke.sh', str(app))
+    return dict(versions=values, architectures=arch, binary_sha256=digest,
+        strict_codesign=True, signature='ad-hoc/runtime', entitlements_exact=True, offline_bundle=True)
+
+zip_name = next(n for n in provenance['assets'] if n.endswith('.zip'))
+dmg_name = next(n for n in provenance['assets'] if n.endswith('.dmg'))
+command('/usr/bin/ditto', '-x', '-k', str(assets / zip_name), str(out / 'unzipped'))
+results['zip'] = check_app(out / 'unzipped/Inkora.app')
+command('/usr/bin/hdiutil', 'verify', str(assets / dmg_name))
+mount = out / 'mount'
+mount.mkdir(exist_ok=True)
+command('/usr/bin/hdiutil', 'attach', '-readonly', '-nobrowse', '-noautoopen', '-mountpoint', str(mount), str(assets / dmg_name))
+try:
+    results['dmg'] = check_app(mount / 'Inkora.app')
+finally:
+    command('/usr/bin/hdiutil', 'detach', str(mount))
+results.update(sourcePathsMatch=True, assetsSHA256Match=True, mountedReadOnly=True,
+    detached=True, appLaunched=False, sourceHead=command('git', 'rev-parse', 'HEAD').decode().strip(),
+    authorBuildSource=provenance['source_commit'],
+    utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
+(out / 'result.json').write_text(json.dumps(results, indent=2) + '\n')
+print('PASS independent ZIP/DMG: hashes, source paths, build 4, universal, strict ad-hoc/runtime, exact entitlements and offline resources; detached without App launch')

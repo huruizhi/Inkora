@@ -1,0 +1,44 @@
+{
+  "zip": {
+    "versions": {
+      "CFBundleIdentifier": "com.huruizhi.Inkora",
+      "CFBundleShortVersionString": "0.1.0",
+      "CFBundleVersion": "4",
+      "LSMinimumSystemVersion": "14.0"
+    },
+    "architectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "binary_sha256": "290080d1fc55b864593635f5fa083a3afdf6916d0fb261a4d271096b8f9de909",
+    "strict_codesign": true,
+    "signature": "ad-hoc/runtime",
+    "entitlements_exact": true,
+    "offline_bundle": true
+  },
+  "dmg": {
+    "versions": {
+      "CFBundleIdentifier": "com.huruizhi.Inkora",
+      "CFBundleShortVersionString": "0.1.0",
+      "CFBundleVersion": "4",
+      "LSMinimumSystemVersion": "14.0"
+    },
+    "architectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "binary_sha256": "290080d1fc55b864593635f5fa083a3afdf6916d0fb261a4d271096b8f9de909",
+    "strict_codesign": true,
+    "signature": "ad-hoc/runtime",
+    "entitlements_exact": true,
+    "offline_bundle": true
+  },
+  "sourcePathsMatch": true,
+  "assetsSHA256Match": true,
+  "mountedReadOnly": true,
+  "detached": true,
+  "appLaunched": false,
+  "sourceHead": "1e7c8389191addf53fc7fe6e89e105dbf8be8fcb",
+  "authorBuildSource": "a5267f1325753842a868263ec26ae4b055f760b2",
+  "utc": "2026-11-10T18:33:54.450256+00:00"
+}
