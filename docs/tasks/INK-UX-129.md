@@ -26,3 +26,13 @@
 三执行任务仍在运行；待固定SHA交付后组合、独立检查、相称回归和精确HEAD默认CI，再按既有授权交付并只保留正式安装。主要风险为：标题行Native命中区域、读取后URL重开TOCTOU、异步目录/搜索迟到、dirty源码关闭取消、raw定位与动画期间输入稳定。风险必须实际验证，不能靠缩小目标回避。
 
 管理分支`task/INK-UX-129-typora-sidebar`保留为集成分支，目标保持active。Agent与workspace仅在固定SHA及报告备份、管理者确认后两层回收。
+
+## 组合审查与限定补正
+
+固定产品`d3edf8803c661d1fb2dbebf9e8abdd826720f69d`已吸收A/B/C交付。管理者实际运行`make lint editor-build`及`tests/InkoraTests/SidebarNavigationHostless.sh`，均退出0；后者4/4，通过真实但始终不可见NSWindow/WK的标题顶沿、hit-test、窗口转交和外改拒写接缝。日志在`artifacts/delegation/root-combined-{build,navigation}.log`。不能外推真实系统面板或完整窄窗动画。
+
+两名独立Agent完成固定diff审查：[Standards](../reviews/INK-REV-133-sidebar-standards.md)发现完整正文经独立定位通道传输的协议硬偏离；[Spec](../reviews/INK-REV-134-sidebar-spec.md)发现关闭确认后打开过期目标、普通编辑令目录扫描/搜索静默丢回包、dirty目标普通卡片被额外限制、窄窗侧栏与正文重叠。前两项有独立后台反例，后两项有静态生产路径/尺寸推导，均未冒称实机观察。原报告已原样吸收，结论仍不通过。
+
+已向原执行Agent分派限定补正：A修异步绑定及受限二次文件验证；B修共享布局宽度；C修转交前重验、普通卡片复用、正式定位协议及隐藏WK几何。协议扩展决定同步于交接契约；不靠扩大“纯UI”豁免掩盖正文旁路。补正未交付前不合main、不替换正式安装。
+
+A的Timer安装线程补正`554d50c`已吸收为`140438c`；管理者独立重跑`tests/InkoraTests/SidebarHostless.sh`，15/15、0失败，日志`artifacts/delegation/root-sidebar-timer-fix.log`。该专项证明有限线程/生命周期行为，不代表上述审查问题已关闭。后续仍须固定补正SHA复审、组合门禁与精确HEAD CI。

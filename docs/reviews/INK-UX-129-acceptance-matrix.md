@@ -49,3 +49,12 @@
 - `pnpm --dir editor exec vitest run src/main.test.ts src/sidebar-chrome.test.ts src/sidebar-library.test.ts src/sidebar-connection.test.ts src/document-analysis-panel.test.ts src/document-analysis.test.ts src/heading-navigation.test.ts`：管理者实际运行，7 files / 185 passed。日志`artifacts/delegation/root-sidebar-dom.log`。证明DOM公共事件/候选与旧请求守卫、5000ms虚拟计时边界和菜单行为；不外推为Native标题几何或像素动画。
 - C报告已使用不显示的NSWindow/WK验证标题行顶对齐、右角hitTest与90px安全区，并发现NSDocumentController子类测试注入顺序问题；改为显式工厂后同进程组合四项转绿。当前只是作者回报，固定C提交和管理者自跑结果到达前不将SB-08/SB-11标为通过。
 - 管理者源码核对确认旧`read(data)`不会设置diskVersion/修改时间/打开历史，已要求C消费A安全descriptor所得数据/metadata，建立版本依据并覆盖恢复原mtime的外改拒写。同窗口转交须重绑snapshot/recovery/image/epoch；不能靠原有canClose或界面切换间接推定完成。
+
+## 固定组合与独立审查结算（未通过）
+
+管理者在`d3edf880`实际运行lint、Web build与Native导航hostless四项，均通过；标题顶沿/右角命中及90px安全区获得有限证据。随后两个独立审查发现阻断，因此SB-05/07/08/09/14不得标为通过，SB-11仍缺完整窄窗/resize几何，SB-15尚未结算。
+
+- Standards：1项硬偏离，完整`location.raw`走无v1信封/回执的独立入口；两项统计状态重复/原始字符串为judgement，不混作硬规则。报告`INK-REV-133-sidebar-standards.md`。
+- Spec：1项P1（确认等待后目标版本失效）与3项P2（正文revision丢目录/搜索回包、dirty目标普通卡片限制、窄窗重叠）。两项真实后台反例及两项静态推导分别记录于`INK-REV-134-sidebar-spec.md`，不将probe退出0误写成产品通过。
+- A安装线程修复吸收为`140438c`后，管理者专项15/15通过；仅补足Timer生命周期证据。
+- 所有问题已分派原A/B/C执行Agent；待补正固定SHA与后验审查。正式main及安装版仍保持原状态，未占用屏幕。

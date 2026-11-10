@@ -44,6 +44,8 @@
 
 三Agent从同一交接commit创建独立worktree，仅提交自己负责文件；不得互相修改工作树。接口扩展先向管理者报告，再共同采用，不得悄悄改名让别支编译失败。所有字段是UI状态，不进入当前原文或保存协议；不得改既有Editor Bridge v1序列化字段。
 
+独立审查后的限定扩展决定：现有字段及正文/保存语义保持兼容，允许C为标题呈现与范围导航增加正式v1命令、双侧校验和requestID回执；禁止通过独立JSGlobal传输完整当前原文。目录浏览专用UI通道须在Bridge契约中明确其元数据边界、来源/代际校验和结果规则，不得成为第二条正文、事务或保存通道。此扩展尚待实现与复审，不表示当前旁路已合规。
+
 ### A：INK-UX-130 原生目录与搜索
 
 拥有`app/Sources/SidebarCatalog.swift`、`SidebarWorkspaceBridge.swift`、`tests/InkoraTests/SidebarCatalogTests.swift`，可新增同域Swift模块/测试及自己的任务/证据文档。`EditorViewController.swift`、`InkoraDocument.swift`由C拥有。
