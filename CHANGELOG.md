@@ -1,8 +1,8 @@
 # 变更记录
 
-## 0.1.0 Beta 1 候选 — 2026-11-10
+## 0.1.0 Beta 1 未签名预览版 — 2026-11-10
 
-状态：本地 Release 候选，尚未公开发布；App 版本 0.1.0，build 3。未发布的 build 2 已由容器公式补正替代。
+渠道：GitHub Releases 预发布版；App 版本 0.1.0，build 3，支持 Apple Silicon 与 Intel。用户明确选择现在发布未签名预览版；未发布的 build 2 已由容器公式补正替代。此处“未签名”指没有 Developer ID 分发签名；二进制保留构建时的 ad-hoc 签名。
 
 ### 显示与写作体验
 
@@ -22,4 +22,4 @@
 - Mermaid 文档内配置、外部图片，以及超过预览预算的图表不渲染，保留代码和诊断。
 - 最终渲染有真实 hostless WK 证据；桌面最终复查时已锁屏，深色外观及完整窗口交互未作最终视觉验收。
 - 部署目标仍为 macOS 14+；本候选自动验证在 macOS 27.2 执行，不宣称 macOS 14 实测通过。
-- 目前没有 Developer ID 证书或公证凭据。候选仅为本地 ad-hoc/dry-run 产物，未通过 Apple 公证、Gatekeeper 下载首启或正式对外分发门槛。
+- 未做 Developer ID 签名、Apple 公证或 Gatekeeper 下载首启验收。macOS 可能拦截下载包；本版仅供预览，不保证默认安全设置下首次启动成功，不宣称完整 Typora 对齐或正式质量验收通过。

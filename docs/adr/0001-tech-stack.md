@@ -21,5 +21,9 @@ D. Tauri：同样基于 WKWebView，额外引入 Rust，相比 B 无明显收益
 发行渠道仅采用 Mac App Store 之外的直接分发：应用使用 Developer ID 签名，启用 Hardened Runtime，
 提交 Apple 公证，并通过 GitHub Releases 发布。Mac App Store 不在产品路线内。
 
+2026-11-10 补充：用户明确授权先通过 GitHub Releases 发布未签名预览版。
+该预发布版公开标明无 Developer ID 签名、无公证及 Gatekeeper 首启限制；
+保留 ad-hoc 签名供结构校验，不冒充正式分发签名。此例外不改变后续正式版本的签名、公证流程。
+
 ## 后果
 需维护 Swift↔JS 桥接协议；编辑内核以 Vite 构建为静态资源打包进 App Bundle，运行时不依赖网络。
