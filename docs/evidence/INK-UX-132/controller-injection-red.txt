@@ -5,8 +5,8 @@ Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellati
 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:107: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertNil failed: "Error Domain=NSCocoaErrorDomain Code=256 "The file couldn’t be opened.""
 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:109: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertFalse failed
 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:112: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertTrue failed
-/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:113: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertEqual failed: ("原文
-") is not equal to ("目标
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:113: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertEqual failed: ("原文\r
+") is not equal to ("目标\r
 ")
 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-132-sidebar-integration/tests/InkoraTests/SidebarNavigationTests.swift:114: error: -[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource] : XCTAssertTrue failed
 Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' failed (0.019 seconds).
