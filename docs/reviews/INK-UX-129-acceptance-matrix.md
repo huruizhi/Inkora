@@ -40,3 +40,12 @@
 ## 结算方式
 
 各Agent交付固定SHA后，将每行状态改为“已证明/未完成/证据不足”，填入实际命令、测试名称、结果和生产文件位置；保留失败与补正历史。任一必需项仍未证明，不宣告侧栏完整完成，更不以侧栏一片代替整个Typora体验目标。后置正文间距、节点工具密度等沿既有规划推进，不顺带并入本大改。
+
+## A/B组合后的管理者自跑（生产窗口接线尚待C）
+
+固定集成HEAD `d776cc1`吸收A的三个交付提交与B的`7af7f8b`；未改变main/安装版。
+
+- `tests/InkoraTests/SidebarHostless.sh`：管理者实际运行，14/14，0 failure。编译当前生产Catalog/WorkspaceBridge两个源文件，另外只注入Bridge常量；覆盖真实临时文件、BOM/CRLF/UTF16、根身份/符号链接/替换、限制与取消、消息来源adapter、scope平衡、旧ctx/query/open错误与目录变化。日志`artifacts/delegation/root-sidebar-hostless.log`。这不是OS Sandbox授权或真实WK frame来源测试。
+- `pnpm --dir editor exec vitest run src/main.test.ts src/sidebar-chrome.test.ts src/sidebar-library.test.ts src/sidebar-connection.test.ts src/document-analysis-panel.test.ts src/document-analysis.test.ts src/heading-navigation.test.ts`：管理者实际运行，7 files / 185 passed。日志`artifacts/delegation/root-sidebar-dom.log`。证明DOM公共事件/候选与旧请求守卫、5000ms虚拟计时边界和菜单行为；不外推为Native标题几何或像素动画。
+- C报告已使用不显示的NSWindow/WK验证标题行顶对齐、右角hitTest与90px安全区，并发现NSDocumentController子类测试注入顺序问题；改为显式工厂后同进程组合四项转绿。当前只是作者回报，固定C提交和管理者自跑结果到达前不将SB-08/SB-11标为通过。
+- 管理者源码核对确认旧`read(data)`不会设置diskVersion/修改时间/打开历史，已要求C消费A安全descriptor所得数据/metadata，建立版本依据并覆盖恢复原mtime的外改拒写。同窗口转交须重绑snapshot/recovery/image/epoch；不能靠原有canClose或界面切换间接推定完成。
