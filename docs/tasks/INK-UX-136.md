@@ -19,3 +19,11 @@
 ## 执行恢复
 
 A的Luna medium连续两轮仅阅读规范和现有脚本后结束，实际工作树仍clean、无build/artifacts，尚无真实WK测量或CSS改动；不将这类回报算作交付或外部受阻。管理者已在同一Agent/工作树升级Sol medium并重新下达具体测量步骤，范围和禁止占屏要求不变。B菜单任务继续独立执行；未因此提前整合或替换安装。
+
+## 组合阶段核对
+
+已按固定提交接入137 `c1bd4733b036bee08955aead4a588714de739fc0`与138 `f5d6d38bf0db6d3490a7e42e3224797987c3c565`。管理者在组合产品`4fc4a78c4fbf2d1dfb578a8d19b403a295da1007`自跑四文件定向回归88/88、`make editor-build`通过。初次误用不存在的`.tools/pnpm`未启动测试，随后按Makefile锁定入口`.tools/node_modules/.bin/pnpm`成功，不计第一次为产品失败。
+
+复制137最终无候选注入harness到管理者自身build目录，用组合生产bundle重新编译并运行真实不可见WK，8组宽窄/900与760配置/深浅色均通过。独立读取JSON核对：h1→p为17px、h2→h3为21.25px；raw/revision/dirty与实际EditorView DOM身份保持，页面与editor无横向溢出。含17px内部滚动条的实际内容列分别883/743px，480px视口为415px；不把配置宽度冒称实际正文宽度。命令、JSON、编译与运行日志保留于管理者`artifacts/INK-UX-136`及`build/artifacts/INK-UX-137`。该证据不证明屏幕paint或对Typora像素一致。
+
+138顶部菜单几何证据尚不足以覆盖编辑区底边裁切，已由原实现Agent有限补测剩余40–80px、360px横滚及最后命令真实可达性；在取得结果前不固定最终候选，也不重复全量门禁。
