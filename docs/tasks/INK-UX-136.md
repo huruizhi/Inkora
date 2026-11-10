@@ -35,3 +35,9 @@ A的Luna medium连续两轮仅阅读规范和现有脚本后结束，实际工�
 管理者自跑`make lint test-non-ui release-bundle-check`退出0：editor 798/798，Web Bridge 16/16，Swift Bridge xcresult 16/16，Native xcresult Passed、214通过/0失败/8既有性能跳过；离线Release bundle smoke通过。日志保留既有InkoraDocument actor-isolation warning及伴随的“command failed with exit code 0”诊断、Vite大chunk提示；最终命令状态与实际xcresult均已核对。未运行UI或full-bench。
 
 管理者复制138最小harness，用组合源重新打包并在不可见WK运行：8种宽/高/底部空间组合，各9项焦点与中心命中全部通过，正文、选区、状态、发布数不变，editor不额外滚动。工具可见态仍按作者约束注入，不声称物理焦点或paint。首次Vite误传不支持的--root、Swift6 harness函数缺MainActor而未启动，完整日志保留；只修正自有临时harness启动及actor注解后通过，产品零改动。最终日志`artifacts/INK-UX-136/menu-geometry-final.log`与harness及首轮错误日志一并保留。
+
+## 独立审查结算
+
+139 Standards固定ce4dd2f：明确书面硬违规0，低优先级possible Duplicated Code 1（新旧上下文测试的公共setup/断言重复），是维护判断且不阻断，本轮不为消除重复删除有效覆盖或增加通用测试框架。140 Spec固定同SHA：missing/partial、scope creep、实现错误均0；审查者实跑两文件四项，其中两项新反例覆盖选区离开又返回、源码卸载、同文新runtime及取消。两轴全文分别保留于独立review/task，作者证据与审查者自跑没有混称。
+
+审查之后仅追加两轴报告与本管理记录，产品相对ce4dd2f未变；精确最终HEAD仍须默认CI，未提前合并、安装或宣告整个开发目标完成。PR #88为本有限切片。屏幕paint、系统授权和人工AX证据保持各自未验边界；用户取消的macOS14专项与重复物理IME不再作为复做条件。
