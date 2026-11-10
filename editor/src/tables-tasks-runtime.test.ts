@@ -54,6 +54,9 @@ function textPositionIn(
 function clickTableCommand(dom: JSDOM, parent: HTMLElement, command: string): void {
   const button = parent.querySelector<HTMLButtonElement>(`[data-table-command="${command}"]`);
   if (!button) throw new Error(`Missing table command ${command}`);
+  if (button.getAttribute("role") === "menuitem") {
+    parent.querySelector<HTMLButtonElement>("[aria-haspopup='menu']")!.click();
+  }
   button.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }));
 }
 

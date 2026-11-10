@@ -1,3 +1,4 @@
+import "./table-menu.css";
 import type { Node as PMNode } from "prosemirror-model";
 import { TextSelection, type EditorState } from "prosemirror-state";
 import type { EditorView, NodeView } from "prosemirror-view";
@@ -209,20 +210,88 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
       ["左对齐", "align_left"], ["居中", "align_center"], ["右对齐", "align_right"],
       ["无对齐", "align_none"], ["删除表格", "delete_table"],
     ];
+    const more = document.createElement("button");
+    more.type = "button";
+    more.textContent = "更多";
+    more.setAttribute("aria-label", "更多表格操作");
+    more.setAttribute("aria-haspopup", "menu");
+    more.setAttribute("aria-expanded", "false");
+    const menu = document.createElement("div");
+    menu.className = "inkora-table-menu";
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", "更多表格操作");
+    menu.hidden = true;
+    let binding: EditorState | null = null;
+    let alive = true;
+    const close = () => {
+      binding = null;
+      menu.hidden = true;
+      more.setAttribute("aria-expanded", "false");
+    };
+    const valid = () => alive && dom.isConnected && !view.isDestroyed &&
+      !options.isComposing() && !view.composing && view.editable;
+    const open = () => {
+      if (!valid()) return;
+      binding = view.state;
+      menu.hidden = false;
+      more.setAttribute("aria-expanded", "true");
+      menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    };
+    more.addEventListener("pointerdown", event => event.preventDefault());
+    more.addEventListener("click", () => menu.hidden ? open() : close());
+    more.addEventListener("keydown", event => {
+      if (event.isComposing || options.isComposing()) return;
+      if (event.key === "ArrowDown") { event.preventDefault(); open(); }
+    });
+    menu.addEventListener("keydown", event => {
+      if (event.isComposing || options.isComposing()) return;
+      if (event.key === "Escape") { close(); return; }
+      const items = Array.from(menu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+      const index = items.indexOf(document.activeElement as HTMLButtonElement);
+      const key = event.key;
+      if (["ArrowDown", "ArrowUp", "Home", "End"].includes(key)) {
+        event.preventDefault();
+        items[key === "Home" ? 0 : key === "End" ? items.length - 1 :
+          (index + (key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+      }
+      if (key === "Tab") close();
+    });
+    const outside = (event: Event) => {
+      if (!toolbar.contains(event.target as Node)) close();
+    };
+    toolbar.addEventListener("focusout", event => {
+      if (!toolbar.contains(event.relatedTarget as Node | null)) close();
+    });
+    const invalidate = () => close();
+    document.addEventListener("pointerdown", outside, true);
+    view.dom.addEventListener("compositionstart", invalidate, true);
+    // Any accepted selection/content transition invalidates the captured intent,
+    // including a move away and back before the next click.
+    const observer = new view.dom.ownerDocument.defaultView!.MutationObserver(() => {
+      if (binding && (binding !== view.state || !valid())) close();
+    });
+    observer.observe(view.dom, { subtree: true, childList: true, attributes: true });
     let deleteColumnButton: HTMLButtonElement | undefined;
     for (const [label, command] of commands) {
       const button = commandButton(label, command);
+      const primary = command === "add_row_after" || command === "add_column_after";
       if (command === "delete_column") deleteColumnButton = button;
-      button.addEventListener("pointerdown", (event) => event.preventDefault());
-      button.addEventListener("click", (event) => {
+      if (!primary) button.setAttribute("role", "menuitem");
+      button.addEventListener("pointerdown", event => event.preventDefault());
+      button.addEventListener("click", event => {
         event.preventDefault();
-        if (options.isComposing()) return;
+        if (!valid() || (!primary && (!binding || binding !== view.state || menu.hidden))) {
+          close(); return;
+        }
         const pos = getPos();
+        close();
         if (pos !== undefined) applyTableCommand(view, pos, command);
       });
-      toolbar.append(button);
+      (primary ? toolbar : menu).append(button);
     }
+    toolbar.append(more, menu);
     const updateAvailability = (current: PMNode): void => {
+      close();
       deleteColumnButton!.disabled = (current.firstChild?.firstChild?.childCount ?? 0) <= 1;
     };
     updateAvailability(node);
@@ -239,6 +308,16 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
         if (updated.type !== node.type) return false;
         updateAvailability(updated);
         return true;
+      },
+      destroy() {
+        alive = false;
+        close();
+        observer.disconnect();
+        document.removeEventListener("pointerdown", outside, true);
+        view.dom.removeEventListener("compositionstart", invalidate, true);
+      },
+      ignoreMutation(mutation) {
+        return mutation.type !== "selection" && toolbar.contains(mutation.target);
       },
       stopEvent(event) { return toolbar.contains(event.target as Node); },
     };
