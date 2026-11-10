@@ -5,6 +5,7 @@
 - 状态：1.0 开发中（Foundation、Editor Core、Native Bridge 已完成，macOS MVP 进行中），路线图见 [#1](https://github.com/huruizhi/Inkora/issues/1)
 - 平台：macOS 14+，App Sandbox，离线运行
 - 分发：通过 GitHub Releases 直接下载（DMG/ZIP），不上架 Mac App Store。当前提供[未签名预览版](https://github.com/huruizhi/Inkora/releases/tag/v0.1.0-beta.1)，未做 Developer ID 签名或 Apple 公证，macOS 可能拦截打开；后续正式分发采用签名与公证流程
+- 当前预发布沿用私有仓库权限，仅仓库授权用户可访问；用户已决定暂不开放外部下载，不另建公开下载仓库
 - 架构：原生 AppKit `NSDocument` 外壳 + WKWebView 承载离线 ProseMirror 编辑内核，两层之间只通过带 revision 的 Bridge 通信（见 [`docs/adr/`](docs/adr/)）
 - AI：AI 辅助属于后续规划，必须与编辑器解耦，是唯一允许访问网络的模块
 
