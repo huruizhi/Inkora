@@ -22,4 +22,10 @@
 
 管理者另用真实InkoraDocument、EditorViewController、WK/main/Bridge创建始终不可见窗口，核对第二脚注返回真实引用并聚焦；重复公式的第二实例、quote公式和非法TeX三处均精确进入源码，真实main模式/提交取消控件同步，dirty草稿取消后raw/revision/native dirty及BOM写出字节全等。原生BOM按既有文档契约由Native剥离保存、输出重加，不把JS正文无BOM误报丢失。先在B组合、再在最终含A与settling接线的生产bundle新进程复跑，均通过；复用的Swift可执行文件只含本轮未改Native源码，加载的Web资源按最终bundle哈希固定。
 
-该WK检查没有注入可见态或替换滚动实现；不显示窗口，不证明实际paint、物理焦点、系统授权或人工AX。原始harness/编译与运行日志保留在管理者artifacts，文本源码、结果与资源SHA见`docs/evidence/INK-UX-141`。全局草稿/保存界面保留现有路径，不加产品调试入口。当前仍待两轴报告及精确最终HEAD默认CI，不能宣告整体开发完成。
+该WK检查没有注入可见态或替换滚动实现；不显示窗口，不证明实际paint、物理焦点、系统授权或人工AX。原始harness/编译与运行日志保留在管理者artifacts，文本源码、结果与资源SHA见`docs/evidence/INK-UX-141`。全局草稿/保存界面保留现有路径，不加产品调试入口。此时仍待两轴报告及精确最终HEAD默认CI，不能宣告整体开发完成。
+
+## 独立审查结算
+
+144 Standards固定99211a1：硬违规0，Feature Envy与Data Clumps两项为非硬维护建议；不为其扩大已验证的功能切片或重构会话。图片节点/位置失效时未提交属性输入被关闭的探针成立，但基线已有、规则适用未经裁定，审查者已撤回新增硬违规候选，单独保留为继承风险与后续属性草稿政策边界。本轮只承诺descriptor刷新时稳定草稿、目标失效不改投，不把跨节点保留草稿写成已实现。
+
+145 Spec固定同SHA：missing/partial、scope creep和implemented wrong均无确认发现，审查者实跑定向26项及独立脚注探针1项，未冒称WK或完整门禁。两轴报告全文已接入；其后只加文档，产品与已跑本地门禁的99211a1一致。下一步对精确最终HEAD触发默认CI（ui-tests=false、full-bench=false），通过后才合并、替换唯一正式安装及双层备份回收。整个开发目标仍保持active，未将本切片通过等同所有验收完成。
