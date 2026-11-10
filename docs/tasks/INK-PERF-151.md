@@ -52,3 +52,14 @@
 此次没有单独冻结保存预算；150KB <200ms / 1MB <1s 的方向性对照指普通输入，不自动套到 save→verified。保存路径的 completion 分布仍有 NSDocument/文件协调波动，原始全样本、p95/CV 均保留。未做性能优化，不复跑全量/lint/release/CI。
 
 实际定向检查：`xcrun swift-format lint --strict tests/InkoraTests/PerformanceWebViewTests.swift tests/InkoraTests/PerfTestSupport.swift`、`git diff --check` 均 exit0。Native 必要构建随两个 WK 命令实际完成；未运行全 Native、全 editor、全 lint。未完成：纯 atomic writer 内部分层、正式最低系统/paint/IME/授权场景、正式体验预算；它们不被本次 hostless 结果替代。
+
+## runner 结果隔离补正
+
+根复核发现 PerfRecorder merge 配合固定输出名会把前次 full 的未覆盖尺寸混入后续 subset。新增 `scripts/perf/test-safe-save-151-runner.sh`：在隔离临时目录复制真实 runner 与 mixed fixture，以 PATH stub xcodebuild 检查启动前 canonical 不存在、prior 精确保留、sizes/TEST_RUNNER 环境一致。没有启动 Xcode 或 GUI。
+
+- 修复前真实 probe exit91：`RED: stale canonical output`，日志 `runner-isolation-red.log`。
+- 修复后 probe exit0：成功 subset 与模拟 xcodebuild exit23 的失败分支均通过；失败分支 canonical 不存在，prior 保留。
+- runner 在准备输入/启动 Xcode 前，将已有 canonical 移到独立 `build/production-perf/prior-safe-save-151.XXXXXX/safe-save-151.json`。不删除旧分布或 xcresult。
+- 原有效 full 五输入数据保持不变，无需重测。完整 1723658-byte ignored inventory 原件复制到 `artifacts/perf-151/ignored-artifact-inventory-full.json`，tracked inventory 改为目录/xcresult 级数量与字节摘要，包含原件 SHA 与路径；旧提交也保留原件。
+
+本补正只涉及自身 runner、同域 shell probe、证据与此记录，无产品或测试指标变更。
