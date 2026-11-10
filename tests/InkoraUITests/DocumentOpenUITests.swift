@@ -54,6 +54,64 @@ final class DocumentOpenUITests: AcceptanceTestCase {
   }
 
   @MainActor
+  func testTyporaFindShortcutAndCornerToolsPreserveExactBytes() async throws {
+    let directory = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let fileURL = directory.appendingPathComponent("Typora Find Replace 中文.md")
+    let original = Data("# ATX\n\nSetext\n------\n\n正文 ATX。\n".utf8)
+    try original.write(to: fileURL)
+    let app = try openWithLaunchServices(fileURL)
+    defer { app.terminate() }
+    app.activate()
+    XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+
+    let window = app.windows[fileURL.lastPathComponent]
+    XCTAssertTrue(window.waitForExistence(timeout: 10))
+    let editor = webEditor(in: app, windowTitle: fileURL.lastPathComponent)
+    XCTAssertTrue(editor.waitForExistence(timeout: 10))
+
+    let stats = window.buttons["显示文档统计"]
+    XCTAssertTrue(stats.waitForExistence(timeout: 5))
+    XCTAssertTrue(window.buttons["展开大纲"].exists)
+    XCTAssertTrue(window.buttons["切换到源码模式"].exists)
+    stats.click()
+    XCTAssertTrue(window.descendants(matching: .any)["文档统计"].waitForExistence(timeout: 5))
+    window.buttons["隐藏文档统计"].click()
+
+    editor.click()
+    app.typeKey("f", modifierFlags: .command)
+    let query = window.textFields["查找内容"]
+    XCTAssertTrue(query.waitForExistence(timeout: 5))
+    let mode = window.popUpButtons["查找模式"]
+    XCTAssertTrue(mode.exists)
+    XCTAssertEqual(mode.value as? String, "查找")
+    XCTAssertFalse(window.textFields["替换文本"].exists)
+    query.typeText("ATX")
+    XCTAssertTrue(window.staticTexts["2 处匹配"].waitForExistence(timeout: 5))
+    app.typeKey(.return, modifierFlags: [])
+    XCTAssertTrue(query.exists)
+    app.typeKey(.return, modifierFlags: .shift)
+    XCTAssertTrue(query.exists)
+    app.typeKey(.escape, modifierFlags: [])
+    XCTAssertTrue(query.waitForNonExistence(timeout: 5))
+
+    app.typeKey("f", modifierFlags: .command)
+    XCTAssertTrue(query.waitForExistence(timeout: 5))
+    window.buttons["关闭查找"].click()
+    app.typeKey("s", modifierFlags: .command)
+    let saved = await waitForDisk(fileURL, data: original)
+    XCTAssertTrue(saved)
+
+    app.typeKey("w", modifierFlags: .command)
+    XCTAssertTrue(window.waitForNonExistence(timeout: 5))
+    try openDocument(fileURL, with: app)
+    let reopened = webEditor(in: app, windowTitle: fileURL.lastPathComponent)
+    XCTAssertTrue(reopened.waitForExistence(timeout: 10))
+    XCTAssertTrue(waitForValue(reopened, containing: "ATX"))
+    XCTAssertEqual(try Data(contentsOf: fileURL), original)
+  }
+
+  @MainActor
   func testBareCRReadOnlyConvertsWithKeyboardWithoutSaving() throws {
     let directory = try makeTemporaryDirectory()
     let url = directory.appendingPathComponent("Bare CR.md")
@@ -667,6 +725,27 @@ final class DocumentOpenUITests: AcceptanceTestCase {
       try? await Task.sleep(for: .milliseconds(100))
     }
     return false
+  }
+
+  @MainActor
+  private func waitForDisk(_ url: URL, data: Data) async -> Bool {
+    for _ in 0..<50 {
+      if (try? Data(contentsOf: url)) == data { return true }
+      try? await Task.sleep(for: .milliseconds(100))
+    }
+    return false
+  }
+
+  @MainActor
+  private func openDocument(_ fileURL: URL, with app: XCUIApplication) throws {
+    let applicationURL = try builtApplicationURL()
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+    process.arguments = ["-a", applicationURL.path, fileURL.path]
+    try process.run()
+    process.waitUntilExit()
+    XCTAssertEqual(process.terminationStatus, 0)
+    XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
   }
 
   @MainActor
