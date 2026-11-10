@@ -1,0 +1,9 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-143-technical-navigation/editor
+
+
+ Test Files  2 passed (2)
+      Tests  14 passed (14)
+   Start at  01:50:33
+   Duration  395ms (import 56%, tests 35%, transform 9%)
+

@@ -1,0 +1,30 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-143-technical-navigation/editor
+
+ ✓ src/technical-navigation-runtime.test.ts > returns to the actual reference and exposes source editing 56ms
+ ✓ src/technical-navigation-runtime.test.ts > binds repeated and quoted CRLF math, restores directed selection, and expires old controls 41ms
+ ✓ src/image-view.test.ts > keeps draft and focus across descriptor refresh, and commits one reversible source edit 55ms
+ ✓ src/image-view.test.ts > cancels without source/history changes and rejects detached and destroyed handlers 6ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > renders canonical container math without rewriting its physical raw 41ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > renders canonical container math without rewriting its physical raw 6ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > renders canonical container math without rewriting its physical raw 5ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > refreshes canonical math content after source editing and Undo/Redo 9ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > renders math and footnotes while preserving exact raw and a source no-op roundtrip 6ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > keeps invalid TeX and hostile footnote text inert without blocking an accepted document 5ms
+ ✓ src/image-settling-runtime.test.ts > guards image cancel, apply and Escape through the session settling window 105ms
+ ✓ src/technical-navigation-runtime.test.ts > edits invalid math and clears the technical return after a no-op apply 4ms
+ ✓ src/technical-navigation-runtime.test.ts > keeps a connected technical control usable after ordinary visual typing 6ms
+ ✓ src/technical-navigation-runtime.test.ts > preserves the accepted PM selection after a node selection request and dirty cancellation 4ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > footnote navigation only scrolls the matching preview and waits for composition 38ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > rejects Mermaid configuration previews without loading a script or changing raw 7ms
+ ✓ src/technical-preview-runtime.test.ts > production technical previews > cancels queued Mermaid work when the runtime is destroyed 5ms
+ ✓ src/image-view.test.ts > preserves a composing draft, ignores apply/cancel/Esc, and resumes after composition end 108ms
+ ✓ src/image-view.test.ts > offers image tools from the adjacent caret with Option+F10 and Escape returns to editing 8ms
+ ✓ src/image-view.test.ts > rejects an old form after source mode recreates the same accepted document 4ms
+ ✓ src/image-view.test.ts > rejects a draft when its node changes even if the old form is invoked 4ms
+
+ Test Files  4 passed (4)
+      Tests  21 passed (21)
+   Start at  01:57:36
+   Duration  518ms (import 54%, tests 37%, transform 8%)
+

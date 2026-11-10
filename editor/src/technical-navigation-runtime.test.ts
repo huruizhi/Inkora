@@ -1,0 +1,162 @@
+import type { EditorView } from "prosemirror-view";
+import { NodeSelection } from "prosemirror-state";
+import { JSDOM } from 'jsdom';
+import { it, expect, afterEach } from 'vitest';
+import { createEditorRuntime } from './editor-runtime';
+const previousDocument = globalThis.document;
+const previousWindow = globalThis.window;
+afterEach(() => {
+ Object.defineProperty(globalThis, 'document', {configurable:true,value:previousDocument});
+ Object.defineProperty(globalThis, 'window', {configurable:true,value:previousWindow});
+});
+it('returns to the actual reference and exposes source editing', () => {
+ const dom = new JSDOM('<main></main>', {pretendToBeVisual:true});
+ Object.defineProperty(globalThis,'document',{configurable:true,value:dom.window.document});
+ Object.defineProperty(globalThis,'window',{configurable:true,value:dom.window});
+ const parent=document.querySelector('main')!;
+ const raw='前文[^n] 和再次[^n]。\n\n$$\nx^2\n$$\n\n$$\n\\unknownCommand{\n$$\n\n[^n]: 内容\n';
+ const changes:string[]=[];
+ const r=createEditorRuntime(parent,raw,(_s,k)=>changes.push(k??'document'));
+ const refs=[...parent.querySelectorAll<HTMLElement>('.footnote-reference')];
+ expect(refs.length).toBe(2);
+ const def=parent.querySelector<HTMLElement>('.footnote-definition')!;
+ const scrolls:string[]=[];
+ [...refs,def].forEach((el,i)=>el.scrollIntoView=()=>scrolls.push(i===2?'definition':`reference-${i+1}`));
+ const before={status:r.status,selection:r.directedSelection,raw:r.snapshotText()};
+ refs[1].querySelector('button')!.click(); def.querySelector('.footnote-back')!.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true}));
+ expect(scrolls).toEqual(['definition','reference-2']);
+ expect(document.activeElement).toBe(refs[1].querySelector('button'));
+ expect({status:r.status,selection:r.directedSelection,raw:r.snapshotText()}).toEqual(before);
+ expect(changes).toEqual([]);
+ const math=[...parent.querySelectorAll('.math-preview')];
+ expect(math.length).toBe(2); expect(math[0].querySelector('math')).not.toBeNull();
+ expect(math[1].querySelector('.technical-preview-error')).not.toBeNull();
+ expect(math.every(el=>el.querySelector('button.technical-edit'))).toBe(true);
+ expect(r.enterSourceMode()).toBe(true);
+ const original=r.getSourceSelection(raw);
+ expect(r.selectSourceRange(raw,{anchor:20,head:29}).ok).toBe(true);
+ expect(r.cancelSourceDraft()).toBe(true);
+ expect(r.enterSourceMode()).toBe(true);
+ const reopened=r.getSourceSelection(raw);
+ expect(reopened).not.toEqual(original);
+ expect(r.snapshotText()).toEqual(before.raw);
+ expect(r.status).toEqual(before.status);
+
+ r.destroy();dom.window.close();
+});
+
+it('binds repeated and quoted CRLF math, restores directed selection, and expires old controls', async () => {
+ const dom=new JSDOM('<main></main>',{pretendToBeVisual:true});
+ Object.defineProperty(globalThis,'document',{configurable:true,value:dom.window.document});
+ Object.defineProperty(globalThis,'window',{configurable:true,value:dom.window});
+ const parent=document.querySelector('main')!;
+ const raw='\uFEFFBefore.\r\n\r\n$$\r\nx^2\r\n$$\r\n\r\n$$\r\nx^2\r\n$$\r\n\r\n> $$\r\n> x^2\r\n> $$\r\n\r\nAfter.\r\n';
+ const r=createEditorRuntime(parent,raw,()=>{});
+ const stable=r.status;
+ // Establish a backward trusted selection through the existing source path.
+ expect(r.enterSourceMode()).toBe(true);
+ expect(r.selectSourceRange(raw,{anchor:7,head:2}).ok).toBe(true);
+ expect(r.cancelSourceDraft()).toBe(true);
+ const before=r.directedSelection;
+ const controls=[...parent.querySelectorAll<HTMLButtonElement>('.math-preview .technical-edit')];
+ expect(controls.length).toBe(3);
+ const editor=parent.querySelector('#editor')!;
+ editor.dispatchEvent(new dom.window.Event('compositionstart',{bubbles:true}));
+ controls[1].click(); expect(r.mode).toBe('visual');
+ editor.dispatchEvent(new dom.window.Event('compositionend',{bubbles:true}));
+ expect(await r.whenCompositionStable()).toBe(true);
+ controls[1].click(); expect(r.mode).toBe('source');
+ const secondStart=raw.indexOf('$$',raw.indexOf('$$')+2); // closing delimiter of first
+ const start=raw.indexOf('$$',secondStart+2);
+ const end=raw.indexOf('$$',start+2)+2;
+ expect(r.getSourceSelection(raw)).toEqual({ok:true,value:{anchor:start,head:end}});
+ // A detached control must not replace the active draft.
+ const area=parent.querySelector('textarea')!;
+ area.value=area.value.replace('Before.','Before draft.');
+ area.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+ controls[0].click(); expect(r.status.draftDirty).toBe(true);
+ expect(r.cancelSourceDraft()).toBe(true);
+ expect(r.directedSelection).toEqual(before);
+ expect(r.status).toEqual(stable);
+ parent.querySelectorAll<HTMLButtonElement>('.math-preview .technical-edit')[2].click();
+ const quoteStart=raw.indexOf('> $$');const quoteEnd=raw.lastIndexOf('> $$')+4;
+ expect(r.getSourceSelection(raw)).toEqual({ok:true,value:{anchor:quoteStart,head:quoteEnd}});
+ expect(r.cancelSourceDraft()).toBe(true);expect(r.directedSelection).toEqual(before);
+ parent.querySelectorAll<HTMLButtonElement>('.math-preview .technical-edit')[1].click();
+ const draft=parent.querySelector('textarea')!;
+ const offset=draft.value.indexOf('x^2',draft.value.indexOf('x^2')+3);
+ draft.value=draft.value.slice(0,offset)+'x^3'+draft.value.slice(offset+3);
+ draft.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+ expect(r.applySourceDraft()).toBe(true);
+ const expected=raw.slice(0,start)+raw.slice(start,end).replace('x^2','x^3')+raw.slice(end);
+ expect(r.snapshotText()).toEqual({ok:true,value:expected});
+ expect(r.cancelSourceDraft()).toBe(true);
+ expect(r.undo()).toBe(true);expect(r.snapshotText()).toEqual({ok:true,value:raw});
+ expect(r.redo()).toBe(true);expect(r.snapshotText()).toEqual({ok:true,value:expected});
+ const old=parent.querySelector<HTMLButtonElement>('.technical-edit')!;
+ r.destroy();
+ const replacement=createEditorRuntime(parent,raw,()=>{});
+ old.click();expect(replacement.mode).toBe('visual');expect(replacement.status).toEqual(stable);
+ replacement.destroy();dom.window.close();
+});
+
+it('edits invalid math and clears the technical return after a no-op apply', () => {
+ const dom=new JSDOM('<main></main>',{pretendToBeVisual:true});
+ Object.defineProperty(globalThis,'document',{configurable:true,value:dom.window.document});
+ Object.defineProperty(globalThis,'window',{configurable:true,value:dom.window});
+ const parent=document.querySelector('main')!;
+ const raw='Before.\n\n$$\n\\unknownCommand{\n$$\n\nAfter.\n';
+ const changes:string[]=[];
+ const r=createEditorRuntime(parent,raw,(_s,k)=>changes.push(k??'document'));
+ const before=r.directedSelection;
+ parent.querySelector<HTMLButtonElement>('.technical-edit')!.click();
+ expect(r.mode).toBe('source');
+ expect(r.getSourceSelection(raw)).toEqual({ok:true,value:{anchor:9,head:31}});
+ expect(r.applySourceDraft()).toBe(true);
+ expect(r.selectSourceRange(raw,{anchor:5,head:2}).ok).toBe(true);
+ expect(r.cancelSourceDraft()).toBe(true);
+ expect(r.directedSelection).not.toEqual(before);
+ expect(r.directedSelection).toEqual({selectionAnchor:5,selectionHead:2});
+ expect(r.snapshotText()).toEqual({ok:true,value:raw});
+ expect(r.status).toMatchObject({dirty:false,canUndo:false,canRedo:false});
+ expect(changes.every(kind=>kind==='status')).toBe(true);
+ r.destroy();dom.window.close();
+});
+
+it('keeps a connected technical control usable after ordinary visual typing', () => {
+ const dom=new JSDOM('<main></main>',{pretendToBeVisual:true});
+ Object.defineProperty(globalThis,'document',{configurable:true,value:dom.window.document});
+ Object.defineProperty(globalThis,'window',{configurable:true,value:dom.window});
+ const parent=document.querySelector('main')!;
+ const raw='Before.\n\n$$\nx^2\n$$\n';
+ const r=createEditorRuntime(parent,raw,()=>{});
+ const button=parent.querySelector<HTMLButtonElement>('.technical-edit')!;
+ const view=(r as unknown as {view:EditorView}).view;
+ view.dispatch(view.state.tr.insertText('A'));
+ expect(button.isConnected).toBe(true);
+ expect(r.snapshotText()).toEqual({ok:true,value:'ABefore.\n\n$$\nx^2\n$$\n'});
+ button.click();
+ expect(r.mode).toBe('source');
+ expect(r.getSourceSelection('ABefore.\n\n$$\nx^2\n$$\n')).toEqual({ok:true,value:{anchor:10,head:19}});
+ r.destroy();dom.window.close();
+});
+
+it('preserves the accepted PM selection after a node selection request and dirty cancellation', () => {
+ const dom=new JSDOM('<main></main>',{pretendToBeVisual:true});
+ Object.defineProperty(globalThis,'document',{configurable:true,value:dom.window.document});
+ Object.defineProperty(globalThis,'window',{configurable:true,value:dom.window});
+ const parent=document.querySelector('main')!;
+ const r=createEditorRuntime(parent,'Before.\n\n$$\nx^2\n$$\n',()=>{});
+ const view=(r as unknown as {view:EditorView}).view;
+ view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc,9)));
+ const before=view.state.selection.toJSON();
+ // The public production session currently normalizes this request to text.
+ expect(before.type).toBe("text");
+ parent.querySelector<HTMLButtonElement>('.technical-edit')!.click();
+ expect(r.mode).toBe('source');
+ const area=parent.querySelector('textarea')!;area.value+='draft';
+ area.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+ expect(r.cancelSourceDraft()).toBe(true);
+ expect((r as unknown as {view:EditorView}).view.state.selection.toJSON()).toEqual(before);
+ r.destroy();dom.window.close();
+});

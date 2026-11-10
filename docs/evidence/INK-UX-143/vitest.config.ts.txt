@@ -1,0 +1,1 @@
+export default {test:{include:['../artifacts/INK-UX-143/probe.test.ts'],environment:'node'}};

@@ -1,0 +1,14 @@
+#!/bin/zsh
+set -eu
+root=$PWD
+out="$root/artifacts/INK-UX-141"
+mkdir -p "$out/Resources.bundle/Contents/Resources"
+[[ -f "$root/build/editor/index.html" ]] || { print -u2 'Build editor first'; exit 1; }
+cat > "$out/Resources.bundle/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.inkora.technical.hostless</string><key>CFBundlePackageType</key><string>BNDL</string></dict></plist>
+PLIST
+[[ -e "$out/Resources.bundle/Contents/Resources/editor" ]] || ln -s "$root/build/editor" "$out/Resources.bundle/Contents/Resources/editor"
+sources=("$root"/app/Sources/*.swift)
+sources=("${(@)sources:#*/AppDelegate.swift}")
+xcrun swiftc -swift-version 6 "${sources[@]}" "$out/TechnicalRunner.swift" -o "$out/technical-hostless" > "$out/technical-compile.log" 2>&1
+"$out/technical-hostless" "$out" > "$out/technical-hostless.log" 2>&1

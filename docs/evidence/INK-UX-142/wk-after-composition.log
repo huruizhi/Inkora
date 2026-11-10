@@ -1,0 +1,8 @@
+AFTER_GEOMETRY {"before":{"image":{"x":53.1875,"y":48,"width":320,"height":180,"top":48,"right":373.1875,"bottom":228,"left":53.1875},"next":258.59375,"visibility":"hidden"},"result":{"ok":true},"consumed":true,"focused":"image-edit-button","form":{"x":53.1875,"y":232,"width":415.4375,"height":35,"top":232,"right":468.625,"bottom":267,"left":53.1875},"afterNext":258.59375,"viewport":{"w":900,"h":600}}
+BOTTOM_LICENSE {"rect":{"x":90,"y":75,"width":720,"height":450,"top":75,"right":810,"bottom":525,"left":90},"closeRect":{"x":103,"y":88,"width":59.75,"height":18,"top":88,"right":162.75,"bottom":106,"left":103},"length":209228,"closed":true,"returned":true,"unchanged":true}
+GEOMETRY {"complete":true,"width":320,"height":180,"image":{"x":53.1875,"y":48,"width":320,"height":180,"top":48,"right":373.1875,"bottom":228,"left":53.1875},"button":{"x":326.390625,"y":48,"width":46.796875,"height":23,"top":48,"right":373.1875,"bottom":71,"left":326.390625},"tabIndex":0,"text":"描述…"}
+KEYBOARD_ENTRY {"result":{"ok":true},"consumed":true,"focus":"image-edit-button"}
+KEYBOARD_FOCUS image-edit-button
+FORM {"afterRefresh":{"detached":false,"value":"未确认拼音","focusLost":false},"rawAfterDetachedSubmit":"前 ![旧](./a.png \"旧题\") 后\n\n```js\nx\n```\n","status":{"dirty":false,"canUndo":false,"canRedo":false,"draftDirty":false,"unresolved":false,"saveEligible":false}}
+FALLBACKS [{"status":"missing","text":"定位…","visibility":"visible","tabIndex":0},{"status":"denied","text":"授权…","visibility":"visible","tabIndex":0}]
+VISIBLE false

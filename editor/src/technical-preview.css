@@ -41,6 +41,7 @@ div#editor .is-mermaid { background: transparent; border-color: transparent; }
 .mermaid-preview { padding: 20px 12px; text-align: center; overflow-x: auto; cursor: text; }
 .mermaid-preview[hidden] { display: none; }
 .mermaid-preview svg { max-width: 100%; height: auto; }
+.technical-edit,
 .mermaid-edit {
   margin: 0 12px 8px;
   padding: 3px 8px;
@@ -61,3 +62,5 @@ div#editor .is-mermaid { background: transparent; border-color: transparent; }
   .footnote-reference button, .footnote-back { color: #8bb9df; }
   .mermaid-preview svg { filter: invert(.88) hue-rotate(180deg); }
 }
+
+.technical-edit:focus-visible { outline: 2px solid AccentColor; outline-offset: 2px; }

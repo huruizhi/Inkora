@@ -1,0 +1,47 @@
+
+ RUN  v5.1.0 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-ux-143-technical-navigation/editor
+
+ ❯ src/technical-navigation-runtime.test.ts (5 tests | 2 failed) 105ms
+   × keeps a connected technical control usable after ordinary visual typing 7ms
+   × restores the complete PM node selection after dirty technical cancellation 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/technical-navigation-runtime.test.ts > keeps a connected technical control usable after ordinary visual typing
+AssertionError: expected 'visual' to be 'source' // Object.is equality
+
+Expected: "source"
+Received: "visual"
+
+ ❯ src/technical-navigation-runtime.test.ts:140:17
+    138|  expect(r.snapshotText()).toEqual({ok:true,value:'ABefore.\n\n$$\nx^2\…
+    139|  button.click();
+    140|  expect(r.mode).toBe('source');
+       |                 ^
+    141|  expect(r.getSourceSelection('ABefore.\n\n$$\nx^2\n$$\n')).toEqual({ok…
+    142|  r.destroy();dom.window.close();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/technical-navigation-runtime.test.ts > restores the complete PM node selection after dirty technical cancellation
+AssertionError: expected 'text' to be 'node' // Object.is equality
+
+Expected: "node"
+Received: "text"
+
+ ❯ src/technical-navigation-runtime.test.ts:154:22
+    152|  view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.st…
+    153|  const before=view.state.selection.toJSON();
+    154|  expect(before.type).toBe("node");
+       |                      ^
+    155|  parent.querySelector<HTMLButtonElement>('.technical-edit')!.click();
+    156|  expect(r.mode).toBe('source');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 3 passed (5)
+   Start at  01:46:28
+   Duration  350ms (import 52%, tests 39%, transform 8%)
+

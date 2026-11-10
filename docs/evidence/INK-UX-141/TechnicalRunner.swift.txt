@@ -1,0 +1,78 @@
+import AppKit
+import WebKit
+
+@main struct TechnicalRunner {
+  @MainActor static func main() async throws {
+    let out = CommandLine.arguments[1]
+    let body = ["Before[^n] and again[^n].", "", "$$", "x^2", "$$", "", "$$", "x^2", "$$", "", "> $$", "> x^2", "> $$", "", "$$", "\\unknownCommand{", "$$", "", "[^n]: Note body", ""].joined(separator: "\r\n")
+    let bytes = Data([0xef, 0xbb, 0xbf]) + Data(body.utf8)
+    let document = InkoraDocument()
+    try document.read(from: bytes, ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(document: document,
+      resourceBundle: Bundle(path: out + "/Resources.bundle")!,
+      sidebarWindowPresenter: { _ in fatalError("Window presentation forbidden") })
+    controller.loadViewIfNeeded()
+    let web = controller.view as! WKWebView
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
+      styleMask: [.borderless], backing: .buffered, defer: false)
+    window.contentView = web
+    for _ in 0..<200 {
+      if (try? await web.evaluateJavaScript("document.querySelectorAll('#editor.ProseMirror .math-preview .technical-edit').length === 4")) as? Bool == true { break }
+      try await Task.sleep(for: .milliseconds(100))
+    }
+    @MainActor func snapshot() async throws -> BridgeSnapshot {
+      try await withCheckedThrowingContinuation { continuation in
+        controller.requestRecoverySnapshot { continuation.resume(with: $0) }
+      }
+    }
+    let initial = try await snapshot()
+    precondition(initial.text == body && !window.isVisible)
+    let footnote = try await web.evaluateJavaScript("""
+      (() => {
+        const refs = [...document.querySelectorAll('.footnote-reference button')];
+        if (refs.length !== 2) return false;
+        refs[1].click();
+        const back = document.querySelector('.footnote-back');
+        if (document.activeElement !== back) return false;
+        back.click();
+        return document.activeElement === refs[1];
+      })()
+      """) as? Bool
+    precondition(footnote == true)
+    var results: [[String: Any]] = []
+    for index in [1, 2, 3] {
+      let opened = try await web.evaluateJavaScript("""
+        (() => {
+          const buttons = document.querySelectorAll('.math-preview .technical-edit');
+          buttons[\(index)].click();
+          const area = document.querySelector('textarea#editor');
+          if (!area) return false;
+          const selected = area.value.slice(area.selectionStart, area.selectionEnd);
+          const expected = \(index == 2 ? "'> $$\\n> x^2\\n> $$'" : index == 3 ? "'$$\\n\\\\unknownCommand{\\n$$'" : "'$$\\nx^2\\n$$'");
+          const starts = [...area.value.matchAll(/[$][$]/g)].map(match => match.index);
+          const expectedStart = \(index == 2 ? "area.value.indexOf('> $$')" : index == 3 ? "starts[6]" : "starts[2]");
+          const pressed = document.querySelector('.editor-mode-source').getAttribute('aria-pressed') === 'true';
+          if (selected !== expected || area.selectionStart !== expectedStart || !pressed) return false;
+          area.value += 'uncommitted draft';
+          area.dispatchEvent(new Event('input', { bubbles: true }));
+          const apply = document.querySelector('.source-draft-apply');
+          const cancel = document.querySelector('.source-draft-cancel');
+          if (apply.disabled || cancel.hidden || cancel.disabled) return false;
+          cancel.click();
+          return !!document.querySelector('#editor.ProseMirror') &&
+            document.querySelector('.editor-mode-visual').getAttribute('aria-pressed') === 'true';
+        })()
+        """) as? Bool
+      let after = try await snapshot()
+      precondition(opened == true && after.text == body && after.revision == initial.revision)
+      precondition(!document.isDocumentEdited && !window.isVisible)
+      let afterBytes = try document.data(ofType: "net.daringfireball.markdown")
+      precondition(afterBytes == bytes)
+      results.append(["index": index, "sourceSelectionAndMainControls": true,
+        "rawRevisionAndBOMPreserved": true, "windowVisible": window.isVisible])
+    }
+    try JSONSerialization.data(withJSONObject: results, options: [.prettyPrinted, .sortedKeys])
+      .write(to: URL(fileURLWithPath: out + "/result.json"))
+    print("PASS real WK + production main/Bridge: second footnote return and three exact source/dirty-cancel paths; raw/revision/native BOM unchanged; window never visible")
+  }
+}
