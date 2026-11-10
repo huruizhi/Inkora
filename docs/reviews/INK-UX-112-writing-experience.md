@@ -16,4 +16,6 @@ P2 1 项：规格要求键盘发现和使用上下文工具，但表格内 Tab/S
 
 新增 Option+F10 进入当前表格/代码工具，Esc 返回正文；通过 aria-keyshortcuts 和工具提示暴露入口。组合事件不消费；焦点往返不改原文、历史或保存资格。真实 runtime DOM 回归覆盖快捷键、组合标志守卫和焦点返回。
 
+固定 `e490bb0` 的独立 Spec 后验确认原 P2 关闭，有限补正无新增问题；只读核对，不冒称新增物理键盘或 GUI 证据。
+
 WK 布局定向结果：实际 xcresult Passed，2 total / 2 passed / 0 failed / 0 skipped；包含 900/480px 布局和长文单滚动所有者。原始日志与 summary 在本 worktree 的忽略产物 `artifacts/logs/ux112-wk-*`，对应 xcresult 时间 2026-11-10_09-02-10。此为 hostless WK 布局/行为证据，不是深色窗口或物理键盘证据。

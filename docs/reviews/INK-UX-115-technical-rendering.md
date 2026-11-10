@@ -20,4 +20,4 @@ P2 1 项：引用/列表内 canonical 已接受的 SYN-D003 公式，raw 含物�
 
 最后实际门禁：Web 763 + Bridge Web 14 = 777；Native 190 total / 182 passed / 0 failed / 8 既有性能 skip；Bridge Swift 15/15；make lint 与 make test-non-ui exit 0。真实 WK 同时验证顶层/引用/列表 MathML、flowchart、脚注、代码编辑与原文往返。
 
-待固定补正 commit 的 Spec 后验；不提前将后验写成通过。
+固定补正 `2e0be9f` 后验已完成：Spec 原 P2 关闭，有限范围无新增 finding；Standards 有限补正无新增 hard。两者均通过固定 git show 核对，不读动态根文件。Spec 另以只读探针验证三类容器 MathML；完整 777/182 等仍明确为根执行证据，未转称审查者自跑。
