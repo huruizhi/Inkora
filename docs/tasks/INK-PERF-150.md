@@ -20,3 +20,9 @@
 151基线544bd29与追加dd4ef46已接回。原Node五向量、WK四尺寸、独立五输入完整安全保存均实际通过，所有字节/dirty/revision断言保留。首个保存harness竞争红例与单变量unique-URL绿例留存，不称产品bug修复。根另发现新runner合并旧JSON风险，已交原Agent以真实脚本隔离probe先红后绿，只补runner，不重跑未改变的有效测量。
 
 根实际运行该脚本隔离probe通过，并以只读Python核对：Node/WK/supplement输入SHA相同，两个WK批次resourceHashes完全一致，各工作流N=3、snapshot N=15、median/p95与原samples相符；app/editor/project与main aef514c完全相同。根未冒称本人重跑作者的WK/保存采样。机器结果保存在管理artifacts；完整新分层说明已追加performance文档，历史结果未覆盖。下一步固定组合后做两轴独立复核与默认CI，不重复占屏或完整采样。
+
+## 两轴独立结算
+
+153 Standards、154 Spec各自从固定9bd139681a52c9d801158a0c4f9b899c91d263ee审查，相对aef514c三点diff，两个新worktree/上下文独立。153：无成立硬违规，一项非阻断possible Repeated Switches；154：未发现本切片阻断Spec项，原15整套正式预算保持部分完成，不将分层补测偷换为整体体验达标。两轴均实际执行真实runner stub probe及有限静态/JSON核对，无Xcode或重测，未冒称作者数据为自跑。
+
+两份原报告全文接回，原始日志尾空白保持，不为diff格式检查改写证据。管理者JSON核对副本存入docs/evidence/INK-PERF-150。后续只增加这些审查/管理记录，测试及采样脚本与受审9bd1396相同，产品app/editor/project与main aef514c不变。最终精确HEAD默认CI仍须实际完成，再合并；不因两轴无阻断就提前清理证据或宣告完成开发。候选发布待答、正式安装build3、本轮不占屏/发布/安装的边界保持。

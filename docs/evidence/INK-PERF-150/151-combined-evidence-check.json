@@ -1,0 +1,9 @@
+{
+  "inputsMatchModel": true,
+  "baselineAndSupplementResourceHashesEqual": true,
+  "fullOriginalSHA256": "708997d0307e6739f87961fc0c0691fa65f7d28ab89c9491a1f920cdf139d642",
+  "nativeVerifiedSamplesPerInput": 3,
+  "snapshotSamplesPerInput": 15,
+  "productTreesUnchanged": true,
+  "limits": "read-only artifact and source consistency; author ran real WK/save workflows; no new root timing run"
+}
