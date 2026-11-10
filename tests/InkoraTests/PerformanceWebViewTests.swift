@@ -100,15 +100,37 @@ final class PerformanceWebViewTests: XCTestCase {
   // Input ends at an exact acknowledged snapshot; this is not visible paint.
   @MainActor
   func testProductionVisualWorkflowBenchmarks() async throws {
+    try await productionWorkflow(measureSave: false)
+  }
+
+  @MainActor
+  func testProductionSafeSaveBenchmarks() async throws {
+    try await productionWorkflow(measureSave: true)
+  }
+
+  @MainActor
+  private func productionWorkflow(measureSave: Bool) async throws {
     try PerfRecorder.shared.recordEditorResources(in: Bundle(for: Self.self))
     for size in PerfEnvironment.productionSamples {
-      let url = try PerfEnvironment.sampleURL(named: size)
+      let fixture = try PerfEnvironment.sampleURL(named: size)
+      let scratch = FileManager.default.temporaryDirectory
+        .appendingPathComponent("inkora-perf-151-\(UUID().uuidString)")
+      if measureSave {
+        try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+      }
+      defer { if measureSave { try? FileManager.default.removeItem(at: scratch) } }
+      let url = fixture
       let text = try String(contentsOf: url, encoding: .utf8)
       try PerfRecorder.shared.recordInput(name: size, url: url)
       var timings: [String: [Double]] = [:]
       for iteration in -1..<3 {
+        let url = measureSave ? scratch.appendingPathComponent("\(size)-\(iteration).md") : fixture
+        if measureSave { try FileManager.default.copyItem(at: fixture, to: url) }
         var start = ContinuousClock.now
         let (document, controller, webView) = try await loadEditor(sampleURL: url, text: text)
+        if measureSave {
+          document.attachSidebarEditor(controller)
+        }
         webView.setFrameSize(NSSize(width: 900, height: 700))
         defer { document.close() }
         let loaded = try await requestText(controller)
@@ -171,6 +193,33 @@ final class PerformanceWebViewTests: XCTestCase {
         XCTAssertEqual(document.bridgeRevision, revision)
         if iteration >= 0 {
           timings["production-source-no-op-roundtrip", default: []].append(modeTime)
+        }
+        if measureSave {
+          XCTAssertTrue(document.isDocumentEdited)
+          let saveStart = ContinuousClock.now
+          try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Void, Error>) in
+            document.save(to: url, ofType: markdownType, for: .saveOperation) { error in
+              if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+            }
+          }
+          let completionTime = Self.elapsedMilliseconds(since: saveStart)
+          // NSDocument completion follows atomic writing and dispatch of markSaved.
+          // A subsequent Bridge snapshot fences that command; wait for native dirty too.
+          let savedText = try await requestText(controller)
+          XCTAssertEqual(savedText, expected)
+          for _ in 0..<200 {
+            if !document.isDocumentEdited { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+          }
+          XCTAssertFalse(document.isDocumentEdited)
+          XCTAssertEqual(document.bridgeRevision, revision)
+          XCTAssertEqual(try Data(contentsOf: url), Data(expected.utf8))
+          let verifiedTime = Self.elapsedMilliseconds(since: saveStart)
+          if iteration >= 0 {
+            timings["production-save-completion", default: []].append(completionTime)
+            timings["production-save-verified", default: []].append(verifiedTime)
+          }
         }
       }
       for (operation, samples) in timings {
