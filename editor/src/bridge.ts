@@ -90,6 +90,7 @@ export type NativeCommand =
       protocolVersion: 1;
       type: "queryState";
       requestID: string;
+      observeCommands?: boolean;
     }
   | {
       protocolVersion: 1;
@@ -128,6 +129,8 @@ export type NativeCommand =
     };
 
 export type EditorMessage =
+  | { protocolVersion: 1; type: "commandsChanged"; documentID: string; revision: number;
+      availableCommands: EditorCommand[]; readingWidth: 760 | 900 }
   | { protocolVersion: 1; type: "ready" }
   | {
       protocolVersion: 1;
@@ -219,10 +222,14 @@ export function decodeNativeCommand(serialized: string): NativeCommand {
       };
     }
     case "queryState":
+      if (value.observeCommands !== undefined && typeof value.observeCommands !== "boolean") {
+        throw new Error("Invalid observeCommands");
+      }
       return {
         protocolVersion: BRIDGE_PROTOCOL_VERSION,
         type: "queryState",
         requestID,
+        ...(value.observeCommands !== undefined ? { observeCommands: value.observeCommands } : {}),
       };
     case "applyImageImport":
       return {

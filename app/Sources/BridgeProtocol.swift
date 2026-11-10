@@ -22,6 +22,7 @@ enum BridgeEventType: String, Codable {
   case snapshotReady
   case editorError
   case imageAccessRequested
+  case commandsChanged
 }
 
 enum BridgeEditorCommand: String, Codable {
@@ -146,6 +147,7 @@ struct BridgeNativeCommand: Codable, Equatable {
   let imageOwnership: BridgeImageOwnershipProof?
   let descriptors: [BridgeImageDescriptor]?
   let rewrites: [BridgeImageRewrite]?
+  let observeCommands: Bool?
 
   init(
     protocolVersion: Int,
@@ -165,7 +167,8 @@ struct BridgeNativeCommand: Codable, Equatable {
     selectionHead: Int? = nil,
     imageOwnership: BridgeImageOwnershipProof? = nil,
     descriptors: [BridgeImageDescriptor]? = nil,
-    rewrites: [BridgeImageRewrite]? = nil
+    rewrites: [BridgeImageRewrite]? = nil,
+    observeCommands: Bool? = nil
   ) {
     self.protocolVersion = protocolVersion
     self.type = type
@@ -185,6 +188,7 @@ struct BridgeNativeCommand: Codable, Equatable {
     self.imageOwnership = imageOwnership
     self.descriptors = descriptors
     self.rewrites = rewrites
+    self.observeCommands = observeCommands
   }
 
   static func loadDocument(
@@ -284,7 +288,7 @@ struct BridgeNativeCommand: Codable, Equatable {
     )
   }
 
-  static func queryState(requestID: String) -> Self {
+  static func queryState(requestID: String, observeCommands: Bool = false) -> Self {
     Self(
       protocolVersion: BridgeProtocolV1.version,
       type: .queryState,
@@ -300,7 +304,8 @@ struct BridgeNativeCommand: Codable, Equatable {
       title: nil,
       displayURL: nil,
       descriptors: nil,
-      rewrites: nil
+      rewrites: nil,
+      observeCommands: observeCommands ? true : nil
     )
   }
 
@@ -536,6 +541,8 @@ struct BridgeEditorEvent: Codable, Equatable {
   let message: String?
   let href: String?
   let imageOwnership: BridgeImageOwnershipProof?
+  let availableCommands: [BridgeEditorCommand]?
+  let readingWidth: Int?
 
   init(
     protocolVersion: Int,
@@ -549,7 +556,8 @@ struct BridgeEditorEvent: Codable, Equatable {
     action: BridgeRecoveryAction?,
     message: String?,
     href: String? = nil,
-    imageOwnership: BridgeImageOwnershipProof? = nil
+    imageOwnership: BridgeImageOwnershipProof? = nil,
+    availableCommands: [BridgeEditorCommand]? = nil, readingWidth: Int? = nil
   ) {
     self.protocolVersion = protocolVersion
     self.type = type
@@ -563,6 +571,8 @@ struct BridgeEditorEvent: Codable, Equatable {
     self.message = message
     self.href = href
     self.imageOwnership = imageOwnership
+    self.availableCommands = availableCommands
+    self.readingWidth = readingWidth
   }
 
   func validate() throws {
@@ -571,6 +581,11 @@ struct BridgeEditorEvent: Codable, Equatable {
     }
 
     switch type {
+    case .commandsChanged:
+      guard let documentID, !documentID.isEmpty, let revision,
+        availableCommands != nil, let readingWidth, [760, 900].contains(readingWidth)
+      else { throw BridgeProtocolValidationError.missingField("commands") }
+      try Self.validateRevision(revision)
     case .ready:
       break
     case .stateChanged:

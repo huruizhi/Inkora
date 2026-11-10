@@ -117,7 +117,8 @@ let activeDocumentID: string | undefined;
 let activeRevision: number | undefined;
 let loadEpoch = 0;
 let readingWidth: 760 | 900 = 760;
-if (window.webkit?.messageHandlers?.inkora) document.documentElement.classList.add("native-chrome");
+let observesCommands = false;
+let commandStateSignature = "";
 let activeLinkEditor: HTMLFormElement | undefined;
 const composingLinkEditors = new WeakSet<HTMLFormElement>();
 
@@ -311,13 +312,30 @@ function availableEditorCommands(): EditorCommand[] {
   return commands;
 }
 
+function publishCommandAvailability(): void {
+  if (!app?.isConnected || !observesCommands || executingCommand || !activeDocumentID || activeRevision === undefined) return;
+  const availableCommands = availableEditorCommands();
+  const signature = JSON.stringify([activeDocumentID, activeRevision, availableCommands, readingWidth]);
+  if (signature === commandStateSignature) return;
+  commandStateSignature = signature;
+  postToNative({ protocolVersion: BRIDGE_PROTOCOL_VERSION, type: "commandsChanged",
+    documentID: activeDocumentID, revision: activeRevision, availableCommands, readingWidth });
+}
+
+// Focus/composition events settle their own handlers first; publishing observes
+// current state and never writes content or advances a document revision.
+for (const event of ["focusin", "focusout", "compositionstart", "compositionend"]) {
+  app.addEventListener(event, () => queueMicrotask(publishCommandAvailability));
+}
+
 function performEditorAction(command: EditorCommand): boolean {
   if (!availableEditorCommands().includes(command)) return false;
+  let applied: boolean;
   switch (command) {
-    case "sourceMode": closeLinkEditor(); return runtime!.enterSourceMode();
+    case "sourceMode": closeLinkEditor(); applied = runtime!.enterSourceMode(); break;
     case "visualMode":
-    case "cancelSource": return runtime!.cancelSourceDraft();
-    case "applySource": return runtime!.applySourceDraft();
+    case "cancelSource": applied = runtime!.cancelSourceDraft(); break;
+    case "applySource": applied = runtime!.applySourceDraft(); break;
     case "insertTable": return runtime!.insertTable();
     case "find": searchPanel.open(); return true;
     case "toggleOutline": panel.setCollapsed(!panel.isCollapsed); return true;
@@ -329,6 +347,8 @@ function performEditorAction(command: EditorCommand): boolean {
     // Image insertion is owned by the Native file picker, never a DOM click.
     default: return false;
   }
+  if (applied) runtime!.focus();
+  return applied;
 }
 
 sourceModeButton.addEventListener("click", () => { performEditorAction("sourceMode"); updateModeControls(); });
@@ -623,9 +643,10 @@ function scheduleSearch(documentID: string, revision: number): void {
 
 function postToNative(message: Parameters<typeof encodeEditorMessage>[0]): void {
   if (message.type === "stateChanged") {
-    message = { ...message, state: { ...message.state,
-      availableCommands: availableEditorCommands(), readingWidth,
-    } };
+    const availableCommands = availableEditorCommands();
+    message = { ...message, state: { ...message.state, availableCommands, readingWidth } };
+    commandStateSignature = JSON.stringify([message.state.documentID, message.state.revision,
+      availableCommands, readingWidth]);
   }
   const serialized = encodeEditorMessage(message);
   const handler = window.webkit?.messageHandlers?.inkora;
@@ -650,6 +671,7 @@ function recordRuntimeChange(
 ): void {
   updateModeControls();
   if (kind === "status") {
+    publishCommandAvailability();
     // Mode/projection changes can change the searchable surface without
     // changing document bytes or the Bridge revision.
     if (activeDocumentID !== undefined && activeRevision !== undefined && searchPanel.shouldSearch) {
@@ -825,6 +847,10 @@ window.inkora = {
           }
           break;
         case "queryState":
+          if (command.observeCommands) {
+            observesCommands = true;
+            document.documentElement.classList.add("native-chrome");
+          }
           postToNative(session.queryState(
             command,
             runtime ? { ...runtime.status, ...runtime.directedSelection } : undefined,

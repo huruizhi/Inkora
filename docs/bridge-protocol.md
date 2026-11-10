@@ -66,7 +66,7 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 
 基础历史命令仍为`undo`、`redo`，成功恰好增加一次revision。INK-UX-123以可选`state.availableCommands`协商扩展动作：`sourceMode`、`visualMode`、`applySource`、`cancelSource`、`insertTable`、`find`、`toggleOutline`、`readingWidth760`、`readingWidth900`。缺能力字段的旧Web发送方不得被Native强行调用新动作；旧Native接收方可忽略新状态字段。
 
-每条命令校验当前document/revision/requestID，成功用相同requestID的`stateChanged`确认。模式、导航、布局以及no-op源码提交不增加revision，不写history/dirty；插表、有效源码提交等已接受内容变化恰好增加一次。拒绝返回`command_rejected`，不静默忽略。所有扩展动作在Web执行时重新检查composition、模式、草稿及相关文本控件焦点；能力列表是即时资格提示，不是绕过守卫的许可。
+每条命令校验当前document/revision/requestID，成功用相同requestID的`stateChanged`确认。`insertTable`还必须携带同次queryState取得的`selectionAnchor/selectionHead`；Web逐项比较当前有向raw选区，同版本caret移动也拒绝，不能改投新光标。模式、导航、布局以及no-op源码提交不增加revision，不写history/dirty；插表、有效源码提交等已接受内容变化恰好增加一次。拒绝返回`command_rejected`，不静默忽略。所有扩展动作在Web执行时重新检查composition、模式、草稿及相关文本控件焦点；能力列表是即时资格提示，不是绕过守卫的许可。
 
 `insertImage`仅在能力列表中表示可打开Native文件选择器；Native重新queryState验证同一加载代际后复用既有图片流程，不向Web发送`executeCommand(insertImage)`。实际图片插入仍走`applyImageImport`，不另造DOM点击入口。
 
@@ -98,6 +98,8 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 ```
 
 返回带相同 `requestID` 的 `stateChanged`。尚未加载文档时返回 `editor_not_ready`。
+
+可选`observeCommands: true`由已安装新菜单的Native显式订阅。Web收到后才收起旧顶栏入口，并在资格变化时发送`commandsChanged`；未订阅的旧Native/Web组合继续保留原按钮，不广播新事件。Native ready后立即订阅，菜单展开及动作前仍重新采样。
 
 ### 图片命令
 
@@ -139,6 +141,10 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 `requestID` 只在响应 `loadDocument`、`queryState` 或 command 时提供；主动状态变化可省略。`queryState` 同 turn 采样当前原文 directed selection，但不增加 revision、dirty 或 history。旧 v1 发送方可省略 selection；图片导入意图必须取得一对完整 selection 后才可持久化。原生层按 `(documentID, revision)` 丢弃错误文档或旧状态。
 
 INK-UX-123可选字段`availableCommands`为当前模式/组合态/焦点派生的动作值数组；`readingWidth`为760或900。二者不属于文档内容、保存点或历史。原生菜单展开时queryState刷新资格，执行动作前再次查询并绑定同一Native加载代际，Web执行时再守卫；本轮不为纯焦点/显示变化广播新的正文revision。
+
+### `commandsChanged`（显式订阅后）
+
+携带`documentID`、`revision`、`availableCommands`与`readingWidth`，不携带正文/dirty/history。Web在状态、焦点或composition处理后比较当前资格，仅变化时发布。Native只接受当前document/revision，更新菜单缓存，不调用NSDocument的正文变更/恢复逻辑。源码草稿变为可提交、点击取消回可视等状态因而可立即启用快捷键，无需先打开菜单。旧Native不订阅，不会接收这个事件。
 
 ### `snapshotReady`
 

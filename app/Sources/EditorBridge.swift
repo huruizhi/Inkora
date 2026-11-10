@@ -3,6 +3,8 @@ import WebKit
 
 @MainActor
 protocol EditorBridgeDelegate: AnyObject {
+  func editorBridge(
+    _ bridge: EditorBridge, didChangeCommands commands: [BridgeEditorCommand], readingWidth: Int)
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge)
   func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState)
   func editorBridge(_ bridge: EditorBridge, didReceiveRecoverableError error: Error)
@@ -15,6 +17,9 @@ protocol EditorBridgeDelegate: AnyObject {
 }
 
 extension EditorBridgeDelegate {
+  func editorBridge(
+    _ bridge: EditorBridge, didChangeCommands commands: [BridgeEditorCommand], readingWidth: Int
+  ) {}
   func editorBridge(_ bridge: EditorBridge, didReceiveRecoverableError error: Error) {}
   func editorBridge(_ bridge: EditorBridge, didBecomeUnavailable error: Error) {}
   func editorBridge(
@@ -127,7 +132,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   }
 
   private enum MutationPayload {
-    case history(BridgeEditorCommand)
+    case editorCommand(BridgeEditorCommand)
     case tableInsertion(anchor: Int, head: Int)
     case imageImport(
       documentEpoch: String, assetID: String, uri: String, alt: String,
@@ -142,7 +147,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     var requiresStrictBinding: Bool {
       switch self {
       case .imageImport, .imageDescriptors, .imageSave, .tableInsertion: true
-      case .history(let command): !command.isHistory
+      case .editorCommand(let command): !command.isHistory
       }
     }
 
@@ -157,7 +162,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       revision: Int
     ) -> BridgeNativeCommand {
       switch self {
-      case .history(let command):
+      case .editorCommand(let command):
         .execute(
           requestID: requestID, documentID: documentID, revision: revision,
           command: command)
@@ -313,7 +318,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
     }
     let requestID = UUID().uuidString
     stateRequests[requestID] = completion
-    sendImmediately(.queryState(requestID: requestID)) { [weak self] error in
+    sendImmediately(.queryState(requestID: requestID, observeCommands: true)) { [weak self] error in
       guard let self, let error, let callback = self.stateRequests.removeValue(forKey: requestID)
       else { return }
       callback(.failure(error))
@@ -338,7 +343,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       enqueueMutation(
         .tableInsertion(anchor: selectionAnchor, head: selectionHead), completion: completion)
     } else {
-      enqueueMutation(.history(command), completion: completion)
+      enqueueMutation(.editorCommand(command), completion: completion)
     }
   }
 
@@ -485,6 +490,12 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
   func receiveEditorEvent(_ editorEvent: BridgeEditorEvent) {
     switch editorEvent.type {
+    case .commandsChanged:
+      guard editorEvent.documentID == revisionTracker.documentID,
+        editorEvent.revision == revisionTracker.latestRevision,
+        let commands = editorEvent.availableCommands, let width = editorEvent.readingWidth
+      else { return }
+      delegate?.editorBridge(self, didChangeCommands: commands, readingWidth: width)
     case .ready:
       completeReadyHandshake()
     case .stateChanged:

@@ -16,8 +16,10 @@ final class EditorCommandMenus: NSObject, NSMenuDelegate {
     mainMenu.addItem(insertItem)
 
     let viewMenu = NSMenu(title: "显示")
-    addEditorAction("可视模式", .visualMode, to: viewMenu, key: "1", modifiers: [.command, .option])
-    addEditorAction("源码模式", .sourceMode, to: viewMenu, key: "2", modifiers: [.command, .option])
+    addEditorAction(
+      "可视模式", .visualMode, to: viewMenu, key: "1", modifiers: [.command, .option, .shift])
+    addEditorAction(
+      "源码模式", .sourceMode, to: viewMenu, key: "2", modifiers: [.command, .option, .shift])
     addEditorAction(
       "提交源码草稿", .applySource, to: viewMenu, key: "\r", modifiers: [.command, .option])
     addEditorAction("取消源码草稿", .cancelSource, to: viewMenu)

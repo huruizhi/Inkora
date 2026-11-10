@@ -261,6 +261,26 @@ it("原生插表拒绝旧caret，不迁移到同版本的新选区", async () =>
   expect(h.lastRevision()).toBe(0);
 });
 
+it("Native订阅后草稿资格即时同步，UI资格事件不冒充正文发布", async () => {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "observe-load", documentID: "observe", revision: 0, text: "正文\n" });
+  expect(h.dom.window.document.documentElement.classList.contains("native-chrome")).toBe(false);
+  h.receive({ type: "queryState", requestID: "observe-state", observeCommands: true });
+  expect(h.dom.window.document.documentElement.classList.contains("native-chrome")).toBe(true);
+  h.receive({ type: "executeCommand", requestID: "observe-source", documentID: "observe", revision: 0, command: "sourceMode" });
+  const before = h.stateMessages().length;
+  const area = h.editorHost().querySelector<HTMLTextAreaElement>("textarea#editor")!;
+  area.value = "新草稿\n";
+  area.dispatchEvent(new h.dom.window.InputEvent("input", { bubbles: true, inputType: "insertText", data: "新草稿" }));
+  expect(h.sent.at(-1)).toMatchObject({ type: "commandsChanged", documentID: "observe", revision: 0,
+    availableCommands: expect.arrayContaining(["applySource", "cancelSource"]) });
+  expect(h.stateMessages()).toHaveLength(before);
+  h.sourceCancel().click();
+  expect(h.sent.at(-1)).toMatchObject({ type: "commandsChanged", revision: 0,
+    availableCommands: expect.arrayContaining(["sourceMode"]) });
+  expect(h.lastRevision()).toBe(0);
+});
+
 it("原生模式入口保留未提交草稿，取消后恢复可信正文和future", async () => {
   const h = await bootMain();
   const raw = "正文\n";

@@ -34,7 +34,7 @@ final class EditorWebViewTests: XCTestCase {
     let sourceItem = try XCTUnwrap(items.first { $0.representedObject as? String == "sourceMode" })
     XCTAssertNil(sourceItem.target, "Commands must use the active window responder chain")
     XCTAssertEqual(sourceItem.keyEquivalent, "2")
-    XCTAssertEqual(sourceItem.keyEquivalentModifierMask, [.command, .option])
+    XCTAssertEqual(sourceItem.keyEquivalentModifierMask, [.command, .option, .shift])
     controller.inkoraEditorAction(sourceItem)
     _ = try await waitForJavaScriptValue(
       in: webView, script: "!!document.querySelector('textarea#editor')"
@@ -44,6 +44,31 @@ final class EditorWebViewTests: XCTestCase {
     let otherMode = try await otherView.evaluateJavaScript(
       "!!document.querySelector('textarea#editor')")
     XCTAssertEqual(otherMode as? Bool, false)
+    let sourceFocused = try await webView.evaluateJavaScript(
+      "document.activeElement === document.querySelector('textarea#editor')")
+    XCTAssertEqual(sourceFocused as? Bool, true)
+    _ = try await webView.evaluateJavaScript(
+      """
+      (() => {
+        const area = document.querySelector('textarea#editor');
+        area.value = '未提交草稿\\n';
+        area.dispatchEvent(new InputEvent('input', {bubbles:true, inputType:'insertText', data:'草稿'}));
+      })()
+      """)
+    try await waitForEditorCommand(.applySource, enabled: true, in: controller)
+    let applyItem = try XCTUnwrap(items.first { $0.representedObject as? String == "applySource" })
+    XCTAssertTrue(
+      controller.validateUserInterfaceItem(applyItem),
+      "Shortcut eligibility must not require opening a menu")
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.source-draft-cancel').click()")
+    try await waitForEditorCommand(.sourceMode, enabled: true, in: controller)
+    controller.performEditorCommand(.sourceMode)
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('textarea#editor')"
+    ) {
+      $0 as? Bool == true
+    }
     controller.performEditorCommand(.readingWidth900)
     _ = try await waitForJavaScriptValue(
       in: webView,

@@ -239,8 +239,21 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     }
   }
 
+  func editorBridge(
+    _ bridge: EditorBridge, didChangeCommands commands: [BridgeEditorCommand], readingWidth: Int
+  ) {
+    guard let state = editorState else { return }
+    editorState = BridgeEditorState(
+      documentID: state.documentID, revision: state.revision,
+      dirty: state.dirty, canUndo: state.canUndo, canRedo: state.canRedo,
+      selectionAnchor: state.selectionAnchor, selectionHead: state.selectionHead,
+      availableCommands: commands, readingWidth: readingWidth)
+    NSApplication.shared.mainMenu?.update()
+  }
+
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {
     automaticRecoveryAttempts = 0
+    refreshEditorCommands()
     refreshImageDescriptors()
   }
 
@@ -514,13 +527,19 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   @objc
   private func chooseImage(_ sender: Any?) {
     guard let window = view.window, window.attachedSheet == nil else { return }
+    let owner = document
+    let epoch = documentEpoch
+    let revision = document?.bridgeRevision
     let panel = NSOpenPanel()
     panel.allowedContentTypes = [.png, .jpeg, .gif, .webP]
     panel.allowsMultipleSelection = false
     panel.canChooseDirectories = false
     panel.beginSheetModal(for: window) { [weak self] response in
-      guard response == .OK, let url = panel.url else { return }
-      self?.beginImageImport(fileURL: url)
+      guard response == .OK, let url = panel.url,
+        let self, self.document === owner, self.documentEpoch == epoch,
+        self.document?.bridgeRevision == revision
+      else { return }
+      self.beginImageImport(fileURL: url)
     }
   }
 

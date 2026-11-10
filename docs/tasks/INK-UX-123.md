@@ -38,3 +38,22 @@
 尚未进行真实桌面菜单/快捷键/双窗口响应者链、系统图片面板或改后截图的人工视觉验收；hostless WK不代替这些证据。760/900px两档只是可供对照，用户尚未选择默认；不将当前宽窗布局或版本号当Typora整体对齐。没有启动或替换`/Applications/Inkora.app`，没有发布、PR或合并main。
 
 两轴审查、最终门禁及提交SHA在本分支结算后追加；临时依赖均借用主仓锁定目录，没有安装包或修改依赖。
+
+
+## 最终门禁（2026-11-10）
+
+- `make test-editor`：39文件，767/767通过；最终Web代码含raw caret拒绝，之后未再改Web实现。
+- `make test-bridge test-native`：exit0；Bridge Web14/14、Swift16/16；Native192 total / 184 passed / 0 failed / 8既有性能skip。两个xcresult摘要均为Passed。
+- 最终`make lint build`：exit0；严格swift-format、TypeScript、Vite和macOS Debug构建通过；主JS931.81kB/gzip298.47kB，保留既有chunk-size提示。
+- 新hostless WK用例经过真实Native控制器/菜单命令模块、两个生产WebView与实际布局，验证实际760/900px内容宽度、Native顶栏收起、源码往返、另一文档不受影响、Bridge正文与磁盘编码BOM/CRLF不变。它显式等待editor ready；临时阶段记录已清理。
+- 未运行Release、test-ci、XCUITest、真实桌面菜单与系统文件面板，未要求重复物理输入；不宣称人工观感、响应者链键盘路由、最低系统或Typora整体对齐通过。
+
+
+## 两轴复核与补正
+
+- 固定`6c54534`：Standards 0 hard，1项judgement（`.history`承载非历史动作的命名误导）；已更名为`.editorCommand`，绑定策略不变。
+- Spec发现P2：源码草稿只发布status，Native缓存的applySource资格未变化，直接提交快捷键会失效。根在main公共接缝重放RED；新增显式`observeCommands`订阅及无正文副作用的`commandsChanged`同步后转绿。旧客户端未订阅仍保留原入口，不发送它不认识的事件。Native真实WK也验证无需展开菜单即可启用提交，取消后源码模式快捷键恢复。
+- 模式动作接受后将焦点交还相应编辑面；图片系统面板回调增加原document/epoch/revision复验，取消/过期不重新绑定导入。
+- 新订阅用例增加至Web 768项（不含Bridge）；最终补正门禁在后续结算，不以此前绿灯替代。
+
+- 快捷键冲突核对发现⌘⌥1/2已用于标题1/2；模式入口改为⌘⌥⇧1/2，保留原格式命令。Native菜单测试同步核对修饰键，不声称物理键盘已验。
