@@ -1,0 +1,29 @@
+{
+  "productCode": "7305b97161ff9173fb575ebf4014036dabdcd64b",
+  "currentMain": "1e1e4561c7c79b36bd081e04bc54b54e8beffc41",
+  "bundle": "com.huruizhi.Inkora.UITesting",
+  "system": "macOS 27.2 arm64",
+  "UI": "CUA AX and visible screenshot; real desktop, no injected JS",
+  "desktopPreflight": "passed with UI lock",
+  "physicalIME": "awaiting user action; not claimed",
+  "inputSHA256": "a29f672948eadc4ed074ac462d2506ad6ceb025f62ed9a52a438fe1f4dee08f0",
+  "expectedSHA256": "09b3933fadd1bde1511c4b0621bfe1bba8821f51da0bbc239480f49a2a4f96c7",
+  "actualSHA256": "09b3933fadd1bde1511c4b0621bfe1bba8821f51da0bbc239480f49a2a4f96c7",
+  "actions": [
+    "checkbox task one",
+    "table text -> edited",
+    "code language ts -> python",
+    "replace all alpha -> beta",
+    "single Undo then Redo of replacement",
+    "Cmd-S",
+    "source no-op roundtrip",
+    "Cmd-W and Cmd-O reopen",
+    "observed restored checkbox/table/language/beta in actual window"
+  ],
+  "limits": [
+    "AX selectText on editor root selected an unintended broad range; no text entered at that point; double-click on the cell selected text correctly",
+    "no physical IME claim",
+    "not all table/AX/file lifecycle cases covered"
+  ],
+  "expectedActualByteMatch": true
+}

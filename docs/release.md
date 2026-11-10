@@ -80,13 +80,13 @@ ZIP 本身不能 staple，因此先 staple App，再重建 ZIP；DMG 另行签�
 
 机器结构检查已由 `make release-verify` 脚本化，不会启动 GUI；以下步骤必须由人实际执行并记录 macOS、CPU、版本/build、SHA256、结果和问题。
 
-1. 在 macOS 14 最低支持系统及当前 macOS 上分别准备干净 VM 或新建用户；没有已安装 Inkora、个人偏好、最近文件和恢复草稿。
+1. 在当前验收 macOS 上准备干净 VM 或新建用户；没有已安装 Inkora、个人偏好、最近文件和恢复草稿。本轮按用户[当前系统验收决定](decisions/current-system-acceptance.md)不执行 macOS 14 专门验收；部署目标不变，不将当前结果声称为 14 实测兼容。
 2. 在干净环境用浏览器下载真正签名并公证的候选 DMG 和 ZIP，使下载带 quarantine 属性；对照发布机 SHA256SUMS 校验。不要去掉 quarantine 或关闭 Gatekeeper。
 3. **断网**，挂载 DMG，将 Inkora 拖入 Applications 后弹出 DMG。首次双击 App，确认 Gatekeeper 正常放行（允许标准下载确认提示，无“无法验证开发者”错误），不使用 Open Anyway 绕过。
 4. 在 Finder 双击 `.md`，验证文件关联和文件名；如默认编辑器未关联，使用“打开方式”选择 Inkora，并记录关联结果。
 5. 编辑中文、输入法 composition、选区、撤销重做，保存，关闭并重开，对照磁盘文件；验证离线资源加载和无网络依赖。使用测试文档，不使用真实笔记。
 6. 对 ZIP 解压后的 App 独立重复首次启动与文件打开，避免已放行的 App 掩盖问题；必要时还原 VM 快照或使用另一干净用户。
-7. 汇总通过/失败与日志；任一阻塞问题都停止 Beta 发布。新用户本身不能替代最低系统 VM，也不能替代真实 quarantine/Gatekeeper 测试。
+7. 汇总通过/失败、实际验收系统与日志；任一未解决阻塞问题都停止 Beta 发布。新用户不能替代真实 quarantine/Gatekeeper 测试；本轮 macOS 14 专门验收已由用户明确排除。
 
 ## Beta 发布检查表
 

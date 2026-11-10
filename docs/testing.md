@@ -14,6 +14,8 @@ rebase 到新 main 再触发 CI。
 Bridge、native、CI 脚本）、`make release-bundle-check`（Release 离线资源检查，不启动 App）
 与轻量 `make bench`。
 
+2026-11-10 用户取消本轮 macOS 14 版本专门验收，见[当前系统验收决定](decisions/current-system-acceptance.md)。真实验收使用当前可用系统并记录版本；macOS 14+ 构建目标与 SDK availability 检查不变，不能把部署目标或当前系统结果记为 14 实机通过。
+
 UI 套件（`make test-document-open-ui` + `make test-ui-release`）只在两种情况下运行，通过
 `gh workflow run CI --ref <branch> -f ui-tests=true` 触发：发布前（release gate）；用户
 明确要求时。普通 PR，包括改动菜单、快捷键、对话框、窗口或文档生命周期流程
