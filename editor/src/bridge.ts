@@ -52,7 +52,19 @@ export interface BridgeImageOwnershipProof {
   readonly imageURIs: readonly string[];
 }
 
-export type NativeCommand =
+export type PresentationCommand = {
+  protocolVersion: 1;
+  type: "setDocumentTitle" | "revealRange";
+  requestID: string;
+  documentID: string;
+  revision: number;
+  loadRequestID: string;
+  title?: string;
+  selectionAnchor?: number;
+  selectionHead?: number;
+};
+
+export type NativeCommand = PresentationCommand
   | {
       protocolVersion: 1;
       type: "loadDocument";
@@ -129,6 +141,8 @@ export type NativeCommand =
     };
 
 export type EditorMessage =
+  | { protocolVersion: 1; type: "presentationApplied"; requestID: string;
+      documentID: string; revision: number; loadRequestID: string; outcome: "applied" | "sourceChoice" }
   | { protocolVersion: 1; type: "commandsChanged"; documentID: string; revision: number;
       availableCommands: EditorCommand[]; readingWidth: 760 | 900 }
   | { protocolVersion: 1; type: "ready" }
@@ -177,6 +191,25 @@ export function decodeNativeCommand(serialized: string): NativeCommand {
   const requestID = requireString(value, "requestID");
 
   switch (value.type) {
+    case "setDocumentTitle":
+    case "revealRange": {
+      const command: PresentationCommand = {
+        protocolVersion: 1, type: value.type, requestID,
+        documentID: requireString(value, "documentID"), revision: requireRevision(value),
+        loadRequestID: requireString(value, "loadRequestID"),
+      };
+      if (value.text !== undefined || value.raw !== undefined) throw Error("Presentation cannot carry document text");
+      if (value.type === "setDocumentTitle") command.title = requireString(value, "title", true);
+      else {
+        for (const key of ["selectionAnchor", "selectionHead"] as const) {
+          const offset = value[key];
+          if (typeof offset !== "number" || !Number.isSafeInteger(offset) || offset < 0) throw Error("Invalid range");
+          command[key] = offset;
+        }
+        if (command.selectionHead! < command.selectionAnchor!) throw Error("Invalid directed reveal range");
+      }
+      return command;
+    }
     case "loadDocument":
       return {
         protocolVersion: BRIDGE_PROTOCOL_VERSION,
@@ -467,6 +500,23 @@ export class EditorProtocolSession {
       ...getEditableState(),
     };
     return this.stateChanged(command.requestID);
+  }
+
+  present(
+    command: PresentationCommand, acceptedLoadRequestID: string | undefined,
+    apply: () => "applied" | "sourceChoice" | undefined,
+  ): EditorMessage {
+    const duplicate = this.claimRequest(command.requestID);
+    if (duplicate) return duplicate;
+    const mismatch = this.validateDocumentRevision(command);
+    if (mismatch) return mismatch;
+    if (command.loadRequestID !== acceptedLoadRequestID) {
+      return this.error("stale_revision", command.requestID, "Load identity does not match");
+    }
+    const outcome = apply();
+    if (!outcome) return this.error("command_rejected", command.requestID, "Presentation was rejected");
+    return { protocolVersion: 1, type: "presentationApplied", requestID: command.requestID,
+      documentID: command.documentID, revision: command.revision, loadRequestID: command.loadRequestID, outcome };
   }
 
   acknowledge(
