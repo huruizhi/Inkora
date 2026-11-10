@@ -42,3 +42,11 @@ A的Timer安装线程补正`554d50c`已吸收为`140438c`；管理者独立重�
 2026-11-11，原C在原生8项及Web定向137项已结束后连续两次provider `Bad Request`。管理者实际核对其状态`error/activeTurn=null`、无残留132测试进程；没有按观察超时重启测试。原工作树10个修改完整保留，另冻结binary patch，SHA256为`7367dca931cdecf416cdcee657aa064ea42e96d70cf03100cde245a2c92149ef`，源HEAD为`e18d8d0e9bee72282b0668c5c645ae355a64f4b6`。
 
 新增独立`task/INK-UX-135-sidebar-integration-recovery`从组合`cb14288`承接该精确patch，apply前检查通过；原作者日志复制至新工作树`artifacts/inherited-INK-UX-132`并注明借用证据。新Agent仅完成同一范围的检查、必要补正、文档及固定提交，不重写产品或缩小原要求。原C分支、未提交修改和证据先保留，待新提交与远端备份核实后回收。此provider失败不属于产品测试失败。
+
+## 合并前结果与交付接缝
+
+135已固定并由管理者吸收；完整产品`caab97a`实际运行lint、test-non-ui、Release离线检查，退出0。Editor795、Web Bridge16，Native214通过/0失败/8既有性能skip，Swift Bridge16；结果树确认新的八项导航均执行通过，Release双架构与严格签名验证通过。随后仅补正侧栏开关上下文AX/tooltip，组合面板+main126/126及tsc通过，不重复无变化的全套本地检查；最终默认CI会覆盖新组合。
+
+独立两轴后验报告、证据归属与最后P3补正见[汇总](../reviews/INK-UX-129-final-review.md)，15组逐项证明见[验收矩阵末节](../reviews/INK-UX-129-acceptance-matrix.md)。Standards无未关闭hard，两项维护性judgement保留；Spec原主要缺陷关闭。没有据此声称屏幕paint、墙钟动画时长、系统授权/保存面板、物理IME、VoiceOver或macOS14专项通过。
+
+已创建[PR #87](https://github.com/huruizhi/Inkora/pull/87)。本记录固定在触发最终精确HEAD默认CI之前；CI状态、最终merge SHA、正式安装资源/身份和仅保留一份安装的结果以该PR及本地交付回执为准，不能把此处待执行动作写成既成事实。默认CI参数固定`ui-tests=false`、`full-bench=false`；不启动App、不强退作者文档。合并及安装完成前，所有执行/审查分支和冻结证据均保留。
