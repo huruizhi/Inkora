@@ -738,6 +738,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
               ? { ok: true }
               : { ok: false, message: this.session.diagnostic || "无法安全修改图片描述。" };
           },
+          () => this.session.composing || view.composing,
         ),
         table: tableNodeView,
         list_item: taskListItemNodeView,

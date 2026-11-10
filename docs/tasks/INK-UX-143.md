@@ -76,3 +76,21 @@ NodeSelection 有限核实：生产 view.dispatch(NodeSelection.create(...)) 在
 根发现本次公共样式替换误改了下方 Mermaid 隐藏选择器，造成 `.mermaid-edit` 无条件隐藏。已恢复基线两条显隐 selector；相对基线 CSS diff 现在仅含公共按钮样式追加 `.technical-edit` 与末尾 focus outline。原始报告与证据保留；不以行为测试冒称 CSS 几何通过。
 
 实跑 `.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/technical-preview-runtime.test.ts src/technical-navigation-runtime.test.ts --disableConsoleIntercept`，2 files / 14 tests passed；`git diff --check` 通过。日志 `css-fix-green.txt`。本次未改 runtime，A 的第4图片回调接线仍等根提供固定SHA后在组合代码上处理。
+
+## A142 组合后的图片 settling 守卫接线
+
+按根指令，仅将 A 原始首报 `3d7467c14dbc264481985b9ef821d23385d67674` 和产品 `f297af111317c40b157ddcaf69a9cf0e356b5578` cherry-pick 为组合输入，本分支对应 `08210ac` / `75a846a`。根独立整合 A，不应重复 pick 这两份组合提交；只取本节新增的最后 runtime 接线修复提交。
+
+唯一产品行：createImageNodeViews 第四参数传 `() => this.session.composing || view.composing`。未改 A 的 image/context/CSS 文件、用例或断言。
+
+新增 `image-settling-runtime.test.ts`：生产 runtime/JSDOM DOM 表单派发 compositionstart/end；end 后表单本地 handler 已结束，读取真实公开 PM composing=false，而 runtime.composing=true，锁住 session settling 窗口。未接回调的真实 RED 在点击取消后 alt.isConnected=false，草稿表单被提前移除；日志保留。接线后同一窗口立即 cancel/submit/Esc 均不改草稿值/连接身份、正文、status、有向raw选区，且不发布 change；await whenCompositionStable 后正常取消，第二次 composition 稳定后提交可改描述。PM composing getter 通过既有同层 view 测试适配器读取，未注入 session/PM composing 状态。不是物理IME或paint证据。
+
+实跑：
+
+```sh
+.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/image-settling-runtime.test.ts --disableConsoleIntercept
+.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/image-settling-runtime.test.ts src/image-view.test.ts src/technical-navigation-runtime.test.ts src/technical-preview-runtime.test.ts --reporter=verbose --disableConsoleIntercept
+.tools/node_modules/.bin/pnpm --dir editor run build
+```
+
+首条接线前1 test failed（取消提前移除表单）；后两条接线后4 files / 21 tests passed（新集成1、A image6、B navigation5、technical9），prepare-renderers + tsc --noEmit + vite build成功，仅500KB chunk警告。独立日志 image-settling-red/green/build.txt。未跑全量Native/GUI，无额外矩阵。工作树和组合产物保留供根备份回收；本人临时工具链接验证后unlink。
