@@ -43,3 +43,7 @@ A142的不可见真实WK证明：生产broker校验并解码的PNG可显示；�
 B的TechnicalTarget/ReturnContext保持runtime私有，绑定同runtime/load、exact raw、version/epoch、唯一canonical范围及expected node/getPos；preview只接展示回调。captureProtectedRanges会合并相邻范围，不能用作节点精确owner。确有必要时允许B在source-authority.ts增加最小只读技术target capture/validate方法，复用已有canonical parse/provenance，不改parser/ledger/事务或普通源码取消。技术取消在绑定仍有效时恢复原PM和有向raw选区，dirty取消也恢复入口前位置；成功apply含no-op后清理返回上下文。过期上下文不得自动取消新草稿或复活旧文档。main/schema新增接口仍须先协调；状态通知使用既有status路径，不新造UI旁路。
 
 两者保留第一阶段坏行为证据，再以预期正确行为锁住真实RED→GREEN；“断言坏行为成功”不记为产品修复通过。新增接口均服务已复现问题，不扩为通用编辑状态框架。
+
+展示控件存活与已打开意图的有效期要区分：普通正文输入后，仍连接且对应当前accepted节点的控件应按当前canonical owner重新捕获资格；已打开的返回/草稿意图仍绑定打开时raw/version/epoch，内容或生命周期变化后不能复活。B的有限公开反例已证明creation时固定raw/version会使当前控件失效，须保留该RED/GREEN。关于NodeSelection的假设未在公共生产路径成立（session在入口前已规范为TextSelection），不得报告为已证实取消缺陷，也不新增私有注入以制造反例；取消恢复实际接受的完整Selection。
+
+许可全文目前209271字节，只在打开时填充/构建，不能在每个代码块初始化时预建隐藏全文。次级许可入口应弱化常驻密度且键盘可发现；靠近编辑区底部仍可阅读与关闭，不能只证明DOM存在或焦点落在被裁切元素。
