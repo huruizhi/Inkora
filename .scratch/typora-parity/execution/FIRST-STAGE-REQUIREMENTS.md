@@ -1,14 +1,16 @@
 # 首阶段需求到实际证据的对照
 
+2026-11-10 用户调整验收范围：“不验收14版本。继续推进”。本轮 macOS 14 实机/VM 验收明确不执行，不再作为缺失项/阻塞；14+ 部署目标不变，不能标记为 14 实测通过。下文旧时点“最低系统”要求以此更新为准。当前系统桌面验收已恢复，生产专用测试 bundle 与 scratch 文档隔离操作；物理 IME 等仍按实际动作分别结算。
+
 本次核对生产main **1e1e4561c7c79b36bd081e04bc54b54e8beffc41**（PR71至78已合入），其整树与CI受检624a8652a0c8fe971b166dff7d5d4b241adb8279一致。范围来自03、07、V1–V6及canonical支持矩阵；M0可行性由038关闭，不把旧原型物理证据当新生产验收。
 
-最终产品代码7305b97实际editor766/766、Native179passed/0fail/8既有perf skip、Bridge双侧14/15、lint/Release-offline通过；精确最终head默认CI42692283984 success，non-UI/Release/offline/light基线通过，UI/full-bench按参数skip。SYN-S016已随PR75进入main；PR77完成本轮保护边界和源码资格生产接线。物理/最低系统/AX/正式性能预算未完成，测试数量不是整体完成证明。下方历史时点另有旧数字，不能用作当前状态。
+最终产品代码7305b97实际editor766/766、Native179passed/0fail/8既有perf skip、Bridge双侧14/15、lint/Release-offline通过；精确最终head默认CI42692283984 success，non-UI/Release/offline/light基线通过，UI/full-bench按参数skip。SYN-S016已随PR75进入main；PR77完成本轮保护边界和源码资格生产接线。当前系统物理/AX/正式性能预算未完成，测试数量不是整体完成证明。下方历史时点另有旧数字，不能用作当前状态。
 
 108仅新增生产组合验证和记录，未改产品源码。实际完整Native188total/180passed/0fail/8既有性能skip、lint通过；精确head624a865默认CI42695919576 success，UI/full-bench仍skip。真实离屏WK中四格式图片均加载，混排文章经正文/表格/任务/语言/替换/历史/源码no-op后Save As、新NSDocument与新WK重开，Markdown及图片逐字节核对通过；系统目录选择仅用公开注入，不能填入物理授权或真实显示验收。
 
 | 用户能力 | 已执行的生产接缝依据 | 仍需闭合的证据 |
 | --- | --- | --- |
-| 新建/打开与UTF-8原文保真 | InkoraDocumentTests.testUnmodifiedMarkdownRoundTripsByteForByte、testUTF8BOMIsStrippedFromTextAndPreservedInEveryWrite；EditorWebViewTests.testUnmodifiedMarkdownSavesThroughBridgeByteForByte | 最新组合菜单/Finder/真实文件窗口、最低系统 |
+| 新建/打开与UTF-8原文保真 | InkoraDocumentTests.testUnmodifiedMarkdownRoundTripsByteForByte、testUTF8BOMIsStrippedFromTextAndPreservedInEveryWrite；EditorWebViewTests.testUnmodifiedMarkdownSavesThroughBridgeByteForByte | 最新组合菜单/Finder/真实文件窗口 |
 | 正文/标题/列表/引用与marks | source-authority-runtime中的ATX→paragraph、local quote lift、cross-paragraph strong、list Enter/indent/outdent真实事务 | 最新生产物理中文、组合期操作与整体体验 |
 | 链接创建/局部更新/移除 | Mod-K main真实DOM、collapsed owner、共享引用、rollback与Mod-Shift-K回归 | 实际WK字段/键盘/候选交互 |
 | 代码及离线语言高亮 | source-authority-runtime的语言后续写/局部code conversion/真实Mod-Enter；code-highlighting的13语言/字节/XSS/缓存控制 | 旧047真实WK/保存重开证据保留；当前组合再集中点验 |
@@ -22,15 +24,15 @@
 | 崩溃与pending意图恢复 | LocalImageStoreTests.testIndependentProcessSIGKILLLeavesRecoverableProductionManifestAndBytes、RecoveryStore启动discovery；LocalImageMigrationTests.testSIGKILLAfterPublicationIsDiscoveredByIndependentProcessState | 080已通过真实协调器/资源-only/确认handoff/放弃回归；真实启动恢复UI仍待验 |
 | 资源授权与安全边界 | DocumentAssetBrokerTests.testSynchronousPreflightHoldsScopeLeaseAcrossDescriptorReadAndReleasesOnce/Failure、真实handler stop/generation/lease控制、非法路径/SHA/symlink拒绝 | 实际Sandbox面板、书签跨启动与当前受支持系统 |
 | 真实文件生命周期 | InkoraDocumentTests save/snapshot取消/serialized saves/删除/外改/first-save failures；EditorWebViewTests revision/replay/save barrier；108混排文章实际WK编辑→NSDocument迁移写盘→新文档/WK重开 | DocumentOpenUITests菜单/关闭取消保存放弃/冲突/只读/最近文件/Finder集中跑；不能借旧UI结果填本次 |
-| 性能与支持范围 | 最终默认CI/light基线通过；fab0bcc参考模型5组及离屏WK四向量有输入/源码/bundle与原始分布，WK input→snapshot median medium109.734ms/large877.365ms/CRLF868.752ms，不重标为最后7305测量 | 实际paint/物理IME/最低系统、最终统一输入与15正式预算未冻结 |
-| 键盘/AX/系统/显示 | 产品控件有真实DOM及AX名称控制；既有AcceptanceUITests测试入口保留 | AcceptanceUITests.testKeyboardOnlyOpenEditSaveCloseAndRecent/testEditorAccessibilityAudit、人工VoiceOver、深浅/放大字体、macOS14+实际运行 |
+| 性能与支持范围 | 最终默认CI/light基线通过；fab0bcc参考模型5组及离屏WK四向量有输入/源码/bundle与原始分布，WK input→snapshot median medium109.734ms/large877.365ms/CRLF868.752ms，不重标为最后7305测量 | 当前系统实际paint/物理IME、最终统一输入与15正式预算未冻结；14版本专门验收不执行 |
+| 键盘/AX/系统/显示 | 产品控件有真实DOM及AX名称控制；既有AcceptanceUITests测试入口保留 | 当前系统AcceptanceUITests.testKeyboardOnlyOpenEditSaveCloseAndRecent/testEditorAccessibilityAudit、人工VoiceOver、深浅/放大字体 |
 
 ## 当前可以与不可以结算的事项
 
 - 原文权威核心、表格任务和可视查找替换已实际进入main，不再写“只有模块/原型”。图片代码已随PR74进入main，仍不能把682绿灯叫V4整体验收完成。
 - 077和080均已有root组合测试，实际恢复确认不再只是通知；083统一owner与090的proof/落盘receipt补正已随PR74进入main。089原两项报告及修复证据分别保留，不再列为正在实施。
-- 078给出实际慢路径和失败样本；没有为make bench旧指标改绿或缩减首阶段功能。079/085已消除扫描热点并有重复分层数据，正式预算和最低系统承诺仍需后续验收。
-- 物理/桌面验收按用户“稍后”暂缓，不启动App/UI、不重新催促。自动composition、jsdom、hostlessWK、scratch和真实授权/物理输入分别结算。
+- 078给出实际慢路径和失败样本；没有为make bench旧指标改绿或缩减首阶段功能。079/085已消除扫描热点并有重复分层数据，当前系统正式预算仍需后续验收；14专门验收已由用户排除。
+- 用户“继续推进”后，当前桌面验收已在互斥/预检和专用测试bundle下恢复；自动composition、jsdom、hostlessWK、真实桌面自动输入和用户物理输入分别结算。
 - 正式DeveloperID签名、公证和直接分发另属发布门槛；无Mac App Store路线。它们不替代上述功能/数据完整性/真实用户闭环。
 
 ## 2026-11-10增量证据

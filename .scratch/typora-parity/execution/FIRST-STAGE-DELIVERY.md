@@ -1,6 +1,14 @@
 # 首阶段基础功能：交付总表
 
-## PR78已交付（最新状态）
+## PR79与当前系统续验（最新状态）
+
+用户2026-11-10明确“不验收14版本。继续推进”，本轮取消macOS14实机/VM专门验收；14+部署目标不变，版本未测不记通过。PR79精确head `12b402f942b3989c2295cc4e5b51f6c9991edbb4` 默认CI `42727183901` success后合main `a2b6211c387d2cd1b523b1c95bd088f55e6ede93`。新增当前系统验收决定并同步acceptance/testing/release/performance；无产品、测试、依赖或权限修改。
+
+当前macOS27.2桌面预检通过，root持生产UI锁，仅操作冻结UITesting Release bundle与唯一scratch样稿。实际系统Open→任务checkbox→表格单元格→Python语言→两处alpha替换beta→单步Undo/Redo→Cmd-S→源码no-op→关闭/Open重开均已观察；186bytes与独立预期逐字节相等，SHA `09b3933fadd1bde1511c4b0621bfe1bba8821f51da0bbc239480f49a2a4f96c7`，原样本及冻结包未改。证据在main docs/evidence/INK-PLAN-109，是真实桌面自动操作，不是实体输入法。
+
+`01-IME.md` 已定位Input here.后，并已向用户请求两次实体搜狗上屏；尚未收到操作结果，不标记IME通过。用户此前“稍后”的桌面延期已由本轮继续推进恢复；其他授权/书签/文件/AX/显示/可见性能门槛仍逐项保留。原后文最低系统阻塞是历史时点，不再适用本轮14专门验收。109分支/remote/clean及641文件tar/Git bundle已核验，tar SHA `2e44a207fbbdca92422f6cbf2bd650f503a561d652c34c4b10f49f9eec2a52fc`；当前不回收持有活动验收记录的109工作区，managed仍92。
+
+## PR78交付记录
 
 生产 main `1e1e4561c7c79b36bd081e04bc54b54e8beffc41`，整树与精确 CI 受检 `624a8652a0c8fe971b166dff7d5d4b241adb8279` 无差异。默认 CI `42695919576` success，非UI/Release-offline/light基线通过，UI/full-bench按参数skip。108仅增加组合测试与验收记录，产品源码、协议、依赖和权限均无变化。
 
