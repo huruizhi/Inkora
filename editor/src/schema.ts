@@ -1,4 +1,5 @@
 import { protectedPreview } from "./protected-preview";
+import { footnoteReference } from "./technical-preview";
 import {
   type DOMOutputSpec,
   type Node as ProseMirrorNode,
@@ -377,11 +378,18 @@ export const inkoraNodeSpecs: Record<InkoraNodeName, NodeSpec> = {
         kind: (dom as HTMLElement).dataset.inkoraKind,
       }),
     }],
-    toDOM: node => ["span", {
-      class: "protected-inline", contenteditable: "false",
-      "data-inkora-raw": node.attrs.raw, "data-inkora-kind": node.attrs.kind,
-      title: "只读原文片段；请在源码中修改",
-    }, node.attrs.raw],
+    toDOM: node => {
+      const span = document.createElement("span");
+      span.className = "protected-inline";
+      span.setAttribute("contenteditable", "false");
+      span.dataset.inkoraRaw = node.attrs.raw;
+      span.dataset.inkoraKind = node.attrs.kind;
+      span.title = "只读原文片段；请在源码中修改";
+      const reference = node.attrs.kind === "footnote" ? footnoteReference(node.attrs.raw) : undefined;
+      if (reference) span.append(reference);
+      else span.textContent = node.attrs.raw;
+      return span;
+    },
   },
 
 };

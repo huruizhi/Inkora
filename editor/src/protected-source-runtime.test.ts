@@ -8,7 +8,7 @@ import { NodeSelection } from "prosemirror-state";
 import { deleteSelection } from "prosemirror-commands";
 import { indexVisualText } from "./visual-search";
 
-it("renders accepted footnote and callout source in a read-only EditorView atom", () => {
+it("renders accepted footnote and callout previews in a read-only atom with exact source", () => {
   const dom = new JSDOM("<main></main>", { pretendToBeVisual: true });
   const previousDocument = globalThis.document;
   const previousWindow = globalThis.window;
@@ -21,7 +21,10 @@ it("renders accepted footnote and callout source in a read-only EditorView atom"
       const runtime = createEditorRuntime(host, raw, () => {});
       try {
         expect(runtime.mode).toBe("visual");
-        expect(host.querySelector(".protected-block pre")?.textContent).toBe(opaque);
+        expect((host.querySelector(".protected-block") as HTMLElement).dataset.inkoraRaw).toBe(opaque);
+        if (opaque.startsWith("[^")) {
+          expect(host.querySelector(".footnote-body")?.textContent).toContain("/definition");
+        } else expect(host.querySelector(".protected-block pre")?.textContent).toBe(opaque);
         expect((host.querySelector(".protected-block") as HTMLElement).contentEditable).toBe("false");
         expect(runtime.getText()).toBe(raw);
       } finally { runtime.destroy(); host.replaceChildren(); }
@@ -43,6 +46,16 @@ it("assigns footnote bytes only to their accepted opaque block", () => {
     span.sourceStart < 20 && span.sourceEnd > 0 && span.sourceEnd > span.sourceStart);
   expect(footnoteSpans.map(span => span.role)).toEqual(["protected"]);
   expect(result.ledger.links.map(owner => owner.href)).toEqual(["/first"]);
+});
+
+it("still rejects a mismatched nested opaque atom after accepting its canonical block token", () => {
+  const raw = "> $$\n> E=mc^2\n> $$\n";
+  const parsed = parse(raw);
+  const quote = parsed.doc.firstChild!;
+  const original = quote.firstChild!;
+  const changed = original.type.create({ ...original.attrs, raw: "> $$\n> changed\n> $$" });
+  const forged = parsed.doc.type.create(null, quote.type.create(quote.attrs, changed));
+  expect(buildSourceLedger(raw, forged, parsed.ranges, parsed.tokenEvidence).ok).toBe(false);
 });
 
 it("requires a matching TOML closing fence and treats its contents as opaque", () => {

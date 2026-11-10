@@ -1,5 +1,8 @@
 import type { Node as PMNode } from "prosemirror-model";
 import type { EditorView, NodeView } from "prosemirror-view";
+import { bindContextToolbar } from "./context-tools";
+import { mountMermaidPreview } from "./mermaid-preview";
+import { TextSelection } from "prosemirror-state";
 import { buildLanguageAttr, CODE_LANGUAGES, firstInfoToken, resolveHighlightLanguageId } from "./code-highlighting";
 
 export interface CodeLanguageChangeResult {
@@ -46,7 +49,7 @@ function option(value: string, label: string): HTMLOptionElement {
 export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
   return (
     initialNode: PMNode,
-    _view: EditorView,
+    view: EditorView,
     getPos: () => number | undefined,
   ): CodeBlockNodeView => {
     let node = initialNode;
@@ -56,6 +59,9 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     const toolbar = document.createElement("div");
     toolbar.className = "inkora-code-toolbar";
     toolbar.contentEditable = "false";
+    toolbar.setAttribute("role", "toolbar");
+    toolbar.setAttribute("aria-label", "代码块操作");
+    bindContextToolbar(toolbar, view, context.isComposing);
 
     const label = document.createElement("label");
     label.className = "inkora-code-language-label";
@@ -72,8 +78,8 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
 
     const license = document.createElement("a");
     license.className = "inkora-code-license";
-    license.href = "./THIRD_PARTY_NOTICES.txt";
-    license.textContent = "高亮许可";
+    license.href = "./RENDERER_NOTICES.txt";
+    license.textContent = "第三方许可";
     license.target = "_blank";
     license.rel = "noreferrer";
     toolbar.append(label, message, license);
@@ -81,13 +87,49 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     const pre = document.createElement("pre");
     const code = document.createElement("code");
     pre.append(code);
-    dom.append(toolbar, pre);
+    const diagram = document.createElement("div");
+    diagram.className = "mermaid-preview";
+    diagram.contentEditable = "false";
+    diagram.setAttribute("aria-label", "Mermaid 图表预览；点击可编辑代码");
+    const editDiagram = document.createElement("button");
+    editDiagram.type = "button";
+    editDiagram.className = "mermaid-edit";
+    editDiagram.contentEditable = "false";
+    editDiagram.textContent = "编辑图表";
+    let cancelPreview: (() => void) | undefined;
+    let previewSource: string | undefined;
+    const renderDiagram = (): void => {
+      const isMermaid = currentSelectValue(node).toLowerCase() === "mermaid";
+      dom.classList.toggle("is-mermaid", isMermaid);
+      diagram.hidden = !isMermaid;
+      editDiagram.hidden = !isMermaid;
+      const source = isMermaid ? node.textContent : undefined;
+      if (source === previewSource) return;
+      cancelPreview?.();
+      previewSource = source;
+      cancelPreview = source === undefined ? undefined : mountMermaidPreview(diagram, source);
+    };
+    diagram.addEventListener("pointerdown", event => event.preventDefault());
+    const enterDiagramCode = (): void => {
+      if (context.isComposing()) return;
+      const pos = getPos();
+      if (pos === undefined) return;
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos + 1)));
+      view.focus();
+    };
+    diagram.addEventListener("click", event => {
+      if ((event.target as HTMLElement).closest("button")) return;
+      enterDiagramCode();
+    });
+    editDiagram.addEventListener("pointerdown", event => event.preventDefault());
+    editDiagram.addEventListener("click", enterDiagramCode);
+    dom.append(toolbar, diagram, editDiagram, pre);
 
     const renderSelector = (): void => {
       const languageAttr = node.attrs.language as string | null;
       const token = currentSelectValue(node);
       select.replaceChildren();
-      const resolved = resolveHighlightLanguageId(token);
+      const resolved = token.toLowerCase() === "mermaid" ? token : resolveHighlightLanguageId(token);
       if (token && (!resolved || resolved !== token)) {
         select.append(option(token, preservedLabel(token)));
       }
@@ -95,6 +137,8 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
       for (const language of CODE_LANGUAGES) {
         select.append(option(language.id, language.label));
       }
+      if (token.toLowerCase() !== "mermaid") select.append(option("mermaid", "Mermaid 图表（mermaid）"));
+      else select.append(option(token, "Mermaid 图表（mermaid）"));
       select.value = token && resolved === token ? token : token || "";
 
       const indented = node.attrs.style === "indented";
@@ -135,6 +179,7 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     });
 
     renderSelector();
+    renderDiagram();
 
     return {
       dom,
@@ -144,14 +189,18 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
         node = nextNode;
         message.dataset.failure = "false";
         renderSelector();
+        renderDiagram();
         return true;
       },
       stopEvent(event) {
-        return !!event.target && toolbar.contains(event.target as Node);
+        return !!event.target && (toolbar.contains(event.target as Node) ||
+          diagram.contains(event.target as Node) || editDiagram.contains(event.target as Node));
       },
       ignoreMutation(mutation) {
-        return toolbar.contains(mutation.target);
+        return toolbar.contains(mutation.target) || diagram.contains(mutation.target) ||
+          editDiagram.contains(mutation.target);
       },
+      destroy() { cancelPreview?.(); },
     };
   };
 }

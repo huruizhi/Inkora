@@ -223,6 +223,9 @@ export function installProtectedSyntax(markdown: MarkdownIt): void {
     }
     acceptBlock(state, start, next < end ? next + 1 : end, 'math',
       next < end ? undefined : '数学围栏缺少配对 $$ 行；已保留原文');
+    // Container prefixes are owned by the canonical block state. Preserve its
+    // already-decoded body for display, separately from exact physical raw.
+    state.tokens.at(-1)!.meta.inkoraMathContent = state.getLines(start + 1, next, state.blkIndent, false);
     return true;
   }, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
   markdown.block.ruler.before("reference", "inkora_footnote_definition", (

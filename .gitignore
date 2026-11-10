@@ -9,6 +9,8 @@ Inkora.xcodeproj/
 xcuserdata/
 *.xcscmblueprint
 # Node
+editor/public/vendor/
+editor/public/RENDERER_NOTICES.txt
 node_modules/
 dist/
 .pnpm-store/

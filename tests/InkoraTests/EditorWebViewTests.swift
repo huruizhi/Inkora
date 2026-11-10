@@ -3,6 +3,133 @@ import XCTest
 
 final class EditorWebViewTests: XCTestCase {
   @MainActor
+  func testTechnicalPreviewsRenderOfflineWithoutChangingSnapshot() async throws {
+    let raw =
+      "# 技术文档\n\n正文[^note]\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\nA[想法] --> B[草稿]\n```\n\n[^note]: **脚注**内容\n\n> $$\n> E=mc^2\n> $$\n\n- $$\n  E=mc^2\n  $$\n"
+    let document = InkoraDocument()
+    try document.read(from: Data(raw.utf8), ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(
+      document: document, resourceBundle: Bundle(for: Self.self))
+    controller.loadViewIfNeeded()
+    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    webView.setFrameSize(NSSize(width: 900, height: 900))
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('.math-preview math msup')"
+    ) { $0 as? Bool == true }
+    let initial = try await requestText(from: controller)
+    XCTAssertEqual(initial, raw)
+    let revision = document.bridgeRevision
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.mermaid-preview button')?.click()")
+    let state = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('.mermaid-preview').dataset.state",
+      attempts: 200
+    ) { ["ready", "error"].contains($0 as? String ?? "") }
+    let failure = try await webView.evaluateJavaScript(
+      "document.querySelector('.mermaid-preview').dataset.failure || ''")
+    XCTAssertEqual(
+      state as? String, "ready", "Mermaid preview failed: \(String(describing: failure))")
+    let preview =
+      try await webView.evaluateJavaScript(
+        """
+        (() => ({
+          diagram: document.querySelector('.mermaid-preview svg')?.textContent || '',
+          footnote: document.querySelector('.footnote-definition strong')?.textContent || '',
+        containerMath: document.querySelectorAll('#editor blockquote .math-preview math, #editor li .math-preview math').length,
+          inert: !document.querySelector('#editor script, #editor foreignObject, #editor image'),
+          local: [...document.scripts].every(script => !script.src || script.src.startsWith('inkora-editor://app/')),
+          policy: document.querySelector('meta[http-equiv="Content-Security-Policy"]').content,
+        }))()
+        """) as! [String: Any]
+    XCTAssertTrue((preview["diagram"] as? String)?.contains("想法") == true)
+    XCTAssertTrue((preview["diagram"] as? String)?.contains("草稿") == true)
+    XCTAssertEqual(preview["footnote"] as? String, "脚注")
+    XCTAssertEqual(preview["containerMath"] as? Int, 2)
+    XCTAssertEqual(preview["inert"] as? Bool, true)
+    XCTAssertEqual(preview["local"] as? Bool, true)
+    XCTAssertTrue((preview["policy"] as? String)?.contains("connect-src 'none'") == true)
+    let rendered = try await requestText(from: controller)
+    XCTAssertEqual(rendered, raw)
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.mermaid-edit').click()")
+    let editState =
+      try await webView.evaluateJavaScript(
+        """
+        (() => ({
+          display: getComputedStyle(document.querySelector('.is-mermaid pre')).display,
+          selected: document.querySelector('.is-mermaid').classList.contains('inkora-context-active'),
+          focused: document.querySelector('#editor').classList.contains('ProseMirror-focused'),
+          activeElement: document.activeElement.id,
+        }))()
+        """) as! [String: Any]
+    XCTAssertEqual(editState["display"] as? String, "block", String(describing: editState))
+    let editing = try await requestText(from: controller)
+    XCTAssertEqual(editing, raw)
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.editor-mode-source').click()")
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('textarea#editor')"
+    ) { $0 as? Bool == true }
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.editor-mode-visual').click()")
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('.math-preview math')"
+    ) { $0 as? Bool == true }
+    let roundtrip = try await requestText(from: controller)
+    XCTAssertEqual(roundtrip, raw)
+    XCTAssertEqual(document.bridgeRevision, revision)
+  }
+
+  @MainActor
+  func testWritingLayoutKeepsOutlineOptionalAndStatisticsVisible() async throws {
+    let raw = "# 标题\n\n正文。\n\n```ts\nconst x = 1;\n```\n"
+    let document = InkoraDocument()
+    try document.read(from: Data(raw.utf8), ofType: "net.daringfireball.markdown")
+    let controller = EditorViewController(
+      document: document, resourceBundle: Bundle(for: Self.self))
+    controller.loadViewIfNeeded()
+    let webView = try XCTUnwrap(controller.view as? WKWebView)
+    _ = try await waitForJavaScriptValue(
+      in: webView, script: "!!document.querySelector('.document-status-bar dd')"
+    ) { $0 as? Bool == true }
+    for width in [900, 480] {
+      webView.setFrameSize(NSSize(width: width, height: 700))
+      _ = try await waitForJavaScriptValue(
+        in: webView, script: "document.documentElement.clientWidth"
+      ) { ($0 as? Int) == width }
+      let metrics =
+        try await webView.evaluateJavaScript(
+          """
+          (() => {
+            const rect = selector => document.querySelector(selector).getBoundingClientRect();
+            const root = document.scrollingElement;
+            const footer = rect('.document-status-bar');
+            return [rect('.analysis-panel').width, footer.height, footer.bottom,
+                    root.scrollWidth, root.clientWidth, root.scrollHeight, root.clientHeight,
+                    rect('.insert-table').right,
+                    getComputedStyle(document.querySelector('.inkora-code-toolbar')).visibility];
+          })()
+          """) as! [Any]
+      XCTAssertEqual(metrics[0] as? Int, 0, "Closed outline must release its entire width")
+      XCTAssertEqual(metrics[1] as? Int, 30)
+      XCTAssertEqual(metrics[2] as? Int, 700)
+      XCTAssertLessThanOrEqual(metrics[3] as! Int, metrics[4] as! Int)
+      XCTAssertLessThanOrEqual(metrics[5] as! Int, metrics[6] as! Int)
+      XCTAssertLessThanOrEqual((metrics[7] as! NSNumber).doubleValue, Double(width - 110))
+      XCTAssertEqual(metrics[8] as? String, "hidden")
+    }
+    _ = try await webView.evaluateJavaScript(
+      "document.querySelector('.analysis-panel-toggle').click()")
+    _ = try await waitForJavaScriptValue(
+      in: webView,
+      script: "document.querySelector('.analysis-panel-body').hidden"
+    ) { $0 as? Bool == false }
+    let snapshot = try await requestText(from: controller)
+    XCTAssertEqual(snapshot, raw)
+  }
+
+  @MainActor
   func testLongDocumentsHaveOneScrollOwner() async throws {
     for prefix in ["<custom>source</custom>\n\n", "# Structured\n\n"] {
       let text = prefix + String(repeating: "长正文内容\n\n", count: 200)

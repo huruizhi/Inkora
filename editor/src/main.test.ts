@@ -1759,6 +1759,16 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     expect(h.dom.window.document.activeElement).toBe(area);
     expect({ value: area.value, start: area.selectionStart, end: area.selectionEnd, messages: h.sent.length }).toEqual(before);
     expect(h.panel().querySelector(".analysis-panel-navigation-status")?.textContent).toContain("完成中文输入");
+    const expanded = h.toggle().getAttribute("aria-expanded");
+    const togglePointer = new h.dom.window.MouseEvent("pointerdown", { bubbles: true, cancelable: true });
+    expect(h.toggle().dispatchEvent(togglePointer)).toBe(false);
+    h.toggle().click();
+    expect(h.toggle().getAttribute("aria-expanded")).toBe(expanded);
+    expect(h.dom.window.document.activeElement).toBe(area);
+    expect(h.sent).toHaveLength(before.messages);
+    area.dispatchEvent(new h.dom.window.Event("compositionend"));
+    h.toggle().click();
+    expect(h.toggle().getAttribute("aria-expanded")).toBe("true");
   });
 
   it("跨文档旧按钮请求被拒绝，不改变新文档焦点选区或 Bridge 消息", async () => {
@@ -2038,12 +2048,13 @@ describe("main：真实 main/Bridge/runtime 面板集成", () => {
     });
     await settle();
     const before = h.sent.length;
-    h.toggle().click();
     expect(h.toggle().getAttribute("aria-expanded")).toBe("false");
+    h.toggle().click();
+    expect(h.toggle().getAttribute("aria-expanded")).toBe("true");
     expect(h.sent).toHaveLength(before);
     expect(h.dom.window.document.activeElement?.id).toBe("editor");
     h.toggle().click();
-    expect(h.toggle().getAttribute("aria-expanded")).toBe("true");
+    expect(h.toggle().getAttribute("aria-expanded")).toBe("false");
     expect(h.sent).toHaveLength(before);
     expect(h.panelHeadings()).toEqual(["甲"]);
   });

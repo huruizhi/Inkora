@@ -19,7 +19,7 @@ body,
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  padding: 32px max(32px, calc((100vw - 760px) / 2));
+  padding: 48px max(32px, calc((100% - 760px) / 2)) 96px;
   border: 0;
   outline: 0;
   resize: none;
@@ -48,16 +48,20 @@ div#editor {
   padding: 6px 10px;
 }
 .inkora-table-shell {
-  margin: 1em 0;
+  position: relative;
+  margin: 1.8em 0;
+}
+.inkora-table-scroll {
   overflow-x: auto;
 }
 .inkora-table-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
-  margin-bottom: 6px;
+  overflow-x: auto;
 }
 .inkora-table-toolbar button {
+  flex-shrink: 0;
   border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
   border-radius: 5px;
   padding: 2px 7px;
@@ -166,6 +170,8 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 #app {
   display: flex;
   align-items: stretch;
+  box-sizing: border-box;
+  padding-bottom: 30px;
 }
 
 .editor-workspace {
@@ -176,6 +182,25 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   flex-direction: column;
 }
 
+.editor-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  box-sizing: border-box;
+  /* 右端为原生 InsertLocalImage 按钮保留空间，避免跨层控件重叠。 */
+  padding: 6px 116px 6px 76px;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 8%, transparent);
+}
+#app:has(.analysis-panel:not(.analysis-panel-collapsed)) .editor-topbar {
+  padding-left: 16px;
+}
+.editor-topbar:has(.search-panel:not([hidden])) .find-bar {
+  flex-basis: 100%;
+  order: 2;
+}
 .find-bar {
   position: relative;
   flex-wrap: wrap;
@@ -183,8 +208,7 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
-  border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  margin-right: auto;
 }
 
 .editor-mode-bar {
@@ -192,11 +216,10 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
-  border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  flex-wrap: wrap;
 }
 .editor-mode-bar button {
-  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border: 1px solid transparent;
   border-radius: 6px;
   padding: 3px 9px;
   background: transparent;
@@ -205,8 +228,8 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   font-size: 12px;
 }
 .editor-mode-bar button[aria-pressed="true"] {
-  background: color-mix(in srgb, AccentColor 18%, transparent);
-  border-color: AccentColor;
+  background: color-mix(in srgb, CanvasText 7%, Canvas);
+  border-color: color-mix(in srgb, CanvasText 10%, transparent);
 }
 .editor-mode-bar button:focus-visible {
   outline: 2px solid AccentColor;
@@ -294,21 +317,24 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 }
 
 .analysis-panel {
-  flex: 0 0 264px;
+  order: -1;
+  flex: 0 0 240px;
   box-sizing: border-box;
   height: 100%;
   display: flex;
   flex-direction: column;
   padding: 12px;
-  border-left: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  border-right: 1px solid color-mix(in srgb, CanvasText 8%, transparent);
   background: color-mix(in srgb, Canvas 97%, CanvasText);
-  overflow: hidden;
+  min-width: 0;
 }
 .analysis-panel.analysis-panel-collapsed {
-  flex-basis: 96px;
-  padding: 8px;
+  flex-basis: 0;
+  width: 0;
+  padding: 0;
+  border: 0;
 }
-.analysis-panel.analysis-panel-collapsed .analysis-panel-title {
+.analysis-panel-title {
   display: none;
 }
 
@@ -316,18 +342,24 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 28px;
   padding-bottom: 8px;
 }
 .analysis-panel-toggle {
+  position: fixed;
+  z-index: 5;
+  top: 8px;
+  left: 12px;
   font: inherit;
   font-size: 12px;
   padding: 2px 8px;
-  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
   color: inherit;
   cursor: pointer;
 }
+.analysis-panel-toggle:hover { background: color-mix(in srgb, CanvasText 6%, Canvas); }
 .analysis-panel-toggle:focus-visible {
   outline: 2px solid AccentColor;
   outline-offset: 1px;
@@ -344,6 +376,45 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 }
 .analysis-panel-body.analysis-panel-collapsed {
   display: none;
+}
+
+.document-status-bar {
+  position: fixed;
+  z-index: 4;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 16px;
+  background: Canvas;
+  border-top: 1px solid color-mix(in srgb, CanvasText 8%, transparent);
+  color: color-mix(in srgb, CanvasText 60%, Canvas);
+}
+.document-status-bar .analysis-panel-section,
+.document-status-bar .analysis-panel-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 11px;
+}
+.document-status-bar .analysis-panel-stats dd { margin: 0 12px 0 -5px; }
+.document-status-bar .analysis-panel-note { margin: 0; }
+.analysis-panel-count-rules summary { cursor: pointer; }
+.analysis-panel-count-rules .analysis-panel-hint {
+  position: absolute;
+  bottom: 32px;
+  right: 12px;
+  max-width: min(320px, calc(100vw - 48px));
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+  border-radius: 8px;
+  background: Canvas;
+  box-shadow: 0 4px 24px #0001;
 }
 
 .analysis-panel-section {
@@ -436,21 +507,25 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   outline-offset: -2px;
 }
 
-/* 窄窗：面板改为底部条带，仍内层滚动，不遮挡正文控制。 */
+/* 窄窗大纲仍从左侧展开，正文保留独立滚动，底栏不被遮挡。 */
 @media (max-width: 640px) {
-  #app {
-    flex-direction: column;
-  }
   .analysis-panel {
-    flex: 0 0 auto;
-    max-height: 34%;
-    border-left: 0;
-    border-top: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    bottom: 30px;
+    left: 0;
+    width: min(280px, 82vw);
+    height: auto;
+    background: Canvas;
+    box-shadow: 6px 0 24px #0001;
   }
   .analysis-panel.analysis-panel-collapsed {
-    flex-basis: auto;
-    max-height: 44px;
+    width: 0;
+    box-shadow: none;
   }
+  #app:has(.analysis-panel:not(.analysis-panel-collapsed)) .editor-topbar { padding-left: 76px; }
+  #editor { padding: 32px 24px 72px; }
 }
 
 /* 查找结果占据工具区布局空间，不能覆盖已定位到的正文。 */

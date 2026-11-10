@@ -974,7 +974,9 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
         }
       }
       const projectionUnits = projectionUnitsFor(pmDoc, range);
-      if (!inlineTokens.length && !nestedTableTokens.length && !codeTokens.length && projectionUnits.length) {
+      const hasAcceptedOpaqueBlock = actions.some(({ token }) => token.type === 'inkora_protected_block');
+      if (!inlineTokens.length && !nestedTableTokens.length && !codeTokens.length &&
+          !hasAcceptedOpaqueBlock && projectionUnits.length) {
         throw Error(`范围 ${range.start}..${range.end} 有 PM 文本/atom 但没有可审计 inline token`);
       }
       const emptyTextblocks: number[] = [];
