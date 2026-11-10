@@ -1,5 +1,6 @@
 import type { Node as PMNode } from "prosemirror-model";
 import type { EditorView, NodeView } from "prosemirror-view";
+import { bindContextToolbar } from "./context-tools";
 import { buildLanguageAttr, CODE_LANGUAGES, firstInfoToken, resolveHighlightLanguageId } from "./code-highlighting";
 
 export interface CodeLanguageChangeResult {
@@ -46,7 +47,7 @@ function option(value: string, label: string): HTMLOptionElement {
 export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
   return (
     initialNode: PMNode,
-    _view: EditorView,
+    view: EditorView,
     getPos: () => number | undefined,
   ): CodeBlockNodeView => {
     let node = initialNode;
@@ -58,6 +59,7 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     toolbar.contentEditable = "false";
     toolbar.setAttribute("role", "toolbar");
     toolbar.setAttribute("aria-label", "代码块操作");
+    bindContextToolbar(toolbar, view, context.isComposing);
 
     const label = document.createElement("label");
     label.className = "inkora-code-language-label";

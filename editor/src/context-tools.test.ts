@@ -31,6 +31,23 @@ describe("production context tools", () => {
     view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, positions.table_header + 1)));
     expect(parent.querySelector(".inkora-table-shell")?.classList.contains("inkora-context-active")).toBe(true);
     expect(parent.querySelector(".inkora-code-block")?.classList.contains("inkora-context-active")).toBe(false);
+    view.focus();
+    const composingShortcut = new dom.window.KeyboardEvent("keydown", {
+      key: "F10", altKey: true, isComposing: true, bubbles: true, cancelable: true,
+    });
+    view.dom.dispatchEvent(composingShortcut);
+    expect(composingShortcut.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(view.dom);
+    const shortcut = new dom.window.KeyboardEvent("keydown", {
+      key: "F10", altKey: true, bubbles: true, cancelable: true,
+    });
+    view.dom.dispatchEvent(shortcut);
+    expect(shortcut.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(parent.querySelector("[data-table-command='add_row_before']"));
+    document.activeElement!.dispatchEvent(new dom.window.KeyboardEvent("keydown", {
+      key: "Escape", bubbles: true, cancelable: true,
+    }));
+    expect(document.activeElement).toBe(view.dom);
     view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, positions.code_block + 1)));
     expect(parent.querySelector(".inkora-table-shell")?.classList.contains("inkora-context-active")).toBe(false);
     expect(parent.querySelector(".inkora-code-block")?.classList.contains("inkora-context-active")).toBe(true);

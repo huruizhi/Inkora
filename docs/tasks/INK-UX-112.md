@@ -32,7 +32,7 @@ Native：只新增现有 EditorWebViewTests 的真实 WK 布局回归，检查 9
 - 真实桌面未完成窄窗缩放和深色外观检查；不能将 CSS 或 jsdom 说成真实视觉证据。窄窗另由 WK 集成接缝验证。
 - 原始 Markdown SHA 保持 `90885c3f2a22d54303c037cbd58e511bebbc192fdb2f41635709b146434c6293`。
 
-WK 定向结果和独立两轴审查在完成后追加；不将尚未完成的检查提前写成通过。
+WK 定向实际 xcresult 为 Passed：2/2，通过 900/480px 布局及长文单滚动所有者。独立 Standards 无 hard，1 个非阻断 judgement；Spec 发现表格键盘工具入口 P2，已增加 Option+F10 进入与 Esc 返回，含组合标志守卫及原文/历史不变回归。详见 [两轴报告](../reviews/INK-UX-112-writing-experience.md)。
 
 ## 发布与剩余工作
 

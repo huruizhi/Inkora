@@ -1,5 +1,27 @@
 import type { EditorState } from "prosemirror-state";
-import { Decoration } from "prosemirror-view";
+import { Decoration, type EditorView } from "prosemirror-view";
+
+export function focusContextToolbar(view: EditorView): boolean {
+  const target = view.dom.querySelector<HTMLElement>(
+    ".inkora-context-active > [role='toolbar'] button:not(:disabled), " +
+    ".inkora-context-active > [role='toolbar'] select:not(:disabled)",
+  );
+  if (!target) return false;
+  target.focus();
+  return true;
+}
+
+export function bindContextToolbar(
+  toolbar: HTMLElement, view: EditorView, isComposing: () => boolean,
+): void {
+  toolbar.setAttribute("aria-keyshortcuts", "Alt+F10");
+  toolbar.title = "Option+F10 进入操作工具；Esc 返回正文";
+  toolbar.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || event.isComposing || isComposing()) return;
+    event.preventDefault();
+    view.focus();
+  });
+}
 
 /** 选区只派生界面装饰，不写入文档、历史或 composition 状态。 */
 export function contextToolDecorations(state: EditorState): Decoration[] {

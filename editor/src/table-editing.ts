@@ -1,6 +1,7 @@
 import type { Node as PMNode } from "prosemirror-model";
 import { TextSelection, type EditorState } from "prosemirror-state";
 import type { EditorView, NodeView } from "prosemirror-view";
+import { bindContextToolbar } from "./context-tools";
 
 export type TableAlignment = "none" | "left" | "center" | "right";
 export type TableCommandType =
@@ -201,6 +202,7 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
     toolbar.contentEditable = "false";
     toolbar.setAttribute("role", "toolbar");
     toolbar.setAttribute("aria-label", "表格操作");
+    bindContextToolbar(toolbar, view, options.isComposing);
     const commands: Array<[string, TableCommandType]> = [
       ["前插行", "add_row_before"], ["后插行", "add_row_after"], ["删除行", "delete_row"],
       ["前插列", "add_column_before"], ["后插列", "add_column_after"], ["删除列", "delete_column"],

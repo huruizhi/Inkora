@@ -25,7 +25,7 @@ import type { CanonicalImageOwnership } from "./source-authority";
 import { parse as parseCanonicalSource } from "./source-document";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
-import { contextToolDecorations } from "./context-tools";
+import { contextToolDecorations, focusContextToolbar } from "./context-tools";
 import { createCodeBlockNodeViews } from "./code-block-view";
 import { createTableNodeViews, handleTableTab, insertDefaultTable } from "./table-editing";
 import { createTaskListItemNodeViews } from "./task-list-view";
@@ -693,6 +693,11 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       },
       handleDOMEvents: {
         keydown: (activeView, event) => {
+          if (event.key === "F10" && event.altKey && !event.isComposing &&
+              !this.session.composing && !activeView.composing && focusContextToolbar(activeView)) {
+            event.preventDefault();
+            return true;
+          }
           if (event.key !== "Tab" || event.isComposing || this.session.composing || activeView.composing) return false;
           if (!handleTableTab(activeView, event.shiftKey)) return false;
           event.preventDefault();
@@ -742,6 +747,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     this.view = view;
     view.dom.id = "editor";
     view.dom.setAttribute("aria-label", "Markdown editor");
+    view.dom.setAttribute("aria-keyshortcuts", "Alt+F10");
     view.dom.addEventListener("compositionstart", this.handleCompositionStart);
     view.dom.addEventListener("compositionend", this.handleCompositionEnd);
   }
