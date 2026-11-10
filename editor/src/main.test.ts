@@ -2953,10 +2953,12 @@ it("标题元数据绑定当前文档，工具与文件名同行且不改变正�
   const h = await bootMain();
   const raw = "# 正文标题\r\n\r\n内容\r\n";
   h.receive({ type: "loadDocument", requestID: "title-load", documentID: "title-doc", revision: 0, text: raw });
-  const ui = (h.dom.window as unknown as Window).inkoraPresentation;
-  expect(ui.setTitle("old-doc", "迟到.md")).toBe(false);
-  expect(ui.setTitle("title-doc", "真实文件.md", 2)).toBe(true);
-  expect(ui.setTitle("title-doc", "旧文件.md", 1)).toBe(false);
+  h.receive({ type: "setDocumentTitle", requestID: "wrong-title", documentID: "old-doc", revision: 0, loadRequestID: "title-load", title: "迟到.md" });
+  expect(h.sent.at(-1)?.type).toBe("editorError");
+  h.receive({ type: "setDocumentTitle", requestID: "current-title", documentID: "title-doc", revision: 0, loadRequestID: "title-load", title: "真实文件.md" });
+  expect(h.sent.at(-1)).toMatchObject({ type: "presentationApplied", requestID: "current-title", outcome: "applied" });
+  h.receive({ type: "setDocumentTitle", requestID: "old-title", documentID: "title-doc", revision: 0, loadRequestID: "old-load", title: "旧文件.md" });
+  expect(h.sent.at(-1)?.type).toBe("editorError");
   const title = h.dom.window.document.querySelector(".editor-document-title")!;
   expect(title.textContent).toBe("真实文件.md");
   expect(title.parentElement).toBe(h.dom.window.document.querySelector(".editor-corner-tools")!.parentElement);
@@ -2970,16 +2972,22 @@ it("原始UTF16位置准确定位重复内容，旧绑定拒绝，语法位置�
   const h = await bootMain();
   const raw = "# 标题\r\n\r\n相同 **相同** 末尾\r\n";
   h.receive({ type: "loadDocument", requestID: "loc-load", documentID: "loc", revision: 0, text: raw });
-  const ui = (h.dom.window as unknown as Window).inkoraPresentation;
   const from = raw.lastIndexOf("相同");
-  expect(ui.locate("old", 0, raw, from, from + 2)).toBe(false);
-  expect(ui.locate("loc", 1, raw, from, from + 2)).toBe(false);
-  expect(ui.locate("loc", 0, raw, -1, 0)).toBe(false);
-  expect(ui.locate("loc", 0, raw, 0, raw.length + 1)).toBe(false);
-  expect(ui.locate("loc", 0, raw, from, from + 2)).toBe(true);
+  let request = 0;
+  const reveal = (documentID: string, revision: number, start: number, end: number, loadRequestID = "loc-load") => {
+    h.receive({ type: "revealRange", requestID: `reveal-${++request}`, documentID, revision, loadRequestID,
+      selectionAnchor: start, selectionHead: end });
+    return h.sent.at(-1);
+  };
+  expect(reveal("old", 0, from, from + 2)?.type).toBe("editorError");
+  expect(reveal("loc", 1, from, from + 2)?.type).toBe("editorError");
+  expect(reveal("loc", 0, -1, 0)?.type).toBe("editorError");
+  expect(reveal("loc", 0, 0, raw.length + 1)?.type).toBe("editorError");
+  expect(reveal("loc", 0, from, from + 2, "old-load")?.type).toBe("editorError");
+  expect(reveal("loc", 0, from, from + 2)).toMatchObject({ type: "presentationApplied", outcome: "applied" });
   expect(h.dom.window.getSelection()?.toString()).toBe("相同");
   const syntax = raw.indexOf("**");
-  expect(ui.locate("loc", 0, raw, syntax, syntax + 2)).toBe(false);
+  expect(reveal("loc", 0, syntax, syntax + 2)).toMatchObject({ type: "presentationApplied", outcome: "sourceChoice" });
   const choice = h.dom.window.document.querySelector<HTMLButtonElement>(".sidebar-source-location")!;
   expect(choice).not.toBeNull();
   choice.click();

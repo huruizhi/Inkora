@@ -494,3 +494,32 @@ describe("Bridge protocol v1 contracts", () => {
     });
   });
 });
+
+describe("additive v1 presentation", () => {
+  const title = { protocolVersion: 1 as const, type: "setDocumentTitle" as const,
+    requestID: "title", documentID: "doc", revision: 0, loadRequestID: "load", title: "名字.md" };
+  it("rejects missing load identity, unsafe ranges and duplicate full text", () => {
+    for (const invalid of [
+      { ...title, loadRequestID: "" }, { ...title, text: "全文" }, { ...title, raw: "全文" },
+      { ...title, type: "revealRange", selectionAnchor: -1, selectionHead: 2 },
+      { ...title, type: "revealRange", selectionAnchor: 3, selectionHead: 2 },
+    ]) expect(() => decodeNativeCommand(JSON.stringify(invalid))).toThrow();
+    expect(decodeNativeCommand(JSON.stringify(title))).toEqual(title);
+  });
+  it("claims request before side effects and preserves accepted state across ack/reject/reload", () => {
+    const session = new EditorProtocolSession();
+    session.loadDocument({ protocolVersion: 1, type: "loadDocument", requestID: "load", documentID: "doc", revision: 0, text: "原文\r\n" });
+    let applied = 0;
+    const apply = () => { applied++; return "applied" as const; };
+    expect(session.present(title, "old-load", apply)).toMatchObject({ type: "editorError", code: "stale_revision" });
+    expect(applied).toBe(0);
+    const command = { ...title, requestID: "title-good" };
+    expect(session.present(command, "load", apply)).toMatchObject({ type: "presentationApplied", requestID: "title-good", loadRequestID: "load", outcome: "applied" });
+    expect(session.present(command, "load", apply)).toMatchObject({ type: "editorError", code: "request_conflict" });
+    expect(applied).toBe(1);
+    session.loadDocument({ protocolVersion: 1, type: "loadDocument", requestID: "load-new", documentID: "doc", revision: 0, text: "原文\r\n" });
+    expect(session.present({ ...title, requestID: "late" }, "load-new", apply)).toMatchObject({ type: "editorError", code: "stale_revision" });
+    expect(applied).toBe(1);
+    expect(session.createSnapshot({ protocolVersion: 1, type: "createSnapshot", requestID: "snapshot-after", documentID: "doc", revision: 0 }, { raw: "原文\r\n", imageURIs: [] })).toMatchObject({ text: "原文\r\n", revision: 0 });
+  });
+});

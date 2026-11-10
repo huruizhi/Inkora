@@ -17,7 +17,7 @@ import XCTest
   static func main() {
     let suite = XCTestSuite(forTestCaseClass: SidebarNavigationTests.self)
     suite.run()
-    guard let run = suite.testRun, run.executionCount == 4, run.hasSucceeded else { exit(1) }
+    guard let run = suite.testRun, run.executionCount == 8, run.hasSucceeded else { exit(1) }
   }
 }
 SWIFT
