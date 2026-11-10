@@ -128,6 +128,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
   private enum MutationPayload {
     case history(BridgeEditorCommand)
+    case tableInsertion(anchor: Int, head: Int)
     case imageImport(
       documentEpoch: String, assetID: String, uri: String, alt: String,
       title: String?, displayURL: String, selectionAnchor: Int, selectionHead: Int)
@@ -140,8 +141,8 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
     var requiresStrictBinding: Bool {
       switch self {
-      case .imageImport, .imageDescriptors, .imageSave: true
-      case .history: false
+      case .imageImport, .imageDescriptors, .imageSave, .tableInsertion: true
+      case .history(let command): !command.isHistory
       }
     }
 
@@ -160,6 +161,10 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
         .execute(
           requestID: requestID, documentID: documentID, revision: revision,
           command: command)
+      case .tableInsertion(let anchor, let head):
+        .execute(
+          requestID: requestID, documentID: documentID, revision: revision,
+          command: .insertTable, selectionAnchor: anchor, selectionHead: head)
       case .imageImport(
         let documentEpoch, let assetID, let uri, let alt, let title, let displayURL,
         let selectionAnchor, let selectionHead):
@@ -248,6 +253,8 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   }
 
   func loadDocument(documentID: String, revision: Int, text: String) {
+    // A queued command belongs to its original load, even when raw/revision match.
+    if currentDocument != nil { failEditorCommands(EditorBridgeError.staleRevision) }
     revisionTracker.beginDocument(documentID: documentID, revision: revision)
     currentDocument = LoadedDocument(documentID: documentID, revision: revision, text: text)
     if lifecycle == .ready {
@@ -320,9 +327,19 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
 
   func executeEditorCommand(
     _ command: BridgeEditorCommand,
+    selectionAnchor: Int? = nil, selectionHead: Int? = nil,
     completion: @escaping (Error?) -> Void = { _ in }
   ) {
-    enqueueMutation(.history(command), completion: completion)
+    if command == .insertTable {
+      guard let selectionAnchor, let selectionHead else {
+        completion(EditorBridgeError.invalidMessage)
+        return
+      }
+      enqueueMutation(
+        .tableInsertion(anchor: selectionAnchor, head: selectionHead), completion: completion)
+    } else {
+      enqueueMutation(.history(command), completion: completion)
+    }
   }
 
   func applyImageImport(

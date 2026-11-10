@@ -174,37 +174,68 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
 
   func canPerformEditorCommand(_ command: BridgeEditorCommand) -> Bool {
     guard let editorState else { return false }
+    if isViewLoaded, view.window?.attachedSheet != nil { return false }
     switch command {
-    case .undo:
-      return editorState.canUndo
-    case .redo:
-      return editorState.canRedo
+    case .undo: return editorState.canUndo
+    case .redo: return editorState.canRedo
+    default: return editorState.availableCommands?.contains(command) == true
     }
   }
 
+  func refreshEditorCommands(completion: @escaping () -> Void = {}) {
+    bridge?.requestState { _ in completion() }
+  }
+
   func performEditorCommand(_ command: BridgeEditorCommand) {
-    guard canPerformEditorCommand(command) else { return }
-    bridge?.executeEditorCommand(command)
+    if command.isHistory {
+      guard canPerformEditorCommand(command) else { return }
+      bridge?.executeEditorCommand(command)
+      return
+    }
+    // Cached menu validation is advisory. Revalidate on the same loaded document
+    // before opening a panel or sending an action; Web repeats the live guards.
+    let epoch = documentEpoch
+    bridge?.requestState { [weak self] result in
+      guard let self, self.documentEpoch == epoch,
+        case .success(let state) = result,
+        state.availableCommands?.contains(command) == true,
+        self.canPerformEditorCommand(command)
+      else { return }
+      if command == .insertImage {
+        self.chooseImage(nil)
+      } else {
+        self.bridge?.executeEditorCommand(
+          command,
+          selectionAnchor: state.selectionAnchor, selectionHead: state.selectionHead)
+      }
+    }
   }
 
-  @objc
-  func inkoraUndo(_ sender: Any?) {
-    performEditorCommand(.undo)
-  }
+  @objc func inkoraUndo(_ sender: Any?) { performEditorCommand(.undo) }
+  @objc func inkoraRedo(_ sender: Any?) { performEditorCommand(.redo) }
 
-  @objc
-  func inkoraRedo(_ sender: Any?) {
-    performEditorCommand(.redo)
+  @objc func inkoraEditorAction(_ sender: NSMenuItem) {
+    guard let name = sender.representedObject as? String,
+      let command = BridgeEditorCommand(rawValue: name)
+    else { return }
+    performEditorCommand(command)
   }
 
   func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
     switch item.action {
-    case #selector(inkoraUndo(_:)):
-      canPerformEditorCommand(.undo)
-    case #selector(inkoraRedo(_:)):
-      canPerformEditorCommand(.redo)
-    default:
-      true
+    case #selector(inkoraUndo(_:)): return canPerformEditorCommand(.undo)
+    case #selector(inkoraRedo(_:)): return canPerformEditorCommand(.redo)
+    case #selector(inkoraEditorAction(_:)):
+      guard let menuItem = item as? NSMenuItem,
+        let name = menuItem.representedObject as? String,
+        let command = BridgeEditorCommand(rawValue: name)
+      else { return false }
+      if command == .readingWidth760 || command == .readingWidth900 {
+        let width = command == .readingWidth760 ? 760 : 900
+        menuItem.state = editorState?.readingWidth == width ? .on : .off
+      }
+      return canPerformEditorCommand(command)
+    default: return true
     }
   }
 
@@ -362,19 +393,6 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
   private func presentEditor(_ webView: WKWebView) {
     webView.removeFromSuperview()
     guard document?.isBareCRReadOnly == true else {
-      if webView.subviews.first(where: {
-        $0.accessibilityIdentifier() == "InsertLocalImage"
-      }) == nil {
-        let insert = NSButton(
-          title: "插入图片…", target: self, action: #selector(chooseImage(_:)))
-        insert.setAccessibilityIdentifier("InsertLocalImage")
-        insert.translatesAutoresizingMaskIntoConstraints = false
-        webView.addSubview(insert)
-        NSLayoutConstraint.activate([
-          insert.topAnchor.constraint(equalTo: webView.topAnchor, constant: 6),
-          insert.trailingAnchor.constraint(equalTo: webView.trailingAnchor, constant: -10),
-        ])
-      }
       guard let pending = document?.pendingRecoveredImages, !pending.isEmpty else {
         view = webView
         return

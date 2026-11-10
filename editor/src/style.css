@@ -19,7 +19,7 @@ body,
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  padding: 48px max(32px, calc((100% - 760px) / 2)) 96px;
+  padding: 48px max(32px, calc((100% - var(--writing-width, 760px)) / 2)) 96px;
   border: 0;
   outline: 0;
   resize: none;
@@ -659,4 +659,24 @@ div#editor { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 }
 .search-panel-error {
   font-weight: 600;
+}
+
+/* Native menus own mode/insertion actions; standalone Web development retains them. */
+.native-chrome .editor-mode-visual,
+.native-chrome .editor-mode-source,
+.native-chrome .insert-table { display: none; }
+.native-chrome .editor-workspace { position: relative; }
+.native-chrome .editor-topbar {
+  position: absolute;
+  z-index: 3;
+  inset: 0 0 auto;
+  min-height: 0;
+  padding: 6px 16px 6px 76px;
+  border-bottom: 0;
+  pointer-events: none;
+}
+.native-chrome .editor-topbar > * { pointer-events: auto; }
+.native-chrome .editor-topbar:has(.search-panel:not([hidden])) {
+  position: relative;
+  pointer-events: auto;
 }

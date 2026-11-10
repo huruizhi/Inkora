@@ -64,7 +64,13 @@ Inkora 只使用这一条 JSON Bridge 连接原生 `NSDocument` 与离线 Web �
 }
 ```
 
-v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 request ID 的 `stateChanged` 表达新 revision；当前历史中无法执行时返回 `command_rejected`，不得静默忽略。
+基础历史命令仍为`undo`、`redo`，成功恰好增加一次revision。INK-UX-123以可选`state.availableCommands`协商扩展动作：`sourceMode`、`visualMode`、`applySource`、`cancelSource`、`insertTable`、`find`、`toggleOutline`、`readingWidth760`、`readingWidth900`。缺能力字段的旧Web发送方不得被Native强行调用新动作；旧Native接收方可忽略新状态字段。
+
+每条命令校验当前document/revision/requestID，成功用相同requestID的`stateChanged`确认。模式、导航、布局以及no-op源码提交不增加revision，不写history/dirty；插表、有效源码提交等已接受内容变化恰好增加一次。拒绝返回`command_rejected`，不静默忽略。所有扩展动作在Web执行时重新检查composition、模式、草稿及相关文本控件焦点；能力列表是即时资格提示，不是绕过守卫的许可。
+
+`insertImage`仅在能力列表中表示可打开Native文件选择器；Native重新queryState验证同一加载代际后复用既有图片流程，不向Web发送`executeCommand(insertImage)`。实际图片插入仍走`applyImageImport`，不另造DOM点击入口。
+
+新动作固定请求时document/revision，不使用历史命令的过期重试重放策略。Native重新加载文档时取消旧排队/在途命令；Web仍校验版本与实时资格。菜单快捷键通过当前窗口响应者链调用，未提交源码草稿不会被可视模式命令无提示丢弃。
 
 ### `markSaved`
 
@@ -131,6 +137,8 @@ v1 冻结 `undo`、`redo` 两个 command 值。命令成功后通过带相同 re
 ```
 
 `requestID` 只在响应 `loadDocument`、`queryState` 或 command 时提供；主动状态变化可省略。`queryState` 同 turn 采样当前原文 directed selection，但不增加 revision、dirty 或 history。旧 v1 发送方可省略 selection；图片导入意图必须取得一对完整 selection 后才可持久化。原生层按 `(documentID, revision)` 丢弃错误文档或旧状态。
+
+INK-UX-123可选字段`availableCommands`为当前模式/组合态/焦点派生的动作值数组；`readingWidth`为760或900。二者不属于文档内容、保存点或历史。原生菜单展开时queryState刷新资格，执行动作前再次查询并绑定同一Native加载代际，Web执行时再守卫；本轮不为纯焦点/显示变化广播新的正文revision。
 
 ### `snapshotReady`
 

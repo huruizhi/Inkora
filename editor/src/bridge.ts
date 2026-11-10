@@ -1,6 +1,10 @@
 export const BRIDGE_PROTOCOL_VERSION = 1 as const;
 
-export type EditorCommand = "undo" | "redo";
+export const EDITOR_COMMANDS = [
+  "undo", "redo", "sourceMode", "visualMode", "applySource", "cancelSource",
+  "insertTable", "insertImage", "find", "toggleOutline", "readingWidth760", "readingWidth900",
+] as const;
+export type EditorCommand = typeof EDITOR_COMMANDS[number];
 export type EditorErrorCode =
   | "invalid_message"
   | "unsupported_version"
@@ -19,6 +23,8 @@ export interface EditorState {
   canRedo: boolean;
   selectionAnchor?: number;
   selectionHead?: number;
+  availableCommands?: EditorCommand[];
+  readingWidth?: 760 | 900;
 }
 
 export interface EditableState {
@@ -77,6 +83,8 @@ export type NativeCommand =
       documentID: string;
       revision: number;
       command: EditorCommand;
+      selectionAnchor?: number;
+      selectionHead?: number;
     }
   | {
       protocolVersion: 1;
@@ -194,7 +202,7 @@ export function decodeNativeCommand(serialized: string): NativeCommand {
       };
     case "executeCommand": {
       const command = requireString(value, "command");
-      if (command !== "undo" && command !== "redo") {
+      if (!(EDITOR_COMMANDS as readonly string[]).includes(command)) {
         throw new Error("Invalid editor command");
       }
       return {
@@ -203,7 +211,11 @@ export function decodeNativeCommand(serialized: string): NativeCommand {
         requestID,
         documentID: requireString(value, "documentID"),
         revision: requireRevision(value),
-        command,
+        command: command as EditorCommand,
+        ...(command === "insertTable" ? {
+          selectionAnchor: requireSafePosition(value, "selectionAnchor"),
+          selectionHead: requireSafePosition(value, "selectionHead"),
+        } : {}),
       };
     }
     case "queryState":
@@ -329,6 +341,7 @@ export class EditorProtocolSession {
     command: Extract<NativeCommand, { type: "executeCommand" }>,
     execute: () => boolean,
     getEditableState: () => EditableState,
+    didChange: () => boolean = () => true,
   ): EditorMessage {
     const duplicate = this.claimRequest(command.requestID);
     if (duplicate) return duplicate;
@@ -346,7 +359,7 @@ export class EditorProtocolSession {
     }
     this.state = {
       ...this.state,
-      revision: this.state.revision + 1,
+      revision: this.state.revision + (didChange() ? 1 : 0),
       ...getEditableState(),
     };
     return this.stateChanged(command.requestID);

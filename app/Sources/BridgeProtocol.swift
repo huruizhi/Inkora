@@ -27,6 +27,11 @@ enum BridgeEventType: String, Codable {
 enum BridgeEditorCommand: String, Codable {
   case undo
   case redo
+  case sourceMode, visualMode, applySource, cancelSource
+  case insertTable, insertImage, find, toggleOutline
+  case readingWidth760, readingWidth900
+
+  var isHistory: Bool { self == .undo || self == .redo }
 }
 
 enum BridgeImageStatus: String, Codable {
@@ -102,10 +107,13 @@ struct BridgeEditorState: Codable, Equatable {
   let canRedo: Bool
   let selectionAnchor: Int?
   let selectionHead: Int?
+  let availableCommands: [BridgeEditorCommand]?
+  let readingWidth: Int?
 
   init(
     documentID: String, revision: Int, dirty: Bool, canUndo: Bool, canRedo: Bool,
-    selectionAnchor: Int? = nil, selectionHead: Int? = nil
+    selectionAnchor: Int? = nil, selectionHead: Int? = nil,
+    availableCommands: [BridgeEditorCommand]? = nil, readingWidth: Int? = nil
   ) {
     self.documentID = documentID
     self.revision = revision
@@ -114,6 +122,8 @@ struct BridgeEditorState: Codable, Equatable {
     self.canRedo = canRedo
     self.selectionAnchor = selectionAnchor
     self.selectionHead = selectionHead
+    self.availableCommands = availableCommands
+    self.readingWidth = readingWidth
   }
 }
 
@@ -251,7 +261,8 @@ struct BridgeNativeCommand: Codable, Equatable {
     requestID: String,
     documentID: String,
     revision: Int,
-    command: BridgeEditorCommand
+    command: BridgeEditorCommand,
+    selectionAnchor: Int? = nil, selectionHead: Int? = nil
   ) -> Self {
     Self(
       protocolVersion: BridgeProtocolV1.version,
@@ -267,6 +278,7 @@ struct BridgeNativeCommand: Codable, Equatable {
       alt: nil,
       title: nil,
       displayURL: nil,
+      selectionAnchor: selectionAnchor, selectionHead: selectionHead,
       descriptors: nil,
       rewrites: nil
     )
@@ -402,6 +414,12 @@ struct BridgeNativeCommand: Codable, Equatable {
     case .executeCommand:
       try validateDocumentRevision()
       guard command != nil else { throw BridgeProtocolValidationError.missingField("command") }
+      if command == .insertTable {
+        guard let selectionAnchor, let selectionHead,
+          selectionAnchor >= 0, selectionAnchor <= BridgeProtocolV1.maxSafeRevision,
+          selectionHead >= 0, selectionHead <= BridgeProtocolV1.maxSafeRevision
+        else { throw BridgeProtocolValidationError.missingField("selection") }
+      }
     case .queryState:
       break
     case .applyImageImport:
