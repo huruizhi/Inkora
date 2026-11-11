@@ -25,3 +25,13 @@
 根只读复核旧Beta1公开Release id439886819、5项资产长度/digest/URL，保存管理者artifacts/INK-REL-160/beta1-before.json；PROVENANCE摘要与本地原件一致，旧ZIP实际plist正式bundle/build3也已核对。当前GitHub连接工具没有Release写入/上传能力，最终创建/上传/公开使用现有gh CLI；已核读create/upload/edit真实help，采用新tag、draft→上传校验→publish，不用clobber。
 
 161首报已复现公共两版列表RED，并得到17项定向GREEN与lint/test-ci通过；目前仅为作者证据，尚未独立复核或发布。后续源码/包固定后才进入根独立验包和默认CI。
+
+## 固定候选及根独立验证
+
+161构建源码76715e0dc3dac6e0bb1aae75b513256ad7ba7eb2、证据HEAD47f7a5d1cf4341f763e94df0e0446524d0ef80da已按序吸收；root固定组合846fd178e723378cde86f90e292943bf16152e6f。相对b2e0ac8共五提交、diff非空，source到root的app/editor/project/config逐字一致。候选复制至主仓artifacts/releases/0.1.0-beta.2-build5，全文件cmp一致；旧build4候选与Beta1未动。
+
+根独立执行 `make lint test-non-ui release-bundle-check` exit0：editor811、Web Bridge16、Native232 passed/0 failed/9既有性能skip，Native Bridge16；test-ci、Release离线资源通过。根独立manifest.py verify从实际ZIP plist与两资产字节核对新schema通过。固定两包SHA：ZIP bb1a9537acd756891e0e6afad2b6e40afcd643d48e28951ea491051152b4033e；DMG 3724e8a136c63093384a755ba2a1d09e8bd4f7ca44463bdb1f5d0fc2e617c0e5。
+
+管理者artifacts/INK-REL-160/verify-candidate.py实际独立复查export/解ZIP/只读无浏览挂载DMG：正式bundle/0.1.0/build5/14.0、arm64+x86_64、无Sparkle强链、strict deep签名、ad-hoc/runtime、精确展开权限与离线资源均通过，三处Mach-O SHA一致，DMG卸载。raw archive未签名边界只引用作者记录，未把它报为签名通过。详细candidate-result.json、command log、xcresult和完整门禁日志保留；未启动或安装App。
+
+新上下文162 Standards（b0bd3a84-f8d4-4fc8-8319-bb00611fca2b / wks_ba1653dd4da13f50）与163 Spec（aa3157ff-bbd2-4444-a196-a5d844ff83ee / wks_4f1b5dba1909ab8d）从846fd17只审不修，完成前不宣告两轴通过。准备发布的公共文件仅ZIP/DMG/PROVENANCE/SOURCE/SHA256SUMS；候选CHECKS和receipt保留私有验证，不上传含原始路径/命令的检查文件；发布前公共SOURCE加入最终CI/tag绑定并重新算文本校验和，包与PROVENANCE字节不变。
