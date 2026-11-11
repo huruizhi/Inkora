@@ -38,3 +38,18 @@
 实际命令 `MANIFEST_EVIDENCE=docs/evidence/INK-UPD-157 python3 -m unittest discover -s tests/updates -p test_manifest.py`：5项测试通过，内含多组正负子场景：正整数字符串/Int64边界、错bundle/build/tag/channel/source、未知/重复/legacy冲突JSON字段、HTTP/凭据/port/query/fragment/错repo和tag资产URL、改字节、旧receipt与候选输出失效、GitHub metadata的tag/draft/channel/URL/size/digest冲突，以及原地verify。结果见 manifest-tests.txt；local-PROVENANCE.json 与 manifest-receipt.json 是自有最小ZIP fixture样例，不是正式包或公开发行结果。原13项签名场景未因无关新增重复运行。
 
 未执行网络、上传、发布、安装或生产Keychain动作。完整Release/客户端自动更新限制仍同上节。
+
+## 根要求追加：正式 archive scheme 接线
+
+根组合审查发现默认 Inkora scheme 不链接 SDK，正式发行必须选择 A 新增的 InkoraDistribution。A 已实际回复确认：scheme=InkoraDistribution、PRODUCT_NAME=Inkora、最终 Inkora.app、bundle=com.huruizhi.Inkora；普通 Inkora 不链接 SDK。B 仅把 release.sh 正式 Developer ID archive 分支切换为 InkoraDistribution，dry-run 保留 Inkora，所有凭据前置、签名、公证、权限与 runtime 门槛不变。未修改 A 的 project.yml 或 Swift。
+
+新增 tests/ci/release-scheme-smoke.py 并接入 make test-ci。测试复制 release.sh/metadata.py 到临时自有根目录，在 PATH 放置 make/security/xcodebuild 等 stub，仅模拟凭据和记录公开命令选项；xcodebuild stub 强制以86退出，保证停止在 archive 命令边界，不执行构建/签名/打包。测试同时断言scheme、Release配置、runtime、正式bundle、手动签名/无签名标志，并检查输出不泄露fixture身份。没有调用真实 Xcode、Keychain 或 UI。
+
+实际验证：
+
+- 修前 `python3 tests/ci/release-scheme-smoke.py`：正式scheme断言失败（Inkora≠InkoraDistribution），dry-run通过，见 scheme-red.txt。
+- 修后同命令：2测试通过，见 scheme-green.txt。
+- `bash tests/ci/release-smoke.sh`：所有原参数/缺凭据/脱敏/权限回归通过，见 scheme-release-regression.txt。
+- `bash -n scripts/release/release.sh`、新增测试py_compile与git diff --check通过。
+
+此验证仅证明脚本分支命令选择，**无实际 Developer ID archive/export、公证、分发运行或安装通过证据**；整合构建仍由根统一门禁。旧 e132 与7b提交保留，新修复为独立追加commit。

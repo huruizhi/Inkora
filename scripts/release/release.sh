@@ -54,7 +54,8 @@ archive_app() {
       INKORA_BUNDLE_IDENTIFIER=com.huruizhi.Inkora ENABLE_HARDENED_RUNTIME=YES \
       CODE_SIGNING_ALLOWED=NO archive
   else
-    xcodebuild -quiet -project Inkora.xcodeproj -scheme Inkora -configuration Release \
+    # Only the distribution scheme links the native Sparkle updater.
+    xcodebuild -quiet -project Inkora.xcodeproj -scheme InkoraDistribution -configuration Release \
       -destination 'generic/platform=macOS' -archivePath "$archive" \
       INKORA_BUNDLE_IDENTIFIER=com.huruizhi.Inkora ENABLE_HARDENED_RUNTIME=YES \
       CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$INKORA_SIGN_IDENTITY" \
