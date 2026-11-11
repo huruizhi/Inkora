@@ -17,3 +17,11 @@
 161归属project.yml build4→5、CHANGELOG、docs/releases/0.1.0-beta.2.md、docs/release.md本次授权说明、自身task/evidence。另明确允许一个发行前纵向检查：用实际旧Beta1 PROVENANCE和合法新schema模拟两版列表，核对当前ReleaseLookup在遇到旧清单时是否丢弃新结果。若真实公共接缝复现，只允许精确固定旧Beta1 tag/prerelease/清单SHA与已核对build3的只读历史适配，并验证同release资产URL；原始manifest SHA为 `b29c77533ab291232e7d612f6ca293200ea93a8858e9d7da7a7d5327b19a7e26`，本地保存ZIP plist与公开资产核对为正式bundle/build3。禁止通用接受缺bundle、冲突或未知schema，也不跳过任意坏清单伪报最新。只可改ReleaseLookup.swift/同域测试和固定历史fixture；先红后绿，记录根新增授权取代此前“历史Beta1统一无法确认”边界。无反例则不改产品。
 
 实际打包使用既有 `make release-dry-run`，相称lint/test-ci、manifest与有限Native测试；完整非UI/最终CI由根集中结算。先固定source commit，然后新构建，不复用build4字节；候选命名Inkora-0.1.0-beta.2-unsigned-universal.zip/.dmg，复制只能cmp同字节、不重打包。原始日志和包、所有失败probe完整保留，依赖仅借用既有锁定工具、仅unlink自建链接，SDK不升级。完成push/fullSHA/真实remote一致/clean；分支task/INK-REL-161-beta2-package。只创建必要任务内文件，不生成新子Agent。
+
+## 管理者已核对
+
+已核对root/main clean，公开Release仅Beta1，远端v0.1.0-beta.2标签不存在。Paseo profiles为空，实际发现Codex gpt-6.1-sol可用，委派161 agent db6cc6e1-27b0-4e09-ad2f-6120116c8819 / workspace wks_407e182fe383c0b4，采用独立分支与medium/full-access、完成通知。
+
+根只读复核旧Beta1公开Release id439886819、5项资产长度/digest/URL，保存管理者artifacts/INK-REL-160/beta1-before.json；PROVENANCE摘要与本地原件一致，旧ZIP实际plist正式bundle/build3也已核对。当前GitHub连接工具没有Release写入/上传能力，最终创建/上传/公开使用现有gh CLI；已核读create/upload/edit真实help，采用新tag、draft→上传校验→publish，不用clobber。
+
+161首报已复现公共两版列表RED，并得到17项定向GREEN与lint/test-ci通过；目前仅为作者证据，尚未独立复核或发布。后续源码/包固定后才进入根独立验包和默认CI。
