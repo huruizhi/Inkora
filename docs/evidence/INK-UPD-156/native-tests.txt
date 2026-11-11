@@ -46,7 +46,7 @@ SwiftCompile normal arm64 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-upd-156-nat
  482 |     try dataWriter.write(encodedDocumentData(), to: url)
      :
  855 |   }
- 856 | 
+ 856 |
  857 |   private func validateOriginalForSaving() throws {
      |                |- note: calls to instance method 'validateOriginalForSaving()' from outside of its actor context are implicitly asynchronous
      |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
@@ -59,7 +59,7 @@ SwiftCompile normal arm64 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-upd-156-nat
  482 |     try dataWriter.write(encodedDocumentData(), to: url)
      |                          `- warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
  483 |   }
- 484 | 
+ 484 |
  485 |   private func encodedDocumentData() -> Data {
      |                |- note: calls to instance method 'encodedDocumentData()' from outside of its actor context are implicitly asynchronous
      |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
@@ -75,7 +75,7 @@ SwiftCompile normal arm64 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-upd-156-nat
      |                                  |- note: force-unwrap the value to avoid this warning
      |                                  `- note: explicitly cast to 'Any' with 'as Any' to silence this warning
  635 |   }
- 636 | 
+ 636 |
 
 [#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-upd-156-native-updater/tests/InkoraTests/SidebarWorkspaceBridgeTests.swift:168:14: warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
