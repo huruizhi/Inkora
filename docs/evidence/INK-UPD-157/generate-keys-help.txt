@@ -34,7 +34,7 @@ OPTIONS:
                           using different accounts for different organizations.
                           (default: ed25519)
   -p                      Looks up and just prints the existing public key
-                          stored in the Keychain. 
+                          stored in the Keychain.
   -x <private-key-file>   Exports your private key from your login keychain and
                           writes it to private-key-file. Note the contents of
                           this sensitive exported file are the same as the
@@ -45,13 +45,12 @@ OPTIONS:
                           the exported key file is the base64 encoding of the
                           private seed. The seed can be used to create the
                           private/public keypair with other tools that support
-                          EdDSA signing. 
+                          EdDSA signing.
   -f <private-key-file>   Imports the private key from private-key-file into
                           your keychain instead of generating a new key. This
                           file has likely been exported via -x option from
                           another machine. Any existing "Private key for
                           signing Sparkle updates" items listed in Keychain
                           Access may need to be removed manually first before
-                          proceeding. 
+                          proceeding.
   -h, --help              Show help information.
-

@@ -25,3 +25,5 @@
 根现读官方sandboxing说明并实际枚举固定SDK嵌套权限：Downloader/Installer/Updater为空，Autoupdate仅原供应者application-identifier；本票内向外签名不传播供应者team或主App权限。此核读不代替同Team生产运行证据。
 
 157追加7b67471已核读并吸收为d801e85：根独立执行 `make test-update-manifest`，5测试通过，包含实际候选ZIP/资产字节重算、严格版本边界、未知/冲突字段、GitHub Release绑定及旧成功输出失效。根日志在 `artifacts/INK-UPD-155/manifest-tests.log`；`git diff --check`通过。输出仍为本地候选，无发布或安装授权。Native交付固定后再做组合两轴审查与集中完整门禁。
+
+157追加7c66719已吸收为b890ece；根独立运行两项正式/预览archive脚本stub测试及原release-smoke，均通过，日志位于管理者artifacts/INK-UPD-155。156固定a39bec26已按原三提交顺序吸收，包含其安装意图失败恢复补正；上述Native/SDK结果仍仅为作者证据，根待组合验证。整合diff空白检查发现157三份官方工具help原始输出有尾空白，已只规范展示副本的尾空白/末尾空行，逐字raw及双SHA清单保留在管理者artifacts/INK-UPD-155/raw-tool-help；不改CLI语义或测试。

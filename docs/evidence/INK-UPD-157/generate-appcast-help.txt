@@ -40,7 +40,7 @@ An example of an archives directory may look like:
         MyApp 1.1.md
         appcast.xml
         old_updates/
-        
+
 EXAMPLES:
     /tmp/inkora-sparkle-2.10.0/bin/generate_appcast ./my-app-release-dmg-files/
     /tmp/inkora-sparkle-2.10.0/bin/generate_appcast -o appcast-name.xml
@@ -53,14 +53,14 @@ documentation.
 Extracted archives that are needed are cached in
 ~/Library/Caches/Sparkle_generate_appcast to avoid re-computation in subsequent
 runs.
-        
+
 Note that generate_appcast does not support package-based (.pkg) updates.
 
 USAGE: generate-appcast [<options>] <archives-source-dir>
 
 ARGUMENTS:
   <archives-source-dir>   The path to the directory containing the update
-                          archives and delta files. 
+                          archives and delta files.
 
 OPTIONS:
   --account <account>     The account name in your keychain associated with
@@ -72,46 +72,46 @@ OPTIONS:
                           instead. '-' can be used to echo the EdDSA key from a
                           'secret' environment variable to the standard input
                           stream. For example: echo "$PRIVATE_KEY_SECRET" |
-                          ./generate_appcast --ed-key-file - 
+                          ./generate_appcast --ed-key-file -
   --disable-signing-warning
                           Disables adding a warning to signed appcast and
                           release note files explaining that further
                           modifications will require re-signing them. This flag
                           has no effect if the files already have a signing
-                          warning embedded. 
+                          warning embedded.
   -f <private-dsa-key-file>
                           Path to the private DSA key file. Only use this
-                          option for transitioning to EdDSA from older updates. 
+                          option for transitioning to EdDSA from older updates.
   -n <dsa-key-name>       The name of the private DSA key. This option must be
                           used together with `-k`. Only use this option for
-                          transitioning to EdDSA from older updates. 
+                          transitioning to EdDSA from older updates.
   -s <private-EdDSA-key>  (DEPRECATED): The private EdDSA string (128
                           characters). This option is deprecated. Please use
                           the Keychain, or pass the key as standard input when
                           using the --ed-key-file - option instead. This option
-                          is no longer supported for newly generated keys. 
+                          is no longer supported for newly generated keys.
   -k <keychain-for-dsa>   The path to the keychain to look up the private DSA
                           key. This option must be used together with `-n`.
                           Only use this option for transitioning to EdDSA from
-                          older updates. 
+                          older updates.
   --download-url-prefix <url>
                           A URL that will be used as prefix for the URL from
-                          where updates will be downloaded. 
+                          where updates will be downloaded.
   --release-notes-url-prefix <url>
                           A URL that will be used as prefix for constructing
-                          URLs for release notes. 
+                          URLs for release notes.
   --embed-release-notes   Embed release notes in a new update's description. By
                           default, release note files are only embedded if they
                           are HTML and do not include DOCTYPE or body tags.
                           This flag forces release note files for newly created
-                          updates to always be embedded. 
+                          updates to always be embedded.
   --full-release-notes-url <url>
-                          A URL that will be used for the full release notes. 
+                          A URL that will be used for the full release notes.
   --link <link>           A URL to the application's website which Sparkle may
                           use for directing users to if they cannot download a
                           new update from within the application. This will be
                           used for new generated update items. By default, no
-                          product link is used. 
+                          product link is used.
   --versions <versions>   An optional comma delimited list of application
                           versions (specified by CFBundleVersion) to generate
                           new update items for. By default, new update items
@@ -119,7 +119,7 @@ OPTIONS:
                           feed. Use this option if you need to insert only a
                           specific new version or insert an old update in the
                           feed at a different branch point (e.g. with a
-                          different minimum OS version or channel). 
+                          different minimum OS version or channel).
   --maximum-versions <maximum-versions>
                           The maximum number of versions to preserve in the
                           generated appcast for each branch point (e.g. with a
@@ -144,29 +144,29 @@ OPTIONS:
                           The Sparkle channel name that will be used for
                           generating new updates. By default, no channel is
                           used. Old applications need to be using Sparkle 2 to
-                          use this feature. 
+                          use this feature.
   --minimum-update-version <minimum-update-version>
                           The minimum update version requirement that will be
                           used for generating new updates. By default, no
-                          minimum update version is used. 
+                          minimum update version is used.
   --major-version <major-version>
                           The last major or minimum autoupdate sparkle:version
                           that will be used for generating new updates. By
-                          default, no last major version is used. 
+                          default, no last major version is used.
   --ignore-skipped-upgrades-below-version <below-version>
                           Ignore skipped major upgrades below this specified
-                          version. Only applicable for major upgrades. 
+                          version. Only applicable for major upgrades.
   --phased-rollout-interval <phased-rollout-interval>
                           The phased rollout interval in seconds that will be
                           used for generating new updates. By default, no
-                          phased rollout interval is used. 
+                          phased rollout interval is used.
   --critical-update-version <critical-update-version>
                           The last critical update sparkle:version that will be
                           used for generating new updates. An empty string
                           argument will treat this update as critical coming
                           from any application version. By default, no last
                           critical update version is used. Old applications
-                          need to be using Sparkle 2 to use this feature. 
+                          need to be using Sparkle 2 to use this feature.
   --informational-update-versions <informational-update-versions>
                           A comma delimited list of application
                           sparkle:version's that will see newly generated
@@ -179,11 +179,10 @@ OPTIONS:
                           are not informational only. --link must also be
                           provided. Old applications need to be using Sparkle 2
                           to use this feature, and 2.1 or later to use the '<'
-                          upper bound feature. 
+                          upper bound feature.
   --auto-prune-update-files
                           Automatically remove old update files in old_updates
-                          that haven't been touched in 2 weeks 
+                          that haven't been touched in 2 weeks
   -o <output-path>        Path to filename for the generated appcast (allowed
-                          when only one will be created). 
+                          when only one will be created).
   -h, --help              Show help information.
-

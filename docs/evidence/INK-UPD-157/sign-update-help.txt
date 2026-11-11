@@ -32,10 +32,10 @@ ARGUMENTS:
                           If the file is a release notes file, the file may
                           also be updated to include a warning that it is
                           signed (unless --disable-signing-warning is
-                          specified). 
+                          specified).
   <verify-signature>      The signature to verify when --verify is passed.
                           Don't pass this option for verifying appcast XML
-                          feeds, which already have a signature embedded. 
+                          feeds, which already have a signature embedded.
 
 OPTIONS:
   --account <account>     The account name in your keychain associated with
@@ -43,26 +43,25 @@ OPTIONS:
                           ed25519)
   --verify                Verify that the file is signed correctly. If this is
                           set, a second argument <verify-signature> denoting
-                          the signature must be passed after the <update-path>. 
+                          the signature must be passed after the <update-path>.
   -f, --ed-key-file <private-key-file>
                           Path to the file containing the private EdDSA
                           (ed25519) key. '-' can be used to echo the EdDSA key
                           from a 'secret' environment variable to the standard
                           input stream. For example: echo "$PRIVATE_KEY_SECRET"
-                          | ./sign_update --ed-key-file - 
+                          | ./sign_update --ed-key-file -
   -p                      Only prints the signature when signing a file without
                           extra metadata. For signing XML files, nothing will
                           be printed because the signature is embedded inside
-                          the file. 
+                          the file.
   --disable-signing-warning
                           Disables adding a warning to signed appcast and
                           release note files explaining that further
                           modifications will require re-signing them. This flag
                           has no effect if the files already have a signing
-                          warning embedded. 
+                          warning embedded.
   -s <private-key>        (DEPRECATED): The private EdDSA (ed25519) key. Please
                           use the Keychain, or pass the key as standard input
                           when using --ed-key-file - instead. This option is no
-                          longer supported for newly generated keys. 
+                          longer supported for newly generated keys.
   -h, --help              Show help information.
-
