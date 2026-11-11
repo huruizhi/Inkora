@@ -1,0 +1,3 @@
+build/DerivedData/Build/Products/Debug/Inkora.app/Contents/MacOS/Inkora:
+	@rpath/Inkora.debug.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1359.40.3)

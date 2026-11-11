@@ -1,0 +1,1 @@
+PASS real Sparkle 2.10.0 version comparator (hostless CLI, no updater start)
