@@ -57,3 +57,35 @@ invalid schema: ACCEPT build=3
 结果：a无新增确定缺项；b无越界；c一项P2，详报告。生产签名、公证、公钥/feed激活、完整分发同Team加载、真实退出保存/取消及安装/恢复仍未验；本次未将作者/root证据当独立通过。原始probe与worktree均保留待根两层备份回收，不自行删除。
 
 最终提交、push及 `git ls-remote` / clean结果在交付消息中提供，避免自引用commit。交付前执行 `git diff --check`，只提交两份指定中文文档。
+
+## Post-fix 限定复验（只追加）
+
+起始审查分支 HEAD a2a0d9c04a86b178b2afdceb794f4618b558d9d8，status clean；两个原文文件均与该提交逐字比对后才追加。固定产品0993c323ba299d1561de6f4a8d15b683e7635ced，相对fe9fa20的产品修改只有ReleaseLookup.swift与同域tests，其余为文档/审查记录。`git diff 27420b261f5db3e975ace4e961484ce2faec0bed 0993c323ba299d1561de6f4a8d15b683e7635ced -- app/Sources/ReleaseLookup.swift tests/InkoraTests/ReleaseLookupTests.swift` 输出空，确认修复等价。
+
+固定提取与本票实际命令（均在本worktree，未访问动态root）：
+
+```sh
+git show 0993c323ba299d1561de6f4a8d15b683e7635ced:app/Sources/ReleaseLookup.swift > artifacts/INK-REV-159/ReleaseLookup-postfix.swift
+git show 0993c323ba299d1561de6f4a8d15b683e7635ced:app/Sources/UpdatePolicy.swift > artifacts/INK-REV-159/UpdatePolicy-postfix.swift
+swiftc -swift-version 6 -parse-as-library artifacts/INK-REV-159/UpdatePolicy-postfix.swift artifacts/INK-REV-159/ReleaseLookup-postfix.swift artifacts/INK-REV-159/probe.swift -o artifacts/INK-REV-159/probe-postfix > artifacts/INK-REV-159/compile-postfix.log 2>&1
+artifacts/INK-REV-159/probe-postfix > artifacts/INK-REV-159/probe-postfix.log
+swiftc -swift-version 6 -parse-as-library artifacts/INK-REV-159/UpdatePolicy-postfix.swift artifacts/INK-REV-159/ReleaseLookup-postfix.swift artifacts/INK-REV-159/boundary-postfix.swift -o artifacts/INK-REV-159/boundary-postfix > artifacts/INK-REV-159/compile-boundary-postfix.log 2>&1
+artifacts/INK-REV-159/boundary-postfix > artifacts/INK-REV-159/boundary-postfix.log
+```
+
+两次编译与执行均exit0，编译日志空。原probe.swift逐字复用，原日志/二进制未覆盖；补充boundary-postfix.swift通过precondition断言5组实际结果。
+
+```text
+control: ACCEPT build=3
+conflicting bundle/build: REJECT
+invalid schema: REJECT
+additional malformed versions: REJECT PASS
+actual Bool true: ACCEPT PASS
+numeric prerelease 1: REJECT PASS
+new schema control: ACCEPT PASS
+new schema channel conflict: REJECT PASS
+```
+
+静态核对新diff：存在schema必须进入严格新schema校验，不再因类型错误降级；legacy顶层公开/plist别名与checks对照，包含类型/null、tag/channel和Bool；additional check自身须对象，存在versions必须严格一致。新schema原结构/Int64/bundle/tag/channel/asset校验保持。原P2关闭；本次限定复验无同域新增finding。a/b结论与批准例外不变。
+
+作者hostless15项仅外部证据，本票不转称自跑。未扩大至完整Native/Release/CI、GUI、网络或实际安装，无生产key/feed动作。所有raw固定副本/探针/log保留ignored artifacts/INK-REV-159，等待根两层备份；worktree不回收。仅追加本票两文档，未改实现/测试/冻结证据。提交后远端SHA与clean实查见交付消息。
