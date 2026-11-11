@@ -1,0 +1,36 @@
+{
+  "status": "unsigned public preview; ad-hoc signed; no Developer ID; not notarized",
+  "version": "0.1.0",
+  "build": "3",
+  "sourceCommit": "bd45d4bd4bb62e9cc5ae4d8891664de5b6183cc4",
+  "architectures": [
+    "x86_64",
+    "arm64"
+  ],
+  "checksums": {
+    "Contents/MacOS/Inkora": "c857115a68381ab9815fb3b2ad0fbe09d701ceca3270c37eb00ae140b9273a1b",
+    "Contents/Resources/editor/index.html": "f66403d427565c8662f50f958d5c45be76eeba2bf4ee785702f6fca8368f6473",
+    "Contents/Resources/editor/vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+    "Contents/Resources/editor/RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "Contents/Resources/editor/assets/index-ByNkzaRX.js": "00162cc8e32e74b844ec1dc11b6449356e7a15ed89e4e750ca747a267a189625"
+  },
+  "packetNotes": "ZIP/DMG bytes unchanged from verified build 3 candidate; only distribution filenames changed. The user explicitly authorized this unsigned prerelease.",
+  "examples": {
+    "Typora-Comparison.md": "90885c3f2a22d54303c037cbd58e511bebbc192fdb2f41635709b146434c6293",
+    "reference.png": "358c81c341f665fed21c2d6175c8f5efc6f9a3bbb31191c325eafd74ab8f0dd8"
+  },
+  "pullRequest": "https://github.com/huruizhi/Inkora/pull/80",
+  "ciRun": "https://github.com/huruizhi/Inkora/actions/runs/42740102696",
+  "ciAttempt": 2,
+  "ciConclusion": "success",
+  "ciHead": "2c486ca3429d680e7a630e50a5b9d803ee915d31",
+  "mainMerge": "3a68e0750d9e8d3b4afd85b12cdb71a60cf82513",
+  "releaseTag": "v0.1.0-beta.1",
+  "releaseTargetCommit": "e123772e0632dec89aa8ca527f9e44669259ede8",
+  "candidateProductTreeMatchesReleaseTarget": true,
+  "artifacts": {
+    "Inkora-0.1.0-beta.1-unsigned-universal.zip": "1eefe39701165fe63d26b0fb5aa77212e97e83a5f1b9e634ccf125ca793836c6",
+    "Inkora-0.1.0-beta.1-unsigned-universal.dmg": "8b35253dd40aa3f6de9e02cb5d79f07ab0e1cd1c3597e5d78ac188fd5cfd9b66",
+    "Inkora-0.1.0-beta.1-examples.zip": "f51a37a0da92431e8da5f8521b47d4013c45b7e1d481b1d2d00961be7575e621"
+  }
+}

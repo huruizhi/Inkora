@@ -1,0 +1,11 @@
+task=INK-REL-161
+version=0.1.0
+build=5
+tag=v0.1.0-beta.2
+sourceCommit=76715e0dc3dac6e0bb1aae75b513256ad7ba7eb2
+app=397981a710e7dbd3f88c8bcb3a3106f087141e49
+editor=7bee7c1f70c595e3cfba8dad8d149dc49dad1bcb
+project.yml=975e008515d1faa374b1f0c97754c2b3e84684ee
+scope=local candidate only; root performs actual release metadata and public download verification
+unsigned=ad-hoc/runtime; no Developer ID or notarization; no App launch or installation
+archive=raw unsigned archive; export/ZIP/DMG signed structure checked
