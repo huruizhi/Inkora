@@ -1,0 +1,23 @@
+{
+  "schema": "inkora.release.v1",
+  "bundleIdentifier": "com.huruizhi.Inkora",
+  "buildVersion": "5",
+  "marketingVersion": "0.1.0",
+  "channel": "beta",
+  "tag": "v0.1.0-beta.2",
+  "sourceCommit": "76715e0dc3dac6e0bb1aae75b513256ad7ba7eb2",
+  "assets": [
+    {
+      "name": "Inkora-0.1.0-beta.2-unsigned-universal.dmg",
+      "url": "https://github.com/huruizhi/Inkora/releases/download/v0.1.0-beta.2/Inkora-0.1.0-beta.2-unsigned-universal.dmg",
+      "byteLength": 3083945,
+      "sha256": "3724e8a136c63093384a755ba2a1d09e8bd4f7ca44463bdb1f5d0fc2e617c0e5"
+    },
+    {
+      "name": "Inkora-0.1.0-beta.2-unsigned-universal.zip",
+      "url": "https://github.com/huruizhi/Inkora/releases/download/v0.1.0-beta.2/Inkora-0.1.0-beta.2-unsigned-universal.zip",
+      "byteLength": 2564088,
+      "sha256": "bb1a9537acd756891e0e6afad2b6e40afcd643d48e28951ea491051152b4033e"
+    }
+  ]
+}

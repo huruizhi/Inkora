@@ -1,0 +1,6 @@
+python3 -m unittest discover -s tests/updates -p test_manifest.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 1.468s
+
+OK
