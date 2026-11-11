@@ -10,6 +10,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     application.run()
   }
 
+  private var updateMenu: UpdateMenuController?
+
+  private func configureUpdates() {
+    let preferences = UpdatePreferences(defaults: UserDefaults.standard)
+    #if DEBUG
+      let isDebug = true
+    #else
+      let isDebug = false
+    #endif
+    let permitted = UpdateLaunchPolicy.permitsStarting(
+      isDebug: isDebug, bundleIdentifier: Bundle.main.bundleIdentifier,
+      environment: ProcessInfo.processInfo.environment)
+    var driver: (any NativeUpdateDriver)?
+    var reason = "此构建仅支持只读发行信息检查；自动安装需要可信签名分发构建。"
+    #if INKORA_SPARKLE
+      if permitted, UpdateConfiguration(info: Bundle.main.infoDictionary ?? [:]) != nil {
+        do { driver = try SparkleUpdateDriver(preferences: preferences) } catch {
+          reason = "更新器配置验证失败：\(error.localizedDescription)"
+        }
+      } else {
+        reason = "可信更新源或公钥尚未配置，自动更新未启用。"
+      }
+    #endif
+    if !permitted { reason = "调试与测试构建不启动更新检查。" }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.httpCookieStorage = nil
+    configuration.urlCredentialStorage = nil
+    configuration.timeoutIntervalForResource = 30
+    updateMenu = UpdateMenuController(
+      service: UpdateService(preferences: preferences, driver: driver, unavailableReason: reason),
+      releaseLookup: permitted && driver == nil
+        ? ReleaseLookup(
+          session: URLSession(
+            configuration: configuration, delegate: ReleaseTransportDelegate(), delegateQueue: nil))
+        : nil,
+      currentBuild: UInt64(
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "") ?? 0)
+  }
+
   private let editorCommandMenus = EditorCommandMenus()
 
   private let openRecentMenu = OpenRecentMenuController(
@@ -35,6 +74,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    configureUpdates()
+    NSApplication.shared.mainMenu = makeMainMenu()
     DispatchQueue.main.async { RecoveryCoordinator.shared.reviewDrafts() }
   }
 
@@ -49,52 +90,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     true
   }
 
-  private var terminationReviewInProgress = false
+  private let terminationReview = DocumentTerminationReview()
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-    guard !terminationReviewInProgress else { return .terminateLater }
-    terminationReviewInProgress = true
-    DispatchQueue.main.async { [self] in
-      prepareDocumentsForTermination(NSDocumentController.shared.documents[...])
+    guard !terminationReview.inProgress else { return .terminateLater }
+    terminationReview.begin(documents: NSDocumentController.shared.documents) { approved in
+      sender.reply(toApplicationShouldTerminate: approved)
     }
     return .terminateLater
-  }
-
-  private func prepareDocumentsForTermination(_ documents: ArraySlice<NSDocument>) {
-    guard let document = documents.first else {
-      NSDocumentController.shared.reviewUnsavedDocuments(
-        withAlertTitle: "Quit Inkora?", cancellable: true, delegate: self,
-        didReviewAllSelector: #selector(didReviewDocuments(_:didReviewAll:contextInfo:)),
-        contextInfo: nil
-      )
-      return
-    }
-    guard let document = document as? InkoraDocument else {
-      prepareDocumentsForTermination(documents.dropFirst())
-      return
-    }
-    document.prepareForClose { [self] error in
-      if let error {
-        document.presentError(error)
-        terminationReviewInProgress = false
-        NSApplication.shared.reply(toApplicationShouldTerminate: false)
-        return
-      }
-      prepareDocumentsForTermination(documents.dropFirst())
-    }
-  }
-
-  @objc private func didReviewDocuments(
-    _ controller: NSDocumentController, didReviewAll: Bool,
-    contextInfo: UnsafeMutableRawPointer?
-  ) {
-    terminationReviewInProgress = false
-    if didReviewAll {
-      for document in NSDocumentController.shared.documents {
-        (document as? InkoraDocument)?.finishRecoveryForNormalTermination()
-      }
-    }
-    NSApplication.shared.reply(toApplicationShouldTerminate: didReviewAll)
   }
 
   /// Opens `url` through NSDocumentController and keeps the entry at the
@@ -125,6 +128,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
       action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
       keyEquivalent: ""
     )
+    applicationMenu.addItem(.separator())
+    if let updateMenu {
+      applicationMenu.addItem(updateMenu.checkItem)
+      applicationMenu.addItem(updateMenu.settingsItem)
+    }
     applicationMenu.addItem(.separator())
     applicationMenu.addItem(
       withTitle: "Quit Inkora",

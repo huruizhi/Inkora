@@ -1635,6 +1635,35 @@ final class EditorWebViewTests: XCTestCase {
   }
 
   @MainActor
+  func testTerminationPreparationRejectsCompositionAndUnappliedSourceDraft() async throws {
+    let (document, controller, webView) = try await loadedEditor(initialText: "before\n")
+    document.attachSidebarEditor(controller)
+    defer { document.close() }
+    try await beginSyntheticVisualComposition(in: webView, text: "中文")
+    let composition = expectation(description: "composition barrier")
+    document.prepareForClose { error in
+      XCTAssertNotNil(error)
+      composition.fulfill()
+    }
+    await fulfillment(of: [composition], timeout: 5)
+    XCTAssertEqual(document.bridgeRevision, 0)
+    try await endSyntheticVisualComposition(in: webView)
+    _ = try await requestText(from: controller)
+    try await enterSourceMode(in: webView)
+    try await replaceSourceDraft(in: webView, with: "unsaved source draft\n")
+    let draft = expectation(description: "source draft barrier")
+    document.prepareForClose { error in
+      XCTAssertNotNil(error)
+      draft.fulfill()
+    }
+    await fulfillment(of: [draft], timeout: 5)
+    let content =
+      try await webView.evaluateJavaScript("document.querySelector('textarea#editor').value")
+      as? String
+    XCTAssertEqual(content, "unsaved source draft\n")
+  }
+
+  @MainActor
   private func loadedEditor(
     initialText: String,
     expectedSnapshotText: String? = nil

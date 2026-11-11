@@ -1,0 +1,10 @@
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, name:Any Mac }
+Sparkle distribution requires Developer ID or Apple Development signing
+Command PhaseScriptExecution failed with a nonzero exit code
+note: Run script build phase 'Build Editor' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'InkoraDistribution' from project 'Inkora')
+note: Run script build phase 'Require trusted signing identity' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'InkoraDistribution' from project 'Inkora')
+** BUILD FAILED **
+

@@ -1,0 +1,16 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -resolvePackageDependencies -project Inkora.xcodeproj -scheme InkoraDistribution -clonedSourcePackagesDirPath build/SourcePackages
+
+Resolve Package Graph
+
+Fetching from https://github.com/sparkle-project/Sparkle
+
+Creating working copy of package ‘Sparkle’
+
+Checking out 2.10.0 of package ‘Sparkle’
+
+
+Resolved source packages:
+  Sparkle: https://github.com/sparkle-project/Sparkle @ 2.10.0
+
+resolved source packages: Sparkle
