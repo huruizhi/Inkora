@@ -1,0 +1,13 @@
+F
+======================================================================
+FAIL: test_missing_arguments_invalidates_old_receipt (test_staging.FailureTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-upd-157-signed-appcast/tests/updates/test_staging.py", line 16, in test_missing_arguments_invalidates_old_receipt
+    self.assertFalse(receipt.exists())
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.013s
+
+FAILED (failures=1)
