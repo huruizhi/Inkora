@@ -50,3 +50,9 @@
 ignored原件保留build/SourcePackages、build/DerivedData及临时SDK固定缓存，待根双层备份回收。借用工具只unlink本worktree自建symlink，不动共享目录。
 
 补正：安装意图失败恢复公共反例先红（10项1失败）再绿（11项0失败）；SDK adapter按真实2.10模块typecheck通过。本次未重复全量/Release门禁。
+
+## INK-REV-159 P2 限定补正
+
+根独立Spec审查后的追加修复，仅涉及ReleaseLookup/同域测试及自身文档证据。schema出现但类型错误不再回落legacy；旧格式已知顶层语义别名必须与checks及release一致；额外checks.*.versions坏类型/冲突拒绝。合法旧checks继续可解析，历史公开Beta1缺bundle/checks仍无法确认。
+
+公共解析回归先RED：14测试47断言失败；修正并补布尔/历史格式对照后GREEN：15测试0失败。hostless、typecheck、两文件strict lint与diff检查通过；未重跑全量/Release/UI。详 [补正证据](../evidence/INK-UPD-156/release-lookup-review.md)。

@@ -47,6 +47,114 @@ final class ReleaseLookupTests: XCTestCase {
     XCTAssertThrowsError(
       try ReleaseLookup.build(metadata: Data("{}".utf8), tag: "v1", prerelease: true))
   }
+  func testLegacyRejectsPresentInvalidSchema() throws {
+    let legacy = try JSONSerialization.jsonObject(with: metadata()) as! [String: Any]
+    for schema: Any in [42, NSNull(), false, [], [:], "", "unknown", "inkora.release.v1"] {
+      var info = legacy
+      info["schema"] = schema
+      XCTAssertThrowsError(
+        try ReleaseLookup.build(
+          metadata: JSONSerialization.data(withJSONObject: info), tag: "v0.1.0-beta.1",
+          prerelease: true), "Present schema must never fall back: \(schema)")
+    }
+  }
+
+  func testLegacyRejectsConflictingOrMistypedSemanticAliases() throws {
+    let versions = [
+      "CFBundleIdentifier": "com.huruizhi.Inkora", "CFBundleVersion": "3",
+      "CFBundleShortVersionString": "0.1.0",
+    ]
+    let legacy: [String: Any] = [
+      "checks": ["export": ["versions": versions], "zip": ["versions": versions]]
+    ]
+    let aliases = [
+      "bundleIdentifier": "com.huruizhi.Inkora", "CFBundleIdentifier": "com.huruizhi.Inkora",
+      "buildVersion": "3", "build": "3", "CFBundleVersion": "3",
+      "marketingVersion": "0.1.0", "version": "0.1.0", "CFBundleShortVersionString": "0.1.0",
+      "tag": "v0.1.0-beta.1", "releaseTag": "v0.1.0-beta.1", "tag_name": "v0.1.0-beta.1",
+      "channel": "beta",
+    ]
+    for (key, matching) in aliases {
+      var info = legacy
+      info[key] = matching
+      XCTAssertEqual(
+        try ReleaseLookup.build(
+          metadata: JSONSerialization.data(withJSONObject: info),
+          tag: "v0.1.0-beta.1", prerelease: true), 3)
+      for invalid: Any in ["conflict", 42, NSNull()] {
+        info[key] = invalid
+        XCTAssertThrowsError(
+          try ReleaseLookup.build(
+            metadata: JSONSerialization.data(withJSONObject: info),
+            tag: "v0.1.0-beta.1", prerelease: true), "Alias \(key) must reject \(invalid)")
+      }
+    }
+    var contradictory = legacy
+    contradictory["bundleIdentifier"] = "other.app"
+    contradictory["buildVersion"] = "999"
+    XCTAssertThrowsError(
+      try ReleaseLookup.build(
+        metadata: JSONSerialization.data(withJSONObject: contradictory),
+        tag: "v0.1.0-beta.1", prerelease: true))
+    var badRelease = legacy
+    badRelease["version"] = "0.1.0"
+    XCTAssertThrowsError(
+      try ReleaseLookup.build(
+        metadata: JSONSerialization.data(withJSONObject: badRelease),
+        tag: "v9.0.0-beta.1", prerelease: true))
+  }
+
+  func testLegacyPrereleaseAliasesRequireActualMatchingBooleans() throws {
+    let legacy = try JSONSerialization.jsonObject(with: metadata()) as! [String: Any]
+    for key in ["prerelease", "isPrerelease"] {
+      var matching = legacy
+      matching[key] = true
+      XCTAssertEqual(
+        try ReleaseLookup.build(
+          metadata: JSONSerialization.data(withJSONObject: matching),
+          tag: "v0.1.0-beta.1", prerelease: true), 3)
+      for invalid: Any in [false, 1, "true", NSNull()] {
+        matching[key] = invalid
+        XCTAssertThrowsError(
+          try ReleaseLookup.build(
+            metadata: JSONSerialization.data(withJSONObject: matching),
+            tag: "v0.1.0-beta.1", prerelease: true))
+      }
+    }
+    var missingMarketing = legacy
+    missingMarketing["version"] = "0.1.0"
+    XCTAssertThrowsError(
+      try ReleaseLookup.build(
+        metadata: JSONSerialization.data(withJSONObject: missingMarketing),
+        tag: "v0.1.0-beta.1", prerelease: true), "Do not invent a missing checks marketing version")
+    let beta1WithoutChecks: [String: Any] = [
+      "build": "3", "version": "0.1.0", "releaseTag": "v0.1.0-beta.1",
+    ]
+    XCTAssertThrowsError(
+      try ReleaseLookup.build(
+        metadata: JSONSerialization.data(withJSONObject: beta1WithoutChecks),
+        tag: "v0.1.0-beta.1", prerelease: true))
+  }
+
+  func testLegacyRejectsMalformedAdditionalCheckVersions() throws {
+    let versions = ["CFBundleIdentifier": "com.huruizhi.Inkora", "CFBundleVersion": "3"]
+    for invalid: Any in [
+      42, NSNull(), [], ["CFBundleVersion": 3],
+      ["CFBundleIdentifier": "other.app", "CFBundleVersion": "3"],
+    ] {
+      let info: [String: Any] = [
+        "checks": [
+          "export": ["versions": versions],
+          "zip": ["versions": versions], "archive": ["versions": invalid],
+        ]
+      ]
+      XCTAssertThrowsError(
+        try ReleaseLookup.build(
+          metadata: JSONSerialization.data(withJSONObject: info),
+          tag: "v0.1.0-beta.1", prerelease: true))
+    }
+  }
+
   func testPublicManifestBindsReleaseAssetAndRejectsConflict() throws {
     let tag = "v0.1.0-beta.3"
     let url = "https://github.com/huruizhi/Inkora/releases/download/\(tag)/Inkora.zip"
