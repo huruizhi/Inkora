@@ -17,3 +17,11 @@
 该分支仅比较 checks 内的版本，忽略同时存在的顶层 `bundleIdentifier` / `buildVersion`；`schema` 存在但不是字符串也回落 legacy。独立 hostless 探针：checks 中正式 bundle/build3，顶层改为 other.app/build999，仍返回3；`schema=42` 也返回3。调用者据此可显示“没有较新的可验证发行版本”，把冲突清单当作已验证。应仅对明确旧格式启用兼容，拒绝冲突的重复语义字段及存在但无效的 schema；保留合法 legacy 对照。没有修改产品或测试。
 
 其余静态核对：正式 archive 选择 Distribution；默认不链接 SDK且保持 LV；下载失败只清归属本次的未准备意图；普通退出与 SDK 退出共享 prepare/review/recovery 链；本地 staging/manifest 与生产安装许可分离。此结论不等同完整 Native 或安装验收。
+
+## Post-fix 限定复验（追加）
+
+固定产品 `0993c323ba299d1561de6f4a8d15b683e7635ced`，修复与 A 的 `27420b261f5db3e975ace4e961484ce2faec0bed` 在 ReleaseLookup/同域测试逐字等价。使用 git show 固定文件副本，未读取动态 root；首稿与任务原文保留。
+
+**原唯一 P2 关闭。** 原真实解析探针重跑：合法 checks 仍 ACCEPT build3；顶层 bundle/build 冲突与 schema=42 均 REJECT。额外五组：非法 additional checks.versions 拒绝、真正 Bool prerelease=true 接受、数字1拒绝、新 schema 合法对照接受、channel 冲突拒绝。源码检查显示 schema 以存在性分流、legacy 别名逐项比较、额外 versions 类型检查均已落实；新 schema 原校验未削弱。限定范围未发现新增 finding。
+
+本票两次轻量 hostless 编译与执行均 exit0；详追加任务记录。作者 hostless15项仅为外部证据，不计本票自跑。未做完整门禁、GUI或真实更新安装；生产信任/分发验收门槛与首稿风险保持。
