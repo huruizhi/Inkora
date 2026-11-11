@@ -13,13 +13,23 @@
 ## 用户行为
 
 - Inkora原生应用菜单提供“检查更新…”，网络中断/无新版本/无可信配置的结果可理解，不伪报“最新”。仅更新器范围联网，启动不阻塞正文。
-- 提供自动检查、自动下载/安装和Stable/Beta选择，默认不采集系统画像。根已询问自动策略，未答时按“自动检查+后台下载，退出时安装”的推荐实现；用户关闭立即遵循。初始检查按Sparkle约1天间隔，避免每次焦点或文档变更联网。
+- 提供自动检查、自动下载/安装和Stable/Beta选择，默认不采集系统画像。用户已明确选择“自动检查+后台下载，退出时安装”；用户关闭立即遵循。初始检查按Sparkle约1天间隔，避免每次焦点或文档变更联网。
 - 使用同一HTTPS appcast、Sparkle channels：stable仅默认通道；beta包含默认+beta。切换不会自动降级；可切回，需更高可信版本才安装。安装/下载中的旧通道动作必须有清楚取消/延后规则，不能误装旧意图。
 - 安装前/重新启动必须经过现有文档prepareForClose、composition/源码草稿、原生保存/放弃/取消流程。用户取消或失败时保持原安装、当前原文/选区/历史/恢复资源，不强退。复用或提取一个真实关闭审阅模块供正常退出和Sparkle使用，禁止另建绕过保存屏障的退出路径。
 - 只接受有效Ed25519签名更新；启用可用的解包前验证及签名feed。HTTPS、正确bundleID、递增CFBundleVersion、系统支持范围和包签名交由SDK并由发行验证额外核对。当前旧Beta1/2不含更新器，需要一次手动安装首个支持更新的版本，不伪造无客户端情况下的自举。
 - Debug、UITesting bundle与hostless测试默认完全不启动更新器/联网/弹窗；显式测试配置只作用自有fixture与独立defaults，不复用用户偏好或正式安装。
 
 ## 信任与上线
+
+### 根已裁定的接线（2026-11-11）
+
+A、B均以实际 hardened ad-hoc CLI 加载官方SDK及内向外重签副本，得到不同Team ID的Library Validation拒绝；结构验签成功不等于运行加载成功。因此采用显式 `INKORA_SPARKLE` 正式分发构建配置：默认ad-hoc不强链接或加载SDK，正式同Team签名配置才启用真实Sparkle。不得关闭LV或以不受类型检查的动态反射绕过。SPM精确依赖、正式配置编译及嵌入仍须交付，不能只留下不可用菜单。
+
+默认预览的“检查更新”采用独立Foundation只读GitHub版本查询，仅访问固定huruizhi/Inkora的HTTPS发行元数据及版本清单，限制超时、大小、重定向和请求代际。不下载应用包、不执行安装；可打开官方发布页。严格比较CFBundleVersion数值，不从tag推测build。网络错误或不可信/缺失/冲突元数据只能显示“无法确认版本”，不能显示“已是最新”。正式签名路径使用Sparkle签名更新链；两种能力明确区分。
+
+公开版本清单固定 `schema=inkora.release.v1`，字段为 `bundleIdentifier`、`buildVersion`（正十进制整数字符串，拒绝前导零及Int64溢出）、`marketingVersion`、`channel=stable|beta`、`tag`、完整40位十六进制 `sourceCommit`、`assets=[{name,url,byteLength,sha256}]`。读取方将tag和资产URL绑定GitHub返回的同一Release，验证正式bundle/channel/prerelease一致；Stable排除prerelease，Beta可包含stable。旧清单只允许显式兼容 `checks.*.versions`，重复字段冲突拒绝。local-staging-only签验收据不能冒充公开清单或安装许可。本票可生成/验证本地候选清单，不发布它。
+
+批准A抽取共享 `DocumentTerminationReview`，保持原prepare→原生review→finishRecovery/reply顺序及一次进行中守卫。官方实际安装器发送正常terminate；最终退出仍走applicationShouldTerminate。postponement只允许辅助延后，不能成为唯一保存守卫或产生第二条保存路径。
 
 生产公钥允许入库，私钥不得进代码/日志/命令参数明文/产物。两执行Agent**禁止生成、导出、覆盖或读取生产私钥/钥匙串条目**；只用临时测试密钥（0600文件、结束清理，不上传）做真实SDK验证。根在工具/方案已可审阅后另行结算生产密钥创建与保管；不填示例公钥冒充发布可用。
 
