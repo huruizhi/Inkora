@@ -27,3 +27,15 @@
 157追加7b67471已核读并吸收为d801e85：根独立执行 `make test-update-manifest`，5测试通过，包含实际候选ZIP/资产字节重算、严格版本边界、未知/冲突字段、GitHub Release绑定及旧成功输出失效。根日志在 `artifacts/INK-UPD-155/manifest-tests.log`；`git diff --check`通过。输出仍为本地候选，无发布或安装授权。Native交付固定后再做组合两轴审查与集中完整门禁。
 
 157追加7c66719已吸收为b890ece；根独立运行两项正式/预览archive脚本stub测试及原release-smoke，均通过，日志位于管理者artifacts/INK-UPD-155。156固定a39bec26已按原三提交顺序吸收，包含其安装意图失败恢复补正；上述Native/SDK结果仍仅为作者证据，根待组合验证。整合diff空白检查发现157三份官方工具help原始输出有尾空白，已只规范展示副本的尾空白/末尾空行，逐字raw及双SHA清单保留在管理者artifacts/INK-UPD-155/raw-tool-help；不改CLI语义或测试。
+
+## 固定组合与独立复审
+
+产品固定 `fe9fa20af585232c1948da556d267c0a35db56b9`，基线cf889ab1，十二提交、76文件diff非空，空白检查通过。根委派新上下文158 Standards（agent 3ddcb32f-7c7a-400e-a13c-505d22212f08 / workspace wks_58ef3d47d0b7e611）与159 Spec（c34a8181-8c78-4b69-a18f-86d262bcc1b7 / wks_f3c1401b6917dce8），均从此固定提交审查，不修改产品。
+
+根在fe9fa20实际执行 `make lint test-non-ui release-bundle-check` exit0：editor811、Web Bridge16、Native226通过/0失败/9既有性能skip，Bridge Native16通过；test-ci及Release离线资源通过。xcresult原summary和总日志保留管理者artifacts/INK-UPD-155。另执行带固定SDK的 `make test-updates`：7测试通过，其中官方签验13场景通过。
+
+`make release-dry-run` exit0：未启动App，双架构arm64/x86_64、正式bundle/build4、结构签名/精确权限/离线ZIP与DMG通过且挂载已卸载。默认产物otool无Sparkle链接。此包仅预览，不能替代Distribution同Team签名或安装证明。组合日志保留既有actor/Any? warnings及Xcode `exit code 0 but produced no further output`诊断；实际命令exit0且xcresult通过。首次收据/备份发射脚本用了本机Python不支持的hashlib.file_digest，已改分块SHA256并成功重跑，未修改产品或候选字节。独立收据result.json记录上述精确版本与包SHA。
+
+158结论书面hard0，2项低优先级judgement；159发现1项P2：ReleaseLookup旧格式忽略冲突顶层语义字段且非字符串schema回落legacy。两份原报告已吸收；根已交156原作者限定修复并要求公共解析红绿及合法旧格式对照。此发现未关闭前不进入最终CI/合并。
+
+156/157固定远端SHA和clean已复核；源bundle及ignored证据、固定SDK缓存已备份到主仓artifacts/backups/INK-UPD-155，bundle verify、tar可读、SHA记录通过。此为初次固定副本，后续补正和审查证据仍需追加备份；尚未回收任何工作区。
