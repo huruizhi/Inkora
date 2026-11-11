@@ -4,7 +4,7 @@
 
 ## 完成内容与入口
 
-应用启动完成后，Inkora 菜单提供“检查更新…”和“更新设置”。设置包含自动检查、后台下载并在退出时安装、Stable/Beta；默认自动检查和下载，初始通道 Beta。设置持久化；关闭自动检查同时关闭 SDK 后台下载调度，但保留下载偏好以供重新开启。通道切换在更新会话（包括已准备退出安装）及只读查询期间禁用，不把进行中旧通道操作投向新通道。设置影响后续调度，已开始的更新由 Sparkle 标准 UI 管理。SDK明确指出sessionInProgress可能不含已下载/延后安装，因此额外持久化pendingBuild；待当前host达到该build才解锁通道，菜单tooltip说明。此保守限制即使下载后错误/延后也保持，不擅自清除SDK缓存或旧安装意图。
+应用启动完成后，Inkora 菜单提供“检查更新…”和“更新设置”。设置包含自动检查、后台下载并在退出时安装、Stable/Beta；默认自动检查和下载，初始通道 Beta。设置持久化；关闭自动检查同时关闭 SDK 后台下载调度，但保留下载偏好以供重新开启。通道切换在更新会话（包括已准备退出安装）及只读查询期间禁用，不把进行中旧通道操作投向新通道。设置影响后续调度，已开始的更新由 Sparkle 标准 UI 管理。SDK明确指出sessionInProgress可能不含已下载/延后安装，因此额外持久化pendingBuild；待当前host达到该build才解锁通道，菜单tooltip说明。本进程本次尚未准备的下载，若收到官方domain下3000/3001/3002终止错误则清自己的记录、允许切通道；已准备/跨进程未知或较早延期记录不盲清，不擅自操作SDK缓存。详installation-state.md。
 
 - 普通 `Inkora` target / scheme：绝不链接或加载 Sparkle。Release 预览通过 Foundation 只读查询固定 GitHub 仓库发行信息，不下载或执行 App 包，不提供自制安装器。显示查询中状态、新版/无较新可验证发行/无法验证版本信息，以及官方发行页入口。
 - `InkoraDistribution` target / scheme：显式 `INKORA_SPARKLE` 编译宏，真正链接 Sparkle **2.10.0 exact** package；产品仍 `Inkora.app` / `com.huruizhi.Inkora` / build4。签名 guard 要求非空真实 signing identity / team；Release 只允许 Developer ID，Debug 可 Apple Development。不允许 ad-hoc 开启此路径，不关闭 LV/Sandbox/Hardened Runtime。
@@ -15,7 +15,7 @@
 
 ## 软件边界
 
-`UpdatePolicy`处理可信资格、启动资格与偏好；`UpdateService`隐藏SDK；`SparkleUpdateDriver`仅在分发宏下编译；`UpdateMenuController`提供原生入口；`ReleaseLookup`只读公开元数据。
+`UpdatePolicy`处理可信资格、启动资格与偏好；`UpdateService`隐藏SDK；`UpdateInstallationState`按下载尝试归属保护安装意图；`SparkleUpdateDriver`仅在分发宏下编译；`UpdateMenuController`提供原生入口；`ReleaseLookup`只读公开元数据。
 
 只读查询固定 `api.github.com/repos/huruizhi/Inkora/releases?per_page=10`，最多10项、单响应1MiB流式上限、15秒请求/30秒资源时限；不使用cookies或凭据，HTTPS重定向限GitHub官方资产域。Stable排除prerelease，Beta包含stable。按严格正整数CFBundleVersion比较，溢出拒绝；不从tag推断build。新 `inkora.release.v1` 校验bundle、通道、tag/marketing、sourceCommit、资产名称、同release URL、长度与SHA格式，拒绝重复JSON键和额外schema字段。legacy仅允许checks.export/zip.versions一致且所有checks版本无冲突。
 
@@ -27,7 +27,7 @@
 
 - project.yml / config/Package.resolved：分发目标、exact package与真实解析锁。XcodeGen postGen恢复锁到生成工程。
 - app/Resources/Info.plist、Inkora.entitlements、Sparkle-LICENSE.txt：可信源安全字段、bundle宏mach lookup与官方完整许可。
-- app/Sources/AppDelegate.swift 与上述7个同域模块：菜单、检查、偏好、SDK及共享退出接线。
+- app/Sources/AppDelegate.swift 与上述8个同域模块：菜单、检查、偏好、SDK及共享退出接线。
 - tests/InkoraTests/{UpdatePolicy,UpdateService,ReleaseLookup,TerminationReviewGate}Tests.swift、EditorWebViewTests.swift：定向测试。
 - 本任务文档与 docs/evidence/INK-UPD-156。
 
@@ -48,3 +48,5 @@
 没有真实Developer ID身份，故Xcode分发完整链接/嵌入/同Team签名与运行、生产Ed25519信任激活、实际更新安装/重启均未验证。完整非UI/Release/默认CI由根统一执行。本轮没有AppDelegate启动、UI/XCU/物理IME/macOS14验收，不改变正式App或用户文档；未碰生产Keychain/私钥。SDK仅做公开来源校验、离屏API与编译探针，临时密钥链签验由B单独报告。
 
 ignored原件保留build/SourcePackages、build/DerivedData及临时SDK固定缓存，待根双层备份回收。借用工具只unlink本worktree自建symlink，不动共享目录。
+
+补正：安装意图失败恢复公共反例先红（10项1失败）再绿（11项0失败）；SDK adapter按真实2.10模块typecheck通过。本次未重复全量/Release门禁。
