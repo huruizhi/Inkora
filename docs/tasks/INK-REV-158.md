@@ -53,3 +53,26 @@ python3 tests/ci/release-scheme-smoke.py > artifacts/INK-REV-158/scheme.log 2>&1
 结果：0项书面硬违规、2项低优先级 possible smell，未修代码。UI 未验证；涉及 DocumentOpenUITests、AcceptanceUITests、Release 启动烟测的菜单、退出审阅与保存/取消/恢复场景应在获准发布验收时集中确认。本票未运行全量 lint/Native/Release/CI、不启动 AppDelegate/App/窗口，不执行真实安装/重启、物理IME或macOS14专项。正式同Team签名/嵌入、生产信任激活与安装行为仍无本票验证，不能从工具测试推出上线可用。
 
 最终文档提交 fullSHA、push/远端核对和 clean 结果由交付消息记录，避免文档自引用提交哈希。完整测试门禁仍由根串行执行。
+
+## Post-fix 限定静态复核（2026-11-11）
+
+固定新产品 `0993c323ba299d1561de6f4a8d15b683e7635ced`；比较起点 `fe9fa20af585232c1948da556d267c0a35db56b9`。开始时本分支 HEAD 为 `d191e06eed57b6442a32dc38548c595e7edeec92`，porcelain 为空；未切换或吸收产品提交。原首稿与 task 全文保留，仅追加。
+
+实际静态命令（均 exit0）：
+
+```sh
+git status --porcelain
+git rev-parse HEAD
+git cat-file -t 0993c323ba299d1561de6f4a8d15b683e7635ced
+git diff --stat fe9fa20af585232c1948da556d267c0a35db56b9...0993c323ba299d1561de6f4a8d15b683e7635ced
+git diff fe9fa20af585232c1948da556d267c0a35db56b9...0993c323ba299d1561de6f4a8d15b683e7635ced > artifacts/INK-REV-158/post-fix/fixed.diff
+git show 0993c323ba299d1561de6f4a8d15b683e7635ced:app/Sources/ReleaseLookup.swift > artifacts/INK-REV-158/post-fix/ReleaseLookup.swift
+git show 0993c323ba299d1561de6f4a8d15b683e7635ced:tests/InkoraTests/ReleaseLookupTests.swift > artifacts/INK-REV-158/post-fix/ReleaseLookupTests.swift
+git show 0993c323ba299d1561de6f4a8d15b683e7635ced:docs/evidence/INK-UPD-156/release-lookup-review.md
+```
+
+固定 diff 为12文件、539新增、5删除。通过保存的 diff 分块读取新增代码、同域测试、task/review及证据说明；未读取动态根文件。该快照中的本票首稿是原审查记录，不作为新增产品实现。
+
+新增 hunk 核对：schema 键存在性与 legacy 别名验证集中于 ReleaseLookup，使用单一 expected 映射；错误分支保留 unverifiable，不引入安装或正文接口。新增测试仍使用自有 JSON/URLProtocol 与隔离 defaults，未删除原测试或新增依赖。文档区分解析证据与生产签名、UI/安装未验边界。按首稿书面源和 Fowler baseline，未发现新增有充分依据的书面 hard；原2项低优先级 judgement 保留，不混 Spec 完成度判断。
+
+未重跑全量、工具、hostless 或其他测试/构建；作者 red/green 与根门禁仅引用，不转称本票实跑。静态复核不能证明运行、安装或 UI 行为。首次文档追加脚本遇到 stdin 编码错误，未改动文件；改用补丁追加，未触碰产品。交付前验证原文前缀逐字保留及空白；commit/push 后实查远端=HEAD及clean，fullSHA在通知中给出。raw与worktree继续保留等待根双备份，不自行回收。
