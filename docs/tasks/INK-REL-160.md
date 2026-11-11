@@ -35,3 +35,9 @@
 管理者artifacts/INK-REL-160/verify-candidate.py实际独立复查export/解ZIP/只读无浏览挂载DMG：正式bundle/0.1.0/build5/14.0、arm64+x86_64、无Sparkle强链、strict deep签名、ad-hoc/runtime、精确展开权限与离线资源均通过，三处Mach-O SHA一致，DMG卸载。raw archive未签名边界只引用作者记录，未把它报为签名通过。详细candidate-result.json、command log、xcresult和完整门禁日志保留；未启动或安装App。
 
 新上下文162 Standards（b0bd3a84-f8d4-4fc8-8319-bb00611fca2b / wks_ba1653dd4da13f50）与163 Spec（aa3157ff-bbd2-4444-a196-a5d844ff83ee / wks_4f1b5dba1909ab8d）从846fd17只审不修，完成前不宣告两轴通过。准备发布的公共文件仅ZIP/DMG/PROVENANCE/SOURCE/SHA256SUMS；候选CHECKS和receipt保留私有验证，不上传含原始路径/命令的检查文件；发布前公共SOURCE加入最终CI/tag绑定并重新算文本校验和，包与PROVENANCE字节不变。
+
+## 审查结算与发布前状态
+
+162固定846fd17的Standards结论hard0/judgement0；163同一固定Spec未发现产品或候选包阻塞，只有一项P3文档歧义。两报告均已吸收且原文保留；各自17项hostless和独立哈希/metadata核对属于审查者自跑，不与根全量混称。根以8417280仅修docs/updates.md：明确旧Beta1/build3、未发Beta2/build4、当前build5已含只读入口；不再把本次Beta2笼统描述为没有客户端。此低影响文案修正用diff核对，不另写镜像测试；不声称审查者对该修正另行实跑。
+
+源与候选字节保持不变，发布前最终默认CI仍须按最新精确HEAD执行。根已保存161完整source bundle与原artifacts/build并verify/tar可读/SHA核对；候选在主仓独立保存目录，工作树仍保留。公开发布与匿名复验尚未执行，其receipt放主仓artifacts/releases/0.1.0-beta.2-build5和artifacts/backups/INK-REL-160，避免在CI完成后追加已测试分支提交造成混淆。
