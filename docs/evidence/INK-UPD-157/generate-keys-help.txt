@@ -1,0 +1,57 @@
+OVERVIEW: Generate public & private keys for signing Sparkle based app updates.
+
+This tool generates a public & private keys and uses the macOS Keychain to
+store
+the private key for signing app updates which will be distributed via Sparkle.
+This key will be associated with your user account.
+
+Note: You only need one signing key, no matter how many apps you embed Sparkle
+in.
+
+The keychain may ask permission for this tool to access an existing key, if one
+exists, or for permission to save the new key. You must allow access in order
+to
+successfully proceed.
+
+In the default mode ran without any arguments, the public key and how it should
+be used
+in your application's Info.plist will be printed. If a private key was already
+generated in your Keychain,
+that key will be used and not overridden.
+
+You may additionally use options to only look up the existing public key for
+automation (-p),
+export the private key from your Keychain to a file for transferring the key
+(-x), or
+import the private key into your Keychain from a file (-f).
+
+USAGE: generate-keys [--account <account>] [-p] [-x <private-key-file>] [-f <private-key-file>]
+
+OPTIONS:
+  --account <account>     The account name to use when generating or looking up
+                          keys from your keychain. If this is not specified, a
+                          default global account is used instead. We recommend
+                          using different accounts for different organizations.
+                          (default: ed25519)
+  -p                      Looks up and just prints the existing public key
+                          stored in the Keychain. 
+  -x <private-key-file>   Exports your private key from your login keychain and
+                          writes it to private-key-file. Note the contents of
+                          this sensitive exported file are the same as the
+                          password to the "Private key for signing Sparkle
+                          updates" item in your keychain. For advanced usage if
+                          the private key is generated in the new format (i.e.
+                          the key file after base64 decoding is 32 bytes), then
+                          the exported key file is the base64 encoding of the
+                          private seed. The seed can be used to create the
+                          private/public keypair with other tools that support
+                          EdDSA signing. 
+  -f <private-key-file>   Imports the private key from private-key-file into
+                          your keychain instead of generating a new key. This
+                          file has likely been exported via -x option from
+                          another machine. Any existing "Private key for
+                          signing Sparkle updates" items listed in Keychain
+                          Access may need to be removed manually first before
+                          proceeding. 
+  -h, --help              Show help information.
+

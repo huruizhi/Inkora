@@ -1,0 +1,7 @@
+python3 -m unittest discover -s tests/updates
+..
+----------------------------------------------------------------------
+Ran 2 tests in 1.780s
+
+OK
+Official Sparkle + CryptoKit: 13 staging/negative cases passed; no installation executed

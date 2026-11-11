@@ -1,0 +1,5 @@
+build/updates-sign-fixture/Inkora.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc: replacing existing signature
+build/updates-sign-fixture/Inkora.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc: replacing existing signature
+build/updates-sign-fixture/Inkora.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app: replacing existing signature
+build/updates-sign-fixture/Inkora.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate: replacing existing signature
+build/updates-sign-fixture/Inkora.app/Contents/Frameworks/Sparkle.framework: replacing existing signature

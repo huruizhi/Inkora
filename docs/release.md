@@ -74,7 +74,7 @@ xcrun notarytool log '<submission-id>' --keychain-profile "$INKORA_NOTARY_PROFIL
 
 `project.yml` 既有 `ENABLE_HARDENED_RUNTIME: YES` 覆盖 Release；脚本另在 archive 强制 YES。
 保留 `app/Resources/Inkora.entitlements` 中的 App Sandbox、用户所选文件读写、app-scope 书签和 network.client。
-network.client 只为系统 WebKit 子进程通信保留；离线资源、自定义 scheme、CSP 与导航限制继续阻止编辑器 HTTP(S) 访问，见 ADR-0003。
+network.client 为系统 WebKit 子进程和独立 Sparkle 更新模块保留；离线资源、自定义 scheme、CSP 与导航限制继续阻止编辑器 HTTP(S) 访问，见 ADR-0003。
 WKWebView 的 JS 在系统 WebContent 进程运行，因此不为 Inkora 主进程添加 allow-jit、unsigned-executable-memory、disable-library-validation 等 runtime exception。
 权限是否满足正式签名后的真实启动仍须凭据阶段人工确认，本次不会启动 App 验证。
 
@@ -124,4 +124,4 @@ gh release create v0.1.0-beta.1 --target '<verified-commit>' \
 ```
 
 - [ ] 人工最终确认后发布草稿；本任务不执行创建或发布 Release，不将凭据放入 CI。
-- [ ] 回滚：暂停或撤下故障 Beta 的下载入口，发行说明标明停止使用原因；保留原标签、校验和和诊断记录用于追踪。指引下载上一已验证版本并先备份 Markdown 文件，禁止覆盖或删除用户文档、恢复草稿及偏好。修复后以更高 build / 新标签发布，不悄悄替换旧资产。自动更新不在本任务范围内。
+- [ ] 回滚：暂停或撤下故障 Beta 的下载入口，发行说明标明停止使用原因；保留原标签、校验和和诊断记录用于追踪。指引下载上一已验证版本并先备份 Markdown 文件，禁止覆盖或删除用户文档、恢复草稿及偏好。修复后以更高 build / 新标签发布，不悄悄替换旧资产。自动更新由 INK-UPD-155/156/157 新增要求取代原后置范围，见 [可信更新发行](updates.md)；不扩张本轮发布许可。

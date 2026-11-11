@@ -260,3 +260,12 @@ bench-production-webview: perf-samples editor-build generate require-xcode prepa
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(ARTIFACTS_DIR)/test-results/production-perf.xcresult" \
 		-only-testing:InkoraTests/PerformanceWebViewTests/testProductionVisualWorkflowBenchmarks test
+
+# Local staging only. Arguments contain paths/public metadata, never key material.
+.PHONY: updates-stage updates-verify test-updates
+updates-stage:
+	python3 scripts/updates/staging.py --output "$(ARTIFACTS_DIR)/updates/staging" stage $(UPDATE_ARGS)
+updates-verify:
+	python3 scripts/updates/staging.py --output "$(ARTIFACTS_DIR)/updates/staging" verify $(UPDATE_ARGS)
+test-updates:
+	python3 -m unittest discover -s tests/updates
