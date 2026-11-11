@@ -54,8 +54,8 @@ struct ReleaseLookup: Sendable {
       throw ReleaseLookupError.unverifiable
     }
     let value: String
-    if let schema = info["schema"] as? String {
-      guard
+    if info.keys.contains("schema") {
+      guard let schema = info["schema"] as? String,
         Set(info.keys) == [
           "schema", "bundleIdentifier", "buildVersion", "marketingVersion", "channel", "tag",
           "sourceCommit", "assets",
@@ -103,18 +103,59 @@ struct ReleaseLookup: Sendable {
         let version = a["CFBundleVersion"]
       else { throw ReleaseLookupError.unverifiable }
       for check in checks.values {
-        if let object = check as? [String: Any],
-          let versions = object["versions"] as? [String: String], versions != a
-        {
+        guard let object = check as? [String: Any] else {
           throw ReleaseLookupError.unverifiable
         }
+        if object.keys.contains("versions") {
+          guard let versions = object["versions"] as? [String: String], versions == a else {
+            throw ReleaseLookupError.unverifiable
+          }
+        }
       }
+      try validateLegacyAliases(info, versions: a, tag: tag, prerelease: prerelease)
       value = version
     }
     guard value.first != "0", !value.isEmpty, value.utf8.allSatisfy({ (48...57).contains($0) }),
       let build = UInt64(value), build > 0, build <= UInt64(Int64.max)
     else { throw ReleaseLookupError.unverifiable }
     return build
+  }
+
+  /// Legacy compatibility cannot override contradictory public/plist aliases.
+  /// Presence with a wrong type (including JSON null) is a failure, not absence.
+  private static func validateLegacyAliases(
+    _ info: [String: Any], versions: [String: String], tag: String, prerelease: Bool
+  ) throws {
+    let expected: [String: String?] = [
+      "bundleIdentifier": versions["CFBundleIdentifier"],
+      "CFBundleIdentifier": versions["CFBundleIdentifier"],
+      "buildVersion": versions["CFBundleVersion"], "build": versions["CFBundleVersion"],
+      "CFBundleVersion": versions["CFBundleVersion"],
+      "marketingVersion": versions["CFBundleShortVersionString"],
+      "version": versions["CFBundleShortVersionString"],
+      "CFBundleShortVersionString": versions["CFBundleShortVersionString"],
+      "tag": tag, "releaseTag": tag, "tag_name": tag,
+      "channel": prerelease ? "beta" : "stable",
+    ]
+    for (key, expectedValue) in expected where info.keys.contains(key) {
+      guard let expectedValue, let value = info[key] as? String, value == expectedValue else {
+        throw ReleaseLookupError.unverifiable
+      }
+    }
+    if let marketing = versions["CFBundleShortVersionString"] {
+      let expectedTag =
+        prerelease
+        ? "^v\(NSRegularExpression.escapedPattern(for: marketing))-beta\\.[1-9][0-9]*$"
+        : "^v\(NSRegularExpression.escapedPattern(for: marketing))$"
+      guard tag.range(of: expectedTag, options: .regularExpression) != nil else {
+        throw ReleaseLookupError.unverifiable
+      }
+    }
+    for key in ["prerelease", "isPrerelease"] where info.keys.contains(key) {
+      guard let flag = info[key] as? NSNumber, CFGetTypeID(flag) == CFBooleanGetTypeID(),
+        flag.boolValue == prerelease
+      else { throw ReleaseLookupError.unverifiable }
+    }
   }
 
   private static func object(_ data: Data) throws -> Any {

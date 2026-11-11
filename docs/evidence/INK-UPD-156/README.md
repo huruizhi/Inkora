@@ -15,3 +15,5 @@
 没有完整客户端实际安装/重启、生产信任源或UI验证证据。详见任务文档。
 
 入库文本日志仅规范化行尾空白；未规范化原件与官方许可副本另保留 `build/update-raw-evidence/` 待根备份。
+
+- release-lookup-review.md / release-lookup-review-{red,green}.txt：独立审查P2的公共解析反例与限定修复，最终15项hostless全过。
