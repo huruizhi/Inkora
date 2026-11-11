@@ -24,3 +24,21 @@ stage 校验 ZIP 顶层 Inkora.app、正式 bundleID、递增整数 build、营�
 回滚时暂停问题条目，以更高 build 修复，不自动降级。人工回退前备份 Markdown、图片 `.assets`、偏好及恢复目录；不得删除恢复草稿或用户文档。
 
 真实安装需要自有 A/B App fixture、独立默认值和临时安装目录，并运行 Sparkle 安装/重启路径，可能涉及 GUI/权限。本轮禁止运行 App，因此尚未执行。loopback 中断只验证真实传输异常及自有 sentinel 未被写入，不声称客户端安装恢复通过。
+
+## 公开发行信息契约：inkora.release.v1
+
+`manifest.py` 从实际候选 ZIP 的 Info.plist 和实际资产字节生成 `PROVENANCE.json`。它为将来的只读 GitHub 版本检查准备数据，不访问网络、不上传、不授权安装。当前输出仅为 **local candidate**；旁置 receipt 明确 `scope=local-candidate-only`、`published=false`、`installationAuthorized=false`，与上面的签名 staging 收据互不替代。
+
+```sh
+make updates-manifest UPDATE_MANIFEST_ARGS='--archive /absolute/Inkora.zip --asset /absolute/Inkora.zip --asset /absolute/Inkora.dmg --tag v0.1.0-beta.3 --channel beta --source-commit FULL_40_LOWER_HEX_COMMIT'
+make updates-manifest-verify UPDATE_MANIFEST_ARGS='--manifest /absolute/PROVENANCE.json --archive /absolute/Inkora.zip --asset /absolute/Inkora.zip --asset /absolute/Inkora.dmg --tag v0.1.0-beta.3 --channel beta --source-commit FULL_40_LOWER_HEX_COMMIT'
+make test-update-manifest
+```
+
+顶层字段固定为 `schema`、`bundleIdentifier`、`buildVersion`、`marketingVersion`、`channel`、`tag`、`sourceCommit`、`assets`。schema 为 `inkora.release.v1`；bundle 固定 `com.huruizhi.Inkora`。buildVersion 从 ZIP 读取，必须是无前导零的十进制正整数字符串，最大 `9223372036854775807`（与客户端 Int64 上限一致），不能用 JSON 数值代替。sourceCommit 必须为40位小写十六进制。stable tag 为 `v<marketingVersion>`，beta tag 为 `v<marketingVersion>-beta.<正整数>`，营销版本从 ZIP 取值。
+
+assets 按 name 排序，每项含 name、url、byteLength、sha256。必须包含候选 ZIP，名称不能重复，名称仅允许 ASCII 字母数字、点、下划线和连字符，以字母数字开头。长度和小写 SHA256 来自实际字节；URL 必须精确为 `https://github.com/huruizhi/Inkora/releases/download/<tag>/<name>`，不能含凭据、端口、query、fragment 或其他仓库/资产名。验证模式重算完整对象并精确对比，拒绝未知字段、重复JSON字段和混入冲突legacy字段。现有Beta2 legacy格式由客户端显式兼容分支处理，本工具不把它当新schema。
+
+未来得到实际 GitHub Release API 响应时，可以附加 `--release-metadata /absolute/release.json`：验证 tag_name、draft=false、prerelease/channel、html_url 指向固定仓库和tag，并把每个候选资产的 name、browser_download_url、size 与响应绑定；响应包含 digest 时也精确核验。该输入不会触发上传/发布，也不能证明当前远端内容没有变化；未来真正发布仍需重新获取响应、下载验证同字节及另行授权。
+
+每次尝试先撤销旧 PROVENANCE.json 和 receipt.json；verify 可以原地读同目录 manifest，先快照输入再撤销旧成功输出，验证失败不会留下旧候选冒充新结果。输出目录须固定且专用于此工具；不能把源 ZIP/资产放在同目录且命名 PROVENANCE.json 或 receipt.json。此 manifest 不校验 Apple 签名、公证、架构或客户端安装资格，相应门禁仍由发行/Sparkle签名工具负责。只读客户端对缺失、坏值或冲突返回“无法确认”，不从tag猜build、不称为“最新”。

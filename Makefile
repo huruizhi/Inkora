@@ -269,3 +269,11 @@ updates-verify:
 	python3 scripts/updates/staging.py --output "$(ARTIFACTS_DIR)/updates/staging" verify $(UPDATE_ARGS)
 test-updates:
 	python3 -m unittest discover -s tests/updates
+
+.PHONY: updates-manifest updates-manifest-verify test-update-manifest
+updates-manifest:
+	python3 scripts/updates/manifest.py --output "$(ARTIFACTS_DIR)/updates/manifest" create $(UPDATE_MANIFEST_ARGS)
+updates-manifest-verify:
+	python3 scripts/updates/manifest.py --output "$(ARTIFACTS_DIR)/updates/manifest" verify $(UPDATE_MANIFEST_ARGS)
+test-update-manifest:
+	python3 -m unittest discover -s tests/updates -p test_manifest.py
