@@ -19,6 +19,11 @@
 
 以下凭据、公证和干净用户步骤仍适用于后续正式分发；本例外只免除本次预览的这些完成声明，不制造相应通过证据。
 
+## 本轮 Beta2 未签名预览例外（INK-REL-160/161）
+
+用户于2026-11-11明确要求完成打包发布新预览版，授权 `v0.1.0-beta.2` / build5 使用本轮新构建的 ad-hoc/runtime 候选。旧 build4 未发候选保留。执行者161只准备并验证本地包，根管理者负责实际发布和公开下载复验。
+本例外保留正式 `make release` 凭据门槛、Sandbox、Hardened Runtime 与 Library Validation；无 Developer ID/公证，Gatekeeper 可能拦截，下载首启与完整桌面验收尚未完成。不得宣称自动安装上线或正式质量门槛通过。
+
 ## 环境与入口
 
 macOS 14+、完整 Xcode（含系统 Python 3）、仓库既有 XcodeGen / Node / 固定 pnpm；先按 README 执行 `make setup`。

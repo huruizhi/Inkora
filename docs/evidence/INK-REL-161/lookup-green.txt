@@ -1,0 +1,86 @@
+Building for debugging...
+[Planning deferred tasks]
+[27 / 50]
+[28 / 51] UpdatePolicy
+[40 / 94]
+[47 / 94]
+[48 / 94]
+[53 / 94]
+[57 / 94]
+[61 / 94]
+[63 / 94]
+[64 / 94]
+[71 / 94] UpdatePolicy
+[79 / 94] UpdatePolicy
+[84 / 95] UpdatePolicyTests-product
+[103 / 133]
+[108 / 133]
+[111 / 133]
+[114 / 133]
+[115 / 133]
+[127 / 133] UpdatePolicyTests-product
+[129 / 133] UpdatePolicyTests-product
+Build complete! (4.75秒)
+Test Suite 'All tests' started at 2026-11-11 16:32:40.257.
+Test Suite 'UpdatePolicyTests.xctest' started at 2026-11-11 16:32:40.257.
+Test Suite 'ReleaseLookupTests' started at 2026-11-11 16:32:40.257.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testHistoricalBeta1RejectsChangedBytesChannelAndMissingAssets]' started.
+/private/tmp/inkora-update-tests.BZstj4/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:40: error: -[UpdatePolicyTests.ReleaseLookupTests testHistoricalBeta1RejectsChangedBytesChannelAndMissingAssets] : failed: caught error: "Error Domain=NSCocoaErrorDomain Code=260 "未能打开文件“beta1-public-provenance.json”，因为它不存在。" UserInfo={NSFilePath=/private/tmp/inkora-update-tests.BZstj4/tests/InkoraTests/Fixtures/beta1-public-provenance.json, NSURL=file:///private/tmp/inkora-update-tests.BZstj4/tests/InkoraTests/Fixtures/beta1-public-provenance.json, NSUnderlyingError=0x7a974cdd10 {Error Domain=NSPOSIXErrorDomain Code=2 "No such file or directory"}}"
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testHistoricalBeta1RejectsChangedBytesChannelAndMissingAssets]' failed (0.041 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyPrereleaseAliasesRequireActualMatchingBooleans]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyPrereleaseAliasesRequireActualMatchingBooleans]' passed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases]' passed (0.003 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRequiresMatchingPositiveNumericBuild]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRequiresMatchingPositiveNumericBuild]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testNewBuildThenActualHistoricalBeta1ThroughPublicLookup]' started.
+/private/tmp/inkora-update-tests.BZstj4/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:40: error: -[UpdatePolicyTests.ReleaseLookupTests testNewBuildThenActualHistoricalBeta1ThroughPublicLookup] : failed: caught error: "Error Domain=NSCocoaErrorDomain Code=260 "未能打开文件“beta1-public-provenance.json”，因为它不存在。" UserInfo={NSFilePath=/private/tmp/inkora-update-tests.BZstj4/tests/InkoraTests/Fixtures/beta1-public-provenance.json, NSURL=file:///private/tmp/inkora-update-tests.BZstj4/tests/InkoraTests/Fixtures/beta1-public-provenance.json, NSUnderlyingError=0x7a974ce190 {Error Domain=NSPOSIXErrorDomain Code=2 "No such file or directory"}}"
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testNewBuildThenActualHistoricalBeta1ThroughPublicLookup]' failed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testPublicManifestBindsReleaseAssetAndRejectsConflict]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testPublicManifestBindsReleaseAssetAndRejectsConflict]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testReadOnlyLookupUsesProvenanceInsteadOfTagVersion]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testReadOnlyLookupUsesProvenanceInsteadOfTagVersion]' passed (0.003 seconds).
+Test Suite 'ReleaseLookupTests' failed at 2026-11-11 16:32:40.309.
+	 Executed 9 tests, with 2 failures (2 unexpected) in 0.051 (0.051) seconds
+Test Suite 'TerminationReviewGateTests' started at 2026-11-11 16:32:40.309.
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testCancelAndSnapshotFailureKeepRecoveryAndAllowRetry]' started.
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testCancelAndSnapshotFailureKeepRecoveryAndAllowRetry]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testSaveAndDiscardBothFinishRecoveryAfterReview]' started.
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testSaveAndDiscardBothFinishRecoveryAfterReview]' passed (0.000 seconds).
+Test Suite 'TerminationReviewGateTests' passed at 2026-11-11 16:32:40.309.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'UpdateInstallationStateTests' started at 2026-11-11 16:32:40.309.
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testPreinstallationSignatureFailureUnlocksChannel]' started.
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testPreinstallationSignatureFailureUnlocksChannel]' passed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testTerminalUnpreparedFailuresRecoverButPreparedAndOldWorkRemain]' started.
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testTerminalUnpreparedFailuresRecoverButPreparedAndOldWorkRemain]' passed (0.001 seconds).
+Test Suite 'UpdateInstallationStateTests' passed at 2026-11-11 16:32:40.311.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'UpdatePolicyTests' started at 2026-11-11 16:32:40.311.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testConfigurationRequiresTrustAndHTTPS]' started.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testConfigurationRequiresTrustAndHTTPS]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testLaunchPolicyExcludesDebugAndTestHosts]' started.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testLaunchPolicyExcludesDebugAndTestHosts]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testPreferencesPersistExplicitOptOutAndChannel]' started.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testPreferencesPersistExplicitOptOutAndChannel]' passed (0.001 seconds).
+Test Suite 'UpdatePolicyTests' passed at 2026-11-11 16:32:40.313.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'UpdateServiceTests' started at 2026-11-11 16:32:40.313.
+Test Case '-[UpdatePolicyTests.UpdateServiceTests testSDKSessionLocksChannelAndPreventsDuplicateCheck]' started.
+Test Case '-[UpdatePolicyTests.UpdateServiceTests testSDKSessionLocksChannelAndPreventsDuplicateCheck]' passed (0.001 seconds).
+Test Suite 'UpdateServiceTests' passed at 2026-11-11 16:32:40.314.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'UpdatePolicyTests.xctest' failed at 2026-11-11 16:32:40.314.
+	 Executed 17 tests, with 2 failures (2 unexpected) in 0.056 (0.056) seconds
+Test Suite 'All tests' failed at 2026-11-11 16:32:40.314.
+	 Executed 17 tests, with 2 failures (2 unexpected) in 0.056 (0.057) seconds
+◇ Test run started.
+↳ Testing Library Version: 2403
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
+Note: Some test targets reported failures:
+  - UpdatePolicyTests (XCTest)
