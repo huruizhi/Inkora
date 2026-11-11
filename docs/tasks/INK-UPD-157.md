@@ -28,3 +28,13 @@
 - 采用单条本地候选 staging；正式feed保留历史、上传后同字节SOURCE/PROVENANCE仍属未来发布流程，不能把staging receipt当正式资格。
 
 提交 fullSHA 与真实 remote 核对由最终交付消息给出。
+
+## 根批准追加：本地公开 manifest 契约
+
+保留 e13234f 原提交，新增独立追加提交；不动 A 文件。根批准 `inkora.release.v1`，与 A 已双向确认字段、Int64边界、严格tag/营销版本关系和资产URL规则。
+
+新增 `scripts/updates/manifest.py` 从实际ZIP plist/资产生成并验证本地候选 PROVENANCE，旁置收据明确未发布、无安装许可；可离线接收将来实际GitHub Release/asset响应作为额外校验输入。Make增加 updates-manifest / updates-manifest-verify / test-update-manifest。schema和使用说明见 docs/updates.md。
+
+实际命令 `MANIFEST_EVIDENCE=docs/evidence/INK-UPD-157 python3 -m unittest discover -s tests/updates -p test_manifest.py`：5项测试通过，内含多组正负子场景：正整数字符串/Int64边界、错bundle/build/tag/channel/source、未知/重复/legacy冲突JSON字段、HTTP/凭据/port/query/fragment/错repo和tag资产URL、改字节、旧receipt与候选输出失效、GitHub metadata的tag/draft/channel/URL/size/digest冲突，以及原地verify。结果见 manifest-tests.txt；local-PROVENANCE.json 与 manifest-receipt.json 是自有最小ZIP fixture样例，不是正式包或公开发行结果。原13项签名场景未因无关新增重复运行。
+
+未执行网络、上传、发布、安装或生产Keychain动作。完整Release/客户端自动更新限制仍同上节。
