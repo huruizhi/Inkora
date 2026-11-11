@@ -23,3 +23,5 @@
 根通过GitHub connector实际读取公开Beta1 Release：id439886819、prerelease=true、tag=v0.1.0-beta.1。其PROVENANCE资产SHA256为b29c77533ab291232e7d612f6ca293200ea93a8858e9d7da7a7d5327b19a7e26，与本地匿名下载原件一致；ZIP本地plist为正式bundle/build3。旧清单实际只有顶层build/version/releaseTag/artifacts，缺bundle字段，并非Beta2的checks版本结构。已告知A：只能精确固定该历史清单适配，不能通用放松缺bundle规则；不适配则返回无法确认，禁止伪报最新。
 
 根现读官方sandboxing说明并实际枚举固定SDK嵌套权限：Downloader/Installer/Updater为空，Autoupdate仅原供应者application-identifier；本票内向外签名不传播供应者team或主App权限。此核读不代替同Team生产运行证据。
+
+157追加7b67471已核读并吸收为d801e85：根独立执行 `make test-update-manifest`，5测试通过，包含实际候选ZIP/资产字节重算、严格版本边界、未知/冲突字段、GitHub Release绑定及旧成功输出失效。根日志在 `artifacts/INK-UPD-155/manifest-tests.log`；`git diff --check`通过。输出仍为本地候选，无发布或安装授权。Native交付固定后再做组合两轴审查与集中完整门禁。
