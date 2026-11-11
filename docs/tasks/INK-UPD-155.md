@@ -39,3 +39,9 @@
 158结论书面hard0，2项低优先级judgement；159发现1项P2：ReleaseLookup旧格式忽略冲突顶层语义字段且非字符串schema回落legacy。两份原报告已吸收；根已交156原作者限定修复并要求公共解析红绿及合法旧格式对照。此发现未关闭前不进入最终CI/合并。
 
 156/157固定远端SHA和clean已复核；源bundle及ignored证据、固定SDK缓存已备份到主仓artifacts/backups/INK-UPD-155，bundle verify、tar可读、SHA记录通过。此为初次固定副本，后续补正和审查证据仍需追加备份；尚未回收任何工作区。
+
+## 限定修复结算
+
+156追加27420b26已吸收为0993c32；根实际运行 `docs/evidence/INK-UPD-156/run-policy-tests.sh`，15项通过，保留管理者postfix-policy-tests.log。仅解析/同域测试变化，不重复未受影响的完整本地门禁；最终默认CI仍须覆盖精确最终HEAD。
+
+159固定0993c32独立公共解析反例复验：唯一P2关闭，原合法旧格式与新schema对照保持，通过8组限定边界；报告8c9469d已吸收。158同一固定修复静态复核无新增书面hard，原两judgement保留；报告98d3d10已吸收。两份首稿逐字保留，未将作者/root结果冒充独立自跑。最终准备默认CI，ui-tests=false、full-bench=false；未创建生产密钥、未发布feed/安装。
