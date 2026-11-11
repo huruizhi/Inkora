@@ -10,3 +10,7 @@
 2. **possible Primitive Obsession**：新增 `app/Sources/UpdateInstallationState.swift:35–41` 以 `domain: String, code: Int` 和 `"SUSparkleErrorDomain", [3000, 3001, 3002]` 表达允许释放意图的失败类别。建议 SDK adapter 用官方命名常量映射成小型领域失败枚举，独立状态机消费该枚举。当前数值与固定 2.10 头文件一致，未发现错误分类；建议旨在使安全判断可读且减少 SDK 变更时的同步点。
 
 其余十项 Fowler baseline 已逐项考虑，未见值得单列的新增判断项；跳过格式等工具强制项。独立运行 manifest 5项、archive scheme stub 2项均通过。未运行完整 Native/Release/CI、UI/IME/macOS14 或真实安装；作者与根的历史证据仅引用，不能替代本审查实跑。
+
+## Post-fix 限定静态复核
+
+固定新产品 `0993c323ba299d1561de6f4a8d15b683e7635ced`，相对 `fe9fa20af585232c1948da556d267c0a35db56b9`，仅核对 ReleaseLookup legacy 冲突补正、同域测试及文档/审查记录新增 hunk。未发现新增书面 hard 偏离；原两项 possible smell 保留，不新增判断项。不作 Spec 缺陷关闭或完成度裁定。未重跑测试、构建或工具验证；精确命令见 task 追加记录。
