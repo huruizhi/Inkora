@@ -1,0 +1,1 @@
+第一次四处检查probe在archive调用editor-bundle-smoke时exit65：Release app is missing the entitlement required by WKWebView child processes。既有dry-run明确CODE_SIGNING_ALLOWED=NO archive，随后只对export执行显式ad-hoc/runtime签名；因此archive原件没有export的签名权限，不能称archive严格权限通过。probe终于finally卸载DMG。脚本修正为记录archive真实检查结果，正式候选export/ZIP/DMG必须严格通过；不改archive或包字节。离线HTML/CSP/JS检查在权限失败之前已执行通过。

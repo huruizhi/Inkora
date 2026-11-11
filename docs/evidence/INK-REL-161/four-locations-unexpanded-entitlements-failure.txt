@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/docs/evidence/INK-REL-161/check-candidate.py", line 34, in <module>
+    assert actual==expected,(actual,expected)
+AssertionError: ({'com.apple.security.app-sandbox': True, 'com.apple.security.files.bookmarks.app-scope': True, 'com.apple.security.files.user-selected.read-write': True, 'com.apple.security.network.client': True, 'com.apple.security.temporary-exception.mach-lookup.global-name': ['com.huruizhi.Inkora-spks', 'com.huruizhi.Inkora-spki']}, {'com.apple.security.app-sandbox': True, 'com.apple.security.files.bookmarks.app-scope': True, 'com.apple.security.files.user-selected.read-write': True, 'com.apple.security.network.client': True, 'com.apple.security.temporary-exception.mach-lookup.global-name': ['$(PRODUCT_BUNDLE_IDENTIFIER)-spks', '$(PRODUCT_BUNDLE_IDENTIFIER)-spki']})

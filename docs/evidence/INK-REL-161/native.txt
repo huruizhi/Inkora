@@ -1,0 +1,170 @@
+Writing result bundle at path:
+	/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/artifacts/test-results/rel161-native.xcresult
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008152-000C251C28C14036, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008152-000C251C28C14036, name:My Mac }
+error: the following command failed with exit code 0 but produced no further output
+SwiftCompile normal arm64 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift (in target 'Inkora' from project 'Inkora')
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift:445:5: warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+  62 |   // Window navigation may share an explicit directory grant. It is not document content.
+  63 |   var sidebarFolderAccess: SidebarWorkspaceBridge.FolderAccess?
+  64 |   private var diskVersion: DocumentDiskVersion?
+     |               `- note: mutation of this property is only permitted within the actor
+  65 |   private var missingOriginal = false
+  66 |   private(set) var fileState: DocumentFileState = .current
+     :
+ 443 |     let version = try DocumentDiskVersion(url: url)
+ 444 |     try read(from: version.data, ofType: typeName)
+ 445 |     diskVersion = version
+     |     `- warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+ 446 |     fileModificationDate = version.modified
+ 447 |     MainActor.assumeIsolated {
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift:480:11: warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 478 |       let original = absoluteOriginalContentsURL, original == fileURL
+ 479 |     {
+ 480 |       try validateOriginalForSaving()
+     |           `- warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 481 |     }
+ 482 |     try dataWriter.write(encodedDocumentData(), to: url)
+     :
+ 855 |   }
+ 856 | 
+ 857 |   private func validateOriginalForSaving() throws {
+     |                |- note: calls to instance method 'validateOriginalForSaving()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 858 |     if let encodingError { throw encodingError }
+ 859 |     if isBareCRReadOnly { throw DocumentFileState.bareCR }
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift:482:26: warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 480 |       try validateOriginalForSaving()
+ 481 |     }
+ 482 |     try dataWriter.write(encodedDocumentData(), to: url)
+     |                          `- warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 483 |   }
+ 484 | 
+ 485 |   private func encodedDocumentData() -> Data {
+     |                |- note: calls to instance method 'encodedDocumentData()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 486 |     let body = Data(textStorage.get().utf8)
+ 487 |     guard bomStorage.get() else { return body }
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift:634:34: warning: expression implicitly coerced from 'Any?' to 'Any'
+ 632 |     withDelegate delegate: Any?, shouldClose: Selector?, contextInfo: UnsafeMutableRawPointer?
+ 633 |   ) {
+ 634 |     super.canClose(withDelegate: delegate, shouldClose: shouldClose, contextInfo: contextInfo)
+     |                                  |- warning: expression implicitly coerced from 'Any?' to 'Any'
+     |                                  |- note: provide a default value to avoid this warning
+     |                                  |- note: force-unwrap the value to avoid this warning
+     |                                  `- note: explicitly cast to 'Any' with 'as Any' to silence this warning
+ 635 |   }
+ 636 | 
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/tests/InkoraTests/SidebarWorkspaceBridgeTests.swift:168:14: warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+166 |       current: { .init(documentID: "document", revision: 0) }, chooseFolder: { _ in },
+167 |       mayOpen: { _, done in done(true) }, openFile: { _, _, _ in })
+168 |     weak var weakBridge = bridge
+    |              `- warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+169 |     bridge?.useFolder(
+170 |       .init(
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/tests/InkoraTests/SidebarWorkspaceBridgeTests.swift:247:14: warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+245 |           invalidations += 1
+246 |         }))
+247 |     weak var weakOwner = owner.timer
+    |              `- warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+248 |     await Task.detached {
+249 |       XCTAssertFalse(Thread.isMainThread)
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/tests/InkoraTests/SidebarWorkspaceBridgeTests.swift:168:14: warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+166 |       current: { .init(documentID: "document", revision: 0) }, chooseFolder: { _ in },
+167 |       mayOpen: { _, done in done(true) }, openFile: { _, _, _ in })
+168 |     weak var weakBridge = bridge
+    |              `- warning: weak variable 'weakBridge' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+169 |     bridge?.useFolder(
+170 |       .init(
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/tests/InkoraTests/SidebarWorkspaceBridgeTests.swift:247:14: warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+245 |           invalidations += 1
+246 |         }))
+247 |     weak var weakOwner = owner.timer
+    |              `- warning: weak variable 'weakOwner' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+248 |     await Task.detached {
+249 |       XCTAssertFalse(Thread.isMainThread)
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
+error: the following command failed with exit code 0 but produced no further output
+SwiftCompile normal arm64 /Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift (in target 'InkoraTests' from project 'Inkora')
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift:445:5: warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+  62 |   // Window navigation may share an explicit directory grant. It is not document content.
+  63 |   var sidebarFolderAccess: SidebarWorkspaceBridge.FolderAccess?
+  64 |   private var diskVersion: DocumentDiskVersion?
+     |               `- note: mutation of this property is only permitted within the actor
+  65 |   private var missingOriginal = false
+  66 |   private(set) var fileState: DocumentFileState = .current
+     :
+ 443 |     let version = try DocumentDiskVersion(url: url)
+ 444 |     try read(from: version.data, ofType: typeName)
+ 445 |     diskVersion = version
+     |     `- warning: main actor-isolated property 'diskVersion' can not be mutated from a nonisolated context
+ 446 |     fileModificationDate = version.modified
+ 447 |     MainActor.assumeIsolated {
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift:480:11: warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 478 |       let original = absoluteOriginalContentsURL, original == fileURL
+ 479 |     {
+ 480 |       try validateOriginalForSaving()
+     |           `- warning: call to main actor-isolated instance method 'validateOriginalForSaving()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 481 |     }
+ 482 |     try dataWriter.write(encodedDocumentData(), to: url)
+     :
+ 855 |   }
+ 856 | 
+ 857 |   private func validateOriginalForSaving() throws {
+     |                |- note: calls to instance method 'validateOriginalForSaving()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 858 |     if let encodingError { throw encodingError }
+ 859 |     if isBareCRReadOnly { throw DocumentFileState.bareCR }
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift:482:26: warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 480 |       try validateOriginalForSaving()
+ 481 |     }
+ 482 |     try dataWriter.write(encodedDocumentData(), to: url)
+     |                          `- warning: call to main actor-isolated instance method 'encodedDocumentData()' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 483 |   }
+ 484 | 
+ 485 |   private func encodedDocumentData() -> Data {
+     |                |- note: calls to instance method 'encodedDocumentData()' from outside of its actor context are implicitly asynchronous
+     |                `- note: main actor isolation inferred from inheritance from class 'NSDocument'
+ 486 |     let body = Data(textStorage.get().utf8)
+ 487 |     guard bomStorage.get() else { return body }
+
+/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-rel-161-beta2-package/app/Sources/InkoraDocument.swift:634:34: warning: expression implicitly coerced from 'Any?' to 'Any'
+ 632 |     withDelegate delegate: Any?, shouldClose: Selector?, contextInfo: UnsafeMutableRawPointer?
+ 633 |   ) {
+ 634 |     super.canClose(withDelegate: delegate, shouldClose: shouldClose, contextInfo: contextInfo)
+     |                                  |- warning: expression implicitly coerced from 'Any?' to 'Any'
+     |                                  |- note: provide a default value to avoid this warning
+     |                                  |- note: force-unwrap the value to avoid this warning
+     |                                  `- note: explicitly cast to 'Any' with 'as Any' to silence this warning
+ 635 |   }
+ 636 | 
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+note: Disabling hardened runtime with ad-hoc codesigning. (in target 'Inkora' from project 'Inkora')
+note: Run script build phase 'Build Editor' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Inkora' from project 'Inkora')
+2026-11-11 16:34:39.633 xcodebuild[73222:15946322]  DVTAssertions: Warning in IDEFrameworks/IDEFoundation/Execution/LaunchSystem/IDELaunchSession.m:395
+Details:  setRunnablePIDWithDiagnostics:logSection:andCompletionHandler: called without a completion handler - blocking until diagnostics setup completes. Callers should migrate to using a completion handler for better performance.
+Object:   <IDELaunchSession: 0x7909bf1980>
+Method:   -setRunnablePIDWithDiagnostics:logSection:andCompletionHandler:
+Thread:   <NSThread: 0x790c3caf40>{number = 6, name = (null)}
+Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
+2026-11-11 16:34:40.826 xcodebuild[73222:15946299] [MT] IDETestOperationsObserverDebug: 1.211 elapsed -- Testing started completed.
+2026-11-11 16:34:40.826 xcodebuild[73222:15946299] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-11 16:34:40.826 xcodebuild[73222:15946299] [MT] IDETestOperationsObserverDebug: 1.211 sec, +1.211 sec -- end
+Testing started
