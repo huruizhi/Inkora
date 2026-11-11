@@ -1,0 +1,188 @@
+OVERVIEW: Generate appcast from a directory of Sparkle update archives.
+
+Appcast files and deltas will be written to the archives directory.
+
+If an appcast file is already present in the archives directory, that file will
+be re-used and updated with new entries.
+Otherwise, a new appcast file will be generated and written.
+
+Old updates are automatically removed from the generated appcast feed and their
+update files are moved to old_updates/
+If --auto-prune-update-files is passed, old update files in this directory are
+deleted after 2 weeks.
+You may want to exclude files from this directory from being uploaded.
+
+Use the --versions option if you need to insert an update that is older than
+the latest update in your feed, or
+if you need to insert only a specific new version with certain parameters.
+
+.html, .md, or .txt files that have the same filename as an archive (except for
+the file extension) will be used for release notes for that item.
+For HTML release notes, if the contents of these files do not include a DOCTYPE
+or body tags, they will be treated as embedded CDATA release notes.
+Release notes for new items can be forced to be embedded by passing
+--embed-release-notes
+
+If appcast signing is required by any of the updates, the appcast and release
+note files may be updated for signing. If you make any manual modifications to
+the appcast or release note files, please re-run generate_appcast to ensure all
+signatures are updated.
+
+For new update entries, Sparkle infers the minimum system OS and hardware
+requirements based on your update's bundle (e.g. via inspecting
+LSMinimumSystemVersion or detecting which architecture slices are available).
+
+An example of an archives directory may look like:
+    ./my-app-release-zipfiles/
+        MyApp 1.0.zip
+        MyApp 1.0.html
+        MyApp 1.1.dmg
+        MyApp 1.1.md
+        appcast.xml
+        old_updates/
+
+EXAMPLES:
+    /tmp/inkora-sparkle-2.10.0/bin/generate_appcast ./my-app-release-dmg-files/
+    /tmp/inkora-sparkle-2.10.0/bin/generate_appcast -o appcast-name.xml
+./my-app-release-dmg-files/
+
+For more advanced options that can be used for publishing updates, see
+https://sparkle-project.org/documentation/publishing/ for further
+documentation.
+
+Extracted archives that are needed are cached in
+~/Library/Caches/Sparkle_generate_appcast to avoid re-computation in subsequent
+runs.
+
+Note that generate_appcast does not support package-based (.pkg) updates.
+
+USAGE: generate-appcast [<options>] <archives-source-dir>
+
+ARGUMENTS:
+  <archives-source-dir>   The path to the directory containing the update
+                          archives and delta files.
+
+OPTIONS:
+  --account <account>     The account name in your keychain associated with
+                          your private EdDSA (ed25519) key to use for signing
+                          new updates. (default: ed25519)
+  --ed-key-file <private-EdDSA-key-file>
+                          Path to the private EdDSA key file. If not specified,
+                          the private EdDSA key will be read from the Keychain
+                          instead. '-' can be used to echo the EdDSA key from a
+                          'secret' environment variable to the standard input
+                          stream. For example: echo "$PRIVATE_KEY_SECRET" |
+                          ./generate_appcast --ed-key-file -
+  --disable-signing-warning
+                          Disables adding a warning to signed appcast and
+                          release note files explaining that further
+                          modifications will require re-signing them. This flag
+                          has no effect if the files already have a signing
+                          warning embedded.
+  -f <private-dsa-key-file>
+                          Path to the private DSA key file. Only use this
+                          option for transitioning to EdDSA from older updates.
+  -n <dsa-key-name>       The name of the private DSA key. This option must be
+                          used together with `-k`. Only use this option for
+                          transitioning to EdDSA from older updates.
+  -s <private-EdDSA-key>  (DEPRECATED): The private EdDSA string (128
+                          characters). This option is deprecated. Please use
+                          the Keychain, or pass the key as standard input when
+                          using the --ed-key-file - option instead. This option
+                          is no longer supported for newly generated keys.
+  -k <keychain-for-dsa>   The path to the keychain to look up the private DSA
+                          key. This option must be used together with `-n`.
+                          Only use this option for transitioning to EdDSA from
+                          older updates.
+  --download-url-prefix <url>
+                          A URL that will be used as prefix for the URL from
+                          where updates will be downloaded.
+  --release-notes-url-prefix <url>
+                          A URL that will be used as prefix for constructing
+                          URLs for release notes.
+  --embed-release-notes   Embed release notes in a new update's description. By
+                          default, release note files are only embedded if they
+                          are HTML and do not include DOCTYPE or body tags.
+                          This flag forces release note files for newly created
+                          updates to always be embedded.
+  --full-release-notes-url <url>
+                          A URL that will be used for the full release notes.
+  --link <link>           A URL to the application's website which Sparkle may
+                          use for directing users to if they cannot download a
+                          new update from within the application. This will be
+                          used for new generated update items. By default, no
+                          product link is used.
+  --versions <versions>   An optional comma delimited list of application
+                          versions (specified by CFBundleVersion) to generate
+                          new update items for. By default, new update items
+                          are inferred from the available archives and current
+                          feed. Use this option if you need to insert only a
+                          specific new version or insert an old update in the
+                          feed at a different branch point (e.g. with a
+                          different minimum OS version or channel).
+  --maximum-versions <maximum-versions>
+                          The maximum number of versions to preserve in the
+                          generated appcast for each branch point (e.g. with a
+                          different minimum OS requirement). If this value is
+                          0, then all items in the appcast are preserved.
+                          (default: 3)
+  --maximum-deltas <maximum-deltas>
+                          The maximum number of delta items to create for the
+                          latest update for each branch point (e.g. with a
+                          different minimum OS requirement). (default: 5)
+  --delta-compression <delta-compression>
+                          The compression method to use for generating delta
+                          updates. Supported methods for version 3 delta files
+                          are 'lzma' (best compression, slowest), 'lzfse' (good
+                          compression, fast), 'lz4' (worse compression,
+                          fastest), and 'default'. Note that version 2 delta
+                          files only support 'bzip2', and 'default' so other
+                          methods will be ignored if version 2 files are being
+                          generated. The 'default' compression for version 3 or
+                          4 delta files is currently lzma. (default: default)
+  --channel <channel-name>
+                          The Sparkle channel name that will be used for
+                          generating new updates. By default, no channel is
+                          used. Old applications need to be using Sparkle 2 to
+                          use this feature.
+  --minimum-update-version <minimum-update-version>
+                          The minimum update version requirement that will be
+                          used for generating new updates. By default, no
+                          minimum update version is used.
+  --major-version <major-version>
+                          The last major or minimum autoupdate sparkle:version
+                          that will be used for generating new updates. By
+                          default, no last major version is used.
+  --ignore-skipped-upgrades-below-version <below-version>
+                          Ignore skipped major upgrades below this specified
+                          version. Only applicable for major upgrades.
+  --phased-rollout-interval <phased-rollout-interval>
+                          The phased rollout interval in seconds that will be
+                          used for generating new updates. By default, no
+                          phased rollout interval is used.
+  --critical-update-version <critical-update-version>
+                          The last critical update sparkle:version that will be
+                          used for generating new updates. An empty string
+                          argument will treat this update as critical coming
+                          from any application version. By default, no last
+                          critical update version is used. Old applications
+                          need to be using Sparkle 2 to use this feature.
+  --informational-update-versions <informational-update-versions>
+                          A comma delimited list of application
+                          sparkle:version's that will see newly generated
+                          updates as being informational only. An empty string
+                          argument will treat this update as informational
+                          coming from any application version. Prefix a version
+                          string with '<' to indicate (eg "<2.5") to indicate
+                          older versions than the one specified should treat
+                          the update as informational only. By default, updates
+                          are not informational only. --link must also be
+                          provided. Old applications need to be using Sparkle 2
+                          to use this feature, and 2.1 or later to use the '<'
+                          upper bound feature.
+  --auto-prune-update-files
+                          Automatically remove old update files in old_updates
+                          that haven't been touched in 2 weeks
+  -o <output-path>        Path to filename for the generated appcast (allowed
+                          when only one will be created).
+  -h, --help              Show help information.

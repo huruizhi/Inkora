@@ -1,0 +1,124 @@
+Building for debugging...
+[Planning deferred tasks]
+[27 / 50]
+[28 / 51] UpdatePolicy
+[40 / 91]
+[46 / 91]
+[47 / 91]
+[52 / 91]
+[56 / 91]
+[59 / 91]
+[61 / 91]
+[62 / 91]
+[76 / 91] UpdatePolicy
+[81 / 92] UpdatePolicyTests-product
+[101 / 132]
+[105 / 132]
+[110 / 132]
+[113 / 132]
+[114 / 132]
+[126 / 132] UpdatePolicyTests-product
+[128 / 132] UpdatePolicyTests-product
+Build complete! (5.12秒)
+Test Suite 'All tests' started at 2026-11-11 15:46:57.632.
+Test Suite 'UpdatePolicyTests.xctest' started at 2026-11-11 15:46:57.633.
+Test Suite 'ReleaseLookupTests' started at 2026-11-11 15:46:57.633.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases]' started.
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias channel must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias channel must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias channel must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias bundleIdentifier must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias bundleIdentifier must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias bundleIdentifier must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias buildVersion must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias buildVersion must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias buildVersion must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias marketingVersion must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias marketingVersion must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias marketingVersion must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias tag must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias tag must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias tag must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias build must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias build must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias build must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias CFBundleShortVersionString must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias CFBundleShortVersionString must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias CFBundleShortVersionString must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias tag_name must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias tag_name must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias tag_name must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias releaseTag must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias releaseTag must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias releaseTag must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias CFBundleVersion must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias CFBundleVersion must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias CFBundleVersion must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias version must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias version must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias version must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias CFBundleIdentifier must reject conflict
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias CFBundleIdentifier must reject 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:87: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error - Alias CFBundleIdentifier must reject <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:96: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:102: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases] : XCTAssertThrowsError failed: did not throw an error
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases]' failed (0.047 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions]' started.
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:120: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions] : XCTAssertThrowsError failed: did not throw an error
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:120: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions] : XCTAssertThrowsError failed: did not throw an error
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:120: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions] : XCTAssertThrowsError failed: did not throw an error
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:120: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions] : XCTAssertThrowsError failed: did not throw an error
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions]' failed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema]' started.
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:56: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema] : XCTAssertThrowsError failed: did not throw an error - Present schema must never fall back: 42
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:56: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema] : XCTAssertThrowsError failed: did not throw an error - Present schema must never fall back: <null>
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:56: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema] : XCTAssertThrowsError failed: did not throw an error - Present schema must never fall back: false
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:56: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema] : XCTAssertThrowsError failed: did not throw an error - Present schema must never fall back: []
+/private/tmp/inkora-update-tests.s9x1UM/Tests/UpdatePolicyTests/ReleaseLookupTests.swift:56: error: -[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema] : XCTAssertThrowsError failed: did not throw an error - Present schema must never fall back: [:]
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema]' failed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRequiresMatchingPositiveNumericBuild]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRequiresMatchingPositiveNumericBuild]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testPublicManifestBindsReleaseAssetAndRejectsConflict]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testPublicManifestBindsReleaseAssetAndRejectsConflict]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testReadOnlyLookupUsesProvenanceInsteadOfTagVersion]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testReadOnlyLookupUsesProvenanceInsteadOfTagVersion]' passed (0.004 seconds).
+Test Suite 'ReleaseLookupTests' failed at 2026-11-11 15:46:57.686.
+	 Executed 6 tests, with 47 failures (0 unexpected) in 0.052 (0.053) seconds
+Test Suite 'TerminationReviewGateTests' started at 2026-11-11 15:46:57.686.
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testCancelAndSnapshotFailureKeepRecoveryAndAllowRetry]' started.
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testCancelAndSnapshotFailureKeepRecoveryAndAllowRetry]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testSaveAndDiscardBothFinishRecoveryAfterReview]' started.
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testSaveAndDiscardBothFinishRecoveryAfterReview]' passed (0.000 seconds).
+Test Suite 'TerminationReviewGateTests' passed at 2026-11-11 15:46:57.687.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'UpdateInstallationStateTests' started at 2026-11-11 15:46:57.687.
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testPreinstallationSignatureFailureUnlocksChannel]' started.
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testPreinstallationSignatureFailureUnlocksChannel]' passed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testTerminalUnpreparedFailuresRecoverButPreparedAndOldWorkRemain]' started.
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testTerminalUnpreparedFailuresRecoverButPreparedAndOldWorkRemain]' passed (0.002 seconds).
+Test Suite 'UpdateInstallationStateTests' passed at 2026-11-11 15:46:57.689.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'UpdatePolicyTests' started at 2026-11-11 15:46:57.689.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testConfigurationRequiresTrustAndHTTPS]' started.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testConfigurationRequiresTrustAndHTTPS]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testLaunchPolicyExcludesDebugAndTestHosts]' started.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testLaunchPolicyExcludesDebugAndTestHosts]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testPreferencesPersistExplicitOptOutAndChannel]' started.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testPreferencesPersistExplicitOptOutAndChannel]' passed (0.001 seconds).
+Test Suite 'UpdatePolicyTests' passed at 2026-11-11 15:46:57.690.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'UpdateServiceTests' started at 2026-11-11 15:46:57.690.
+Test Case '-[UpdatePolicyTests.UpdateServiceTests testSDKSessionLocksChannelAndPreventsDuplicateCheck]' started.
+Test Case '-[UpdatePolicyTests.UpdateServiceTests testSDKSessionLocksChannelAndPreventsDuplicateCheck]' passed (0.001 seconds).
+Test Suite 'UpdateServiceTests' passed at 2026-11-11 15:46:57.692.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'UpdatePolicyTests.xctest' failed at 2026-11-11 15:46:57.692.
+	 Executed 14 tests, with 47 failures (0 unexpected) in 0.057 (0.058) seconds
+Test Suite 'All tests' failed at 2026-11-11 15:46:57.692.
+	 Executed 14 tests, with 47 failures (0 unexpected) in 0.057 (0.059) seconds
+◇ Test run started.
+↳ Testing Library Version: 2403
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
+Note: Some test targets reported failures:
+  - UpdatePolicyTests (XCTest)

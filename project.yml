@@ -4,17 +4,24 @@ options:
   deploymentTarget:
     macOS: "14.0"
   xcodeVersion: "16.0"
+  postGenCommand: mkdir -p Inkora.xcodeproj/project.xcworkspace/xcshareddata/swiftpm && cp config/Package.resolved Inkora.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 settings:
   base:
     SWIFT_VERSION: "6.0"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
-targets:
-  Inkora:
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
+targetTemplates:
+  InkoraApplication:
     type: application
     platform: macOS
     sources:
       - path: app/Sources
       - path: app/Resources/Assets.xcassets
+      - path: app/Resources/Sparkle-LICENSE.txt
+        buildPhase: resources
       - path: build/editor
         type: folder
         buildPhase: resources
@@ -37,6 +44,36 @@ targets:
           set -euo pipefail
           cd "$SRCROOT/editor"
           "$SRCROOT/.tools/node_modules/.bin/pnpm" build
+        basedOnDependencyAnalysis: false
+targets:
+  Inkora:
+    templates: [InkoraApplication]
+  InkoraDistribution:
+    templates: [InkoraApplication]
+    dependencies:
+      - package: Sparkle
+    settings:
+      base:
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) INKORA_SPARKLE
+        PRODUCT_NAME: Inkora
+    preBuildScripts:
+      - name: Require trusted signing identity
+        script: |
+          set -euo pipefail
+          case "$CODE_SIGN_IDENTITY" in
+            "Developer ID Application"*|"Apple Development"*) ;;
+            *) echo "Sparkle distribution requires Developer ID or Apple Development signing" >&2; exit 1 ;;
+          esac
+          test "$CODE_SIGNING_ALLOWED" = YES
+          test -n "$DEVELOPMENT_TEAM"
+          test -n "$EXPANDED_CODE_SIGN_IDENTITY"
+          test "$EXPANDED_CODE_SIGN_IDENTITY" != -
+          if test "$CONFIGURATION" = Release; then
+            case "$CODE_SIGN_IDENTITY" in
+              "Developer ID Application"*) ;;
+              *) echo "Release requires Developer ID Application" >&2; exit 1 ;;
+            esac
+          fi
         basedOnDependencyAnalysis: false
   InkoraTests:
     type: bundle.unit-test
@@ -84,3 +121,7 @@ schemes:
     test:
       targets:
         - InkoraUITests
+  InkoraDistribution:
+    build:
+      targets:
+        InkoraDistribution: all

@@ -1,0 +1,26 @@
+F.
+======================================================================
+FAIL: test_developer_id_archive_uses_distribution_scheme (__main__.ArchiveSchemeTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-upd-157-signed-appcast/tests/ci/release-scheme-smoke.py", line 72, in test_developer_id_archive_uses_distribution_scheme
+    self.check_archive('archive', 'InkoraDistribution', False)
+  File "/Users/rayhu/.paseo/worktrees/2cfxxe4z/ink-upd-157-signed-appcast/tests/ci/release-scheme-smoke.py", line 62, in check_archive
+    self.assertEqual(json.loads(record.read_text()), {
+AssertionError: {'scheme': 'Inkora', 'configuration': 'Release', 'destinati[114 chars]True} != {'scheme': 'InkoraDistribution', 'configuration': 'Release'[126 chars]True}
+  {'action': 'archive',
+   'bundle': True,
+   'configuration': 'Release',
+   'destination': 'generic/platform=macOS',
+   'manual': True,
+   'runtime': True,
+-  'scheme': 'Inkora',
++  'scheme': 'InkoraDistribution',
+?                   ++++++++++++
+
+   'unsigned': False}
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.356s
+
+FAILED (failures=1)

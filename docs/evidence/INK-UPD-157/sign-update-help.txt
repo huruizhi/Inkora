@@ -1,0 +1,67 @@
+OVERVIEW: Sign or verify an update file using your signing keys.
+
+sign_update can be used to sign or verify update archives, delta updates, pkg
+updates, appcast feeds, and release note files.
+
+The signing keys are automatically read from the Keychain if no
+<private-key-file> is specified.
+
+For signing update archives, sign_update will output an EdDSA signature and
+length attributes to use for your update's appcast item enclosure.
+
+For signing release note files, sign_update will output an EdDSA signature and
+length attributes to use for your update's appcast releaseNotesLink.
+Additionally, the release notes file may be modified to include a warning about
+making future modifications to the file (unless --disable-signing-warning is
+specified).
+
+For signing appcast feeds, sign_update will embed the signature inside the XML
+file and include a warning about making future modifications to the file
+(unless --disable-signing-warning is specified).
+
+For signing files, you can use -p to only print the EdDSA signature for
+automation.
+
+USAGE: sign-update [--account <account>] [--verify] [--ed-key-file <private-key-file>] [-p] <file-path> [--disable-signing-warning] [<verify-signature>] [-s <private-key>]
+
+ARGUMENTS:
+  <file-path>             The update archive, delta update, package (pkg),
+                          release notes file, or update feed (xml) to sign or
+                          verify. If the file is a update feed (xml), the file
+                          will be modified to include the generated signature.
+                          If the file is a release notes file, the file may
+                          also be updated to include a warning that it is
+                          signed (unless --disable-signing-warning is
+                          specified).
+  <verify-signature>      The signature to verify when --verify is passed.
+                          Don't pass this option for verifying appcast XML
+                          feeds, which already have a signature embedded.
+
+OPTIONS:
+  --account <account>     The account name in your keychain associated with
+                          your private keys to use for signing. (default:
+                          ed25519)
+  --verify                Verify that the file is signed correctly. If this is
+                          set, a second argument <verify-signature> denoting
+                          the signature must be passed after the <update-path>.
+  -f, --ed-key-file <private-key-file>
+                          Path to the file containing the private EdDSA
+                          (ed25519) key. '-' can be used to echo the EdDSA key
+                          from a 'secret' environment variable to the standard
+                          input stream. For example: echo "$PRIVATE_KEY_SECRET"
+                          | ./sign_update --ed-key-file -
+  -p                      Only prints the signature when signing a file without
+                          extra metadata. For signing XML files, nothing will
+                          be printed because the signature is embedded inside
+                          the file.
+  --disable-signing-warning
+                          Disables adding a warning to signed appcast and
+                          release note files explaining that further
+                          modifications will require re-signing them. This flag
+                          has no effect if the files already have a signing
+                          warning embedded.
+  -s <private-key>        (DEPRECATED): The private EdDSA (ed25519) key. Please
+                          use the Keychain, or pass the key as standard input
+                          when using --ed-key-file - instead. This option is no
+                          longer supported for newly generated keys.
+  -h, --help              Show help information.

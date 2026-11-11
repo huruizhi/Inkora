@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0"><channel><title>Inkora</title><link>https://example.org/appcast.xml</link><item><title>Inkora 0.1.0</title><sparkle:version>10</sparkle:version><sparkle:shortVersionString>0.1.0</sparkle:shortVersionString><sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion><enclosure url="https://example.org/Inkora.zip" length="17621" type="application/octet-stream" sparkle:edSignature="aizdGW04MwQiRQYez3ZJoPSqF8cvfgRc30zKHglyxPCcyZF6sb00OK5FsPMKVgGKHeuJXi3IK9G9NxdFRslhAA=="></enclosure></item></channel></rss><!-- sparkle-signatures:
+edSignature: ed3JXLBvTLOz1B02nXkNipMxn9hzCGEFLctUmObzIvuWH8m7OcXjVLT+r0+PYrbpwREX5Cx7enO5YF8ka4r5CQ==
+length: 890
+-->

@@ -1,0 +1,47 @@
+# INK-UPD-155：检查更新与自动更新管理
+
+用户2026-11-11新增明确功能要求；基线cf889ab1f9671bd90fb2820883c907edc3fa92fa。已核对Issue31仍open、原生App无更新模块、现network.client已启用；官方Sparkle当前稳定2.10.0支持14+目标与Sandbox。新依赖/网络例外/范围见[实施契约](../design/secure-updates.md)，不改编辑器离线/CSP或发布授权。
+
+实现委派156 Native与157发行工具。先取得真实SDK/ad-hoc/终止语义事实，不凭“无DeveloperID”预设放弃或放松安全；生产凭据另由根在可审阅接线后协调。本轮无新功能实现或通过结论，不占屏、不发布、不替换正式安装。
+
+## 实际委派与环境
+
+已通过Paseo重新核对本机host、无configured profile、可用Codex/GPT-6.1 Sol，采用medium/full-access：156 agent `e4e7fa96-1167-40eb-8ed8-72cf87977dc7` / workspace `wks_47e985c371d2a42c`；157 agent `195c0212-2f94-488b-8c1f-eef6b55e73e9` / workspace `wks_17d43c3b0c994db0`。独立分支均从b206f19契约提交起步，双方已获彼此ID以协调固定SDK/tools和接口，不修改对方文件；完成通知开启。
+
+根实际只读执行security find-identity（不输出身份名称或秘密）：exit0，valid identities=0、DeveloperID Application=0、Apple Development=0。此事实不能单独推出ad-hoc SDK加载失败，仍需156真实探针。生产key未创建，公钥/首个feed未发布；用户已选择自动检查和下载、退出时安装。
+
+## 接线与元数据决定
+
+已核读157固定提交e13234f的工具、签验测试、发行脚本及generate_keys实际帮助。A/B分别实证hardened ad-hoc加载失败，未放松LV。根批准显式INKORA_SPARKLE正式分发配置、共享DocumentTerminationReview，以及默认预览的真实只读GitHub版本检查；已发A继续实现。公开清单契约与严格版本解析见设计文档；已委派B独立追加本地清单生成/校验及测试，不发布、不触碰生产Keychain。
+
+157的13场景、内部签名和加载结果目前仅为作者证据；根尚未运行整合门禁，不冒称整体验收通过。生产generate_keys创建/查公钥命令已可审阅，尚未执行；生产签名、feed发布及真实客户端安装仍须各自证据。
+
+## 根已实际运行的限定检查
+
+吸收157固定e13234f为5e21856后，根独立执行 `SPARKLE_BIN=/tmp/inkora-sparkle-2.10.0/bin make test-updates`：2测试通过，其中官方Sparkle/CryptoKit签验13场景通过；只验证工具和fixture，无安装。`bash tests/ci/release-smoke.sh`通过，`git diff --check`通过。测试日志保留于管理者 `artifacts/INK-UPD-155/staging-tests.log`。Native组合、完整门禁及真实更新安装尚未运行。
+
+根通过GitHub connector实际读取公开Beta1 Release：id439886819、prerelease=true、tag=v0.1.0-beta.1。其PROVENANCE资产SHA256为b29c77533ab291232e7d612f6ca293200ea93a8858e9d7da7a7d5327b19a7e26，与本地匿名下载原件一致；ZIP本地plist为正式bundle/build3。旧清单实际只有顶层build/version/releaseTag/artifacts，缺bundle字段，并非Beta2的checks版本结构。已告知A：只能精确固定该历史清单适配，不能通用放松缺bundle规则；不适配则返回无法确认，禁止伪报最新。
+
+根现读官方sandboxing说明并实际枚举固定SDK嵌套权限：Downloader/Installer/Updater为空，Autoupdate仅原供应者application-identifier；本票内向外签名不传播供应者team或主App权限。此核读不代替同Team生产运行证据。
+
+157追加7b67471已核读并吸收为d801e85：根独立执行 `make test-update-manifest`，5测试通过，包含实际候选ZIP/资产字节重算、严格版本边界、未知/冲突字段、GitHub Release绑定及旧成功输出失效。根日志在 `artifacts/INK-UPD-155/manifest-tests.log`；`git diff --check`通过。输出仍为本地候选，无发布或安装授权。Native交付固定后再做组合两轴审查与集中完整门禁。
+
+157追加7c66719已吸收为b890ece；根独立运行两项正式/预览archive脚本stub测试及原release-smoke，均通过，日志位于管理者artifacts/INK-UPD-155。156固定a39bec26已按原三提交顺序吸收，包含其安装意图失败恢复补正；上述Native/SDK结果仍仅为作者证据，根待组合验证。整合diff空白检查发现157三份官方工具help原始输出有尾空白，已只规范展示副本的尾空白/末尾空行，逐字raw及双SHA清单保留在管理者artifacts/INK-UPD-155/raw-tool-help；不改CLI语义或测试。
+
+## 固定组合与独立复审
+
+产品固定 `fe9fa20af585232c1948da556d267c0a35db56b9`，基线cf889ab1，十二提交、76文件diff非空，空白检查通过。根委派新上下文158 Standards（agent 3ddcb32f-7c7a-400e-a13c-505d22212f08 / workspace wks_58ef3d47d0b7e611）与159 Spec（c34a8181-8c78-4b69-a18f-86d262bcc1b7 / wks_f3c1401b6917dce8），均从此固定提交审查，不修改产品。
+
+根在fe9fa20实际执行 `make lint test-non-ui release-bundle-check` exit0：editor811、Web Bridge16、Native226通过/0失败/9既有性能skip，Bridge Native16通过；test-ci及Release离线资源通过。xcresult原summary和总日志保留管理者artifacts/INK-UPD-155。另执行带固定SDK的 `make test-updates`：7测试通过，其中官方签验13场景通过。
+
+`make release-dry-run` exit0：未启动App，双架构arm64/x86_64、正式bundle/build4、结构签名/精确权限/离线ZIP与DMG通过且挂载已卸载。默认产物otool无Sparkle链接。此包仅预览，不能替代Distribution同Team签名或安装证明。组合日志保留既有actor/Any? warnings及Xcode `exit code 0 but produced no further output`诊断；实际命令exit0且xcresult通过。首次收据/备份发射脚本用了本机Python不支持的hashlib.file_digest，已改分块SHA256并成功重跑，未修改产品或候选字节。独立收据result.json记录上述精确版本与包SHA。
+
+158结论书面hard0，2项低优先级judgement；159发现1项P2：ReleaseLookup旧格式忽略冲突顶层语义字段且非字符串schema回落legacy。两份原报告已吸收；根已交156原作者限定修复并要求公共解析红绿及合法旧格式对照。此发现未关闭前不进入最终CI/合并。
+
+156/157固定远端SHA和clean已复核；源bundle及ignored证据、固定SDK缓存已备份到主仓artifacts/backups/INK-UPD-155，bundle verify、tar可读、SHA记录通过。此为初次固定副本，后续补正和审查证据仍需追加备份；尚未回收任何工作区。
+
+## 限定修复结算
+
+156追加27420b26已吸收为0993c32；根实际运行 `docs/evidence/INK-UPD-156/run-policy-tests.sh`，15项通过，保留管理者postfix-policy-tests.log。仅解析/同域测试变化，不重复未受影响的完整本地门禁；最终默认CI仍须覆盖精确最终HEAD。
+
+159固定0993c32独立公共解析反例复验：唯一P2关闭，原合法旧格式与新schema对照保持，通过8组限定边界；报告8c9469d已吸收。158同一固定修复静态复核无新增书面hard，原两judgement保留；报告98d3d10已吸收。两份首稿逐字保留，未将作者/root结果冒充独立自跑。最终准备默认CI，ui-tests=false、full-bench=false；未创建生产密钥、未发布feed/安装。

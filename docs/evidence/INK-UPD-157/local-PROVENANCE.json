@@ -1,0 +1,17 @@
+{
+  "schema": "inkora.release.v1",
+  "bundleIdentifier": "com.huruizhi.Inkora",
+  "buildVersion": "10",
+  "marketingVersion": "0.1.0",
+  "channel": "beta",
+  "tag": "v0.1.0-beta.3",
+  "sourceCommit": "e13234f2033aa3b5b97883ceae6e003658547ba7",
+  "assets": [
+    {
+      "name": "Inkora.zip",
+      "url": "https://github.com/huruizhi/Inkora/releases/download/v0.1.0-beta.3/Inkora.zip",
+      "byteLength": 527,
+      "sha256": "61e01b06313e013df4153e7d1f7787efa513a59ea1ae2912c76f466e87f9fbf7"
+    }
+  ]
+}

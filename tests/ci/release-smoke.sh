@@ -64,12 +64,20 @@ root, tmp = map(pathlib.Path, sys.argv[1:])
 info = tmp / 'Info.plist'
 info.write_bytes(plistlib.dumps({'CFBundleIdentifier': 'com.huruizhi.Inkora'}))
 expected = root / 'app/Resources/Inkora.entitlements'
-entitlements = plistlib.loads(expected.read_bytes())
+expanded = tmp / 'expanded.entitlements'
+subprocess.run(['python3', str(root / 'scripts/release/metadata.py'), 'entitlements', str(expected), str(expanded)], check=True)
+entitlements = plistlib.loads(expanded.read_bytes())
 cmd = ['python3', str(root / 'scripts/release/metadata.py'), 'check', str(info), str(expected)]
 def check(value, success):
     result = subprocess.run(cmd, input=plistlib.dumps(value), capture_output=True)
     assert (result.returncode == 0) == success, result.stderr
 check(entitlements, True)
+# Source placeholders must expand exactly; no hardcoded exception list.
+placeholder = tmp / 'placeholder.entitlements'
+placeholder.write_bytes(plistlib.dumps({'fixture': ['$(PRODUCT_BUNDLE_IDENTIFIER)-spki']}))
+subprocess.run(['python3', str(root / 'scripts/release/metadata.py'), 'entitlements', str(placeholder), str(expanded)], check=True)
+assert plistlib.loads(expanded.read_bytes()) == {'fixture': ['com.huruizhi.Inkora-spki']}
+
 check(dict(entitlements, **{'com.apple.security.get-task-allow': True}), False)
 check(dict(entitlements, **{'com.apple.security.cs.allow-jit': True}), False)
 check(dict(entitlements, **{'com.apple.developer.team-identifier': 'WRONG'}), False)

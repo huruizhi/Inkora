@@ -1,0 +1,14 @@
+{
+  "verified": true,
+  "scope": "local-staging-only",
+  "sparkleVersion": "2.10.0",
+  "bundle": "com.huruizhi.Inkora",
+  "build": "10",
+  "channel": "stable",
+  "url": "https://example.org/Inkora.zip",
+  "feedURL": "https://example.org/appcast.xml",
+  "length": 17621,
+  "sha256": "0ef4583968d47f247b0a8e9613d43d3b8f4c7d9ac012ba240e914b2269477891",
+  "feedSHA256": "8d925587b37dd4cab48d0fb061adaee9a1a3012c2eb996f838e006ea86917cb3",
+  "publicKey": "QhElVBKlPuKVrGVBAGZyT5H0xntYs5djP164YfKzHb8="
+}

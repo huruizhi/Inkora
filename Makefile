@@ -106,6 +106,7 @@ test-ui-release: release-bundle-check
 test-ci: prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" tests/ci/entrypoint-smoke.sh
 	tests/ci/release-smoke.sh
+	python3 tests/ci/release-scheme-smoke.py
 	tests/ci/ui-lock-smoke.sh
 	node scripts/perf/compare-baseline.test.mjs
 
@@ -260,3 +261,20 @@ bench-production-webview: perf-samples editor-build generate require-xcode prepa
 		-destination 'platform=macOS' -derivedDataPath $(DERIVED_DATA) \
 		-resultBundlePath "$(ARTIFACTS_DIR)/test-results/production-perf.xcresult" \
 		-only-testing:InkoraTests/PerformanceWebViewTests/testProductionVisualWorkflowBenchmarks test
+
+# Local staging only. Arguments contain paths/public metadata, never key material.
+.PHONY: updates-stage updates-verify test-updates
+updates-stage:
+	python3 scripts/updates/staging.py --output "$(ARTIFACTS_DIR)/updates/staging" stage $(UPDATE_ARGS)
+updates-verify:
+	python3 scripts/updates/staging.py --output "$(ARTIFACTS_DIR)/updates/staging" verify $(UPDATE_ARGS)
+test-updates:
+	python3 -m unittest discover -s tests/updates
+
+.PHONY: updates-manifest updates-manifest-verify test-update-manifest
+updates-manifest:
+	python3 scripts/updates/manifest.py --output "$(ARTIFACTS_DIR)/updates/manifest" create $(UPDATE_MANIFEST_ARGS)
+updates-manifest-verify:
+	python3 scripts/updates/manifest.py --output "$(ARTIFACTS_DIR)/updates/manifest" verify $(UPDATE_MANIFEST_ARGS)
+test-update-manifest:
+	python3 -m unittest discover -s tests/updates -p test_manifest.py
