@@ -106,6 +106,7 @@ test-ui-release: release-bundle-check
 test-ci: prepare-artifacts
 	INKORA_ARTIFACTS_DIR="$(ARTIFACTS_DIR)" tests/ci/entrypoint-smoke.sh
 	tests/ci/release-smoke.sh
+	python3 tests/ci/release-scheme-smoke.py
 	tests/ci/ui-lock-smoke.sh
 	node scripts/perf/compare-baseline.test.mjs
 

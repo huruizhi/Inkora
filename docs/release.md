@@ -28,13 +28,13 @@ macOS 14+、完整 Xcode（含系统 Python 3）、仓库既有 XcodeGen / Node 
 
 | 命令 | 行为 |
 | --- | --- |
-| `make release-archive` | 构建离线资源、生成工程，Release `xcodebuild archive`，正式 bundle id 与 Hardened Runtime |
+| `make release-archive` | 构建离线资源、生成工程，Release `xcodebuild archive` 使用 InkoraDistribution（包含 Sparkle），正式 bundle id 与 Hardened Runtime |
 | `make release-sign` | 使用仓库 `ExportOptions.plist`，填入环境变量后执行 `xcodebuild -exportArchive`，method=developer-id；校验签名与权限 |
 | `make release-dmg` | 从已导出的 App 生成签名 DMG / ZIP；不公证，不代表可发布 |
 | `make release-notarize` | ZIP 提交公证并等待 Accepted → staple App → 重建 ZIP/DMG → 公证并 staple DMG |
 | `make release-verify` | 校验 App、DMG 内 App 与解压 ZIP 内 App；成功后生成 SHA256SUMS |
 | `make release` | 按 archive → sign → notarize（含打包）→ verify 顺序完整执行 |
-| `make release-dry-run` | 无凭据 archive → 显式 ad-hoc 签名 → DMG/ZIP → 结构验证；不提交 Apple、不做 Gatekeeper / staple 验证 |
+| `make release-dry-run` | 无凭据使用默认 Inkora scheme（不链接 Sparkle）archive → 显式 ad-hoc 签名 → DMG/ZIP → 结构验证；不提交 Apple、不做 Gatekeeper / staple 验证 |
 
 不要并行执行发布目标；每个 worktree 同一时间只运行一次发布操作。
 单独重跑 `release-sign`、`release-dmg` 会改变产物或移除票据，应重新执行 `release-notarize release-verify`。
