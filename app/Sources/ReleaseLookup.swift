@@ -1,4 +1,5 @@
 import CoreFoundation
+import CryptoKit
 import Foundation
 
 struct ReleaseInformation: Equatable, Sendable {
@@ -52,6 +53,20 @@ struct ReleaseLookup: Sendable {
   {
     guard let info = try object(metadata) as? [String: Any] else {
       throw ReleaseLookupError.unverifiable
+    }
+    // Exact historical public bytes, independently checked against the build 3 ZIP.
+    // This grants read-only release lookup compatibility, never installation trust.
+    let historicalSHA = "b29c77533ab291232e7d612f6ca293200ea93a8858e9d7da7a7d5327b19a7e26"
+    if SHA256.hash(data: metadata).map({ String(format: "%02x", $0) }).joined() == historicalSHA {
+      let base = "https://github.com/huruizhi/Inkora/releases/download/v0.1.0-beta.1/"
+      let required = Set(
+        ["zip", "dmg"].map {
+          base + "Inkora-0.1.0-beta.1-unsigned-universal.\($0)"
+        })
+      guard tag == "v0.1.0-beta.1", prerelease, required.isSubset(of: assetURLs) else {
+        throw ReleaseLookupError.unverifiable
+      }
+      return 3
     }
     let value: String
     if info.keys.contains("schema") {

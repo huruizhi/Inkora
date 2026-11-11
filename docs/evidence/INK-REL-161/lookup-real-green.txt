@@ -1,0 +1,85 @@
+warning: 'inkora-update-tests.1511fd': found 1 file(s) which are unhandled; explicitly declare them as resources or exclude from the target
+    /private/tmp/inkora-update-tests.1511fD/Tests/UpdatePolicyTests/Fixtures/beta1-public-provenance.json
+Building for debugging...
+[Planning deferred tasks]
+[27 / 50]
+[28 / 51] UpdatePolicy
+[40 / 94]
+[47 / 94]
+[48 / 94]
+[53 / 94]
+[57 / 94]
+[61 / 94]
+[63 / 94]
+[64 / 94]
+[71 / 94] UpdatePolicy
+[79 / 94] UpdatePolicy
+[84 / 95] UpdatePolicyTests-product
+[100 / 133]
+[106 / 133]
+[110 / 133]
+[111 / 133]
+[114 / 133]
+[122 / 133] UpdatePolicyTests-product
+[127 / 133] UpdatePolicyTests-product
+[129 / 133] UpdatePolicyTests-product
+Build complete! (4.72秒)
+Test Suite 'All tests' started at 2026-11-11 16:33:31.401.
+Test Suite 'UpdatePolicyTests.xctest' started at 2026-11-11 16:33:31.402.
+Test Suite 'ReleaseLookupTests' started at 2026-11-11 16:33:31.402.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testHistoricalBeta1RejectsChangedBytesChannelAndMissingAssets]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testHistoricalBeta1RejectsChangedBytesChannelAndMissingAssets]' passed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyPrereleaseAliasesRequireActualMatchingBooleans]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyPrereleaseAliasesRequireActualMatchingBooleans]' passed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsConflictingOrMistypedSemanticAliases]' passed (0.004 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsMalformedAdditionalCheckVersions]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRejectsPresentInvalidSchema]' passed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRequiresMatchingPositiveNumericBuild]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testLegacyRequiresMatchingPositiveNumericBuild]' passed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testNewBuildThenActualHistoricalBeta1ThroughPublicLookup]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testNewBuildThenActualHistoricalBeta1ThroughPublicLookup]' passed (0.004 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testPublicManifestBindsReleaseAssetAndRejectsConflict]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testPublicManifestBindsReleaseAssetAndRejectsConflict]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testReadOnlyLookupUsesProvenanceInsteadOfTagVersion]' started.
+Test Case '-[UpdatePolicyTests.ReleaseLookupTests testReadOnlyLookupUsesProvenanceInsteadOfTagVersion]' passed (0.001 seconds).
+Test Suite 'ReleaseLookupTests' passed at 2026-11-11 16:33:31.415.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.013 (0.013) seconds
+Test Suite 'TerminationReviewGateTests' started at 2026-11-11 16:33:31.415.
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testCancelAndSnapshotFailureKeepRecoveryAndAllowRetry]' started.
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testCancelAndSnapshotFailureKeepRecoveryAndAllowRetry]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testSaveAndDiscardBothFinishRecoveryAfterReview]' started.
+Test Case '-[UpdatePolicyTests.TerminationReviewGateTests testSaveAndDiscardBothFinishRecoveryAfterReview]' passed (0.000 seconds).
+Test Suite 'TerminationReviewGateTests' passed at 2026-11-11 16:33:31.416.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'UpdateInstallationStateTests' started at 2026-11-11 16:33:31.416.
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testPreinstallationSignatureFailureUnlocksChannel]' started.
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testPreinstallationSignatureFailureUnlocksChannel]' passed (0.001 seconds).
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testTerminalUnpreparedFailuresRecoverButPreparedAndOldWorkRemain]' started.
+Test Case '-[UpdatePolicyTests.UpdateInstallationStateTests testTerminalUnpreparedFailuresRecoverButPreparedAndOldWorkRemain]' passed (0.001 seconds).
+Test Suite 'UpdateInstallationStateTests' passed at 2026-11-11 16:33:31.418.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'UpdatePolicyTests' started at 2026-11-11 16:33:31.418.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testConfigurationRequiresTrustAndHTTPS]' started.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testConfigurationRequiresTrustAndHTTPS]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testLaunchPolicyExcludesDebugAndTestHosts]' started.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testLaunchPolicyExcludesDebugAndTestHosts]' passed (0.000 seconds).
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testPreferencesPersistExplicitOptOutAndChannel]' started.
+Test Case '-[UpdatePolicyTests.UpdatePolicyTests testPreferencesPersistExplicitOptOutAndChannel]' passed (0.001 seconds).
+Test Suite 'UpdatePolicyTests' passed at 2026-11-11 16:33:31.419.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'UpdateServiceTests' started at 2026-11-11 16:33:31.419.
+Test Case '-[UpdatePolicyTests.UpdateServiceTests testSDKSessionLocksChannelAndPreventsDuplicateCheck]' started.
+Test Case '-[UpdatePolicyTests.UpdateServiceTests testSDKSessionLocksChannelAndPreventsDuplicateCheck]' passed (0.001 seconds).
+Test Suite 'UpdateServiceTests' passed at 2026-11-11 16:33:31.420.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'UpdatePolicyTests.xctest' passed at 2026-11-11 16:33:31.420.
+	 Executed 17 tests, with 0 failures (0 unexpected) in 0.018 (0.018) seconds
+Test Suite 'All tests' passed at 2026-11-11 16:33:31.420.
+	 Executed 17 tests, with 0 failures (0 unexpected) in 0.018 (0.019) seconds
+◇ Test run started.
+↳ Testing Library Version: 2403
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

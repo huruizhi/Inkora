@@ -31,6 +31,82 @@ private final class ReleaseURLProtocol: URLProtocol, @unchecked Sendable {
 }
 
 final class ReleaseLookupTests: XCTestCase {
+  private func historicalBeta1() throws -> Data {
+    let local = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+      .appendingPathComponent("Fixtures/beta1-public-provenance.json")
+    let repository = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+      .appendingPathComponent("tests/InkoraTests/Fixtures/beta1-public-provenance.json")
+    return try Data(
+      contentsOf: FileManager.default.fileExists(atPath: local.path) ? local : repository)
+  }
+
+  private var historicalURLs: Set<String> {
+    Set(
+      ["zip", "dmg"].map {
+        "https://github.com/huruizhi/Inkora/releases/download/v0.1.0-beta.1/Inkora-0.1.0-beta.1-unsigned-universal.\($0)"
+      })
+  }
+
+  func testHistoricalBeta1RejectsChangedBytesChannelAndMissingAssets() throws {
+    let original = try historicalBeta1()
+    XCTAssertEqual(
+      try ReleaseLookup.build(
+        metadata: original, tag: "v0.1.0-beta.1",
+        prerelease: true, assetURLs: historicalURLs), 3)
+    for bytes in [original + Data(" ".utf8), Data("{}".utf8)] {
+      XCTAssertThrowsError(
+        try ReleaseLookup.build(
+          metadata: bytes, tag: "v0.1.0-beta.1",
+          prerelease: true, assetURLs: historicalURLs))
+    }
+    XCTAssertThrowsError(
+      try ReleaseLookup.build(
+        metadata: original, tag: "v0.1.0-beta.1",
+        prerelease: false, assetURLs: historicalURLs))
+    XCTAssertThrowsError(
+      try ReleaseLookup.build(
+        metadata: original, tag: "v0.1.0-beta.1",
+        prerelease: true, assetURLs: []))
+  }
+
+  func testNewBuildThenActualHistoricalBeta1ThroughPublicLookup() async throws {
+    let tag = "v0.1.0-beta.2"
+    let base = "https://github.com/huruizhi/Inkora/releases/download/"
+    let zip = base + tag + "/Inkora.zip"
+    let manifest: [String: Any] = [
+      "schema": "inkora.release.v1", "bundleIdentifier": "com.huruizhi.Inkora",
+      "buildVersion": "5", "marketingVersion": "0.1.0", "channel": "beta", "tag": tag,
+      "sourceCommit": String(repeating: "a", count: 40),
+      "assets": [
+        [
+          "name": "Inkora.zip", "url": zip, "byteLength": 123,
+          "sha256": String(repeating: "b", count: 64),
+        ]
+      ],
+    ]
+    let releases: [[String: Any]] = [tag, "v0.1.0-beta.1"].map { name in
+      let urls = name == tag ? Set([zip]) : historicalURLs
+      return [
+        "tag_name": name, "draft": false, "prerelease": true,
+        "html_url": "https://github.com/huruizhi/Inkora/releases/tag/" + name,
+        "assets": (urls.union([base + name + "/PROVENANCE.json"])).map {
+          ["name": URL(string: $0)!.lastPathComponent, "browser_download_url": $0]
+        },
+      ]
+    }
+    ReleaseURLProtocol.configure([
+      ReleaseLookup.endpoint.absoluteString: try JSONSerialization.data(withJSONObject: releases),
+      base + tag + "/PROVENANCE.json": try JSONSerialization.data(withJSONObject: manifest),
+      base + "v0.1.0-beta.1/PROVENANCE.json": try historicalBeta1(),
+    ])
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [ReleaseURLProtocol.self]
+    let session = URLSession(configuration: config)
+    defer { session.invalidateAndCancel() }
+    let result = try await ReleaseLookup(session: session).latest(channel: .beta)
+    XCTAssertEqual(result?.build, 5)
+  }
+
   private func metadata(build: String = "3") throws -> Data {
     let versions = ["CFBundleIdentifier": "com.huruizhi.Inkora", "CFBundleVersion": build]
     return try JSONSerialization.data(withJSONObject: [
