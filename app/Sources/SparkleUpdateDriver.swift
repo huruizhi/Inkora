@@ -6,10 +6,13 @@
   @MainActor
   final class SparkleUpdateDriver: NSObject, NativeUpdateDriver, SPUUpdaterDelegate {
     private let preferences: UpdatePreferences
+    private let installationState: UpdateInstallationState
+    private var activeAttempt: UUID?
     private var controller: SPUStandardUpdaterController!
 
     init(preferences: UpdatePreferences) throws {
       self.preferences = preferences
+      installationState = UpdateInstallationState(preferences: preferences)
       super.init()
       if let pending = preferences.pendingUpdateBuild, let pendingBuild = UInt64(pending),
         let current = UInt64(
@@ -37,7 +40,33 @@
     }
     func resetUpdateCycle() { controller.updater.resetUpdateCycle() }
     func updater(_ updater: SPUUpdater, didDownloadUpdate item: SUAppcastItem) {
-      preferences.pendingUpdateBuild = item.versionString
+      activeAttempt = installationState.downloaded(build: item.versionString)
+    }
+
+    func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) {
+      installationState.prepared(build: item.versionString)
+    }
+
+    func updater(
+      _ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
+      immediateInstallationBlock: @escaping () -> Void
+    ) -> Bool {
+      installationState.prepared(build: item.versionString)
+      return false
+    }
+
+    func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+      guard let activeAttempt else { return }
+      let failure = error as NSError
+      installationState.abort(attempt: activeAttempt, domain: failure.domain, code: failure.code)
+    }
+
+    func updater(
+      _ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck,
+      error: Error?
+    ) {
+      if let activeAttempt { installationState.finished(attempt: activeAttempt) }
+      activeAttempt = nil
     }
 
     func allowedChannels(for updater: SPUUpdater) -> Set<String> {
