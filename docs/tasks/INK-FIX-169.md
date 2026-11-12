@@ -99,3 +99,44 @@ heading/list 逐键仍出现空格回退。因此扩展任务继续，未将初�
 Undo/Redo、尾空格逐个删除与 snapshot；ATX 原有闭合 hash、setext 下划线、列表标记及 CRLF 均保持。
 两项列表正文同时持有可见尾空格的账本也已覆盖。实际输入两空格形成 hardbreak、四空格形成代码的
 负控通过，不能被此分支当普通空白保留。真实 WK 扩展仍由管理者串行补验。
+
+## 追加诊断：无空格 `#` 后组合输入候选失活（未修复）
+
+普通 `#` + space + 提交字符串在基线本就绿，不能覆盖用户“`#` 后无法继续输入”原报告。
+本阶段只补诊断，没有修改产品代码或组成输入守卫。
+
+独立运行有意保留红状态的诊断：
+
+```sh
+cd editor
+./node_modules/.bin/vitest run --config diagnostics/heading-composition.vitest.ts --silent=false
+```
+
+完整本机日志：`artifacts/INK-FIX-169/heading-composition.log`（相对工作树根目录）。
+测试使用独立 probe/config，不加入普通测试文件匹配范围；这不是跳过已有有效测试。
+实跑两次均为 3 例中 2 绿 1 红（约 0.6 秒）：
+
+| 初始原文 | 拼音候选阶段 | 确认字阶段 | stable 后原文 |
+| --- | --- | --- | --- |
+| 空原文 | Text 存活、`<p>zh</p>` | Text 存活、`<p>中</p>` | `中` |
+| `# ` | Text 存活、`<h1>zh</h1>` | Text 存活、`<h1>中</h1>` | `# 中` |
+| `#` | Text 已脱离、`<p>#zh</p>` | 原候选替换不再被观察，仍为 `<p>#zh</p>` | `#zh`，错误 |
+
+操作序列：boot→仅一次初始 focus→公开 DOM compositionstart→移除空块 trailing BR→append
+候选 Text(`zh`)→浏览器式选区移到候选末端→公开 input（insertCompositionText/isComposing）→自然等 20ms→
+在**原候选节点** replaceData 为 `中`（若仍连接则更新候选选区）→input→自然等 20ms→compositionend→
+whenCompositionStable。整个序列不调用中间 snapshot、不重新 focus、不私写 view.composing、也不调用私有 DOMObserver。
+
+`#` 候选阶段 view.composing 与 runtime.composing 均 true，raw=`#zh`，rawCaret=3、PM head=4、
+diagnostic 为空，saveEligible=false。说明 canonical heading→paragraph 已在活动组合输入期间发生。
+稳定后 saveEligible=true、raw 仍为 `#zh`，没有保住该候选上的确认字。负控在活动与确认阶段均保持候选节点。
+稳定边界后 Text 可以常规重建，因此诊断不要求 stable 以后原节点继续连接。
+
+初版探针遇到 jsdom 缺少 getComputedStyle/Range 几何方法，已经补齐纯布局 shim 后重跑；
+不得将这些 harness 环境异常作为产品失败。jsdom 没有实际输入法，此处是公开 DOM 事件与候选节点生命期模拟，
+需要管理者用真实 WK 同形独立复核，不能声称已获得物理 IME 证据。
+
+最小候选接线尚待裁决：dispatchTransaction 为已证明的空 ATX heading 失效候选签发临时 owner，
+accept/projectionContext 共同保持原文、候选正文与位置的有限对应，active/settling 期间保留活投影；
+endComposition 在安静且 PM composing=false 后以最终原文恢复 canonical、有向位置，再结算历史/一次逻辑 revision。
+禁止靠清 composing、提前结束候选或放行 snapshot 修复，禁止把临时证书扩大到所有语义差异。
