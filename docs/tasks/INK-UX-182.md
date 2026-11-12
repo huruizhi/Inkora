@@ -17,7 +17,7 @@
 
 按垂直切片先红后绿实现。最终补全测试命令、结果与未验边界，再进行独立Standards/Spec审查。
 
-参考：[审计](../../../../.worktrees/INK-AUDIT-179/docs/design/typora-homepage-gap-audit.md)、[官网表格](https://support.typora.io/Markdown-Reference/#tables)、官网insert-table/reorder-table/resize-table三段动画。
+参考：用户指定的本地审计 `.worktrees/INK-AUDIT-179/docs/design/typora-homepage-gap-audit.md`（该审计文件未纳入main）；可分享规格见[首批实施规格](../design/typora-table-parity.md)。另参照[官网表格](https://support.typora.io/Markdown-Reference/#tables)、官网insert-table/reorder-table/resize-table三段动画。
 
 ## 完成与实际验证
 
