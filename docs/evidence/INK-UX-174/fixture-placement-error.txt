@@ -1,0 +1,34 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-174/editor
+
+ ❯ src/heading-entry-runtime.test.ts (11 tests | 1 failed) 87ms
+   × keeps entry scoped to its own repeated heading rather than a first text match 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > keeps entry scoped to its own repeated heading rather than a first text match
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ type src/heading-entry-runtime.test.ts:20:39
+     18|     const tr = v.state.tr.insertText(character, from, to);
+     19|     if (!v.someProp('handleTextInput', handler => handler(v, from, to,…
+     20|     expect(runtime.status.unresolved).toBe(false);
+       |                                       ^
+     21|   }
+     22| }
+ ❯ src/heading-entry-runtime.test.ts:89:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  18:17:46
+   Duration  497ms (import 69%, tests 22%, transform 9%)
+

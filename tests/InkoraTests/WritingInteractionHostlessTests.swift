@@ -15,6 +15,85 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testHeadingEntryKeepsGrayMarkerAndBodySizeUntilEnter() throws {
+    for level in [1, 2] {
+      let marker = String(repeating: "#", count: level)
+      try withEditor("") { controller, web in
+        try focus("#editor p", in: web)
+        try keys(Array(marker).map(String.init), in: web)
+        XCTAssertEqual(
+          try js(
+            "parseFloat(getComputedStyle(document.querySelector('#editor .inkora-heading-entry')).fontSize)",
+            in: web) as? Double, 17)
+        try keys([" ", "标", "题"], in: web)
+        let presentation =
+          try js(
+            """
+            (() => {const h=document.querySelector('#editor .inkora-heading-entry-ready');
+            if(!h)return null;window.writingEntryHeading=h;
+            return [getComputedStyle(h).fontSize,getComputedStyle(h,'::before').content,
+              getComputedStyle(h,'::before').color !== getComputedStyle(h).color,h.textContent];})()
+            """, in: web) as? [Any]
+        XCTAssertEqual(presentation?[0] as? String, "17px")
+        XCTAssertEqual(presentation?[1] as? String, "\"\(marker) \"")
+        XCTAssertEqual(presentation?[2] as? Bool, true)
+        XCTAssertEqual(presentation?[3] as? String, "标题")
+        try pressEnter(in: web)
+        XCTAssertEqual(try snapshot(controller), marker + " 标题\n\n")
+        XCTAssertEqual(
+          try js("!!document.querySelector('#editor .inkora-heading-entry')", in: web) as? Bool,
+          false)
+        XCTAssertEqual(
+          try js(
+            "parseFloat(getComputedStyle(document.querySelector('#editor h\(level)')).fontSize)",
+            in: web) as? Double, level == 1 ? 34 : 25.5)
+        try keys(["正", "文"], in: web)
+        XCTAssertEqual(try snapshot(controller), marker + " 标题\n\n正文")
+      }
+    }
+  }
+
+  @MainActor
+  func testNewHeadingEntrySurvivesCompositionBeforeRendering() throws {
+    try withEditor("") { controller, web in
+      try focus("#editor p", in: web)
+      try keys(["#", " "], in: web)
+      let before = try versionedSnapshot(controller)
+      try startCandidate(in: web)
+      try confirmCandidate(in: web)
+      RunLoop.current.run(until: Date().addingTimeInterval(0.04))
+      XCTAssertEqual(try js("window.writingCandidate.isConnected", in: web) as? Bool, true)
+      XCTAssertEqual(
+        try js("!!document.querySelector('#editor .inkora-heading-entry-ready')", in: web) as? Bool,
+        true)
+      try endCandidate(in: web)
+      RunLoop.current.run(until: Date().addingTimeInterval(0.55))
+      let after = try versionedSnapshot(controller)
+      XCTAssertEqual(after.text, "# 中")
+      XCTAssertEqual(after.revision, before.revision + 1)
+      XCTAssertEqual(
+        try js("!!document.querySelector('#editor .inkora-heading-entry-ready')", in: web) as? Bool,
+        true)
+      try pressEnter(in: web)
+      XCTAssertEqual(try snapshot(controller), "# 中\n\n")
+      XCTAssertEqual(
+        try js("!!document.querySelector('#editor .inkora-heading-entry')", in: web) as? Bool, false
+      )
+    }
+  }
+
+  @MainActor
+  private func pressEnter(in web: WKWebView) throws {
+    _ = try js(
+      """
+      (() => {const e=document.querySelector('#editor');
+      const key=new KeyboardEvent('keydown',{key:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true});
+      if(e.dispatchEvent(key))document.execCommand('insertParagraph',false,null);return true;})()
+      """, in: web)
+    RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+  }
+
+  @MainActor
   func testEmptyHeadingBackspaceRemovesFormatAndAcceptsText() throws {
     try withEditor("") { controller, web in
       try focus("#editor p", in: web)

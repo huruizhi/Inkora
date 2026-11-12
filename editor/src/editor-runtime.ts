@@ -27,6 +27,7 @@ import { parse as parseCanonicalSource } from "./source-document";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
 import { contextToolDecorations, focusContextToolbar } from "./context-tools";
+import { HeadingEntryPresentation } from "./heading-entry";
 import type { Node as PMNode } from "prosemirror-model";
 import { footnoteReference } from "./technical-preview";
 import { protectedPreview } from "./protected-preview";
@@ -163,6 +164,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   private readonly session: SourceAuthoritySession;
   private pendingCompositionConfirmation?: { doc: PMNode; version: number; data: string; composition: boolean };
   private readonly imageResources = new ImageResourceRegistry();
+  private readonly headingEntry = new HeadingEntryPresentation();
   private readonly searchIdentity: { readonly documentID: string; readonly epoch: number };
 
   constructor(
@@ -337,6 +339,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
 
   enterSourceMode(): boolean {
     if (this.composing || !this.session.beginSource()) return false;
+    this.headingEntry.clear();
     this.renderSource();
     this.onChange(this.status, "status");
     return true;
@@ -618,6 +621,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
 
   destroy(): void {
     this.destroyed = true;
+    this.headingEntry.clear();
     this.technicalReturn = undefined;
     this.footnoteReturn = undefined;
     this.cancelCompositionQuietTimer();
@@ -713,7 +717,9 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     });
     view = new EditorView(this.parent, {
       state: this.session.state,
-      decorations: state => codeDecorations(state).add(state.doc, contextToolDecorations(state)),
+      decorations: state => codeDecorations(state).add(state.doc, [
+        ...contextToolDecorations(state), ...this.headingEntry.decorations(state),
+      ]),
       nodeViews: {
         code_block: codeBlockNodeView,
         protected_block: (node, _view, getPos) => this.technicalNode(node, getPos),
@@ -804,7 +810,11 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
         }
         if (transaction.selectionSet || transaction.docChanged) this.footnoteReturn = undefined;
         const before = this.session.currentRaw;
+        const beforeState = this.session.state;
+        const sourceAnchor = this.session.rawSelection.anchor;
         const accepted = this.session.dispatch(transaction);
+        if (accepted) this.headingEntry.advance(beforeState, this.session.state, before,
+          this.session.currentRaw, sourceAnchor, transaction, this.session.composing);
         lastDispatchAccepted = accepted;
         view.updateState(this.session.state);
         if (accepted && this.compositionPhase === "settling" &&
@@ -1029,6 +1039,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       return;
     }
     this.cancelCompositionQuietTimer();
+    const beforeState = this.session.state;
     if (!this.session.endComposition()) {
       this.onChange(this.status, "status");
       this.resolveStabilityWaiters(false);
@@ -1036,6 +1047,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     }
     this.compositionPhase = "idle";
     this.compositionID = undefined;
+    this.headingEntry.canonicalized(beforeState, this.session.state, this.session.currentRaw);
     this.view?.updateState(this.session.state);
     if (this.session.status.revision > this.publishedLogicalRevision) {
       this.publishedLogicalRevision = this.session.status.revision;

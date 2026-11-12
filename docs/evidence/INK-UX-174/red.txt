@@ -1,0 +1,63 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-174/editor
+
+ ❯ src/heading-entry-runtime.test.ts (8 tests | 7 failed) 65ms
+   × shows a gray level 1 marker until Enter, without changing source/history 38ms
+   × shows a gray level 2 marker until Enter, without changing source/history 5ms
+   × shows a gray level 3 marker until Enter, without changing source/history 4ms
+   × shows a gray level 4 marker until Enter, without changing source/history 4ms
+   × shows a gray level 5 marker until Enter, without changing source/history 4ms
+   × shows a gray level 6 marker until Enter, without changing source/history 4ms
+   × keeps a bare hash at entry size and returns unspaced text to a literal paragraph 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 1 marker until Enter, without changing source/history
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 2 marker until Enter, without changing source/history
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 3 marker until Enter, without changing source/history
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 4 marker until Enter, without changing source/history
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 5 marker until Enter, without changing source/history
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 6 marker until Enter, without changing source/history
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/heading-entry-runtime.test.ts:34:63
+     32|   type(prefix);
+     33|   const heading = view().dom.querySelector(`h${level}`)!;
+     34|   expect(heading?.classList.contains('inkora-heading-entry')).toBe(tru…
+       |                                                               ^
+     35|   expect(heading?.getAttribute('data-heading-entry-marker')).toBe(pref…
+     36|   expect(heading?.classList.contains('inkora-heading-entry-ready')).to…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > keeps a bare hash at entry size and returns unspaced text to a literal paragraph
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/heading-entry-runtime.test.ts:54:63
+     52|   boot(); type('#');
+     53|   const heading = view().dom.querySelector('h1')!;
+     54|   expect(heading?.classList.contains('inkora-heading-entry')).toBe(tru…
+       |                                                               ^
+     55|   expect(heading?.getAttribute('data-heading-entry-marker')).toBe('#');
+     56|   expect(heading?.classList.contains('inkora-heading-entry-ready')).to…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 1 passed (8)
+   Start at  18:14:14
+   Duration  347ms (import 58%, tests 25%, transform 17%)
+

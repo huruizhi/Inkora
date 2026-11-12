@@ -2,7 +2,7 @@
 # Actual production sources and XCTest, without launching an App or showing windows.
 set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
-out="$root/artifacts/INK-FIX-168"
+out="${INKORA_WRITING_ARTIFACTS_DIR:-$root/artifacts/INK-FIX-168}"
 platform=$(xcrun --show-sdk-platform-path)
 mkdir -p "$out/Resources.bundle/Contents/Resources"
 [[ -f "$root/build/editor/index.html" ]] || { print -u2 '先运行离线 editor build'; exit 1; }
@@ -17,7 +17,7 @@ import XCTest
   static func main() {
     let suite = XCTestSuite(forTestCaseClass: WritingInteractionHostlessTests.self)
     suite.run()
-    guard let run = suite.testRun, run.executionCount == 16, run.hasSucceeded else { exit(1) }
+    guard let run = suite.testRun, run.executionCount == 18, run.hasSucceeded else { exit(1) }
   }
 }
 SWIFT
