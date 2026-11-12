@@ -1,0 +1,8 @@
+{
+  "command": "make build-release",
+  "exitCode": 0,
+  "rawSHA256": "36a29ebdc0a382a47c930379da9f413a45bd59f57d2718d71cd8966d791d7d7b",
+  "rawBytes": 10551,
+  "rawPath": "artifacts/INK-FIX-198/build.raw.txt",
+  "buildSourceCommit": "89c2f4b68443bad9265ced9dcd7f86d6b48059b8"
+}

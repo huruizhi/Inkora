@@ -624,6 +624,80 @@ private final class DragRecordingWindow: NSWindow {
 
 extension SidebarNavigationTests {
   @MainActor
+  func testTitlebarDoubleClickFillsDesktopAndRestoresAfterLayoutRefresh() throws {
+    let screen = try XCTUnwrap(NSScreen.main)
+    let desktop = screen.visibleFrame
+    let window = DragRecordingWindow(
+      contentRect: NSRect(x: desktop.midX - 240, y: desktop.midY - 160, width: 480, height: 320),
+      styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+      backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    let surface = WindowTitlebarDragSurface(frame: try XCTUnwrap(window.contentView).bounds)
+    surface.autoresizingMask = [.width, .height]
+    window.contentView = surface
+    defer { window.close() }
+    let original = window.frame
+
+    try doubleClickTitlebar(surface, in: window)
+    XCTAssertEqual(window.frame, desktop, "双击应填满当前桌面可用区域")
+    XCTAssertFalse(window.styleMask.contains(.fullScreen))
+    XCTAssertEqual(window.draggedEvents.count, 1, "第二次按下必须放大，不能再次拖动")
+    surface.clear()  // Real WK resize invalidates geometry before publishing the next layout.
+    try doubleClickTitlebar(surface, in: window)
+    XCTAssertEqual(window.frame, original, "几何刷新后再次双击仍应恢复原尺寸和位置")
+
+    try doubleClickTitlebar(surface, in: window)
+    let resized = original.offsetBy(dx: 20, dy: 10)
+    window.setFrame(resized, display: false)
+    try doubleClickTitlebar(surface, in: window)
+    XCTAssertEqual(window.frame, desktop)
+    try doubleClickTitlebar(surface, in: window)
+    XCTAssertEqual(window.frame, resized, "手动移动后应记住新的恢复位置")
+    XCTAssertFalse(window.isVisible)
+  }
+
+  @MainActor
+  func testTitlebarDoubleClickRejectsControlsBodyAndNonresizableWindow() throws {
+    let window = DragRecordingWindow(
+      contentRect: NSRect(x: 100, y: 100, width: 600, height: 400),
+      styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    let surface = WindowTitlebarDragSurface(frame: try XCTUnwrap(window.contentView).bounds)
+    window.contentView = surface
+    defer { window.close() }
+    let original = window.frame
+    for point in [NSPoint(x: 30, y: 14), NSPoint(x: 570, y: 14), NSPoint(x: 200, y: 100)] {
+      try doubleClickTitlebar(surface, in: window, at: point)
+      XCTAssertEqual(window.frame, original)
+    }
+    XCTAssertTrue(window.draggedEvents.isEmpty)
+    window.styleMask.remove(.resizable)
+    try doubleClickTitlebar(surface, in: window)
+    XCTAssertEqual(window.frame, original)
+    XCTAssertFalse(window.isVisible)
+  }
+
+  @MainActor
+  private func doubleClickTitlebar(
+    _ surface: WindowTitlebarDragSurface, in window: NSWindow,
+    at point: NSPoint = NSPoint(x: 200, y: 14)
+  ) throws {
+    surface.apply(
+      TitlebarDragLayout(
+        protocolVersion: 1, type: "titlebarLayout",
+        viewportWidth: surface.bounds.width, viewportHeight: surface.bounds.height,
+        left: 90, right: surface.bounds.width - 50, top: 0, bottom: 28))
+    for count in 1...2 {
+      let event = try XCTUnwrap(
+        NSEvent.mouseEvent(
+          with: .leftMouseDown, location: surface.convert(point, to: nil), modifierFlags: [],
+          timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+          context: nil, eventNumber: count, clickCount: count, pressure: 1))
+      surface.mouseDown(with: event)
+    }
+  }
+
+  @MainActor
   func testTitlebarDragHandsOriginalMouseDownToWindowAndRejectsControls() throws {
     let window = DragRecordingWindow(
       contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),

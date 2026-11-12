@@ -13,10 +13,12 @@ struct TitlebarDragLayout: Decodable {
 }
 
 /// Transparent hit-test surface above WKContentView. Only the title label and
-/// blank title strip receive native dragging; tools and document content stay in WK.
+/// blank title strip receive native dragging and desktop sizing; tools and document content stay in WK.
 @MainActor
 final class WindowTitlebarDragSurface: NSView {
   private var dragRect = NSRect.zero
+  private weak var maximizedWindow: NSWindow?
+  private var desktopFrames: (restore: NSRect, expanded: NSRect)?
 
   override var isFlipped: Bool { true }
 
@@ -61,7 +63,43 @@ final class WindowTitlebarDragSurface: NSView {
       window.attachedSheet == nil, event.window === window,
       dragRect.contains(convert(event.locationInWindow, from: nil))
     else { return }
-    window.performDrag(with: event)
+    if event.clickCount == 2 {
+      toggleDesktopSize(of: window)
+    } else if event.clickCount == 1 {
+      window.performDrag(with: event)
+    }
+  }
+
+  private func toggleDesktopSize(of window: NSWindow) {
+    guard window.styleMask.contains(.resizable), !window.styleMask.contains(.fullScreen),
+      !window.isMiniaturized, let desktop = window.screen?.visibleFrame,
+      desktop.width > 0, desktop.height > 0
+    else { return }
+
+    if maximizedWindow === window, let frames = desktopFrames,
+      framesMatch(window.frame, frames.expanded)
+    {
+      // A changed display or Dock configuration must not restore the window off-screen.
+      var restore = frames.restore
+      restore.size.width = min(restore.width, desktop.width)
+      restore.size.height = min(restore.height, desktop.height)
+      restore.origin.x = min(max(restore.minX, desktop.minX), desktop.maxX - restore.width)
+      restore.origin.y = min(max(restore.minY, desktop.minY), desktop.maxY - restore.height)
+      desktopFrames = nil
+      maximizedWindow = nil
+      window.setFrame(restore, display: true)
+    } else {
+      // Manual movement/resizing becomes the next restore point. Layout invalidation
+      // only clears dragRect; it must preserve this state across the resize itself.
+      desktopFrames = (restore: window.frame, expanded: desktop)
+      maximizedWindow = window
+      window.setFrame(desktop, display: true)
+    }
+  }
+
+  private func framesMatch(_ lhs: NSRect, _ rhs: NSRect) -> Bool {
+    abs(lhs.minX - rhs.minX) <= 1 && abs(lhs.minY - rhs.minY) <= 1
+      && abs(lhs.width - rhs.width) <= 1 && abs(lhs.height - rhs.height) <= 1
   }
 
   // The same inkora JSON transport and origin checks as document events. Geometry

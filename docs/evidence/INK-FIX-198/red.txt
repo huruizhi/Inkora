@@ -1,0 +1,30 @@
+Test Suite 'SidebarNavigationTests' started at 2026-11-13 01:05:14.292.
+Test Case '-[main.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' started.
+Test Case '-[main.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' passed (0.118 seconds).
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' started.
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' passed (0.022 seconds).
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' started.
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' passed (0.001 seconds).
+Test Case '-[main.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' started.
+Test Case '-[main.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' passed (0.323 seconds).
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' started.
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' passed (7.327 seconds).
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' started.
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' passed (0.031 seconds).
+Test Case '-[main.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' started.
+Test Case '-[main.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' passed (0.050 seconds).
+Test Case '-[main.SidebarNavigationTests testTitlebarDoubleClickFillsDesktopAndRestoresAfterLayoutRefresh]' started.
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-198/tests/InkoraTests/SidebarNavigationTests.swift:642: error: -[main.SidebarNavigationTests testTitlebarDoubleClickFillsDesktopAndRestoresAfterLayoutRefresh] : XCTAssertEqual failed: ("(750.0, 365.0, 480.0, 320.0)") is not equal to ("(60.0, 0.0, 1860.0, 1050.0)") - 双击应填满当前桌面可用区域
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-198/tests/InkoraTests/SidebarNavigationTests.swift:644: error: -[main.SidebarNavigationTests testTitlebarDoubleClickFillsDesktopAndRestoresAfterLayoutRefresh] : XCTAssertEqual failed: ("2") is not equal to ("1") - 第二次按下必须放大，不能再次拖动
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-198/tests/InkoraTests/SidebarNavigationTests.swift:653: error: -[main.SidebarNavigationTests testTitlebarDoubleClickFillsDesktopAndRestoresAfterLayoutRefresh] : XCTAssertEqual failed: ("(770.0, 375.0, 480.0, 320.0)") is not equal to ("(60.0, 0.0, 1860.0, 1050.0)")
+Test Case '-[main.SidebarNavigationTests testTitlebarDoubleClickFillsDesktopAndRestoresAfterLayoutRefresh]' failed (0.012 seconds).
+Test Case '-[main.SidebarNavigationTests testTitlebarDoubleClickRejectsControlsBodyAndNonresizableWindow]' started.
+Test Case '-[main.SidebarNavigationTests testTitlebarDoubleClickRejectsControlsBodyAndNonresizableWindow]' passed (0.007 seconds).
+Test Case '-[main.SidebarNavigationTests testTitlebarDragHandsOriginalMouseDownToWindowAndRejectsControls]' started.
+Test Case '-[main.SidebarNavigationTests testTitlebarDragHandsOriginalMouseDownToWindowAndRejectsControls]' passed (0.013 seconds).
+Test Case '-[main.SidebarNavigationTests testTitlebarInvalidGeometryAndResetRemoveDragAuthority]' started.
+Test Case '-[main.SidebarNavigationTests testTitlebarInvalidGeometryAndResetRemoveDragAuthority]' passed (0.000 seconds).
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' started.
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' passed (0.003 seconds).
+Test Suite 'SidebarNavigationTests' failed at 2026-11-13 01:05:22.201.
+	 Executed 12 tests, with 3 failures (0 unexpected) in 7.907 (7.909) seconds

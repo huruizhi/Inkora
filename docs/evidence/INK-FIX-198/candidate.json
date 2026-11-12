@@ -1,0 +1,22 @@
+{
+  "buildSourceCommit": "89c2f4b68443bad9265ced9dcd7f86d6b48059b8",
+  "bundleIdentifier": "com.huruizhi.Inkora",
+  "build": "13",
+  "marketingVersion": "0.1.0",
+  "minimumSystemVersion": "14.0",
+  "architectures": [
+    "x86_64",
+    "arm64"
+  ],
+  "signature": "ad-hoc; hardened runtime; source entitlements; not notarized",
+  "codesignStrictDeep": true,
+  "entitlementsMatch": true,
+  "offlineBundleSmoke": true,
+  "candidateNative": {
+    "tests": 12,
+    "failures": 0,
+    "visibleWindows": false
+  },
+  "installed": false,
+  "published": false
+}
