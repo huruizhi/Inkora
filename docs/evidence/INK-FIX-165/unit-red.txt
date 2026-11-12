@@ -1,0 +1,38 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/editor
+
+ ❯ src/heading-input-runtime.test.ts (4 tests | 4 failed) 45ms
+   × accepts the actual WebKit end-heading paragraph insertion for "# 标" 35ms
+   × accepts the actual WebKit end-heading paragraph insertion for "# 标 ##\n" 4ms
+   × accepts the actual WebKit end-heading paragraph insertion for "标题\n===\n" 3ms
+   × accepts the actual WebKit end-heading paragraph insertion for "﻿## 标\r\n" 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/heading-input-runtime.test.ts > accepts the actual WebKit end-heading paragraph insertion for "# 标"
+ FAIL  src/heading-input-runtime.test.ts > accepts the actual WebKit end-heading paragraph insertion for "# 标 ##\n"
+ FAIL  src/heading-input-runtime.test.ts > accepts the actual WebKit end-heading paragraph insertion for "标题\n===\n"
+ FAIL  src/heading-input-runtime.test.ts > accepts the actual WebKit end-heading paragraph insertion for "﻿## 标\r\n"
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/heading-input-runtime.test.ts:32:37
+     30|   tr.setSelection(TextSelection.create(tr.doc, heading.nodeSize + 1));
+     31|   view.dispatch(tr);
+     32|   expect(runtime.status.unresolved).toBe(false);
+       |                                     ^
+     33|   expect(runtime.snapshotText().ok).toBe(true);
+     34|   expect(view.state.doc.childCount).toBe(2);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Start at  10:35:27
+   Duration  548ms (import 61%, transform 29%, tests 10%)

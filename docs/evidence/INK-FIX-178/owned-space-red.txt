@@ -1,0 +1,29 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/editor
+
+ ❯ src/task-space-input-runtime.test.ts (16 tests | 1 failed | 15 skipped) 46ms
+   × completes a marker after an already accepted visible trailing space 45ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > completes a marker after an already accepted visible trailing space
+AssertionError: expected '- [] ' to be '- [ ] ' // Object.is equality
+
+Expected: "- [ ] "
+Received: "- [] "
+
+ ❯ src/task-space-input-runtime.test.ts:101:29
+     99|   view().dispatch(view().state.tr.setSelection(TextSelection.create(vi…
+    100|   type(' ');
+    101|   expect(runtime.getText()).toBe('- [ ] ');
+       |                             ^
+    102|   expect(view().dom.querySelector('input[type=checkbox]')).not.toBeNul…
+    103| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 skipped (16)
+   Start at  19:17:49
+   Duration  337ms (import 63%, tests 19%, transform 18%)

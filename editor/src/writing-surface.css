@@ -103,3 +103,23 @@ div#editor .inkora-code-block code { font-size: 14px; line-height: 1.7; }
 @media (prefers-color-scheme: dark) {
   div#editor a { color: #8bb9df; }
 }
+
+/* 新建标题输入中保留灰色源标记，回车完成该行后恢复标题排版。 */
+div#editor .inkora-heading-entry {
+  font-size: 1em;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  margin: 0 0 1em;
+  padding: 0;
+  border: 0;
+}
+div#editor .inkora-heading-entry::before {
+  content: attr(data-heading-entry-marker);
+  white-space: pre;
+  color: inherit;
+  user-select: none;
+}
+div#editor .inkora-heading-entry-ready::before {
+  color: color-mix(in srgb, CanvasText 35%, Canvas);
+}

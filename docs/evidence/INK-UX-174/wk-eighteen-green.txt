@@ -1,0 +1,39 @@
+Test Suite 'WritingInteractionHostlessTests' started at 2026-11-12 18:18:32.117.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' started.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' passed (2.147 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' passed (0.561 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' passed (0.364 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' passed (0.359 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' passed (0.861 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' started.
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' passed (0.158 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' passed (0.336 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingEntryKeepsGrayMarkerAndBodySizeUntilEnter]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingEntryKeepsGrayMarkerAndBodySizeUntilEnter]' passed (1.231 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' passed (0.364 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' passed (0.436 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' passed (0.382 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' passed (0.400 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' passed (0.363 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace]' passed (1.184 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testNewHeadingEntrySurvivesCompositionBeforeRendering]' started.
+Test Case '-[main.WritingInteractionHostlessTests testNewHeadingEntrySurvivesCompositionBeforeRendering]' passed (1.023 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' passed (0.527 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret]' started.
+Test Case '-[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret]' passed (2.320 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' started.
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' passed (0.538 seconds).
+Test Suite 'WritingInteractionHostlessTests' passed at 2026-11-12 18:18:45.676.
+	 Executed 18 tests, with 0 failures (0 unexpected) in 13.554 (13.559) seconds

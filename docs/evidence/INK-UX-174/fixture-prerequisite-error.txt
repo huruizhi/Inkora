@@ -1,0 +1,23 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-174/editor
+
+ ❯ src/heading-entry-runtime.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/heading-entry-runtime.test.ts [ src/heading-entry-runtime.test.ts ]
+Error: ENOENT: no such file or directory, open '../public/RENDERER_NOTICES.txt'
+ ❯ src/code-block-view.ts:1:1
+      1| import notices from "../public/RENDERER_NOTICES.txt?raw";
+       | ^
+      2| import "./code-tools.css";
+      3| import type { Node as PMNode } from "prosemirror-model";
+ ❯ src/editor-runtime.ts:33:1
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  18:14:04
+   Duration  506ms (worker 97%, environment 3%)

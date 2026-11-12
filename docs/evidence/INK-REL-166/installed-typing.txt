@@ -1,0 +1,5 @@
+Test Suite 'TypingHostlessTests' started at 2026-11-12 10:58:28.748.
+Test Case '-[main.TypingHostlessTests testEmptyDocumentHeadingTypingRemainsEditableAndCanPrepareToClose]' started.
+Test Case '-[main.TypingHostlessTests testEmptyDocumentHeadingTypingRemainsEditableAndCanPrepareToClose]' passed (0.460 seconds).
+Test Suite 'TypingHostlessTests' passed at 2026-11-12 10:58:29.209.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.460 (0.461) seconds

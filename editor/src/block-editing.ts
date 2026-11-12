@@ -25,7 +25,7 @@ import {
   splitListItem,
   wrapInList,
 } from "prosemirror-schema-list";
-import type { Command, Plugin } from "prosemirror-state";
+import { TextSelection, type Command, type Plugin } from "prosemirror-state";
 import { inkoraSchema } from "./schema";
 
 export function setHeading(level: number): Command {
@@ -82,6 +82,67 @@ const insertTabInCode: Command = (state, dispatch) => {
   return true;
 };
 
+export const clearEmptyHeading: Command = (state, dispatch, view) => {
+  const { empty, $from } = state.selection;
+  if (view?.composing || !empty || $from.depth !== 1 || $from.parent.type.name !== 'heading' ||
+      $from.parent.content.size !== 0 || $from.parentOffset !== 0) return false;
+  return setParagraph(state, dispatch, view);
+};
+
+// The generic joinBackward first joins list-item wrappers into a tight item
+// with two paragraphs, which has no exact Markdown representation. At the
+// first paragraph boundary, lift one level before continuing backward.
+export const listBoundaryBackspace: Command = (state, dispatch, view) => {
+  const { $from, empty } = state.selection;
+  if (empty && $from.parentOffset === 0 && $from.parent.type === inkoraSchema.nodes.paragraph &&
+      $from.parent.content.size > 0 && $from.index(-1) > 0 && !view?.composing &&
+      ($from.depth === 1 || $from.node(-1).type === inkoraSchema.nodes.blockquote)) {
+    const previous = $from.node(-1).child($from.index(-1) - 1);
+    if ((previous.type === inkoraSchema.nodes.bullet_list || previous.type === inkoraSchema.nodes.ordered_list) &&
+        previous.lastChild?.childCount === 1 && previous.lastChild.firstChild?.type === inkoraSchema.nodes.paragraph) {
+      if (dispatch) {
+        const joinAt = $from.before() - 3;
+        const tr = state.tr.delete($from.before(), $from.after()).insert(joinAt, $from.parent.content);
+        tr.setSelection(TextSelection.create(tr.doc, joinAt));
+        dispatch(tr.setMeta('inkoraParagraphAfterListJoin', true));
+      }
+      return true;
+    }
+  }
+  if (empty && $from.depth === 1 && $from.parent.type === inkoraSchema.nodes.paragraph &&
+      $from.parent.content.size === 0 && $from.index(0) > 0 &&
+      $from.after() === state.doc.content.size && !view?.composing) {
+    const previous = state.doc.child($from.index(0) - 1);
+    if (previous.type === inkoraSchema.nodes.bullet_list || previous.type === inkoraSchema.nodes.ordered_list) {
+      if (dispatch) {
+        const tr = state.tr.delete($from.before(), $from.after());
+        tr.setSelection(TextSelection.near(tr.doc.resolve(tr.doc.content.size), -1));
+        dispatch(tr.setMeta('inkoraEmptyParagraphAfterList', true));
+      }
+      return true;
+    }
+  }
+  if (!empty || $from.parentOffset !== 0 || $from.depth < 2 ||
+      $from.parent.type !== inkoraSchema.nodes.paragraph ||
+      $from.node(-1).type !== inkoraSchema.nodes.list_item ||
+      $from.index(-1) !== 0 || view?.composing) return false;
+  const listDepth = $from.depth - 2;
+  const listStart = $from.before(listDepth);
+  const listEnd = $from.after(listDepth);
+  return liftListItem(inkoraSchema.nodes.list_item)(state, dispatch ? tr => {
+    // Lifting can split a loose list into one-item lists. A sole paragraph
+    // has no blank-separated sibling/block and is canonically tight.
+    tr.doc.nodesBetween(tr.mapping.map(listStart, -1), tr.mapping.map(listEnd, 1), (node, pos) => {
+      if (tr.doc.resolve(pos).depth === listDepth - 1 && (node.type === inkoraSchema.nodes.bullet_list || node.type === inkoraSchema.nodes.ordered_list) &&
+          node.attrs.tight === false && node.childCount === 1 && node.firstChild?.childCount === 1 &&
+          node.firstChild.firstChild?.type === inkoraSchema.nodes.paragraph) {
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, tight: true });
+      }
+    });
+    dispatch(tr.setMeta('inkoraListBoundaryLift', true));
+  } : undefined, view);
+};
+
 export const blockKeyBindings: Record<string, Command> = {
   Enter: chainCommands(
     newlineInCode,
@@ -92,7 +153,7 @@ export const blockKeyBindings: Record<string, Command> = {
     splitBlockKeepMarks,
   ),
   "Mod-Enter": exitCode,
-  Backspace: chainCommands(deleteSelection, joinBackward, selectNodeBackward),
+  Backspace: chainCommands(deleteSelection, clearEmptyHeading, listBoundaryBackspace, joinBackward, selectNodeBackward),
   Tab: chainCommands(
     insertTabInCode,
     sinkListItem(inkoraSchema.nodes.list_item),

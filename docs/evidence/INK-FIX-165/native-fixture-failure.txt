@@ -1,0 +1,8 @@
+Test Suite 'TypingHostlessTests' started at 2026-11-12 10:40:27.081.
+Test Case '-[main.TypingHostlessTests testEmptyDocumentHeadingTypingRemainsEditableAndCanPrepareToClose]' started.
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/tests/InkoraTests/TypingHostlessTests.swift:64: error: -[main.TypingHostlessTests testEmptyDocumentHeadingTypingRemainsEditableAndCanPrepareToClose] : XCTAssertEqual failed: ("") is not equal to ("# 标
+
+正文")
+Test Case '-[main.TypingHostlessTests testEmptyDocumentHeadingTypingRemainsEditableAndCanPrepareToClose]' failed (0.376 seconds).
+Test Suite 'TypingHostlessTests' failed at 2026-11-12 10:40:27.457.
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.376 (0.377) seconds

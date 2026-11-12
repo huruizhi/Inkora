@@ -1,0 +1,38 @@
+{
+  "sourceCommit": "04e7b95e7543b0f013314582e428605cd1ff7c50",
+  "baseCommit": "8c35645a67957be03887a4cf46668c40b8a74e2e",
+  "build": "8",
+  "marketingVersion": "0.1.0",
+  "bundleIdentifier": "com.huruizhi.Inkora",
+  "signature": "ad-hoc; not notarized",
+  "editorMatches174": true,
+  "fileHashes": {
+    "Contents/Info.plist": "3b334f5b2b658cfde84c5265193ef2481f4e4531d16830479a4f443098f9743f",
+    "Contents/MacOS/Inkora": "cec442d6f8df056a22420f895e53843919794a600692e2816cc13a38be24e466",
+    "Contents/PkgInfo": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0",
+    "Contents/Resources/AppIcon.icns": "dbdfa6d4fe163bfce818b98bd0ec4bc375de1aca542f85286052f6377c40a5b5",
+    "Contents/Resources/Assets.car": "99adcb8219ca73983df61f1a4cdd954db10da3764c6454bf061f29dffaafb36a",
+    "Contents/Resources/Sparkle-LICENSE.txt": "816be66341dd11b22806862dffd8392b240babaced1cdf24da2ff413ef00c3fd",
+    "Contents/Resources/editor/RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "Contents/Resources/editor/THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "Contents/Resources/editor/assets/index-B_weGTA0.js": "12ac052ac2af37c7dd1d66503fffabb3169629b96f14c91bd6605360c394a2aa",
+    "Contents/Resources/editor/index.html": "22d47c6563d8d2a151f6a845dc9ee5509e4982623f0b98ac5c3e70ccf5e60cdd",
+    "Contents/Resources/editor/vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+    "Contents/_CodeSignature/CodeResources": "399c34f447b08dc7a248de44ea5fdc2251cd728bd694caf4b198246c9ded0c72"
+  },
+  "installed": "/Applications/Inkora.app",
+  "backup": "/Users/rayhu/Documents/projects/Inkora/artifacts/deployments/build8-20261112-184805",
+  "installedHashesMatch": true,
+  "installedResourceTests": {
+    "writing": 19,
+    "failures": 0
+  },
+  "launchVerified": false,
+  "published": false,
+  "rollbackTrash": "/Users/rayhu/.Trash/.Inkora-build7-rollback-7a8fe45380a54daeb6db1813317e6548.app",
+  "launchBlocker": "Computer Use native pipe startup failed",
+  "archives": {
+    "previous-build7.zip": "7ce27f3b8276b3f06b90dbfc98aaf79ff740d62263b5cbf3b968cb5b7fe0231b",
+    "installed-build8.zip": "00964769b7a3fd91cfe0ba71054b32a9b9f66c534f75ad1869b4cba68af94a91"
+  }
+}

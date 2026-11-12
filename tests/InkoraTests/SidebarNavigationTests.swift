@@ -33,6 +33,17 @@ final class SidebarNavigationTests: XCTestCase {
     XCTAssertTrue(window.titlebarAppearsTransparent)
     XCTAssertFalse(window.isVisible)
     try waitForJavaScript("!!document.querySelector('#editor')", in: webView)
+    let titlePoint = NSPoint(x: frameView.bounds.midX, y: frameView.bounds.maxY - 14)
+    let dragDeadline = Date().addingTimeInterval(5)
+    while frameView.hitTest(titlePoint)?.identifier?.rawValue != "WindowTitlebarDragSurface",
+      Date() < dragDeadline
+    {
+      RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+    }
+    let titleHit = try XCTUnwrap(frameView.hitTest(titlePoint))
+    XCTAssertEqual(
+      titleHit.identifier?.rawValue, "WindowTitlebarDragSurface",
+      "标题文字与空白必须把鼠标事件交给原生窗口拖动，而不是Web内容")
     for reduced in [false, true] {
       if reduced {
         webView.configuration.userContentController.addUserScript(
@@ -155,6 +166,29 @@ final class SidebarNavigationTests: XCTestCase {
     XCTAssertEqual(values[4], 0, accuracy: 1)
     XCTAssertGreaterThanOrEqual(values[5], 90)
     XCTAssertLessThanOrEqual(values[6], width)
+    let dragX = max(90, values[3]) + 20
+    let frameView = try XCTUnwrap(view.superview)
+    let dragPoint = NSPoint(x: dragX, y: frameView.bounds.maxY - 14)
+    let deadline = Date().addingTimeInterval(3)
+    while frameView.hitTest(dragPoint)?.identifier?.rawValue != "WindowTitlebarDragSurface",
+      Date() < deadline
+    {
+      // Hidden WK can suspend its layout notifications until the next query.
+      // Flush actual DOM layout; do not inject a synthetic geometry message.
+      _ = try javaScript(
+        "document.querySelector('.editor-titlebar').getBoundingClientRect().left", in: view)
+      RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+    }
+    XCTAssertEqual(
+      frameView.hitTest(dragPoint)?.identifier?.rawValue,
+      "WindowTitlebarDragSurface", "width=\(width), open=\(open)")
+    XCTAssertNotEqual(
+      frameView.hitTest(NSPoint(x: width - 30, y: frameView.bounds.maxY - 14))?.identifier?
+        .rawValue,
+      "WindowTitlebarDragSurface", "工具按钮保留Web点击")
+    XCTAssertNotEqual(
+      frameView.hitTest(NSPoint(x: dragX, y: frameView.bounds.maxY - 100))?.identifier?.rawValue,
+      "WindowTitlebarDragSurface", "正文保留光标和选区操作")
   }
 
   @MainActor
@@ -580,4 +614,72 @@ final class SidebarNavigationTests: XCTestCase {
 private final class SidebarPresentationDelegate: EditorBridgeDelegate {
   func editorBridgeDidBecomeReady(_ bridge: EditorBridge) {}
   func editorBridge(_ bridge: EditorBridge, didChangeState state: BridgeEditorState) {}
+}
+
+@MainActor
+private final class DragRecordingWindow: NSWindow {
+  var draggedEvents: [NSEvent] = []
+  override func performDrag(with event: NSEvent) { draggedEvents.append(event) }
+}
+
+extension SidebarNavigationTests {
+  @MainActor
+  func testTitlebarDragHandsOriginalMouseDownToWindowAndRejectsControls() throws {
+    let window = DragRecordingWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),
+      styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    let surface = WindowTitlebarDragSurface(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+    window.contentView = surface
+    defer { window.close() }
+    surface.apply(
+      TitlebarDragLayout(
+        protocolVersion: 1, type: "titlebarLayout",
+        viewportWidth: 600, viewportHeight: 400, left: 90, right: 470, top: 0, bottom: 28))
+    func event(_ x: Double, _ y: Double, type: NSEvent.EventType = .leftMouseDown) throws -> NSEvent
+    {
+      try XCTUnwrap(
+        NSEvent.mouseEvent(
+          with: type,
+          location: surface.convert(NSPoint(x: x, y: y), to: nil), modifierFlags: [],
+          timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+          context: nil, eventNumber: 1, clickCount: 1, pressure: 1))
+    }
+    let down = try event(200, 14)
+    surface.mouseDown(with: down)
+    XCTAssertEqual(window.draggedEvents.count, 1)
+    XCTAssertTrue(window.draggedEvents.first === down)
+    for other in [
+      try event(500, 14), try event(200, 100), try event(30, 14),
+      try event(200, 14, type: .rightMouseDown),
+    ] {
+      surface.mouseDown(with: other)
+    }
+    window.isMovable = false
+    surface.mouseDown(with: down)
+    XCTAssertEqual(window.draggedEvents.count, 1)
+    XCTAssertFalse(window.isVisible)
+  }
+
+  @MainActor
+  func testTitlebarInvalidGeometryAndResetRemoveDragAuthority() {
+    let parent = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+    let surface = WindowTitlebarDragSurface(frame: parent.bounds)
+    parent.addSubview(surface)
+    let point = surface.convert(NSPoint(x: 200, y: 14), to: parent)
+    func layout(width: Double = 600, left: Double = 90, bottom: Double = 28) -> TitlebarDragLayout {
+      TitlebarDragLayout(
+        protocolVersion: 1, type: "titlebarLayout",
+        viewportWidth: width, viewportHeight: 400, left: left, right: 470, top: 0, bottom: bottom)
+    }
+    surface.apply(layout())
+    XCTAssertTrue(surface.hitTest(point) === surface)
+    surface.clear()
+    XCTAssertNil(surface.hitTest(point))
+    for invalid in [layout(width: 900), layout(left: 0), layout(bottom: 100), layout(left: .nan)] {
+      surface.apply(layout())
+      surface.apply(invalid)
+      XCTAssertNil(surface.hitTest(point))
+    }
+  }
 }

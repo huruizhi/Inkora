@@ -1,0 +1,76 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/editor
+
+{"input":{"raw":"-[]","at":1,"expected":"- []","checkbox":false},"raw":"-[]","html":"<p>-[]</p>","selection":{"selectionAnchor":1,"selectionHead":1},"status":{"dirty":false,"canUndo":false,"canRedo":false,"draftDirty":false,"unresolved":true,"saveEligible":false},"diagnostic":"该多步原生事务尚未支持；可信原文与 PM 状态保持不变"}
+{"input":{"raw":"- []","at":3,"expected":"- [ ]","checkbox":true},"raw":"- []","html":"<ul><li><p>[]</p></li></ul>","selection":{"selectionAnchor":3,"selectionHead":3},"status":{"dirty":false,"canUndo":false,"canRedo":false,"draftDirty":false,"unresolved":true,"saveEligible":false},"diagnostic":"原文 4 位于非可视 block-prefix/block-prefix，不盲映射到正文"}
+{"input":{"raw":"[]","at":1,"expected":"[ ]","checkbox":false},"raw":"[ ]","html":"<p>[ ]</p>","selection":{"selectionAnchor":2,"selectionHead":2},"status":{"dirty":true,"canUndo":true,"canRedo":false,"draftDirty":false,"unresolved":false,"saveEligible":true},"diagnostic":""}
+{"input":{"raw":"- []\r\n","at":3,"expected":"- [ ]\r\n","checkbox":true},"raw":"- []\r\n","html":"<ul><li><p>[]</p></li></ul>","selection":{"selectionAnchor":3,"selectionHead":3},"status":{"dirty":false,"canUndo":false,"canRedo":false,"draftDirty":false,"unresolved":true,"saveEligible":false},"diagnostic":"原文 4 位于非可视 block-prefix/block-prefix，不盲映射到正文"}
+{"raw":"- [ ]","html":"<ul><li data-task-state=\" \"><input type=\"checkbox\" class=\"inkora-task-checkbox\" tabindex=\"0\" aria-label=\"任务：未命名任务\"><div class=\"inkora-task-content\"><p><br class=\"ProseMirror-trailingBreak\"></p></div></li></ul>","status":{"dirty":true,"canUndo":true,"canRedo":false,"draftDirty":false,"unresolved":false,"saveEligible":true},"diagnostic":""}
+ ❯ src/task-space-input-runtime.test.ts (6 tests | 4 failed) 66ms
+   × inserts a space at raw offset 1 of -[] 42ms
+   × inserts a space at raw offset 3 of - [] 6ms
+   × inserts a space at raw offset 3 of - []
+ 4ms
+   × repairs both missing spaces in -[] in two explicit steps 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > inserts a space at raw offset 1 of -[]
+AssertionError: expected '-[]' to be '- []' // Object.is equality
+
+Expected: "- []"
+Received: "-[]"
+
+ ❯ src/task-space-input-runtime.test.ts:32:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > inserts a space at raw offset 3 of - []
+AssertionError: expected '- []' to be '- [ ]' // Object.is equality
+
+Expected: "- [ ]"
+Received: "- []"
+
+ ❯ src/task-space-input-runtime.test.ts:32:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > inserts a space at raw offset 3 of - []
+
+AssertionError: expected '- []\r\n' to be '- [ ]\r\n' // Object.is equality
+
+- Expected
++ Received
+
+- - [ ]
++ - []
+
+
+ ❯ src/task-space-input-runtime.test.ts:32:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > repairs both missing spaces in -[] in two explicit steps
+AssertionError: expected '-[]' to be '- []' // Object.is equality
+
+Expected: "- []"
+Received: "-[]"
+
+ ❯ src/task-space-input-runtime.test.ts:45:29
+     43|   boot('-[]');
+     44|   expect(runtime.navigateRawRange('-[]',{anchor:1,head:1}).ok).toBe(tr…
+     45|   expect(runtime.getText()).toBe('- []');
+       |                             ^
+     46|   expect(runtime.navigateRawRange('- []',{anchor:3,head:3}).ok).toBe(t…
+     47|   expect(runtime.getText()).toBe('- [ ]');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 2 passed (6)
+   Start at  18:57:55
+   Duration  445ms (import 72%, tests 19%, transform 9%)

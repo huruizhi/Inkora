@@ -27,6 +27,7 @@ import { parse as parseCanonicalSource } from "./source-document";
 import { revealTextareaOffset } from "./textarea-visibility";
 import { createCodeHighlightDecorations } from "./code-highlighting";
 import { contextToolDecorations, focusContextToolbar } from "./context-tools";
+import { HeadingEntryPresentation } from "./heading-entry";
 import type { Node as PMNode } from "prosemirror-model";
 import { footnoteReference } from "./technical-preview";
 import { protectedPreview } from "./protected-preview";
@@ -161,7 +162,9 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   private destroyed = false;
   private publishedLogicalRevision = 0;
   private readonly session: SourceAuthoritySession;
+  private pendingCompositionConfirmation?: { doc: PMNode; version: number; data: string; composition: boolean };
   private readonly imageResources = new ImageResourceRegistry();
+  private readonly headingEntry = new HeadingEntryPresentation();
   private readonly searchIdentity: { readonly documentID: string; readonly epoch: number };
 
   constructor(
@@ -321,6 +324,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
 
   whenCompositionStable(): Promise<boolean> {
     if (!this.composing) return Promise.resolve(true);
+    if (this.compositionPhase === "settling" && !this.view?.composing) this.scheduleCompositionSettlement();
     return new Promise(resolve => {
       const waiter = {
         resolve,
@@ -335,6 +339,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
 
   enterSourceMode(): boolean {
     if (this.composing || !this.session.beginSource()) return false;
+    this.headingEntry.clear();
     this.renderSource();
     this.onChange(this.status, "status");
     return true;
@@ -616,6 +621,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
 
   destroy(): void {
     this.destroyed = true;
+    this.headingEntry.clear();
     this.technicalReturn = undefined;
     this.footnoteReturn = undefined;
     this.cancelCompositionQuietTimer();
@@ -711,7 +717,9 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     });
     view = new EditorView(this.parent, {
       state: this.session.state,
-      decorations: state => codeDecorations(state).add(state.doc, contextToolDecorations(state)),
+      decorations: state => codeDecorations(state).add(state.doc, [
+        ...contextToolDecorations(state), ...this.headingEntry.decorations(state),
+      ]),
       nodeViews: {
         code_block: codeBlockNodeView,
         protected_block: (node, _view, getPos) => this.technicalNode(node, getPos),
@@ -744,6 +752,14 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
         list_item: taskListItemNodeView,
       },
       handleDOMEvents: {
+        input: (_view, event) => {
+          const input = event as InputEvent;
+          this.pendingCompositionConfirmation = this.compositionPhase === "settling" &&
+            ((input.inputType === "insertCompositionText" && input.isComposing) ||
+              (input.inputType === "insertText" && !input.isComposing)) && input.data !== null
+            ? { doc: this.session.state.doc, version: this.session.version, data: input.data, composition: input.isComposing } : undefined;
+          return false;
+        },
         keydown: (activeView, event) => {
           if (event.key === "F10" && event.altKey && !event.isComposing &&
               !this.session.composing && !activeView.composing && focusContextToolbar(activeView)) {
@@ -768,12 +784,25 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
         if (changed) this.onChange(this.status, "document");
         return changed;
       },
-      dispatchTransaction: (transaction) => {
+      dispatchTransaction: (incoming) => {
+        let transaction = incoming;
         const compositionID = transaction.getMeta("composition");
-        if (transaction.docChanged && this.compositionPhase === "settling" &&
-            (compositionID === undefined ||
+        const pending = this.pendingCompositionConfirmation;
+        const step = transaction.steps[0]?.toJSON() as { slice?: { content?: Array<{ text?: string }> } } | undefined;
+        const pendingMatches = pending?.doc === transaction.before && pending.version === this.session.version;
+        const ordinaryInput = pendingMatches && !pending.composition;
+        const continuesOwner = pendingMatches && pending.composition &&
+          (step?.slice?.content ?? []).map(node => node.text ?? '').join('') === pending.data &&
+          this.session.continuesCompositionOwner(transaction);
+        if (transaction.docChanged) this.pendingCompositionConfirmation = undefined;
+        if (transaction.docChanged && !continuesOwner && this.compositionPhase === "settling" &&
+            (ordinaryInput || compositionID === undefined ||
               (this.compositionID !== undefined && compositionID !== this.compositionID))) {
+          const receipt = this.session.captureCompositionContinuation(transaction);
           this.settleComposition(true);
+          if (receipt && transaction.before !== this.session.state.doc) {
+            transaction = this.session.resumeCompositionContinuation(receipt) ?? transaction;
+          }
         }
         if (this.compositionPhase !== "idle" && compositionID !== undefined &&
             this.compositionID === undefined) {
@@ -781,11 +810,15 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
         }
         if (transaction.selectionSet || transaction.docChanged) this.footnoteReturn = undefined;
         const before = this.session.currentRaw;
+        const beforeState = this.session.state;
+        const updateHeadingEntry = this.headingEntry.capture(beforeState, before,
+          this.session.rawSelection.anchor, transaction);
         const accepted = this.session.dispatch(transaction);
+        if (accepted) updateHeadingEntry?.(this.session.state, this.session.currentRaw, this.session.composing);
         lastDispatchAccepted = accepted;
         view.updateState(this.session.state);
         if (accepted && this.compositionPhase === "settling" &&
-            compositionID !== undefined && compositionID === this.compositionID) {
+            (continuesOwner || (compositionID !== undefined && compositionID === this.compositionID))) {
           this.scheduleCompositionSettlement();
         }
         if (!accepted || before === this.session.currentRaw || this.session.composing) return;
@@ -970,8 +1003,12 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }
 
   private readonly handleCompositionStart = (): void => {
-    if (this.compositionPhase === "settling") this.settleComposition(true);
+    if (this.compositionPhase === "settling") {
+      this.settleComposition(true);
+      if (this.session.composing) return;
+    }
     this.cancelCompositionQuietTimer();
+    this.pendingCompositionConfirmation = undefined;
     this.compositionPhase = "active";
     this.compositionID = undefined;
     this.session.startComposition();
@@ -1002,9 +1039,15 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
       return;
     }
     this.cancelCompositionQuietTimer();
+    const beforeState = this.session.state;
+    if (!this.session.endComposition()) {
+      this.onChange(this.status, "status");
+      this.resolveStabilityWaiters(false);
+      return;
+    }
     this.compositionPhase = "idle";
     this.compositionID = undefined;
-    this.session.endComposition();
+    this.headingEntry.canonicalized(beforeState, this.session.state, this.session.currentRaw);
     this.view?.updateState(this.session.state);
     if (this.session.status.revision > this.publishedLogicalRevision) {
       this.publishedLogicalRevision = this.session.status.revision;

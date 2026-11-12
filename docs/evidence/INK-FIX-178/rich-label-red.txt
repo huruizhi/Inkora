@@ -1,0 +1,29 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/editor
+
+ ❯ src/task-space-input-runtime.test.ts (15 tests | 1 failed) 105ms
+   × preserves container/source bytes while repairing - [] **label** 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > preserves container/source bytes while repairing - [] **label**
+AssertionError: expected '- [] **label**' to be '- [ ] **label**' // Object.is equality
+
+Expected: "- [ ] **label**"
+Received: "- [] **label**"
+
+ ❯ src/task-space-input-runtime.test.ts:73:29
+     71|   expect(runtime.navigateRawRange(row.raw,{anchor:row.at,head:row.at})…
+     72|   type(' ');
+     73|   expect(runtime.getText()).toBe(row.expected);
+       |                             ^
+     74|   expect(runtime.status).toMatchObject({unresolved:false,saveEligible:…
+     75|   expect(!!view().dom.querySelector('input[type=checkbox]')).toBe(row.…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 14 passed (15)
+   Start at  19:13:56
+   Duration  387ms (import 54%, tests 37%, transform 8%)

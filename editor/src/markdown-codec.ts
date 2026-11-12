@@ -11,12 +11,18 @@ import { inkoraSchema } from "./schema";
 import { installGfmAutolinks } from "./gfm-autolinks";
 
 function listIsTight(tokens: readonly Token[], index: number): boolean {
+  const listLevel = tokens[index].level;
   for (let current = index + 1; current < tokens.length; current += 1) {
-    if (tokens[current].type !== "list_item_open") {
-      return tokens[current].hidden;
+    const token = tokens[current];
+    if (token.level <= listLevel) break;
+    // Item close tokens are visible even in a tight, empty item. Only the
+    // current list's direct paragraph tokens carry markdown-it's tight flag;
+    // nested lists and the next block must not determine this list's attrs.
+    if (token.type === "paragraph_open" && token.level === listLevel + 2) {
+      return token.hidden;
     }
   }
-  return false;
+  return true;
 }
 
 function annotateFenceClosure(state: StateCore): void {

@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/editor
+
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  10:40:20
+   Duration  320ms (import 63%, tests 26%, transform 10%)

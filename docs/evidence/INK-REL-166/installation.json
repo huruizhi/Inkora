@@ -1,0 +1,28 @@
+{
+  "build": "6",
+  "marketingVersion": "0.1.0",
+  "installed": "/Applications/Inkora.app",
+  "sourceCommit": "0f43e329c7e890412ef6b5f5929203f78d6f148e",
+  "executableSHA256": "82f14ecbd1b75fa4b7ba0d02420097c8fa2c4c06e5c21b41ed79db1859c9dda9",
+  "editorHashes": {
+    "Contents/Resources/editor/index.html": "8b5bd2f743b4805b124b1ab32d7af9b37e4ae2178695bfdaccaec5f0e10fd60d",
+    "Contents/Resources/editor/RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "Contents/Resources/editor/THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "Contents/Resources/editor/assets/index-CmfhG7vy.js": "8fd2296ddb45b46e96ba541e08b8318e6ee70d7d24b32d495b025c1a3c541b61",
+    "Contents/Resources/editor/vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+  },
+  "backup": "/Users/rayhu/Documents/projects/Inkora/artifacts/deployments/build6-20261112-105251",
+  "signature": "ad-hoc; not notarized",
+  "published": false,
+  "exactEntitlements": true,
+  "hardenedRuntime": true,
+  "debugEntitlement": false,
+  "sparkleStrongLink": false,
+  "installedResourceTests": {
+    "sidebar": 10,
+    "typingClose": 1,
+    "failures": 0
+  },
+  "launchVerified": false,
+  "launchBlocker": "Computer Use native pipe startup failed"
+}

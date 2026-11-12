@@ -1,0 +1,6 @@
+Test Suite 'TypingHostlessTests' started at 2026-11-12 10:32:32.946.
+Test Case '-[main.TypingHostlessTests testEmptyDocumentHeadingTypingRemainsEditableAndCanPrepareToClose]' started.
+<unknown>:0: error: -[main.TypingHostlessTests testEmptyDocumentHeadingTypingRemainsEditableAndCanPrepareToClose] : failed: caught error: "The editor request failed: 该原生事务尚未支持（replace）；可信原文与 PM 状态保持不变"
+Test Case '-[main.TypingHostlessTests testEmptyDocumentHeadingTypingRemainsEditableAndCanPrepareToClose]' failed (0.428 seconds).
+Test Suite 'TypingHostlessTests' failed at 2026-11-12 10:32:33.375.
+	 Executed 1 test, with 1 failure (1 unexpected) in 0.428 (0.429) seconds

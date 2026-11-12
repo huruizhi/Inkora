@@ -1,0 +1,32 @@
+xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests tests/InkoraUITests
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/.tools/node_modules/.bin/pnpm --dir editor lint
+$ tsc --noEmit
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/.tools/node_modules/.bin/pnpm --dir editor build
+$ node scripts/prepare-renderers.mjs && tsc --noEmit && vite build
+vite v8.3.6 building client environment for production...
+transforming...
+✓ 156 modules transformed.
+rendering chunks...
+computing gzip size...
+../build/editor/index.html                    0.62 kB │ gzip:   0.36 kB
+../build/editor/assets/index-CmfhG7vy.js  1,188.68 kB │ gzip: 336.39 kB
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 92ms
+mkdir -p "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/artifacts/logs" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/artifacts/failures" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/artifacts/test-results" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/artifacts/screenshots" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/artifacts/markdown-snapshots"
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/artifacts" /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/scripts/ci/run-and-capture.sh editor \
+		/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/.tools/node_modules/.bin/pnpm --dir editor exec vitest run --exclude src/bridge.test.ts
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-165/editor
+
+
+ Test Files  47 passed (47)
+      Tests  819 passed (819)
+   Start at  10:41:57
+   Duration  14.91s (tests 69%, import 30%, transform 1%)

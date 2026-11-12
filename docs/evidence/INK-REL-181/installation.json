@@ -1,0 +1,41 @@
+{
+  "sourceCommit": "161c29e9771df2fe6a371b42fa1768deef62307e",
+  "baseCommit": "1fb0714c515e433fe7d203eee01c0010f3cc0efb",
+  "build": "9",
+  "marketingVersion": "0.1.0",
+  "bundleIdentifier": "com.huruizhi.Inkora",
+  "signature": "ad-hoc; not notarized",
+  "editorMatches178": true,
+  "fileHashes": {
+    "Contents/Info.plist": "b78ec1a465cc608b9358c28b569a1f36146841a5d8a5f694f3f66abce1934272",
+    "Contents/MacOS/Inkora": "b549f484a3580f701acebe57b5febcc4914712704e78d77cae8a12c64354f375",
+    "Contents/PkgInfo": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0",
+    "Contents/Resources/AppIcon.icns": "dbdfa6d4fe163bfce818b98bd0ec4bc375de1aca542f85286052f6377c40a5b5",
+    "Contents/Resources/Assets.car": "99adcb8219ca73983df61f1a4cdd954db10da3764c6454bf061f29dffaafb36a",
+    "Contents/Resources/Sparkle-LICENSE.txt": "816be66341dd11b22806862dffd8392b240babaced1cdf24da2ff413ef00c3fd",
+    "Contents/Resources/editor/RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "Contents/Resources/editor/THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "Contents/Resources/editor/assets/index-Dl3fXJ77.js": "908c2c7bde68385bfdedef8685d364e5cad44f01fe825ed6f5b664712021f88a",
+    "Contents/Resources/editor/index.html": "394de208936947e1432028d4e0d48bbcc897bff06287ee635cecdf4c40b48f13",
+    "Contents/Resources/editor/vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+    "Contents/_CodeSignature/CodeResources": "478d928e700b85c1965aee7f4a5173654712fd96596474107a77fbb8947c0f2a"
+  },
+  "installed": "/Applications/Inkora.app",
+  "backup": "/Users/rayhu/Documents/projects/Inkora/artifacts/deployments/build9-20261112-193144",
+  "installedHashesMatch": true,
+  "installedResourceTests": {
+    "writing": 21,
+    "failures": 0
+  },
+  "published": false,
+  "rollbackTrash": "/Users/rayhu/.Trash/.Inkora-build8-rollback-76d7902e83a046938eb5d1faaa741526.app",
+  "launchProcessVerified": true,
+  "visibleLaunchVerified": false,
+  "visibleLaunchBlocker": "Computer Use native pipe startup failed",
+  "archives": {
+    "previous-build8.zip": "772f852cd52936f1eae643d36af7ece5bb6c5a08fb02f7e49050a22cbcf25e88",
+    "installed-build9.zip": "1665dd806b9e909d5d16f2b6c067fe4de060f0baa83346491e223f140e821285"
+  },
+  "launchPID": 20041,
+  "launchMethod": "LaunchServices open -a /Applications/Inkora.app"
+}

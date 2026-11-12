@@ -2,6 +2,7 @@ import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorState, Transaction } from 'prosemirror-state';
 import MarkdownIt from 'markdown-it';
 import { parse } from './source-document';
+import type { SourceLedger } from './source-ledger';
 
 export type NativeRange = { start: number; end: number; pos: number; size: number; kind: string };
 export type NativePatch = { from: number; to: number; insert: string };
@@ -15,6 +16,7 @@ export type NativePlan = {
   mayStage?: boolean;
   /** Proven source caret in candidate coordinates after a text/input-rule edit. */
   sourceCaret?: number;
+  sourceBoundary?: NativeAnchor;
 };
 
 type SourcePosition = (position: number, side?: 'from' | 'to' | 'any') => number;
@@ -449,7 +451,7 @@ function structuralPlan(
   const add = (patches: NativePatch[], description: string) => candidates.push({ patches, description });
 
   for (let level = 1; level <= 6; level++) add([{ from, to: from, insert: `${'#'.repeat(level)} ` }], 'paragraph to heading');
-  const atx = /^(#{1,6})([\t ]+)/.exec(raw);
+  const atx = /^( {0,3}#{1,6})(?:[\t ]+|$)/.exec(raw);
   if (atx) add([{ from, to: from + atx[0].length, insert: '' }], 'heading to paragraph');
   const setext = /(?:\r\n|\n)(?:=+|-+)[\t ]*$/.exec(raw);
   if (setext) add([{ from: from + setext.index, to, insert: '' }], 'setext heading to paragraph');
@@ -571,6 +573,7 @@ function splitPlan(
   source: string,
   state: EditorState,
   tr: Transaction,
+  ranges: readonly NativeRange[],
   position: SourcePosition,
   fallbackEol: '\r\n' | '\n',
 ): NativePlan | null {
@@ -589,6 +592,25 @@ function splitPlan(
     const patches = [{ from: anchor, to: anchor, insert: insertion }];
     return { patches, candidate: applyNativePatches(source, patches), kind: 'list-split', mayStage: true, sourceCaret: anchor + insertion.length };
   }
+  // WebKit's native Enter at a heading end inserts a closed empty paragraph
+  // after the heading, whereas PM splitBlock may express the same result as
+  // an open slice. Prove the complete target doc before granting this intent.
+  const $from = state.selection.$from;
+  if ($from.depth === 1 && $from.parent.type.name === 'heading' &&
+      $from.parentOffset === $from.parent.content.size) {
+    const owner = ranges.find(range => range.kind === 'heading' && range.pos === $from.before());
+    const paragraph = state.schema.nodes.paragraph.create();
+    const expected = state.tr.insert($from.after(), paragraph);
+    if (owner && expected.doc.eq(tr.doc)) {
+      // range.end is after ATX closing hashes / the setext underline, before
+      // the original line ending. Keep those source bytes on the heading.
+      const at = owner.end;
+      const insertion = eol + eol;
+      const patches = [{ from: at, to: at, insert: insertion }];
+      return { patches, candidate: applyNativePatches(source, patches), kind: 'paragraph-split',
+        mayStage: true, sourceCaret: at + insertion.length };
+    }
+  }
   if (state.selection.$from.parent.type.name === 'paragraph' && countType(tr.doc, 'paragraph') === countType(state.doc, 'paragraph') + 1) {
     const insertion = eol + eol;
     const patches = [{ from: anchor, to: anchor, insert: insertion }];
@@ -597,9 +619,24 @@ function splitPlan(
   return null;
 }
 
-function paragraphJoinPlan(source: string, state: EditorState, tr: Transaction, ranges: readonly NativeRange[]): NativePlan | null {
+function paragraphJoinPlan(source: string, state: EditorState, tr: Transaction, ranges: readonly NativeRange[], position: SourcePosition): NativePlan | null {
   if (!state.selection.empty || countType(tr.doc, 'paragraph') >= countType(state.doc, 'paragraph')) return null;
   const caret = state.selection.from;
+  const { $from } = state.selection;
+  if ($from.parent.type.name === 'paragraph' && $from.parentOffset === 0 &&
+      $from.depth > 1 && $from.node(-1).type.name === 'blockquote' && $from.index(-1) > 0 &&
+      $from.node(-1).child($from.index(-1) - 1).type.name === 'paragraph') {
+    const from = position($from.before() - 1, 'to');
+    const to = position(caret, 'from');
+    const separator = source.slice(from, to);
+    // The two adjacent paragraphs share this quote owner. Only their line
+    // endings and repeated quote prefixes may be removed, never hidden syntax.
+    if (from < to && /^(?:[\t ]*(?:\r\n|\n)[\t ]*(?:>[\t ]*)*)+$/.test(separator)) {
+      const patches = [{ from, to, insert: '' }];
+      const candidate = applyNativePatches(source, patches);
+      if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'paragraph-join' };
+    }
+  }
   let left: NativeRange | undefined;
   let right: NativeRange | undefined;
   for (let index = 0; index < ranges.length; index++) {
@@ -615,20 +652,50 @@ function paragraphJoinPlan(source: string, state: EditorState, tr: Transaction, 
 }
 
 function listJoinPlan(source: string, state: EditorState, tr: Transaction, position: SourcePosition): NativePlan | null {
-  if (!state.selection.empty || countType(tr.doc, 'list_item') >= countType(state.doc, 'list_item')) return null;
+  if (!state.selection.empty || !listContext(state) ||
+      countType(tr.doc, 'list_item') >= countType(state.doc, 'list_item')) return null;
   const contentStart = position(state.selection.from, 'from');
   const lineStart = source.lastIndexOf('\n', Math.max(0, contentStart - 1)) + 1;
   const prefix = source.slice(lineStart, contentStart);
-  if (!/^(\s*)([-+*]|\d+[.)])[\t ]+(?:\[[ xX]\][\t ]*)?$/.test(prefix)) {
-    throw Error('列表 join 的行标记无法安全定位');
-  }
+  const marker = /^(\uFEFF?)((?:[\t ]*>[\t ]*)*)[\t ]*([-+*]|\d+[.)])[\t ]*(?:\[[ xX]\][\t ]*)?$/.exec(prefix);
+  if (!marker) throw Error('列表 join 的行标记无法安全定位');
+  const markerStart = lineStart + marker[1].length + marker[2].length;
   let separatorStart = lineStart;
   if (separatorStart > 0 && source[separatorStart - 1] === '\n') {
     separatorStart--;
     if (separatorStart > 0 && source[separatorStart - 1] === '\r') separatorStart--;
   }
-  const patches = [{ from: separatorStart, to: contentStart, insert: '' }];
-  return { patches, candidate: applyNativePatches(source, patches), kind: 'list-join' };
+  const eol = eolForLine(source, lineStart);
+  const previousLineStart = source.lastIndexOf('\n', Math.max(0, separatorStart - 1)) + 1;
+  const previousLine = source.slice(previousLineStart, separatorStart);
+  // Lifting keeps the existing paragraph boundary. Adjacent nonblank lines
+  // need a second EOL so Markdown does not turn them into one softbreak.
+  const previousContent = previousLine.replace(/^(?:\uFEFF)?(?:[\t ]*>[\t ]*)*/, '');
+  const liftInsert = separatorStart < lineStart && !/^[\t ]*$/.test(previousContent) ? eol + marker[2] : '';
+  const candidates = [
+    { patches: [{ from: markerStart, to: contentStart, insert: liftInsert }], description: 'lift list item' },
+    { patches: [{ from: separatorStart, to: contentStart, insert: '' }], description: 'join list contents' },
+  ];
+  const matched = matchingStructuralPlan(source, tr.doc, candidates);
+  if (matched) return { ...matched, kind: 'list-join' };
+  // At EOF an empty lifted paragraph is represented by the blank source line,
+  // not by a parser paragraph. Prove the complete remaining document and the
+  // single empty caret block before accepting that bounded projection.
+  const targetCaret = tr.selection.$from;
+  const last = targetCaret.parent;
+  const quotedEof = targetCaret.depth > 1 && Array.from({ length: targetCaret.depth - 1 }, (_, index) => index + 1)
+    .every(depth => targetCaret.node(depth).type.name === 'blockquote' &&
+      targetCaret.index(depth - 1) === targetCaret.node(depth - 1).childCount - 1);
+  if (state.selection.$from.parent.content.size === 0 &&
+      /^(?:\r\n|\n)?$/.test(source.slice(contentStart)) && last.type.name === 'paragraph' &&
+      last.content.size === 0 && tr.selection.empty &&
+      targetCaret.index(-1) === targetCaret.node(-1).childCount - 1 &&
+      (targetCaret.depth === 1 || quotedEof)) {
+    const withoutEmpty = tr.doc.replace(targetCaret.before(), targetCaret.after(), tr.doc.slice(0, 0));
+    const lifted = matchingStructuralPlan(source, withoutEmpty, [candidates[0]]);
+    if (lifted) return { ...lifted, kind: 'list-join', sourceCaret: lifted.candidate.length };
+  }
+  return null;
 }
 
 type TableCommandMeta = {
@@ -824,16 +891,34 @@ function taskTogglePlan(
   if (!before?.attrs.task || !after?.attrs.task || before.type !== after.type || before.content !== after.content && !before.content.eq(after.content)) {
     throw Error('任务切换目标已过期');
   }
+  const toggledAttrs = { ...before.attrs, checked: meta.checked, stateChar: meta.checked ? 'x' : ' ' };
+  if (!state.tr.setNodeMarkup(pos, undefined, toggledAttrs).doc.eq(tr.doc)) {
+    throw Error('任务切换事务混入其他内容修改');
+  }
   const labelStart = position(pos + 2, 'from');
   const lineStart = source.lastIndexOf('\n', Math.max(0, labelStart - 1)) + 1;
   const prefix = source.slice(lineStart, labelStart);
-  const markers = [...prefix.matchAll(/\[([ xX])\][\t ]+/g)];
+  const markers = [...prefix.matchAll(/\[([ xX])\](?:[\t ]+|$)/g)];
   const marker = markers.at(-1);
   if (!marker) throw Error('任务 checkbox 原文标记无法定位');
   const stateOffset = lineStart + marker.index + 1;
   const patches = [{ from: stateOffset, to: stateOffset + 1, insert: meta.checked ? 'x' : ' ' }];
   const candidate = applyNativePatches(source, patches);
-  if (!parse(candidate).doc.eq(tr.doc)) throw Error('任务切换候选与 PM 投影语义不一致');
+  if (!parse(candidate).doc.eq(tr.doc)) {
+    // A just-entered empty task separator may be an accepted literal space in
+    // the projection. Remove exactly that owner's single unmarked space for
+    // the canonical before/after proof; no other projection mismatch qualifies.
+    const paragraph = before.firstChild;
+    const singleSeparator = paragraph?.childCount === 1 && paragraph.firstChild?.isText &&
+      paragraph.firstChild.text === ' ' && paragraph.firstChild.marks.length === 0 &&
+      source.slice(stateOffset + 2) === ' ';
+    if (!singleSeparator) throw Error('任务切换候选与 PM 投影语义不一致');
+    const canonical = state.tr.delete(pos + 2, pos + 3);
+    if (!parse(source).doc.eq(canonical.doc) ||
+        !parse(candidate).doc.eq(canonical.setNodeMarkup(pos, undefined, toggledAttrs).doc)) {
+      throw Error('空任务分隔空格缺少完整原文归属证明');
+    }
+  }
   return { patches, candidate, kind: 'task-toggle' };
 }
 
@@ -881,6 +966,52 @@ function insertTablePlan(
   return { patches, candidate, kind: 'table-structure' };
 }
 
+function trailingMarkedSpacePlan(source: string, state: EditorState, tr: Transaction,
+  ranges: readonly NativeRange[], ledger: SourceLedger | undefined): NativePlan | null {
+  const step = tr.steps[0]?.toJSON() as Record<string, any>;
+  const insert = step && textSlice(step);
+  if (!ledger || insert === null || !/^ +$/.test(insert) || step.from !== step.to ||
+      !state.selection.empty || state.selection.from !== step.from ||
+      ledger.sourceLength !== source.length || ledger.docSize !== state.doc.content.size) return null;
+  const position = state.doc.resolve(step.from);
+  const marks = position.nodeBefore?.marks ?? [];
+  if (!marks.length || marks.some(mark => !['strong', 'em', 'strike', 'link'].includes(mark.type.name)) ||
+      !['paragraph', 'heading'].includes(position.parent.type.name) || position.parentOffset !== position.parent.content.size ||
+      !parse(source).doc.eq(state.doc)) return null;
+  const owner = ledger.blocks.find(block => step.from > block.range.pos && step.from < block.range.pos + block.range.size);
+  if (!owner || !ranges.some(range => range.start === owner.range.start && range.end === owner.range.end &&
+      range.pos === owner.range.pos && range.size === owner.range.size)) return null;
+  const last = owner.spans.filter(span => span.visible && span.visualEnd === step.from &&
+    ['text', 'link-label'].includes(span.role)).sort((left, right) => right.sourceEnd - left.sourceEnd)[0];
+  if (!last) return null;
+  const link = marks.find(mark => mark.type.name === 'link');
+  const links = link ? ledger.links.filter(item => item.visual.to === step.from && item.source.from >= owner.range.start &&
+    item.source.to <= owner.range.end && item.href === link.attrs.href && item.title === link.attrs.title) : [];
+  if (link && links.length !== 1) return null;
+  let from = last.sourceEnd;
+  const closed = new Set<string>();
+  while (from < owner.range.end) {
+    const candidates = owner.spans.filter(span => !span.visible && span.sourceStart === from && span.sourceEnd > from &&
+      (span.role === 'delimiter' || (!!link && ['href', 'title', 'reference-label'].includes(span.role))));
+    if (candidates.length !== 1) break;
+    const closing = candidates[0];
+    const emphasis = /^(strong|em|strike)-close$/.exec(closing.syntax);
+    if (emphasis) closed.add(emphasis[1]);
+    else if (!link || closing.owner !== links[0].owner) return null;
+    from = closing.sourceEnd;
+  }
+  if (marks.some(mark => mark.type.name !== 'link' && !closed.has(mark.type.name)) ||
+      (link && from < links[0].source.to) || from <= last.sourceEnd || /[\r\n]/.test(source.slice(last.sourceEnd, from))) return null;
+  const expected = state.tr.insertText(insert, step.from, step.to).removeMark(step.from, step.from + insert.length).doc;
+  if (!expected.eq(tr.doc)) return null;
+  const patches = [{ from, to: from, insert }];
+  const candidate = applyNativePatches(source, patches);
+  const parsed = parse(candidate);
+  if (parsed.issues.length || !parsed.doc.eq(state.doc)) return null;
+  return { patches, candidate, kind: 'text', sourceCaret: from + insert.length,
+    sourceBoundary: { pmPos: step.from, sourceOffset: from } };
+}
+
 export function planNativeTransaction(
   source: string,
   state: EditorState,
@@ -888,14 +1019,50 @@ export function planNativeTransaction(
   tr: Transaction,
   position: SourcePosition,
   fallbackEol: '\r\n' | '\n' = '\n',
+  ledger?: SourceLedger,
 ): NativePlan {
   if (!tr.docChanged) throw Error('原生补丁规划器只接受文档事务');
+  if (tr.getMeta('inkoraParagraphAfterListJoin') === true && state.selection.empty &&
+      state.selection.$from.parentOffset === 0 && state.selection.$from.parent.type.name === 'paragraph' &&
+      state.selection.$from.index(-1) > 0) {
+    const resolved = state.selection.$from;
+    const previous = resolved.node(-1).child(resolved.index(-1) - 1);
+    if ((resolved.depth === 1 || resolved.node(-1).type.name === 'blockquote') &&
+        ['bullet_list', 'ordered_list'].includes(previous.type.name) && previous.lastChild?.childCount === 1 &&
+        previous.lastChild.firstChild?.type.name === 'paragraph') {
+      const from = position(resolved.before() - 3, 'to');
+      const to = position(resolved.pos, 'from');
+      if (from < to && /^(?:[\t ]*(?:\r\n|\n)[\t ]*(?:>[\t ]*)*)+$/.test(source.slice(from, to))) {
+        const patches = [{ from, to, insert: '' }];
+        const candidate = applyNativePatches(source, patches);
+        if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'list-join', sourceCaret: from };
+      }
+    }
+  }
+  if (tr.getMeta('inkoraListBoundaryLift') === true && tr.steps[0]?.toJSON().stepType === 'replaceAround' &&
+      state.selection.empty && state.selection.$from.parentOffset === 0) {
+    const listLift = listJoinPlan(source, state, tr, position);
+    if (listLift) return listLift;
+  }
   const supplemental = tr.steps.slice(1).map(step => step.toJSON() as Record<string, any>);
-  if (supplemental.some(step => step.stepType !== 'addMark' && step.stepType !== 'removeMark' && !(step.stepType === 'replace' && step.structure))) throw Error('该多步原生事务尚未支持；可信原文与 PM 状态保持不变');
+  if (supplemental.some(step => step.stepType !== 'addMark' && step.stepType !== 'removeMark' && !(step.stepType === 'replace' && step.structure))) {
+    // A real wrapping input rule can delete its prefix and wrap the remaining
+    // body. Accept it only when its original typed patch proves the entire target.
+    const rule = inputRulePlan(source, tr, position, fallbackEol);
+    if (rule) {
+      const parsed = parse(rule.candidate);
+      if (!parsed.issues.length && parsed.doc.eq(tr.doc)) return rule;
+    }
+    throw Error('该多步原生事务尚未支持；可信原文与 PM 状态保持不变');
+  }
   const step = tr.steps[0].toJSON() as Record<string, any>;
 
   try {
-    if (parse(source).doc.eq(tr.doc)) {
+    const deletedText = step.stepType === 'replace' && step.to > step.from && textSlice(step) === ''
+      ? state.doc.textBetween(step.from, step.to) : '';
+    const deletesOwnedSpaces = /^ +$/.test(deletedText) &&
+      source.slice(position(step.from, 'from'), position(step.to, 'to')) === deletedText;
+    if (!deletesOwnedSpaces && parse(source).doc.eq(tr.doc)) {
       return { patches: [], candidate: source, kind: 'projection-sync' };
     }
   } catch {
@@ -935,6 +1102,19 @@ export function planNativeTransaction(
   if (mark) return mark;
   const attrs = attrPlan(source, state, tr, ranges);
   if (attrs) return attrs;
+  if (tr.getMeta('inkoraEmptyParagraphAfterList') === true && state.selection.empty &&
+      state.selection.$from.depth === 1 && state.selection.$from.parent.type.name === 'paragraph' &&
+      state.selection.$from.parent.content.size === 0 &&
+      state.selection.$from.after() === state.doc.content.size && tr.steps.length === 1) {
+    const previous = ranges.at(-1);
+    if (previous && ['bullet_list', 'ordered_list'].includes(previous.kind) &&
+        /^[\r\n]+$/.test(source.slice(previous.end)) &&
+        tr.doc.eq(state.doc.copy(state.doc.content.cut(0, state.selection.$from.before())))) {
+      const patches = [{ from: previous.end, to: source.length, insert: '' }];
+      const candidate = applyNativePatches(source, patches);
+      if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'paragraph-join', sourceCaret: previous.end };
+    }
+  }
   const structure = structuralPlan(source, state, tr, ranges, position, fallbackEol);
   if (structure) return structure;
 
@@ -943,6 +1123,8 @@ export function planNativeTransaction(
 
   const insert = textSlice(step);
   if (insert !== null) {
+    const trailingSpace = trailingMarkedSpacePlan(source, state, tr, ranges, ledger);
+    if (trailingSpace) return trailingSpace;
     const inlineCode = inlineCodePlan(source, state, step, insert, position);
     if (inlineCode) return inlineCode;
     let from: number;
@@ -957,6 +1139,21 @@ export function planNativeTransaction(
     const inTableCell = selectionInsideTableCell(state, step.from, step.to);
     const visibleInsert = inTableCell ? encodeTableCellText(insert) : insert;
     const sourceInsert = visibleInsert.replace(/\n/g, eolForLine(source, from, fallbackEol));
+    const resolved = state.doc.resolve(step.from);
+    if (!inTableCell && step.from === step.to && resolved.depth >= 2 &&
+        resolved.parent.type.name === 'paragraph' && resolved.parent.content.size === 0 &&
+        resolved.node(-1).type.name === 'list_item' && resolved.node(-1).attrs.task === true &&
+        resolved.index(-1) === 0 && /^[^\s]/u.test(sourceInsert) &&
+        /^\[[ xX]\]$/.test(source.slice(Math.max(0, from - 3), from))) {
+      // The empty task's label has no visible separator yet. Add only the
+      // necessary source space, and keep the already accepted task structure.
+      const patches = [{ from, to, insert: ` ${sourceInsert}` }];
+      const candidate = applyNativePatches(source, patches);
+      const parsed = parse(candidate);
+      if (!parsed.issues.length && parsed.doc.eq(tr.doc)) {
+        return { patches, candidate, kind: 'text', sourceCaret: from + patches[0].insert.length };
+      }
+    }
     if (inTableCell) {
       const spellings = [sourceInsert];
       if (step.from === step.to && sourceInsert.length > 0) {
@@ -977,11 +1174,11 @@ export function planNativeTransaction(
     return { patches, candidate: applyNativePatches(source, patches), kind: ranges.length ? 'text' : 'empty-text' };
   }
 
-  const split = splitPlan(source, state, tr, position, fallbackEol);
+  const split = splitPlan(source, state, tr, ranges, position, fallbackEol);
   if (split) return split;
   const listJoin = listJoinPlan(source, state, tr, position);
   if (listJoin) return listJoin;
-  const paragraphJoin = paragraphJoinPlan(source, state, tr, ranges);
+  const paragraphJoin = paragraphJoinPlan(source, state, tr, ranges, position);
   if (paragraphJoin) return paragraphJoin;
   throw Error(`该原生事务尚未支持（${step.stepType ?? 'unknown'}）；可信原文与 PM 状态保持不变`);
 }

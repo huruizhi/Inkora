@@ -1,0 +1,1 @@
+Offline editor bundle smoke passed (assets/index-B_weGTA0.js)

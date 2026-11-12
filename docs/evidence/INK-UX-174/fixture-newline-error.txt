@@ -1,0 +1,138 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-174/editor
+
+ ❯ src/heading-entry-runtime.test.ts (8 tests | 6 failed) 74ms
+   × shows a gray level 1 marker until Enter, without changing source/history 40ms
+   × shows a gray level 2 marker until Enter, without changing source/history 6ms
+   × shows a gray level 3 marker until Enter, without changing source/history 5ms
+   × shows a gray level 4 marker until Enter, without changing source/history 5ms
+   × shows a gray level 5 marker until Enter, without changing source/history 5ms
+   × shows a gray level 6 marker until Enter, without changing source/history 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 1 marker until Enter, without changing source/history
+AssertionError: expected '# 标题\n\n' to be '# 标题\n' // Object.is equality
+
+- Expected
++ Received
+
+  # 标题
+
++
+
+ ❯ src/heading-entry-runtime.test.ts:45:29
+     43|   expect(view().dom.querySelector('.inkora-heading-entry')).toBeNull();
+     44|   expect(view().dom.querySelector(`h${level}`)?.textContent).toBe('标题'…
+     45|   expect(runtime.getText()).toBe(prefix + '标题\n');
+       |                             ^
+     46|   type('正文');
+     47|   expect(runtime.getText()).toBe(prefix + '标题\n正文');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 2 marker until Enter, without changing source/history
+AssertionError: expected '## 标题\n\n' to be '## 标题\n' // Object.is equality
+
+- Expected
++ Received
+
+  ## 标题
+
++
+
+ ❯ src/heading-entry-runtime.test.ts:45:29
+     43|   expect(view().dom.querySelector('.inkora-heading-entry')).toBeNull();
+     44|   expect(view().dom.querySelector(`h${level}`)?.textContent).toBe('标题'…
+     45|   expect(runtime.getText()).toBe(prefix + '标题\n');
+       |                             ^
+     46|   type('正文');
+     47|   expect(runtime.getText()).toBe(prefix + '标题\n正文');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 3 marker until Enter, without changing source/history
+AssertionError: expected '### 标题\n\n' to be '### 标题\n' // Object.is equality
+
+- Expected
++ Received
+
+  ### 标题
+
++
+
+ ❯ src/heading-entry-runtime.test.ts:45:29
+     43|   expect(view().dom.querySelector('.inkora-heading-entry')).toBeNull();
+     44|   expect(view().dom.querySelector(`h${level}`)?.textContent).toBe('标题'…
+     45|   expect(runtime.getText()).toBe(prefix + '标题\n');
+       |                             ^
+     46|   type('正文');
+     47|   expect(runtime.getText()).toBe(prefix + '标题\n正文');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 4 marker until Enter, without changing source/history
+AssertionError: expected '#### 标题\n\n' to be '#### 标题\n' // Object.is equality
+
+- Expected
++ Received
+
+  #### 标题
+
++
+
+ ❯ src/heading-entry-runtime.test.ts:45:29
+     43|   expect(view().dom.querySelector('.inkora-heading-entry')).toBeNull();
+     44|   expect(view().dom.querySelector(`h${level}`)?.textContent).toBe('标题'…
+     45|   expect(runtime.getText()).toBe(prefix + '标题\n');
+       |                             ^
+     46|   type('正文');
+     47|   expect(runtime.getText()).toBe(prefix + '标题\n正文');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 5 marker until Enter, without changing source/history
+AssertionError: expected '##### 标题\n\n' to be '##### 标题\n' // Object.is equality
+
+- Expected
++ Received
+
+  ##### 标题
+
++
+
+ ❯ src/heading-entry-runtime.test.ts:45:29
+     43|   expect(view().dom.querySelector('.inkora-heading-entry')).toBeNull();
+     44|   expect(view().dom.querySelector(`h${level}`)?.textContent).toBe('标题'…
+     45|   expect(runtime.getText()).toBe(prefix + '标题\n');
+       |                             ^
+     46|   type('正文');
+     47|   expect(runtime.getText()).toBe(prefix + '标题\n正文');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > shows a gray level 6 marker until Enter, without changing source/history
+AssertionError: expected '###### 标题\n\n' to be '###### 标题\n' // Object.is equality
+
+- Expected
++ Received
+
+  ###### 标题
+
++
+
+ ❯ src/heading-entry-runtime.test.ts:45:29
+     43|   expect(view().dom.querySelector('.inkora-heading-entry')).toBeNull();
+     44|   expect(view().dom.querySelector(`h${level}`)?.textContent).toBe('标题'…
+     45|   expect(runtime.getText()).toBe(prefix + '标题\n');
+       |                             ^
+     46|   type('正文');
+     47|   expect(runtime.getText()).toBe(prefix + '标题\n正文');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 2 passed (8)
+   Start at  18:15:40
+   Duration  486ms (import 69%, tests 19%, transform 12%)

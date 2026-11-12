@@ -1,0 +1,31 @@
+Test Suite 'WritingInteractionHostlessTests' started at 2026-11-12 13:20:45.394.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' started.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' passed (2.096 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' passed (0.595 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' passed (0.365 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' passed (0.361 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' passed (0.876 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' started.
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' passed (0.172 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' passed (0.307 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' passed (0.363 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' passed (0.424 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' passed (0.366 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' passed (0.409 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' passed (0.349 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' passed (0.512 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' started.
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' passed (0.540 seconds).
+Test Suite 'WritingInteractionHostlessTests' passed at 2026-11-12 13:20:53.135.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 7.736 (7.740) seconds

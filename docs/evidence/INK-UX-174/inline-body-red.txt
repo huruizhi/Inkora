@@ -1,0 +1,32 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-174/editor
+
+ ❯ src/heading-entry-runtime.test.ts (12 tests | 1 failed) 92ms
+   × keeps entry appearance while inline rules and marked-space edits change only its body 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > keeps entry appearance while inline rules and marked-space edits change only its body
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/heading-entry-runtime.test.ts:104:92
+    102|   expect(view().dom.querySelector('h1')?.classList.contains('inkora-he…
+    103|   type(' 尾部');
+    104|   expect(view().dom.querySelector('h1')?.classList.contains('inkora-he…
+       |                                                                                            ^
+    105|   expect(runtime.getText()).toBe('# **加粗** 尾部');
+    106| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed (12)
+   Start at  18:24:50
+   Duration  488ms (import 67%, tests 23%, transform 9%)
