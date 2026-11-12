@@ -94,6 +94,50 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret() throws {
+    for row in [
+      (raw: "> a", selector: "#editor blockquote p", mark: "blockquote"),
+      (raw: "**a**", selector: "#editor p", mark: "strong"),
+      (raw: "# **a**", selector: "#editor h1", mark: "strong"),
+      (raw: "[a](./url)", selector: "#editor p", mark: "a"),
+    ] {
+      try withEditor(row.raw) { controller, web in
+        try focus(row.selector, in: web)
+        try keys([" ", " ", " ", "b"], expectedTexts: ["a ", "a  ", "a   ", "a   b"], in: web)
+        XCTAssertEqual(try snapshot(controller), row.raw + "   b", row.raw)
+        XCTAssertEqual(
+          try js("!!document.querySelector('#editor \(row.mark)')", in: web) as? Bool, true)
+        try keys(Array(repeating: "<Backspace>", count: 4), in: web)
+        XCTAssertEqual(try snapshot(controller), row.raw, row.raw)
+      }
+    }
+  }
+
+  @MainActor
+  func testLooseAndQuotedListBoundariesAcceptContinuousBackspace() throws {
+    for row in [
+      (
+        raw: "- a\n\n- b", selector: "#editor li:nth-child(2) p", expected: "- a\n\nb", next: "- ab"
+      ),
+      (raw: "> a\n>\n> - b", selector: "#editor li p", expected: "> a\n>\n> b", next: "> ab"),
+    ] {
+      try withEditor(row.raw) { controller, web in
+        try focus(row.selector, atStart: true, in: web)
+        try keys(["<Backspace>"], in: web)
+        XCTAssertEqual(try snapshot(controller), row.expected, row.raw)
+        try keys(["<Backspace>"], in: web)
+        XCTAssertEqual(try snapshot(controller), row.next, row.raw)
+      }
+    }
+    try withEditor("> - b") { controller, web in
+      try focus("#editor li p", atStart: true, in: web)
+      try keys(["<Backspace>"], in: web)
+      XCTAssertEqual(try snapshot(controller), "> b")
+      XCTAssertEqual(try js("document.querySelectorAll('#editor li').length", in: web) as? Int, 0)
+    }
+  }
+
+  @MainActor
   func testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped() throws {
     for suffix in ["", " "] {
       try withEditor("") { controller, web in
@@ -313,11 +357,23 @@ final class WritingInteractionHostlessTests: XCTestCase {
     }
     XCTAssertEqual(try snapshot(controller), raw)
     try body(controller, web)
+    var closeReady = false
+    var closeError: Error?
+    document.prepareForClose { error in
+      closeError = error
+      closeReady = true
+    }
+    let closeDeadline = Date().addingTimeInterval(5)
+    while !closeReady && Date() < closeDeadline {
+      RunLoop.current.run(until: Date().addingTimeInterval(0.005))
+    }
+    XCTAssertTrue(closeReady)
+    XCTAssertNil(closeError, "actual document close preparation must accept the final edit")
     XCTAssertFalse(window.isVisible)
   }
 
   @MainActor
-  private func focus(_ selector: String, in web: WKWebView) throws {
+  private func focus(_ selector: String, atStart: Bool = false, in web: WKWebView) throws {
     let data = try JSONSerialization.data(withJSONObject: [selector])
     let json = try XCTUnwrap(String(data: data, encoding: .utf8))
     XCTAssertEqual(
@@ -325,7 +381,7 @@ final class WritingInteractionHostlessTests: XCTestCase {
         """
         (() => {const e=document.querySelector('#editor');e.focus();
         const p=document.querySelector(\(json)[0]);if(!p)return false;
-        const r=document.createRange();r.selectNodeContents(p);r.collapse(false);
+        const r=document.createRange();r.selectNodeContents(p);r.collapse(\(atStart));
         const s=getSelection();s.removeAllRanges();s.addRange(r);return true})()
         """, in: web) as? Bool, true)
   }
@@ -346,8 +402,10 @@ final class WritingInteractionHostlessTests: XCTestCase {
           if(editor.dispatchEvent(e))document.execCommand('delete',false,null);
         }else document.execCommand('insertText',false,key);
         setTimeout(() => {
-          const s=getSelection();window.writingSequenceEvents.push({key,html:editor.innerHTML,
-            text:editor.textContent,anchor:s.anchorOffset,head:s.focusOffset,anchorNode:s.anchorNode?.nodeName});
+          const s=getSelection(),prefix=document.createRange();prefix.selectNodeContents(editor);
+          prefix.setEnd(s.focusNode,s.focusOffset);
+          window.writingSequenceEvents.push({key,html:editor.innerHTML,
+            text:editor.textContent,anchor:s.anchorOffset,head:prefix.toString().length,localHead:s.focusOffset,anchorNode:s.anchorNode?.nodeName});
           next();
         },40);
       }next();return true;})()

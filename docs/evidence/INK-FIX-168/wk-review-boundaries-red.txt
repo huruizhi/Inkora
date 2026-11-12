@@ -1,0 +1,62 @@
+Test Suite 'WritingInteractionHostlessTests' started at 2026-11-12 13:40:38.901.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' started.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' passed (2.173 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' passed (0.585 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' passed (0.351 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' passed (0.356 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' passed (0.817 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' started.
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' passed (0.172 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' passed (0.321 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' passed (0.388 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' passed (0.434 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' passed (0.369 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' passed (0.416 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' passed (0.364 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace]' started.
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:127: error: -[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace] : XCTAssertEqual failed: threw error "remote(main.BridgeErrorCode.editorNotReady, main.BridgeRecoveryAction.retry, "该原生事务尚未支持（replaceAround）；可信原文与 PM 状态保持不变")" - - a
+
+- b
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:129: error: -[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace] : XCTAssertEqual failed: threw error "remote(main.BridgeErrorCode.editorNotReady, main.BridgeRecoveryAction.retry, "该原生事务尚未支持（replaceAround）；可信原文与 PM 状态保持不变")" - - a
+
+- b
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:127: error: -[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace] : XCTAssertEqual failed: threw error "remote(main.BridgeErrorCode.editorNotReady, main.BridgeRecoveryAction.retry, "列表 join 的行标记无法安全定位")" - > a
+>
+> - b
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:129: error: -[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace] : XCTAssertEqual failed: threw error "remote(main.BridgeErrorCode.editorNotReady, main.BridgeRecoveryAction.retry, "列表 join 的行标记无法安全定位")" - > a
+>
+> - b
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:135: error: -[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace] : XCTAssertEqual failed: threw error "remote(main.BridgeErrorCode.editorNotReady, main.BridgeRecoveryAction.retry, "列表 join 的行标记无法安全定位")"
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:136: error: -[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace] : XCTAssertEqual failed: ("Optional(1)") is not equal to ("Optional(0)")
+Test Case '-[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace]' failed (0.828 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' passed (0.505 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret]' started.
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:409: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: ("Optional(["a ", "a", "a ", "a   b"])") is not equal to ("Optional(["a ", "a  ", "a   ", "a   b"])")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:411: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: ("Optional([2, 1, 2, 5])") is not equal to ("Optional([2, 3, 4, 5])")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:111: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: threw error "remote(main.BridgeErrorCode.editorNotReady, main.BridgeRecoveryAction.retry, "parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝")" - > a
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:409: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: ("Optional(["**a **", "**a  **", "**a   **", "a   b"])") is not equal to ("Optional(["a ", "a  ", "a   ", "a   b"])")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:411: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: ("Optional([4, 5, 6, 5])") is not equal to ("Optional([2, 3, 4, 5])")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:107: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: ("**a   b**") is not equal to ("**a**   b") - **a**
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:111: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: threw error "remote(main.BridgeErrorCode.editorNotReady, main.BridgeRecoveryAction.retry, "parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝")" - **a**
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:409: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: ("Optional(["**a **", "**a  **", "**a   **", "a   b"])") is not equal to ("Optional(["a ", "a  ", "a   ", "a   b"])")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:411: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: ("Optional([4, 5, 6, 5])") is not equal to ("Optional([2, 3, 4, 5])")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:107: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: ("# **a   b**") is not equal to ("# **a**   b") - # **a**
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:111: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: threw error "remote(main.BridgeErrorCode.editorNotReady, main.BridgeRecoveryAction.retry, "parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝")" - # **a**
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:107: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: ("[a   b](./url)") is not equal to ("[a](./url)   b") - [a](./url)
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-168/tests/InkoraTests/WritingInteractionHostlessTests.swift:108: error: -[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret] : XCTAssertEqual failed: threw error "Error Domain=WKErrorDomain Code=4 "A JavaScript exception occurred" UserInfo={WKJavaScriptExceptionLineNumber=1, WKJavaScriptExceptionMessage=SyntaxError: Unexpected token '/'. Expected a property name after '.'., WKJavaScriptExceptionColumnNumber=0, WKJavaScriptExceptionSourceURL=inkora-editor://app/index.html, NSLocalizedDescription=A JavaScript exception occurred}"
+Test Case '-[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret]' failed (2.368 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' started.
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' passed (0.546 seconds).
+Test Suite 'WritingInteractionHostlessTests' failed at 2026-11-12 13:40:49.896.
+	 Executed 16 tests, with 19 failures (9 unexpected) in 10.992 (10.996) seconds
