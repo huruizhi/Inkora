@@ -62,3 +62,32 @@ editor/node_modules/.bin/vitest run --config artifacts/INK-REV-172/baseline.conf
 前两组选定产品回归分别 **93/93**、**137/137**，合计7文件230例通过。两个probe命令因上述预期断言失败返回1，日志分别`probe-results.txt`与`baseline-results.txt`。没有跑完整Web、make lint/build、Bridge、Native/WK、App、屏幕、性能或物理IME；父会话14项真实隐藏WK只是外部证据，不算审查者自跑。未作整体验收通过结论。
 
 审查仅新增本报告与任务单；ignored artifacts由管理者备份。风险为三项未完需求及上述验证边界。未修产品、不push、不merge。
+
+## 固定补正后验（2026-11-12，追加）
+
+首稿原文保留。审查分支后验开始时clean、HEAD为`a7fd2d19cb4970c5b95ac5f086f3e4941e463e7e`。本节只复核原三项P2，不扩成全语法或整体验收。
+
+固定产品对象：`53ffb58ab56f4269503f7936e0db3e639654fc66`；base仍为`d4976d344daf90dd10ea4db0bbe326a6f8ce6f2e`。只用`git archive <固定对象> editor`得到ignored快照、`git show 717f104`与`git show 53ffb58ab56f4269503f7936e0db3e639654fc66`核对补丁，没有读取动态管理者文件。补正归属为`717f10425e99ab59d819942507775deaf60346bc`（marked/quoted whitespace）和固定对象（loose/quoted lists）。
+
+**后验结论：原三项P2在限定复现及必要保真负控下均已关闭。** 原9例probe对新固定对象9/9通过；独立补7例7/7通过。该结论不追改首稿，也不把管理者或作者输出计为本人实跑。
+
+| 原finding | 固定对象自跑证据 | 补丁核对 |
+| --- | --- | --- |
+| 引用空格不可见 | `> a`逐个三空格均可见，source精确保留；补probe覆盖有向选区、三次Undo/Redo与逐字回删 | ownerTrailingWhitespaceProjection纳入blockquote，增量tail保留已接受inline Fragment |
+| 松散/引用列表Backspace阻断 | 原`- a\n\n- b`、`> - b`首字符前Backspace均接受；补probe松散列表及BOM/CRLF双重引用连续两次Backspace后为`- ab`及原引用前缀下`ab`，两次Undo/Redo恢复字节 | lift重证tight attrs，原文候选覆盖引用前缀与段落/列表join；混入无关文字的lift负控保持原文并unresolved |
+| strong尾空格语义损坏 | 原strong/heading-strong用例三空格后维持正文；补probe检查原inline Fragment逐节点/marks一致、源插入在关闭定界符之后、BOM/CRLF/范围外原字节、选区方向与删除历史 | 以ledger关闭语法owner定位源插入边界，只对合法尾空白建立sourceBoundary，不重新序列化整篇 |
+
+命令均在本审查worktree根运行：
+
+```sh
+git archive 53ffb58ab56f4269503f7936e0db3e639654fc66 editor | tar -x -C artifacts/INK-REV-172/recheck
+artifacts/INK-REV-172/node_modules/.bin/vitest run --config artifacts/INK-REV-172/recheck.config.mjs
+artifacts/INK-REV-172/node_modules/.bin/vitest run --config artifacts/INK-REV-172/recheck-guards.config.mjs
+```
+
+- 原9例probe仅把runtime导入指向固定快照，文件`artifacts/INK-REV-172/recheck-probe.test.ts`；结果`recheck-results.txt`：**9 passed**。
+- 新7例为`recheck-guards.test.ts`；结果`recheck-guards-results.txt`：**7 passed**。涵盖4组空白保真/历史、2组连续列表lift/join、1组混入额外编辑的负控。
+- 补probe首轮4个失败来自审查夹具：初始raw选区仍在关闭定界符内侧，却被误用为应插入位置；以及Undo/Redo重建view后复用旧view。保留该轮源码`recheck-guards-fixture-errors.ts`与输出`recheck-guards-fixture-errors.txt`，改为明确期望的源关闭边界、重新取得当前view后重跑通过；未修改产品。
+- 三次实验对比：原base 1/9、首稿固定HEAD 4/9、补正固定HEAD 9/9，原始文件与输出均保留。
+
+本后验只借用已有node_modules并复制本审查已生成的依赖许可证文件；没有安装依赖、修改产品或已有测试。结束移除自建两个node_modules链接，ignored快照/probe/日志留待管理者备份。未跑全量/Native/WK/Bridge/App/屏幕/物理IME/构建/性能。管理者另报固定对象真实隐藏WK/Native16项通过，是外部synthetic证据，本人未自跑，不代替可见paint/物理IME/最低系统验收。
