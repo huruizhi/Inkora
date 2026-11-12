@@ -19,8 +19,13 @@ import { escapeEditableText, planVisualReplacementPatch, renderAutolinkLabel } f
 export type Affinity = 'left' | 'right';
 export type RawSelection = { anchor: number; head: number; affinity: Affinity };
 export type ProjectionAnchor = { visual: number; raw: number; reason: string };
+type CompositionHeadingOwner = {
+  raw: string; doc: PMNode; version: number; epoch: number; composition: number;
+  pos: number; rawFrom: number; bodyFrom: number; bodyTo: number; prefix: string;
+};
 export type ProjectionAudit = {
   kind: 'exact' | 'anchored';
+  compositionOwner?: CompositionHeadingOwner;
   reason: string;
   anchors: ProjectionAnchor[];
   provenance: string[];
@@ -365,7 +370,28 @@ function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, project
   if (!['text', 'empty-text', 'projection-sync'].includes(plan.kind) || plan.patches.length !== 1) return null;
   const patch = plan.patches[0];
 
-  if (patch.from !== patch.to) return null;
+  if (patch.from !== patch.to) {
+    // One ordinary Backspace can expose an empty bare ATX marker. Prove the
+    // exact deleted plain body and the single resulting block-type change.
+    if (patch.insert !== '' || patch.to <= patch.from || plan.kind !== 'text') return null;
+    const beforeParsed = parse(beforeRaw);
+    if (!beforeParsed.doc.eq(beforeDoc)) return null;
+    const index = beforeParsed.ranges.findIndex(range => range.kind === 'paragraph' &&
+      range.start < patch.from && range.end === patch.to);
+    if (index < 0) return null;
+    const range = beforeParsed.ranges[index];
+    const marker = beforeRaw.slice(range.start, patch.from);
+    const beforeNode = beforeDoc.child(index), targetNode = targetDoc.child(index);
+    if (!/^#{1,6}$/.test(marker) || beforeRaw[patch.from] === '#' || beforeNode.childCount !== 1 || !beforeNode.firstChild?.isText ||
+        beforeNode.firstChild.marks.length || beforeNode.textContent !== beforeRaw.slice(range.start, range.end) ||
+        targetNode.type.name !== 'paragraph' || targetNode.textContent !== marker ||
+        targetDoc.childCount !== beforeDoc.childCount) return null;
+    const expected: PMNode[] = [];
+    targetDoc.forEach((node, _offset, childIndex) => expected.push(childIndex === index
+      ? schema.nodes.heading.create({ level: marker.length, style: 'atx' }) : node));
+    return schema.topNodeType.createChecked(null, expected).eq(parsedDoc)
+      ? 'semantic-contract: deleting the complete plain body exposes one empty bare ATX heading' : null;
+  }
 
   const eofEolStart = beforeRaw.endsWith('\r\n') ? beforeRaw.length - 2
     : beforeRaw.endsWith('\n') ? beforeRaw.length - 1 : -1;
@@ -640,9 +666,8 @@ function planOwnedLinkPatches(
 }
 
 function sameSnapshot(a: Snapshot, b: Snapshot): boolean {
-  return a.raw === b.raw && a.state.doc.eq(b.state.doc)
-    && a.rawSelection.anchor === b.rawSelection.anchor
-    && a.rawSelection.head === b.rawSelection.head;
+  // Selection changes during a canceled composition do not create an edit.
+  return a.raw === b.raw && a.state.doc.eq(b.state.doc);
 }
 
 export class SourceAuthoritySession {
@@ -661,6 +686,8 @@ export class SourceAuthoritySession {
   diagnostic = '';
   unresolvedIntent: { description: string; raw?: string } | null = null;
   composing = false;
+  private compositionEpoch = 0;
+  private compositionSettlementError: string | null = null;
   private compositionStartRaw: string | undefined;
   private compositionGroup: CompositionGroup | null = null;
   private readonly options: EditorStateOptions;
@@ -825,6 +852,7 @@ export class SourceAuthoritySession {
       return context;
     };
     const parsed = this.parseSource(raw);
+    if (projection.compositionOwner) return remember(this.compositionOwnerContext(projection.compositionOwner, state));
     const literal = literalWhitespaceProjection(raw, parsed, state.doc)
       ?? ownerTrailingWhitespaceProjection(raw, parsed, state.doc);
     if (literal) return remember(literal);
@@ -901,6 +929,115 @@ export class SourceAuthoritySession {
       }),
     };
     return remember({ ledger, ranges, parsedDoc: parsed.doc });
+  }
+
+  private compositionOwnerContext(owner: CompositionHeadingOwner, state = this.state): ProjectionContext {
+    if (!this.composing || owner.raw !== this.currentRaw || owner.doc !== state.doc ||
+        owner.version !== this.version || owner.epoch !== this.epoch || owner.composition !== this.compositionEpoch) {
+      throw Error('组合输入 owner 已过期');
+    }
+    const parsed = this.parseSource(owner.raw);
+    const node = state.doc.nodeAt(owner.pos);
+    const index = parsed.ranges.findIndex(range => range.start === owner.rawFrom && range.end === owner.bodyTo);
+    const range = parsed.ranges[index];
+    const canonical = index < 0 ? undefined : parsed.doc.child(index);
+    const body = owner.raw.slice(owner.bodyFrom, owner.bodyTo);
+    if (parsed.issues.length || !node || node.type.name !== 'heading' || node.childCount > 1 ||
+        (node.firstChild && (!node.firstChild.isText || node.firstChild.marks.length)) || node.textContent !== body ||
+        !canonical || canonical.type.name !== 'paragraph' || canonical.childCount !== 1 || canonical.firstChild!.marks.length ||
+        canonical.textContent !== owner.prefix + body || owner.raw.slice(owner.rawFrom, owner.bodyFrom) !== owner.prefix ||
+        parsed.doc.childCount !== state.doc.childCount) throw Error('组合输入 owner 的原文/正文/结构证明失败');
+    let pos = 0;
+    const ranges = parsed.ranges.map((item, itemIndex) => {
+      const target = state.doc.child(itemIndex);
+      if (itemIndex !== index && !target.eq(parsed.doc.child(itemIndex))) throw Error('组合输入跨越 owner');
+      const mapped = { ...item, pos, size: target.nodeSize, kind: target.type.name };
+      pos += target.nodeSize;
+      return mapped;
+    });
+    if (ranges[index].pos !== owner.pos) throw Error('组合输入 owner 位置已变化');
+    const base = baseLedger(owner.raw, parsed);
+    const shift = (visual: number) => visual >= range.pos + range.size
+      ? visual + node.nodeSize - canonical.nodeSize : visual;
+    const spans = base.spans.filter(span => !(span.sourceStart < owner.bodyTo && span.sourceEnd > owner.rawFrom))
+      .map(span => ({ ...span, visualStart: span.visualStart === undefined ? undefined : shift(span.visualStart),
+        visualEnd: span.visualEnd === undefined ? undefined : shift(span.visualEnd) }));
+    spans.push({ sourceStart: owner.rawFrom, sourceEnd: owner.bodyFrom, role: 'block-prefix',
+      syntax: 'composition-atx-prefix', visible: false, visualStart: undefined, visualEnd: undefined });
+    for (let index = 0; index < body.length; index++) spans.push({
+      sourceStart: owner.bodyFrom + index, sourceEnd: owner.bodyFrom + index + 1, role: 'text',
+      syntax: 'composition-atx-body', visible: true, text: body[index],
+      visualStart: owner.pos + 1 + index, visualEnd: owner.pos + 2 + index,
+    });
+    return { parsedDoc: parsed.doc, ranges, ledger: { ...base, docSize: state.doc.content.size, spans,
+      blocks: base.blocks.map((block, itemIndex) => ({ ...block, range: ranges[itemIndex],
+        spans: spans.filter(span => span.sourceStart >= block.range.start && span.sourceEnd <= block.range.end) })),
+      links: base.links.map(link => ({ ...link, visual: { from: shift(link.visual.from), to: shift(link.visual.to) } })),
+    } };
+  }
+
+  private planCompositionOwner(plan: NativePlan, target: EditorState): CompositionHeadingOwner | undefined {
+    if (!this.composing || !['text', 'empty-text'].includes(plan.kind) || plan.patches.length !== 1) return;
+    const patch = plan.patches[0];
+    if (/[\r\n]/.test(patch.insert)) return;
+    let owner = this.projection.compositionOwner;
+    if (owner) this.compositionOwnerContext(owner);
+    else {
+      const range = this.projectionContext().ranges.find(range => range.kind === 'heading' &&
+        this.state.selection.from >= range.pos + 1 && this.state.selection.to <= range.pos + range.size - 1);
+      const node = range && this.state.doc.nodeAt(range.pos);
+      if (!range || !node || node.content.size || node.attrs.style !== 'atx') return;
+      const prefix = this.currentRaw.slice(range.start, range.end);
+      if (!/^ {0,3}#{1,6}$/.test(prefix)) return;
+      owner = { raw: this.currentRaw, doc: this.state.doc, version: this.version, epoch: this.epoch,
+        composition: this.compositionEpoch, pos: range.pos, rawFrom: range.start,
+        bodyFrom: range.end, bodyTo: range.end, prefix };
+    }
+    if (patch.from < owner.bodyFrom || patch.to > owner.bodyTo) return;
+    const next = { ...owner, raw: plan.candidate, doc: target.doc,
+      bodyTo: owner.bodyTo + patch.insert.length - (patch.to - patch.from) };
+    const priorRaw = this.currentRaw, priorState = this.state;
+    try {
+      this.currentRaw = next.raw;
+      this.state = target;
+      const parsed = this.parseSource(next.raw);
+      if (next.bodyTo === next.bodyFrom && !parsed.issues.length && parsed.doc.eq(target.doc)) return next;
+      this.compositionOwnerContext(next, target);
+      return next;
+    } catch { return; }
+    finally { this.currentRaw = priorRaw; this.state = priorState; }
+  }
+
+  /** A late DOM confirmation may lose PM's composition tag but still belong to this proven owner. */
+  continuesCompositionOwner(transaction: Transaction): boolean {
+    if (!this.projection.compositionOwner || transaction.before !== this.state.doc || !transaction.docChanged) return false;
+    const step = transaction.steps[0]?.toJSON() as { stepType?: string; slice?: { content?: Array<{ type?: string }> } };
+    if (transaction.steps.length !== 1 || step?.stepType !== 'replace' ||
+        step.slice?.content?.some(node => node.type !== 'text')) return false;
+    try {
+      const context = this.projectionContext();
+      const plan = planNativeTransaction(this.currentRaw, this.state, context.ranges, transaction,
+        (position, side = 'any') => this.mapVisualEndpoint(position, side), this.preferredEol);
+      return !!this.planCompositionOwner(plan, this.state.apply(transaction));
+    } catch { return false; }
+  }
+
+  captureCompositionContinuation(transaction: Transaction): { raw: string; epoch: number; version: number; owner: CompositionHeadingOwner; from: number; to: number; insert: string } | undefined {
+    if (!this.continuesCompositionOwner(transaction)) return;
+    const step = transaction.steps[0].toJSON() as { from: number; to: number; slice?: { content?: Array<{ text?: string }> } };
+    return { raw: this.currentRaw, epoch: this.epoch, version: this.version, owner: this.projection.compositionOwner!, from: this.mapVisualEndpoint(step.from, 'from'),
+      to: this.mapVisualEndpoint(step.to, 'to'), insert: (step.slice?.content ?? []).map(node => node.text ?? '').join('') };
+  }
+
+  resumeCompositionContinuation(receipt: { raw: string; epoch: number; version: number; owner: CompositionHeadingOwner; from: number; to: number; insert: string }): Transaction | undefined {
+    if (this.composing || receipt.raw !== this.currentRaw || receipt.epoch !== this.epoch || receipt.version !== this.version ||
+        receipt.owner.raw !== receipt.raw || receipt.owner.epoch !== receipt.epoch || receipt.owner.version !== receipt.version ||
+        !this.parseSource(this.currentRaw).doc.eq(this.state.doc)) return;
+    const from = this.syntaxAwareRawMap(receipt.from, 'right').visual;
+    const to = this.syntaxAwareRawMap(receipt.to, 'left').visual;
+    const transaction = this.state.tr.insertText(receipt.insert, from, to);
+    const expected = receipt.raw.slice(0, receipt.from) + receipt.insert + receipt.raw.slice(receipt.to);
+    return this.parseSource(expected).doc.eq(transaction.doc) ? transaction : undefined;
   }
 
   private projectionIsAuditable(): boolean {
@@ -1150,6 +1287,7 @@ export class SourceAuthoritySession {
   }
 
   startComposition(): void {
+    this.compositionEpoch++;
     this.composing = true;
     this.compositionStartRaw = this.currentRaw;
   }
@@ -1158,21 +1296,44 @@ export class SourceAuthoritySession {
     this.startComposition();
   }
 
-  endComposition(): void {
+  endComposition(): boolean {
+    if (this.projection.compositionOwner) {
+      const before = this.snapshot();
+      try {
+        this.compositionOwnerContext(this.projection.compositionOwner);
+        const parsed = this.parseSource(this.currentRaw);
+        const selection = cloneSelection(this.rawSelection);
+        this.state = createInkoraProjectionState(parsed.doc, this.options);
+        this.projection = { kind: 'exact', reason: '组合输入稳定后派生 canonical 投影', anchors: [], provenance: [] };
+        if (!this.setRawSelection(selection.anchor, selection.head, selection.affinity)) throw Error(this.diagnostic);
+      } catch (error) {
+        this.restore(before);
+        this.diagnostic = `组合输入结算失败，候选和原文已保留，再次保存可重试：${error instanceof Error ? error.message : String(error)}`;
+        this.compositionSettlementError = this.diagnostic;
+        this.unresolvedIntent ??= { description: this.diagnostic, raw: before.raw };
+        return false;
+      }
+    }
+    if (this.compositionSettlementError && this.unresolvedIntent?.description === this.compositionSettlementError) {
+      this.unresolvedIntent = null;
+      this.diagnostic = '';
+    }
+    this.compositionSettlementError = null;
     const changed = this.compositionStartRaw !== undefined &&
       this.compositionStartRaw !== this.currentRaw;
     this.composing = false;
     this.compositionStartRaw = undefined;
     if (!this.compositionGroup) {
       if (changed) this.logicalRevision++;
-      return;
+      return true;
     }
     this.compactComposition();
     this.finishComposition();
     if (changed) this.logicalRevision++;
+    return true;
   }
 
-  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping']): void {
+  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner): void {
     const parsed = this.parseSource(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
@@ -1245,11 +1406,13 @@ export class SourceAuthoritySession {
       }
     } else {
       this.state = target;
-      this.projection = { kind: 'anchored', reason, anchors: dedupeAnchors(validatedAnchors), provenance: [reason, ...patches.map(patch => `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`)] };
+      this.projection = { kind: 'anchored', compositionOwner, reason, anchors: dedupeAnchors(validatedAnchors), provenance: [reason, ...patches.map(patch => `${patch.from}..${patch.to} -> ${JSON.stringify(patch.insert)}`)] };
       this.projectionContext();
       this.rawSelection = this.updateSelectionFromState(this.state);
     }
     if (!this.compositionGroup) { this.past.push(before); this.future = []; }
+    if (this.projection.compositionOwner) this.projection = { ...this.projection,
+      compositionOwner: { ...this.projection.compositionOwner, version: this.version + 1 } };
     this.version++;
     this.unresolvedIntent = null;
     this.diagnostic = '';
@@ -1277,7 +1440,8 @@ export class SourceAuthoritySession {
     const compositionId = transaction.getMeta('composition');
     // Selection-only transactions do not start or seal an input history unit.
     if (transaction.docChanged) {
-      if (compositionId !== undefined) this.beginCompositionGroup(compositionId);
+      if (this.composing) this.beginCompositionGroup(`ui-${this.compositionEpoch}`);
+      else if (compositionId !== undefined) this.beginCompositionGroup(compositionId);
       else this.finishComposition();
     }
     if (!transaction.docChanged) {
@@ -1344,7 +1508,9 @@ export class SourceAuthoritySession {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
       const parsed = this.parseSource(plan.candidate);
-      if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !literalWhitespaceProjection(plan.candidate, parsed, target.doc) && !ownerTrailingWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
+      const compositionOwner = this.planCompositionOwner(plan, target);
+      if (this.projection.compositionOwner && !compositionOwner && !parsed.doc.eq(target.doc)) throw Error('组合输入事务超出已证明 owner');
+      if (!compositionOwner && !parsed.issues.length && !parsed.doc.eq(target.doc) && !literalWhitespaceProjection(plan.candidate, parsed, target.doc) && !ownerTrailingWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
         const proof = implicitLinkReprojectionProof(before.raw, context.ledger, plan, parsed, target.doc, tr.mapping)
           ?? semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
@@ -1367,7 +1533,7 @@ export class SourceAuthoritySession {
         if (compositionId !== undefined) this.compactComposition();
         return true;
       }
-      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping);
+      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner);
       if (compositionId !== undefined) this.compactComposition();
       return true;
     } catch (error) {

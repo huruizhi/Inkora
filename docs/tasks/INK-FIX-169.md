@@ -140,3 +140,50 @@ diagnostic 为空，saveEligible=false。说明 canonical heading→paragraph �
 accept/projectionContext 共同保持原文、候选正文与位置的有限对应，active/settling 期间保留活投影；
 endComposition 在安静且 PM composing=false 后以最终原文恢复 canonical、有向位置，再结算历史/一次逻辑 revision。
 禁止靠清 composing、提前结束候选或放行 snapshot 修复，禁止把临时证书扩大到所有语义差异。
+
+## 追加实现：有界组合输入 owner 与稳定结算
+
+管理者真实 WK 已独立复现上述无空格 `#` 候选脱离；本作者获准实现限定证书。
+原独立红 probe/config 已移除并迁为正常回归 `src/heading-composition-runtime.test.ts`，不存在常规门禁绕过。
+先前独立命令仅保留为诊断历史，现运行：
+
+```sh
+./editor/node_modules/.bin/vitest run --root editor \
+  src/heading-composition-runtime.test.ts src/heading-spaces-regression.test.ts \
+  src/source-authority-runtime.test.ts src/source-boundary-sequence.test.ts \
+  src/heading-input-runtime.test.ts src/block-editing.test.ts \
+  src/composition-publication.test.ts src/protected-source-runtime.test.ts
+./editor/node_modules/.bin/tsc --noEmit -p editor/tsconfig.json
+```
+
+作者结果：8 文件、168 测试通过；TypeScript 与 diff 检查通过。新增正常回归 17 项。
+作者仍未运行真实 WK/Native、物理 IME、性能或全量门禁，最终 Native 由管理者补验。
+
+实现边界：
+
+- 仅活动/settling 中已经接受的顶层空 ATX heading，其原文为最多三空格缩进加 1–6 个裸 `#`；
+  只接受该 owner 正文范围内的单个本地纯 text patch、无 mark、无换行候选。
+  临时 owner 绑定 current raw、PM doc identity、version、文档 epoch 与 composition epoch；
+  同时验证 canonical 只在该块把“标记前缀+候选正文”表示为无 mark paragraph，范围外块一致。
+- accept 保留 target EditorState，projectionContext 用显式前缀/正文跨度给后续候选替换建立账本。
+  stable 前 snapshot/save 仍拒绝，原文与候选保留；stable 后才生成 canonical、恢复有向原文位置，
+  再结算一次文档逻辑 revision、Bridge publication 与 Undo 单位。取消只移动选区不会新建文档历史。
+- late final 例外必须同时具备公开 input 的 `insertCompositionText`、`isComposing=true`、准确 data，
+  加 doc/version 一次凭证与同 owner 事务证明。普通 API 无 meta、普通 DOM insertText 作为下一编辑；
+  仅对该 owner 已证明的纯 text 收据，以 raw/epoch/version 校验后在 stable canonical 上重建一条文字事务。
+  未证明的浏览器 final 事件变体不扩大授权。
+- PM 在 compositionend 后可执行自己的 Text cleanup；回归证明活动与 settling 的最终候选写入前存活，
+  最终字被接受且 canonical 仍推迟到 stable。不会私写 PM composing 来阻止正常 cleanup。
+- endComposition 结算异常先恢复快照，保留候选/原文与原有未解决意图；不清 guard、不进入假 stable。
+  公开 whenCompositionStable 在停止 PM composition 后安排一次重试，供再次保存/关闭既有 drain 调用使用，
+  没有失败紧循环；新 compositionstart 不覆盖仍失败的 owner。成功重试只清自己产生的结算错误。
+
+另先建立普通删除红例：确认后 `<p>#中</p>` 中 Backspace 删除 `中`，原语义 gate 拒绝并保留 `#中`。
+限定补证只允许删尽单行、无 mark、纯正文，恰好暴露同级裸 ATX 标记；完整目标仅此 paragraph→空 heading，
+范围外结构与字节一致。第二次 Backspace 继续由 clearEmptyHeading 去格式到空。
+非最大 marker、mark、protected、混合事务均不能借该证明；未删尽的普通正文沿原有文字路径编辑。
+
+测试额外覆盖取消/late 取消/no-op、有向位置、cross-owner/reopen/stale transaction、下一普通键独立 Undo、
+普通 DOM Backspace 到空，以及故障注入的原子失败→合法位置恢复→公开 drain 重试。
+故障注入直接构造非法 session.rawSelection；正常公开 setRawSelection 会拒绝该非法边界，
+不能把该注入当成真实用户输入错误证据。重试不清无关 unresolved 的负控也通过。
