@@ -21,3 +21,12 @@
 - 证据与命令：见报告追加节，ignored `artifacts/INK-REV-176/recheck*`保留；结束已移除本人自建四个node_modules链接。
 - 只追加本任务与原报告，未改产品/原测试/依赖，无push/PR/merge；全量/Native/WK/Bridge、App/UI、物理IME/paint/最低系统仍未自跑，不能宣称整体体验验收。
 - 本追加独立commit，完成回报提供第二阶段SHA。
+
+## 最终同域补正后验（仅追加）
+
+- 固定产品：`6eaa308496ca876ec4e70ad42304c3a597b23945`；只核对相对512ad4e的heading-entry实现与第13项用例，不扩矩阵。
+- 新补正：已有entry的正文行内格式延续外观；首次创建仍须原限定文本输入，sameMarkup/root childCount/其他siblings.eq/sourceStart前raw不变守卫保留。未发现该限定hunk新增Spec问题。
+- 自跑：固定archive的heading-entry-runtime **13/13通过**；补正前toggleMark红例由管理者报告，本人未独立跑红例。原P2保持限定关闭。
+- 证据：ignored `artifacts/INK-REV-176/final-recheck/`、config和`final-recheck-entry-results.txt`；本轮依赖链接已移除。
+- 前两阶段内容不变，仅追加两文档；无产品/原测试修改、依赖安装或push/PR/merge。965/16/19仅外部，不是本人执行；仍未自跑Native/App/WK/Bridge/全量/物理IME/paint与整体验收。
+- 本追加独立commit，完整SHA见完成回报。

@@ -66,3 +66,19 @@ node editor/node_modules/vitest/vitest.mjs run --config artifacts/INK-REV-176/re
 ```
 
 证据保留`recheck-probe.test.ts`、两个config及`recheck-strong-results.txt`/`recheck-entry-results.txt`。仍只有jsdom synthetic；本后验未运行Native/WK/Bridge、全量、构建、App/UI、物理IME、paint或最低系统验收，没有push/PR/merge。本人自建四个依赖链接均已移除；产品与已有测试零修改，ignored快照与日志保留。原finding关闭不等于整体体验验收完成。
+
+## 最终同域补正后验（仅追加）
+
+本轮固定产品对象`6eaa308496ca876ec4e70ad42304c3a597b23945`，仅静态核对`git diff 512ad4e41660355fe14dd6a7db6fa0c2672fa2a9 6eaa308496ca876ec4e70ad42304c3a597b23945 -- editor/src/heading-entry.ts editor/src/heading-entry-runtime.test.ts`及固定新增的第13项用例。管理者报告选中输入期标题正文后toggleMark strong会提前结束输入态；本审查没有自行重跑该补正前红例，不将其计为独立红例。
+
+静态补丁保留首次创建的限定文本输入门槛；只在已有entry时允许正文格式事务延续外观，并核对同一heading的sameMarkup、根childCount、其他siblings逐项eq、sourceStart之前raw完全一致。Enter分段、改变heading块属性、改动其他块或移动前缀不能据此继承。此为既有标题行继续编辑的同域补正，未发现该hunk新增的Spec问题；无额外语法或paste矩阵扩展。
+
+固定快照自跑**heading-entry-runtime 13/13通过**，包含选中标题正文加粗后原文`# **标题**`、无unresolved、灰色entry class仍在，以及原12项。最初1项P2保持限定关闭；整体体验验收范围不变。
+
+```sh
+git archive 6eaa308496ca876ec4e70ad42304c3a597b23945 editor | tar -x -C artifacts/INK-REV-176/final-recheck
+node artifacts/INK-REV-176/final-recheck/editor/scripts/prepare-renderers.mjs
+node /Users/rayhu/Documents/projects/Inkora/editor/node_modules/vitest/vitest.mjs run --config artifacts/INK-REV-176/final-recheck.config.mjs
+```
+
+ignored固定快照、config与`final-recheck-entry-results.txt`保留；本轮新建的快照依赖链接已移除。没有修改产品/已有测试，没有安装依赖，没有运行Native/App/WK/Bridge/全量/物理IME/可见paint；管理者965/16/19仅属外部执行，不计为本人自跑。原报告全部前缀保留，只追加本节，无push/PR/merge。
