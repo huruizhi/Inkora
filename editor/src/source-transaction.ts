@@ -586,10 +586,11 @@ function splitPlan(
   if (listContext(state) && countType(tr.doc, 'list_item') === countType(state.doc, 'list_item') + 1) {
     const lineStart = source.lastIndexOf('\n', Math.max(0, anchor - 1)) + 1;
     const prefix = source.slice(lineStart, anchor);
-    const marker = /^(\s*)([-+*]|\d+[.)])([\t ]+)/.exec(prefix);
+    const marker = /^(?:\uFEFF)?((?:[\t ]*>[\t ]*)*)([\t ]*)([-+*]|\d+[.)])([\t ]+)/.exec(prefix);
     if (!marker) throw Error('列表项标记无法从当前源行安全定位');
     const taskMarker = taskListContext(state) ? '[ ] ' : '';
-    const insertion = `${eol}${marker[1]}${marker[2]}${marker[3]}${taskMarker}`;
+    // The file BOM stays at BOF; quote/indent ownership continues on the new line.
+    const insertion = `${eol}${marker[1]}${marker[2]}${marker[3]}${marker[4]}${taskMarker}`;
     const patches = [{ from: anchor, to: anchor, insert: insertion }];
     return { patches, candidate: applyNativePatches(source, patches), kind: 'list-split', mayStage: true, sourceCaret: anchor + insertion.length };
   }

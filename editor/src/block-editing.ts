@@ -25,7 +25,9 @@ import {
   splitListItem,
   wrapInList,
 } from "prosemirror-schema-list";
-import { TextSelection, type Command, type Plugin } from "prosemirror-state";
+import { Plugin, TextSelection, type Transaction, type Command } from "prosemirror-state";
+import type { Node as PMNode } from "prosemirror-model";
+import type { EditorView } from "prosemirror-view";
 import { inkoraSchema } from "./schema";
 
 export function setHeading(level: number): Command {
@@ -72,6 +74,42 @@ const splitTaskListItem: Command = (state, dispatch, view) => {
     }
   }
   return false;
+};
+
+type EmptyListEnter = { doc: PMNode; head: number };
+const listEnterSequences = new WeakMap<EditorView, EmptyListEnter>();
+
+// Empty items split on the first Enter, and leave the list on the next
+// consecutive Enter. Only the exact accepted document/caret can continue it.
+const enterListItem: Command = (state, dispatch, view) => {
+  const { $from, empty } = state.selection;
+  if (!empty || view?.composing || $from.depth < 3 ||
+      $from.parent.type !== inkoraSchema.nodes.paragraph ||
+      $from.node(-1).type !== inkoraSchema.nodes.list_item) return false;
+  const split = chainCommands(splitTaskListItem, splitListItem(inkoraSchema.nodes.list_item));
+  if (!view || $from.node(-1).attrs.task) return split(state, dispatch, view);
+  const last = listEnterSequences.get(view);
+  const send = dispatch ? (tr: Transaction) => {
+    dispatch(tr);
+    const selected = view.state.selection;
+    if (view.state.doc === tr.doc && selected.empty && selected.$from.depth >= 3 &&
+        selected.$from.parent.type === inkoraSchema.nodes.paragraph && selected.$from.parent.content.size === 0 &&
+        selected.$from.node(-1).type === inkoraSchema.nodes.list_item) {
+      listEnterSequences.set(view, { doc: view.state.doc, head: selected.head });
+    } else listEnterSequences.delete(view);
+  } : undefined;
+  const isEmpty = $from.parent.content.size === 0;
+  const consecutive = last?.doc === state.doc && last.head === state.selection.head;
+  if (isEmpty && !consecutive && $from.index(-1) === 0 && $from.node(-1).childCount === 1) {
+    const item = $from.node(-1);
+    const types = [{ type: item.type, attrs: item.attrs },
+      { type: $from.parent.type, attrs: $from.parent.attrs }];
+    const tr = state.tr;
+    try { tr.split($from.pos, 2, types); } catch { return false; }
+    send?.(tr.scrollIntoView());
+    return true;
+  }
+  return split(state, send, view);
 };
 
 const insertTabInCode: Command = (state, dispatch) => {
@@ -146,8 +184,7 @@ export const listBoundaryBackspace: Command = (state, dispatch, view) => {
 export const blockKeyBindings: Record<string, Command> = {
   Enter: chainCommands(
     newlineInCode,
-    splitTaskListItem,
-    splitListItem(inkoraSchema.nodes.list_item),
+    enterListItem,
     createParagraphNear,
     liftEmptyBlock,
     splitBlockKeepMarks,
@@ -173,7 +210,25 @@ export const blockKeyBindings: Record<string, Command> = {
 };
 
 export function createBlockKeymap(): Plugin {
-  return keymap(blockKeyBindings);
+  const bindings = keymap(blockKeyBindings);
+  const reset = (view: EditorView) => { listEnterSequences.delete(view); return false; };
+  return new Plugin({
+    ...bindings.spec,
+    props: {
+      handleKeyDown(view, event) {
+        if (event.key !== 'Enter' || event.isComposing || view.composing) reset(view);
+        return bindings.props.handleKeyDown?.call(bindings, view, event) ?? false;
+      },
+      handleDOMEvents: { pointerdown: reset, mousedown: reset, blur: reset, compositionstart: reset },
+    },
+    view: initialView => ({
+      update(view) {
+        const prior = listEnterSequences.get(view);
+        if (prior && (prior.doc !== view.state.doc || !view.state.selection.empty || prior.head !== view.state.selection.head)) reset(view);
+      },
+      destroy() { reset(initialView); },
+    }),
+  });
 }
 
 const headingInputRule = textblockTypeInputRule(

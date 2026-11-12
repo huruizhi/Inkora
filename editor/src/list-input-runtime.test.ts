@@ -415,3 +415,62 @@ it.each(['-', '+', '*'])('allows Enter after an uncompleted %j without activatin
   type(view,'after');
   expect(runtime.snapshotText()).toEqual({ok:true,value:marker+'\n\nafter'});
 });
+
+it.each(['- ', '# 水电费\n\n- 水电费\n- 第三方\n- '])('creates an empty item on first Enter then exits on consecutive Enter in %j', raw => {
+  const {runtime,view,dom}=setup(raw);
+  let at=-1;view.state.doc.descendants((node,pos)=>{if(node.type.name==='paragraph' && node.content.size===0)at=pos+1;});
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,at)));
+  const before=view.dom.querySelectorAll('li').length;
+  const enter=()=>view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  enter();
+  expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(view.dom.querySelectorAll('li').length).toBe(before+1);
+  expect(runtime.getText()).toBe(raw+'\n- ');
+  enter();
+  expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(view.dom.querySelectorAll('li').length).toBe(before);
+  expect(view.state.selection.$from.depth).toBe(1);
+  expect(runtime.getText()).toBe(raw+'\n\n');
+  type(view,'正文');
+  expect(runtime.snapshotText()).toEqual({ok:true,value:raw+'\n\n正文'});
+});
+it.each([
+  ['- ','- \n- ','- \n\n'],
+  ['\uFEFF- \r\n','\uFEFF- \r\n- \r\n','\uFEFF- \r\n\r\n\r\n'],
+  ['1. ','1. \n1. ','1. \n\n'],
+])('retains exact source bytes across two Enters: %j', (raw,first,second)=>{
+  const {runtime,view,dom}=setup(raw);let at=-1;
+  view.state.doc.descendants((node,pos)=>{if(node.type.name==='paragraph'&&node.content.size===0)at=pos+1;});
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,at)));
+  const enter=()=>view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  enter();expect(runtime.snapshotText(),evidence(runtime,view)).toEqual({ok:true,value:first});
+  enter();expect(runtime.snapshotText(),evidence(runtime,view)).toEqual({ok:true,value:second});
+  expect(runtime.undo()).toBe(true);expect(runtime.getText()).toBe(first);
+  expect(runtime.undo()).toBe(true);expect(runtime.getText()).toBe(raw);
+});
+it.each(['selection','pointer','arrow','composition','edit'] as const)('resets the Enter sequence on %s',action=>{
+  const {runtime,view,dom}=setup('- ');
+  const enter=()=>view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  enter();
+  if(action==='selection'){
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,3)));
+    view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+  }else if(action==='pointer')view.dom.dispatchEvent(new dom.window.MouseEvent('mousedown',{bubbles:true}));
+  else if(action==='arrow')view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+  else if(action==='composition'){
+    // The public UI event resets only the gesture; native composition itself
+    // has dedicated WK coverage and must not be fabricated as text here.
+    view.someProp('handleDOMEvents',handlers=>{handlers.compositionstart?.(view,new dom.window.CompositionEvent('compositionstart'));return false;});
+  }else{type(view,'x');view.dispatch(view.state.tr.delete(view.state.selection.head-1,view.state.selection.head));}
+  enter();expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(view.dom.querySelectorAll('li').length).toBe(3);
+});
+it('does not restore a consecutive Enter gesture through Undo and a rebuilt view',()=>{
+  const {runtime,view,dom}=setup('- ');
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  type(view,'x');expect(runtime.undo()).toBe(true);
+  const current=(runtime as unknown as {view:EditorView}).view;
+  current.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  expect(runtime.status.unresolved,evidence(runtime,current)).toBe(false);
+  expect(current.dom.querySelectorAll('li').length).toBe(3);
+});
