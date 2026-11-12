@@ -1,0 +1,1264 @@
+{
+  "highlightVersion": "11.12.0",
+  "registeredLanguages": 193,
+  "semanticCoverage": "thirteen baseline fixtures and five new representative fixtures; not a full grammar conformance suite",
+  "languages": [
+    {
+      "id": "1c",
+      "label": "1C:Enterprise（1c）",
+      "aliases": []
+    },
+    {
+      "id": "abnf",
+      "label": "Augmented Backus-Naur Form（abnf）",
+      "aliases": []
+    },
+    {
+      "id": "accesslog",
+      "label": "Apache Access Log（accesslog）",
+      "aliases": []
+    },
+    {
+      "id": "actionscript",
+      "label": "ActionScript（actionscript）",
+      "aliases": [
+        "as"
+      ]
+    },
+    {
+      "id": "ada",
+      "label": "Ada（ada）",
+      "aliases": []
+    },
+    {
+      "id": "angelscript",
+      "label": "AngelScript（angelscript）",
+      "aliases": [
+        "asc"
+      ]
+    },
+    {
+      "id": "apache",
+      "label": "Apache config（apache）",
+      "aliases": [
+        "apacheconf"
+      ]
+    },
+    {
+      "id": "applescript",
+      "label": "AppleScript（applescript）",
+      "aliases": [
+        "osascript"
+      ]
+    },
+    {
+      "id": "arcade",
+      "label": "ArcGIS Arcade（arcade）",
+      "aliases": []
+    },
+    {
+      "id": "arduino",
+      "label": "Arduino（arduino）",
+      "aliases": [
+        "ino"
+      ]
+    },
+    {
+      "id": "armasm",
+      "label": "ARM Assembly（armasm）",
+      "aliases": [
+        "arm"
+      ]
+    },
+    {
+      "id": "asciidoc",
+      "label": "AsciiDoc（asciidoc）",
+      "aliases": [
+        "adoc"
+      ]
+    },
+    {
+      "id": "aspectj",
+      "label": "AspectJ（aspectj）",
+      "aliases": []
+    },
+    {
+      "id": "autohotkey",
+      "label": "AutoHotkey（autohotkey）",
+      "aliases": [
+        "ahk"
+      ]
+    },
+    {
+      "id": "autoit",
+      "label": "AutoIt（autoit）",
+      "aliases": []
+    },
+    {
+      "id": "avrasm",
+      "label": "AVR Assembly（avrasm）",
+      "aliases": []
+    },
+    {
+      "id": "awk",
+      "label": "Awk（awk）",
+      "aliases": []
+    },
+    {
+      "id": "axapta",
+      "label": "X++（axapta）",
+      "aliases": [
+        "x++"
+      ]
+    },
+    {
+      "id": "bash",
+      "label": "Bash Shell（bash）",
+      "aliases": [
+        "sh",
+        "zsh"
+      ]
+    },
+    {
+      "id": "basic",
+      "label": "BASIC（basic）",
+      "aliases": []
+    },
+    {
+      "id": "bnf",
+      "label": "Backus–Naur Form（bnf）",
+      "aliases": []
+    },
+    {
+      "id": "brainfuck",
+      "label": "Brainfuck（brainfuck）",
+      "aliases": [
+        "bf"
+      ]
+    },
+    {
+      "id": "c",
+      "label": "C（c）",
+      "aliases": [
+        "h"
+      ]
+    },
+    {
+      "id": "cal",
+      "label": "C/AL（cal）",
+      "aliases": []
+    },
+    {
+      "id": "capnproto",
+      "label": "Cap’n Proto（capnproto）",
+      "aliases": [
+        "capnp"
+      ]
+    },
+    {
+      "id": "ceylon",
+      "label": "Ceylon（ceylon）",
+      "aliases": []
+    },
+    {
+      "id": "clean",
+      "label": "Clean（clean）",
+      "aliases": [
+        "icl",
+        "dcl"
+      ]
+    },
+    {
+      "id": "clojure",
+      "label": "Clojure（clojure）",
+      "aliases": [
+        "clj",
+        "edn"
+      ]
+    },
+    {
+      "id": "clojure-repl",
+      "label": "Clojure REPL（clojure-repl）",
+      "aliases": []
+    },
+    {
+      "id": "cmake",
+      "label": "CMake（cmake）",
+      "aliases": [
+        "cmake.in"
+      ]
+    },
+    {
+      "id": "coffeescript",
+      "label": "CoffeeScript（coffeescript）",
+      "aliases": [
+        "coffee",
+        "cson",
+        "iced"
+      ]
+    },
+    {
+      "id": "coq",
+      "label": "Coq（coq）",
+      "aliases": []
+    },
+    {
+      "id": "cos",
+      "label": "Caché Object Script（cos）",
+      "aliases": [
+        "cls"
+      ]
+    },
+    {
+      "id": "cpp",
+      "label": "C++（cpp）",
+      "aliases": [
+        "cc",
+        "c++",
+        "h++",
+        "hpp",
+        "hh",
+        "hxx",
+        "cxx"
+      ]
+    },
+    {
+      "id": "crmsh",
+      "label": "crmsh（crmsh）",
+      "aliases": [
+        "crm",
+        "pcmk"
+      ]
+    },
+    {
+      "id": "crystal",
+      "label": "Crystal（crystal）",
+      "aliases": [
+        "cr"
+      ]
+    },
+    {
+      "id": "csharp",
+      "label": "C#（csharp）",
+      "aliases": [
+        "cs",
+        "c#"
+      ]
+    },
+    {
+      "id": "csp",
+      "label": "CSP（csp）",
+      "aliases": []
+    },
+    {
+      "id": "css",
+      "label": "CSS（css）",
+      "aliases": []
+    },
+    {
+      "id": "d",
+      "label": "D（d）",
+      "aliases": []
+    },
+    {
+      "id": "dart",
+      "label": "Dart（dart）",
+      "aliases": []
+    },
+    {
+      "id": "delphi",
+      "label": "Delphi（delphi）",
+      "aliases": [
+        "dpr",
+        "dfm",
+        "pas",
+        "pascal"
+      ]
+    },
+    {
+      "id": "diff",
+      "label": "Diff（diff）",
+      "aliases": [
+        "patch"
+      ]
+    },
+    {
+      "id": "django",
+      "label": "Django（django）",
+      "aliases": [
+        "jinja"
+      ]
+    },
+    {
+      "id": "dns",
+      "label": "DNS Zone（dns）",
+      "aliases": [
+        "bind",
+        "zone"
+      ]
+    },
+    {
+      "id": "dockerfile",
+      "label": "Dockerfile（dockerfile）",
+      "aliases": [
+        "docker"
+      ]
+    },
+    {
+      "id": "dos",
+      "label": "Batch file (DOS)（dos）",
+      "aliases": [
+        "bat",
+        "batch",
+        "cmd"
+      ]
+    },
+    {
+      "id": "dsconfig",
+      "label": "dsconfig（dsconfig）",
+      "aliases": []
+    },
+    {
+      "id": "dts",
+      "label": "Device Tree（dts）",
+      "aliases": []
+    },
+    {
+      "id": "dust",
+      "label": "Dust（dust）",
+      "aliases": [
+        "dst"
+      ]
+    },
+    {
+      "id": "ebnf",
+      "label": "Extended Backus-Naur Form（ebnf）",
+      "aliases": []
+    },
+    {
+      "id": "elixir",
+      "label": "Elixir（elixir）",
+      "aliases": [
+        "ex",
+        "exs"
+      ]
+    },
+    {
+      "id": "elm",
+      "label": "Elm（elm）",
+      "aliases": []
+    },
+    {
+      "id": "erb",
+      "label": "ERB（erb）",
+      "aliases": []
+    },
+    {
+      "id": "erlang",
+      "label": "Erlang（erlang）",
+      "aliases": [
+        "erl"
+      ]
+    },
+    {
+      "id": "erlang-repl",
+      "label": "Erlang REPL（erlang-repl）",
+      "aliases": []
+    },
+    {
+      "id": "excel",
+      "label": "Excel formulae（excel）",
+      "aliases": [
+        "xlsx",
+        "xls"
+      ]
+    },
+    {
+      "id": "fix",
+      "label": "FIX（fix）",
+      "aliases": []
+    },
+    {
+      "id": "flix",
+      "label": "Flix（flix）",
+      "aliases": []
+    },
+    {
+      "id": "fortran",
+      "label": "Fortran（fortran）",
+      "aliases": [
+        "f90",
+        "f95"
+      ]
+    },
+    {
+      "id": "freedesktop",
+      "label": "FreeDesktop config（freedesktop）",
+      "aliases": [
+        "desktop",
+        "systemd"
+      ]
+    },
+    {
+      "id": "fsharp",
+      "label": "F#（fsharp）",
+      "aliases": [
+        "fs",
+        "f#"
+      ]
+    },
+    {
+      "id": "gams",
+      "label": "GAMS（gams）",
+      "aliases": [
+        "gms"
+      ]
+    },
+    {
+      "id": "gauss",
+      "label": "GAUSS（gauss）",
+      "aliases": [
+        "gss"
+      ]
+    },
+    {
+      "id": "gcode",
+      "label": "G-code (ISO 6983)（gcode）",
+      "aliases": [
+        "nc"
+      ]
+    },
+    {
+      "id": "gherkin",
+      "label": "Gherkin（gherkin）",
+      "aliases": [
+        "feature"
+      ]
+    },
+    {
+      "id": "glsl",
+      "label": "GLSL（glsl）",
+      "aliases": []
+    },
+    {
+      "id": "gml",
+      "label": "GML（gml）",
+      "aliases": []
+    },
+    {
+      "id": "go",
+      "label": "Go（go）",
+      "aliases": [
+        "golang"
+      ]
+    },
+    {
+      "id": "golo",
+      "label": "Golo（golo）",
+      "aliases": []
+    },
+    {
+      "id": "gradle",
+      "label": "Gradle（gradle）",
+      "aliases": []
+    },
+    {
+      "id": "graphql",
+      "label": "GraphQL（graphql）",
+      "aliases": [
+        "gql"
+      ]
+    },
+    {
+      "id": "groovy",
+      "label": "Groovy（groovy）",
+      "aliases": []
+    },
+    {
+      "id": "haml",
+      "label": "HAML（haml）",
+      "aliases": []
+    },
+    {
+      "id": "handlebars",
+      "label": "Handlebars（handlebars）",
+      "aliases": [
+        "hbs",
+        "html.hbs",
+        "html.handlebars",
+        "htmlbars"
+      ]
+    },
+    {
+      "id": "haskell",
+      "label": "Haskell（haskell）",
+      "aliases": [
+        "hs"
+      ]
+    },
+    {
+      "id": "haxe",
+      "label": "Haxe（haxe）",
+      "aliases": [
+        "hx"
+      ]
+    },
+    {
+      "id": "hsp",
+      "label": "HSP（hsp）",
+      "aliases": []
+    },
+    {
+      "id": "http",
+      "label": "HTTP（http）",
+      "aliases": [
+        "https"
+      ]
+    },
+    {
+      "id": "hy",
+      "label": "Hy（hy）",
+      "aliases": [
+        "hylang"
+      ]
+    },
+    {
+      "id": "inform7",
+      "label": "Inform 7（inform7）",
+      "aliases": [
+        "i7"
+      ]
+    },
+    {
+      "id": "ini",
+      "label": "TOML, also INI（ini）",
+      "aliases": [
+        "toml"
+      ]
+    },
+    {
+      "id": "irpf90",
+      "label": "IRPF90（irpf90）",
+      "aliases": []
+    },
+    {
+      "id": "isbl",
+      "label": "ISBL（isbl）",
+      "aliases": []
+    },
+    {
+      "id": "java",
+      "label": "Java（java）",
+      "aliases": [
+        "jsp"
+      ]
+    },
+    {
+      "id": "javascript",
+      "label": "JavaScript（javascript）",
+      "aliases": [
+        "js",
+        "jsx",
+        "mjs",
+        "cjs"
+      ]
+    },
+    {
+      "id": "jboss-cli",
+      "label": "JBoss CLI（jboss-cli）",
+      "aliases": [
+        "wildfly-cli"
+      ]
+    },
+    {
+      "id": "json",
+      "label": "JSON（json）",
+      "aliases": [
+        "jsonc",
+        "json5"
+      ]
+    },
+    {
+      "id": "julia",
+      "label": "Julia（julia）",
+      "aliases": []
+    },
+    {
+      "id": "julia-repl",
+      "label": "Julia REPL（julia-repl）",
+      "aliases": [
+        "jldoctest"
+      ]
+    },
+    {
+      "id": "kotlin",
+      "label": "Kotlin（kotlin）",
+      "aliases": [
+        "kt",
+        "kts",
+        "ktm",
+        "ktx"
+      ]
+    },
+    {
+      "id": "lasso",
+      "label": "Lasso（lasso）",
+      "aliases": [
+        "lassoscript"
+      ]
+    },
+    {
+      "id": "latex",
+      "label": "LaTeX（latex）",
+      "aliases": [
+        "tex"
+      ]
+    },
+    {
+      "id": "ldif",
+      "label": "LDIF（ldif）",
+      "aliases": []
+    },
+    {
+      "id": "leaf",
+      "label": "Leaf（leaf）",
+      "aliases": []
+    },
+    {
+      "id": "less",
+      "label": "Less（less）",
+      "aliases": []
+    },
+    {
+      "id": "lisp",
+      "label": "Lisp（lisp）",
+      "aliases": []
+    },
+    {
+      "id": "livecodeserver",
+      "label": "LiveCode（livecodeserver）",
+      "aliases": []
+    },
+    {
+      "id": "livescript",
+      "label": "LiveScript（livescript）",
+      "aliases": [
+        "ls"
+      ]
+    },
+    {
+      "id": "llvm",
+      "label": "LLVM IR（llvm）",
+      "aliases": []
+    },
+    {
+      "id": "lsl",
+      "label": "LSL (Linden Scripting Language)（lsl）",
+      "aliases": []
+    },
+    {
+      "id": "lua",
+      "label": "Lua（lua）",
+      "aliases": [
+        "pluto"
+      ]
+    },
+    {
+      "id": "makefile",
+      "label": "Makefile（makefile）",
+      "aliases": [
+        "mk",
+        "mak",
+        "make"
+      ]
+    },
+    {
+      "id": "markdown",
+      "label": "Markdown（markdown）",
+      "aliases": [
+        "md",
+        "mkdown",
+        "mkd"
+      ]
+    },
+    {
+      "id": "mathematica",
+      "label": "Mathematica（mathematica）",
+      "aliases": [
+        "mma",
+        "wl"
+      ]
+    },
+    {
+      "id": "matlab",
+      "label": "Matlab（matlab）",
+      "aliases": []
+    },
+    {
+      "id": "maxima",
+      "label": "Maxima（maxima）",
+      "aliases": []
+    },
+    {
+      "id": "mel",
+      "label": "MEL（mel）",
+      "aliases": []
+    },
+    {
+      "id": "mercury",
+      "label": "Mercury（mercury）",
+      "aliases": [
+        "m",
+        "moo"
+      ]
+    },
+    {
+      "id": "mipsasm",
+      "label": "MIPS Assembly（mipsasm）",
+      "aliases": [
+        "mips"
+      ]
+    },
+    {
+      "id": "mizar",
+      "label": "Mizar（mizar）",
+      "aliases": []
+    },
+    {
+      "id": "mojolicious",
+      "label": "Mojolicious（mojolicious）",
+      "aliases": []
+    },
+    {
+      "id": "monkey",
+      "label": "Monkey（monkey）",
+      "aliases": []
+    },
+    {
+      "id": "moonscript",
+      "label": "MoonScript（moonscript）",
+      "aliases": [
+        "moon"
+      ]
+    },
+    {
+      "id": "n1ql",
+      "label": "N1QL（n1ql）",
+      "aliases": []
+    },
+    {
+      "id": "nestedtext",
+      "label": "Nested Text（nestedtext）",
+      "aliases": [
+        "nt"
+      ]
+    },
+    {
+      "id": "nginx",
+      "label": "Nginx config（nginx）",
+      "aliases": [
+        "nginxconf"
+      ]
+    },
+    {
+      "id": "nim",
+      "label": "Nim（nim）",
+      "aliases": []
+    },
+    {
+      "id": "nix",
+      "label": "Nix（nix）",
+      "aliases": [
+        "nixos"
+      ]
+    },
+    {
+      "id": "node-repl",
+      "label": "Node REPL（node-repl）",
+      "aliases": []
+    },
+    {
+      "id": "nsis",
+      "label": "NSIS（nsis）",
+      "aliases": []
+    },
+    {
+      "id": "objectivec",
+      "label": "Objective-C（objectivec）",
+      "aliases": [
+        "mm",
+        "objc",
+        "obj-c",
+        "obj-c++",
+        "objective-c++"
+      ]
+    },
+    {
+      "id": "ocaml",
+      "label": "OCaml（ocaml）",
+      "aliases": []
+    },
+    {
+      "id": "openscad",
+      "label": "OpenSCAD（openscad）",
+      "aliases": [
+        "scad"
+      ]
+    },
+    {
+      "id": "oxygene",
+      "label": "Oxygene（oxygene）",
+      "aliases": []
+    },
+    {
+      "id": "parser3",
+      "label": "Parser3（parser3）",
+      "aliases": []
+    },
+    {
+      "id": "perl",
+      "label": "Perl（perl）",
+      "aliases": [
+        "pl",
+        "pm"
+      ]
+    },
+    {
+      "id": "pf",
+      "label": "Packet Filter config（pf）",
+      "aliases": [
+        "pf.conf"
+      ]
+    },
+    {
+      "id": "pgsql",
+      "label": "PostgreSQL（pgsql）",
+      "aliases": [
+        "postgres",
+        "postgresql"
+      ]
+    },
+    {
+      "id": "php",
+      "label": "php（php）",
+      "aliases": []
+    },
+    {
+      "id": "php-template",
+      "label": "PHP template（php-template）",
+      "aliases": []
+    },
+    {
+      "id": "plaintext",
+      "label": "Plain text（plaintext）",
+      "aliases": [
+        "text",
+        "txt"
+      ]
+    },
+    {
+      "id": "pony",
+      "label": "Pony（pony）",
+      "aliases": []
+    },
+    {
+      "id": "powershell",
+      "label": "PowerShell（powershell）",
+      "aliases": [
+        "pwsh",
+        "ps",
+        "ps1"
+      ]
+    },
+    {
+      "id": "processing",
+      "label": "Processing（processing）",
+      "aliases": [
+        "pde"
+      ]
+    },
+    {
+      "id": "profile",
+      "label": "Python profiler（profile）",
+      "aliases": []
+    },
+    {
+      "id": "prolog",
+      "label": "Prolog（prolog）",
+      "aliases": []
+    },
+    {
+      "id": "properties",
+      "label": ".properties（properties）",
+      "aliases": []
+    },
+    {
+      "id": "protobuf",
+      "label": "Protocol Buffers（protobuf）",
+      "aliases": [
+        "proto"
+      ]
+    },
+    {
+      "id": "puppet",
+      "label": "Puppet（puppet）",
+      "aliases": [
+        "pp"
+      ]
+    },
+    {
+      "id": "purebasic",
+      "label": "PureBASIC（purebasic）",
+      "aliases": [
+        "pb",
+        "pbi"
+      ]
+    },
+    {
+      "id": "python",
+      "label": "Python（python）",
+      "aliases": [
+        "py",
+        "gyp",
+        "ipython"
+      ]
+    },
+    {
+      "id": "python-repl",
+      "label": "python-repl（python-repl）",
+      "aliases": [
+        "pycon"
+      ]
+    },
+    {
+      "id": "q",
+      "label": "Q（q）",
+      "aliases": [
+        "k",
+        "kdb"
+      ]
+    },
+    {
+      "id": "qml",
+      "label": "QML（qml）",
+      "aliases": [
+        "qt"
+      ]
+    },
+    {
+      "id": "r",
+      "label": "R（r）",
+      "aliases": []
+    },
+    {
+      "id": "reasonml",
+      "label": "ReasonML（reasonml）",
+      "aliases": [
+        "re"
+      ]
+    },
+    {
+      "id": "rib",
+      "label": "RenderMan RIB（rib）",
+      "aliases": []
+    },
+    {
+      "id": "roboconf",
+      "label": "Roboconf（roboconf）",
+      "aliases": [
+        "graph",
+        "instances"
+      ]
+    },
+    {
+      "id": "routeros",
+      "label": "MikroTik RouterOS script（routeros）",
+      "aliases": [
+        "mikrotik"
+      ]
+    },
+    {
+      "id": "rsl",
+      "label": "RenderMan RSL（rsl）",
+      "aliases": []
+    },
+    {
+      "id": "ruby",
+      "label": "Ruby（ruby）",
+      "aliases": [
+        "rb",
+        "gemspec",
+        "podspec",
+        "thor",
+        "irb"
+      ]
+    },
+    {
+      "id": "ruleslanguage",
+      "label": "Oracle Rules Language（ruleslanguage）",
+      "aliases": []
+    },
+    {
+      "id": "rust",
+      "label": "Rust（rust）",
+      "aliases": [
+        "rs"
+      ]
+    },
+    {
+      "id": "sas",
+      "label": "SAS（sas）",
+      "aliases": []
+    },
+    {
+      "id": "scala",
+      "label": "Scala（scala）",
+      "aliases": []
+    },
+    {
+      "id": "scheme",
+      "label": "Scheme（scheme）",
+      "aliases": [
+        "scm"
+      ]
+    },
+    {
+      "id": "scilab",
+      "label": "Scilab（scilab）",
+      "aliases": [
+        "sci"
+      ]
+    },
+    {
+      "id": "scss",
+      "label": "SCSS（scss）",
+      "aliases": []
+    },
+    {
+      "id": "shell",
+      "label": "Shell Session（shell）",
+      "aliases": [
+        "console",
+        "shellsession"
+      ]
+    },
+    {
+      "id": "smali",
+      "label": "Smali（smali）",
+      "aliases": []
+    },
+    {
+      "id": "smalltalk",
+      "label": "Smalltalk（smalltalk）",
+      "aliases": [
+        "st"
+      ]
+    },
+    {
+      "id": "sml",
+      "label": "SML (Standard ML)（sml）",
+      "aliases": [
+        "ml"
+      ]
+    },
+    {
+      "id": "sqf",
+      "label": "SQF（sqf）",
+      "aliases": []
+    },
+    {
+      "id": "sql",
+      "label": "SQL（sql）",
+      "aliases": []
+    },
+    {
+      "id": "stan",
+      "label": "Stan（stan）",
+      "aliases": [
+        "stanfuncs"
+      ]
+    },
+    {
+      "id": "stata",
+      "label": "Stata（stata）",
+      "aliases": [
+        "do",
+        "ado"
+      ]
+    },
+    {
+      "id": "step21",
+      "label": "STEP Part 21（step21）",
+      "aliases": [
+        "p21",
+        "step",
+        "stp"
+      ]
+    },
+    {
+      "id": "stylus",
+      "label": "Stylus（stylus）",
+      "aliases": [
+        "styl"
+      ]
+    },
+    {
+      "id": "subunit",
+      "label": "SubUnit（subunit）",
+      "aliases": []
+    },
+    {
+      "id": "swift",
+      "label": "Swift（swift）",
+      "aliases": []
+    },
+    {
+      "id": "taggerscript",
+      "label": "Tagger Script（taggerscript）",
+      "aliases": []
+    },
+    {
+      "id": "tap",
+      "label": "Test Anything Protocol（tap）",
+      "aliases": []
+    },
+    {
+      "id": "tcl",
+      "label": "Tcl（tcl）",
+      "aliases": [
+        "tk"
+      ]
+    },
+    {
+      "id": "thrift",
+      "label": "Thrift（thrift）",
+      "aliases": []
+    },
+    {
+      "id": "tp",
+      "label": "TP（tp）",
+      "aliases": []
+    },
+    {
+      "id": "twig",
+      "label": "Twig（twig）",
+      "aliases": [
+        "craftcms"
+      ]
+    },
+    {
+      "id": "typescript",
+      "label": "TypeScript（typescript）",
+      "aliases": [
+        "ts",
+        "tsx",
+        "mts",
+        "cts"
+      ]
+    },
+    {
+      "id": "vala",
+      "label": "Vala（vala）",
+      "aliases": []
+    },
+    {
+      "id": "vbnet",
+      "label": "Visual Basic .NET（vbnet）",
+      "aliases": [
+        "vb"
+      ]
+    },
+    {
+      "id": "vbscript",
+      "label": "VBScript（vbscript）",
+      "aliases": [
+        "vbs"
+      ]
+    },
+    {
+      "id": "vbscript-html",
+      "label": "VBScript in HTML（vbscript-html）",
+      "aliases": []
+    },
+    {
+      "id": "verilog",
+      "label": "Verilog（verilog）",
+      "aliases": [
+        "v",
+        "sv",
+        "svh"
+      ]
+    },
+    {
+      "id": "vhdl",
+      "label": "VHDL（vhdl）",
+      "aliases": []
+    },
+    {
+      "id": "vim",
+      "label": "Vim Script（vim）",
+      "aliases": []
+    },
+    {
+      "id": "wasm",
+      "label": "WebAssembly（wasm）",
+      "aliases": []
+    },
+    {
+      "id": "wren",
+      "label": "Wren（wren）",
+      "aliases": []
+    },
+    {
+      "id": "x86asm",
+      "label": "Intel x86 Assembly（x86asm）",
+      "aliases": []
+    },
+    {
+      "id": "xl",
+      "label": "XL（xl）",
+      "aliases": [
+        "tao"
+      ]
+    },
+    {
+      "id": "xml",
+      "label": "XML/HTML（xml）",
+      "aliases": [
+        "html",
+        "xhtml",
+        "rss",
+        "atom",
+        "xjb",
+        "xsd",
+        "xsl",
+        "plist",
+        "wsf",
+        "svg"
+      ]
+    },
+    {
+      "id": "xquery",
+      "label": "XQuery（xquery）",
+      "aliases": [
+        "xpath",
+        "xq",
+        "xqm"
+      ]
+    },
+    {
+      "id": "yaml",
+      "label": "YAML（yaml）",
+      "aliases": [
+        "yml"
+      ]
+    },
+    {
+      "id": "zephir",
+      "label": "Zephir（zephir）",
+      "aliases": [
+        "zep"
+      ]
+    }
+  ]
+}

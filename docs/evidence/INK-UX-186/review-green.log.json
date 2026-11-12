@@ -1,0 +1,4 @@
+{
+  "sha256": "447ef190519c843b22144eb775db857fbf44de9c4f880a4df2e9a637fc6a16c7",
+  "output": "\n RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-186/editor\n\n\n Test Files  2 passed (2)\n      Tests  4 passed | 120 skipped (124)\n   Start at  22:08:41\n   Duration  675ms (import 46%, tests 46%, transform 8%)\n\n"
+}

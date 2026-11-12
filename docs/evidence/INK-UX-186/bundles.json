@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "scriptBytes": 4801905,
+    "scriptGzipBytes": 1318346,
+    "sha256": {
+      "index.html": "f545f23160963a6da8494f2ba1b02c167ab1a5d0799c120571d7ff4de8cc0c90",
+      "RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+      "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+      "assets/index-BTejFEjK.js": "995618a8bd94cec105a9811b0a56fe60064c324c0e7b35f96295203cc3789adc",
+      "vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+    }
+  },
+  "current": {
+    "scriptBytes": 5654423,
+    "scriptGzipBytes": 1598734,
+    "sha256": {
+      "index.html": "a2dca1f681508e3c07216ef56daf880de2c3d5c4922816f6c88fa33f301916bd",
+      "RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+      "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+      "assets/index-Bx8Tv0Kw.js": "a4fe1eaef0a93863db6104183e6cc9fd2c717a9d650fcb66cd78d650485456e9",
+      "vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+    }
+  }
+}
