@@ -47,3 +47,22 @@ Native新增公开keypress→input rule→未处理时execCommand的路径，覆
 
 修改文件还包括既有WritingInteractionHostlessTests.swift/脚本（可显式选择资源包）及任务证据。
 无依赖、无用户文档/App安装变化，当前本机仍build8。
+
+
+## 最终固定验证与两轴交付
+
+受检产品e6b6d20801f637ebc6067b122fec39742c01b7aa；后续只有报告/evidence。
+管理者实际自跑`make lint test-editor test-ci`：53文件**981 passed**，Swift strict格式、
+TypeScript、Vite和CI脚本通过；Bridge另**16 passed**。
+同一个21例生产Native测试CLI读取最终新build/editor资源：**21/21、0失败**，
+含公开keypress修复两处Space、继续label与UndoRedo，以及空task中文候选Text保持连接、
+一次Bridge revision和关闭准备。旧build8资源红与新资源绿分开保存，没有冒称物理输入法。
+受检源码与最终app/editor/project树保持一致；没有跑全量Xcode Native/XCU/远端CI或可见paint。
+
+Standards179：hard 0、possible 0，静态检查不替代行为验收；
+Spec180：0 findings，独立限定runtime16/16通过。根981/16/21仅外部引用，未重复计算。
+审查报告与任务单已整合，原稿不改写。无剩余本切片阻断，未证明全量平台/物理IME验收。
+
+本机仍build8，没有构建新.app、强退或替换安装，没有接触用户正式文档。
+分支task/INK-FIX-178-task-space；提交以最终交付SHA为准。
+自建两个依赖symlink完成后仅unlink；保留worktree/原始失败与green/Native资源与复审原件。
