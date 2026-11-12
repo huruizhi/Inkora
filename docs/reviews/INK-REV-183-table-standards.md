@@ -36,3 +36,14 @@
 - 补正其余 source 边界与测试变更已静态检查，未发现新增 Standards 硬项；未运行 Spec 探针，不对 Spec 四项作裁定。
 
 当前限定复验结论：S1、J1均闭合，新增硬项0、判断项0。原始报告和证据仍保留；临时导出的产品已恢复，分支仅留下审查文档。命令、原始失败形态和正向证据见任务记录追加。
+
+
+## CI 集成补正的独立增量 Standards 审查（INK-FIX-185）
+
+本节是另一独立范围，以上原报告和表格补正结论逐字保留。固定 base `ad4f22f40ae434d325fcec8a53f60a98bf502eba`、产品 `bbd80f7e07e07eef71e1de239c214531cda964ba`；只审 `git diff ad4f22f40ae434d325fcec8a53f60a98bf502eba...bbd80f7e07e07eef71e1de239c214531cda964ba` 的15文件增量。
+
+**书面规范硬项：0。Fowler 判断项：0。** `EditorViewController.requestSnapshot` 在可获取输入client且其 `hasMarkedText()` 为 false 时保持原生响应者；true或client未知时仍执行原提交与恢复路径。既有Bridge版本快照调用未变，没有修改原文资格、revision或事务证明。这个局部守卫符合 AGENTS.md:8 的选区/composition保护和 ADR-0004 的原文权威边界，未发现新增硬违反。
+
+新增 `SnapshotFocusWindow` 对真实 `NSWindow.makeFirstResponder` 完整转发，仅统计nil请求；测试明确要求client存在且无marked text，并检查原生响应者身份、原文及DOM反向选区的Range字符坐标。既有21项断言保留，runner计数随新增用例改为22；未见删除或绕过有效测试。沿用原12项baseline检查，没有可具体成立的新增smell；测试用观察子类的完整转发不构成Refused Bequest或应删除的Middle Man。
+
+本节只做独立静态审查，未运行Native/WK/typecheck、全量、GUI、UI或物理IME。实施者所报22/22及修前稳定红属于外部证据，不写成本审查实跑。11份提交内日志JSON的output字段SHA-256由本审查独立核对，全部与记录一致；这只验证记录内部一致性，不证明运行真实性或物理输入法覆盖。首次选区夹具element/text offset混淆已标注为夹具错误，未列作产品缺陷。`docs/tasks/INK-FIX-185.md` 仅提供背景，不在本轴裁定Spec或最终CI。

@@ -68,3 +68,14 @@ pnpm --dir editor exec vitest run src/table-parity-runtime.test.ts -t 'dialog|gr
 新增 ignored 证据（原件全部保留待双备份）：`fix-increment.patch`、`fix-export-paths.txt`、`composition-original-on-fix.log`、`composition-fix-probe.test.ts`、`composition-fix-probe.log`、`fix-targeted-controls.log`，均位于 `artifacts/INK-REV-183/`。本次结果完全独立执行，未借用外部通过证据。
 
 结论：S1在合成DOM事件边界闭合；J1策略重复已消除，原文独立证明仍保留。新增diff未发现新的Standards硬项或判断项。Spec source边界只做静态标准检查，未重复Spec探针，不替代其裁定。原“未修复”状态为首轮历史记录，以本追加闭合口径为准；物理输入法等未验风险仍然存在。分支保持 `task/INK-REV-183-table-standards`，提交与真实远端校验值在交接消息给出。
+
+
+## CI 集成补正限定审查追加（INK-FIX-185）
+
+范围独立于原表格审查和8bb27ad复验；原文、原结论均保留。冻结比较为 `git diff ad4f22f40ae434d325fcec8a53f60a98bf502eba...bbd80f7e07e07eef71e1de239c214531cda964ba`，包含产品EVC的7行变化、现有写作专项新增用例及runner计数、任务说明和11份日志JSON，总计15文件。没有导出或修改产品文件，没有创建依赖链接。
+
+独立执行：固定diff静态核读；核对原文/Bridge调用未改、守卫的false/true/未知分支、观察NSWindow完整转发、原有测试断言未删、反向DOM选区按Range字符计数；原12项baseline未形成具体新增smell。通过Python `hashlib.sha256(record['output'].encode()).hexdigest() == record['sha256']` 核对固定commit中的11份证据JSON，全部一致。命令 `git diff --check` 只检查本文档增量，不作为产品验证。
+
+新增ignored证据位于 `artifacts/INK-REV-183/fix185-increment.patch`、`fix185-static-evidence.json`，均保留待双备份。实施者22/22和各诊断循环来自提交内证据，不是本审查重跑；首次DOM夹具坐标错误明确排除为产品finding。没有另跑Native/typecheck、WK、全量、App、UI或物理IME。未验本身不列新增硬项；最终CI仍由管理者整合后验证。
+
+结果：该独立增量Standards硬项0、判断项0；不新增产品修复事项，不改旧S1/J1及其闭合结论。仅追加原两份docs文件；分支仍为 `task/INK-REV-183-table-standards`，提交/push和真实remote=HEAD、clean核验在交接消息回报。worktree及所有原始证据保持保留。
