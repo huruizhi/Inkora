@@ -405,3 +405,13 @@ it.each(['-a','+a','*a','**a**'])('keeps a non-list literal typed as %j', text =
   expect(parent.querySelector('ul')).toBeNull();
   expect(runtime.snapshotText()).toEqual({ok:true,value:text});
 });
+
+it.each(['-', '+', '*'])('allows Enter after an uncompleted %j without activating a list', marker => {
+  const {runtime,view,parent,dom}=setup('');type(view,marker);
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(runtime.snapshotText()).toEqual({ok:true,value:marker+'\n\n'});
+  expect(parent.querySelector('ul')).toBeNull();
+  type(view,'after');
+  expect(runtime.snapshotText()).toEqual({ok:true,value:marker+'\n\nafter'});
+});

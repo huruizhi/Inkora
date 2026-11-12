@@ -90,6 +90,21 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testBareBulletEnterKeepsLiteralAndContinuesTyping() throws {
+    for marker in ["-", "+", "*"] {
+      try withEditor("") { controller, web in
+        try focus("#editor p", in: web)
+        try keys([marker], in: web)
+        try pressEnter(in: web)
+        XCTAssertEqual(try snapshot(controller), marker + "\n\n")
+        XCTAssertEqual(try js("!!document.querySelector('#editor ul')", in: web) as? Bool, false)
+        try keys(["a"], in: web)
+        XCTAssertEqual(try snapshot(controller), marker + "\n\na")
+      }
+    }
+  }
+
+  @MainActor
   func testIdleSnapshotPreservesNativeResponderAndDirectedCaret() throws {
     try withEditor("# 标题") { controller, web in
       let window = try XCTUnwrap(web.window as? SnapshotFocusWindow)
