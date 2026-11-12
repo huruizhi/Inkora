@@ -47,3 +47,22 @@ node editor/node_modules/vitest/vitest.mjs run --config artifacts/INK-REV-176/ba
 - 未自跑全量/lint/build、Bridge、Native/WK、App/UI/Xcode、物理IME、可见paint、VoiceOver、macOS14或性能。174的963/16/18是外部证据，不计为本人执行。
 - 装饰属性/CSS伪元素不直接改PM文本、raw、选区或历史；11例及上述有界补例只能支持相应路径。finding待修复，不能据此宣称整体体验完成验收。
 - 没有push、PR或merge。
+
+## 固定补正后验（仅追加）
+
+首稿与其finding保留，首稿独立提交`1f2ba28e271d4ab254e7e34a936dfa4abb6cfcc4`。本后验仅复核该1项P2，不重审粘贴或扩展语法/产品矩阵。
+
+固定补正对象：`512ad4e41660355fe14dd6a7db6fa0c2672fa2a9`。用`git diff aec23e2663ac5c624a0bdf071bf7a2a13c16feca 512ad4e41660355fe14dd6a7db6fa0c2672fa2a9 -- editor/src/editor-runtime.ts editor/src/heading-entry.ts editor/src/heading-entry-runtime.test.ts`核对，并`git archive`提取至ignored `artifacts/INK-REV-176/recheck/`，未读取动态任务单作为修复证据。
+
+**限定结论：原P2在固定补正对象上关闭。** runtime在`session.dispatch`前调用`capture`保存原始单步纯文本事实；仅接受后调用显示收据。单step、正文范围、非paste、root空段落等原有约束保留，未用扩大容许事务集合绕开问题。正文安全处理追加removeMark后，不再使输入态提前丢失。
+
+独立自证strong反例只改runtime导入至固定快照，复验**1 passed / 6 skipped**；同对象heading-entry-runtime **12/12通过**。没有将其他6个补probe、base或作者全量结果计入后验通过数。
+
+```sh
+git archive 512ad4e41660355fe14dd6a7db6fa0c2672fa2a9 editor | tar -x -C artifacts/INK-REV-176/recheck
+node artifacts/INK-REV-176/recheck/editor/scripts/prepare-renderers.mjs
+node editor/node_modules/vitest/vitest.mjs run --config artifacts/INK-REV-176/recheck.config.mjs -t 'strong body'
+node editor/node_modules/vitest/vitest.mjs run --config artifacts/INK-REV-176/recheck-entry.config.mjs
+```
+
+证据保留`recheck-probe.test.ts`、两个config及`recheck-strong-results.txt`/`recheck-entry-results.txt`。仍只有jsdom synthetic；本后验未运行Native/WK/Bridge、全量、构建、App/UI、物理IME、paint或最低系统验收，没有push/PR/merge。本人自建四个依赖链接均已移除；产品与已有测试零修改，ignored快照与日志保留。原finding关闭不等于整体体验验收完成。
