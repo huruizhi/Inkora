@@ -208,6 +208,70 @@ function literalWhitespaceProjection(raw: string, parsed: ReturnType<typeof pars
   } };
 }
 
+/** Prove trailing spaces against accepted plain-text owners, including list paragraphs. */
+function ownerTrailingWhitespaceProjection(raw: string, parsed: ReturnType<typeof parse>, doc: PMNode): ProjectionContext | null {
+  if (parsed.issues.length || parsed.doc.eq(doc)) return null;
+  const base = baseLedger(raw, parsed);
+  const changed: Array<{ from: number; to: number; oldPos: number; pos: number; beforeSize: number; afterSize: number; text: string }> = [];
+  const pair = (before: PMNode, after: PMNode, oldPos: number, pos: number): boolean => {
+    if (before.eq(after)) return true;
+    if (!before.sameMarkup(after)) return false;
+    if (before.isTextblock) {
+      if (!['paragraph', 'heading'].includes(before.type.name) || before.childCount !== 1 || after.childCount !== 1 ||
+          !before.firstChild?.isText || !after.firstChild?.isText || before.firstChild.marks.length || after.firstChild.marks.length ||
+          !after.textContent.startsWith(before.textContent) || !/^ +$/.test(after.textContent.slice(before.textContent.length))) return false;
+      const body = base.spans.filter(span => span.visible && span.role === 'text' && span.visualStart !== undefined &&
+        span.visualEnd !== undefined && span.visualStart >= oldPos + 1 && span.visualEnd <= oldPos + 1 + before.content.size)
+        .sort((left, right) => left.visualStart! - right.visualStart!);
+      if (!body.length) return false;
+      const from = body[0].sourceStart;
+      let visual = oldPos + 1;
+      for (const span of body) {
+        if (span.visualStart !== visual || span.sourceStart !== from + visual - oldPos - 1 ||
+            span.sourceEnd - span.sourceStart !== span.visualEnd! - span.visualStart!) return false;
+        visual = span.visualEnd!;
+      }
+      if (visual !== oldPos + 1 + before.content.size) return false;
+      const to = from + after.textContent.length;
+      const owner = parsed.ranges.find(range => oldPos >= range.pos && oldPos + before.nodeSize <= range.pos + range.size);
+      if (!owner || from < owner.start || to > owner.end || raw.slice(from, to) !== after.textContent) return false;
+      changed.push({ from, to, oldPos, pos, beforeSize: before.nodeSize, afterSize: after.nodeSize, text: after.textContent });
+      return true;
+    }
+    if (!['doc', 'bullet_list', 'ordered_list', 'list_item'].includes(before.type.name) || before.childCount !== after.childCount) return false;
+    let oldOffset = before.type.name === 'doc' ? 0 : oldPos + 1;
+    let offset = after.type.name === 'doc' ? 0 : pos + 1;
+    for (let index = 0; index < before.childCount; index++) {
+      if (!pair(before.child(index), after.child(index), oldOffset, offset)) return false;
+      oldOffset += before.child(index).nodeSize;
+      offset += after.child(index).nodeSize;
+    }
+    return true;
+  };
+  if (!pair(parsed.doc, doc, 0, 0) || !changed.length) return null;
+  const shift = (visual: number) => visual + changed.reduce((delta, item) =>
+    delta + (visual >= item.oldPos + item.beforeSize ? item.afterSize - item.beforeSize : 0), 0);
+  const spans = base.spans.filter(span => !changed.some(item => span.sourceStart < item.to && span.sourceEnd > item.from))
+    .map(span => ({ ...span, visualStart: span.visualStart === undefined ? undefined : shift(span.visualStart),
+      visualEnd: span.visualEnd === undefined ? undefined : shift(span.visualEnd) }));
+  for (const item of changed) for (let index = 0; index < item.text.length; index++) spans.push({
+    sourceStart: item.from + index, sourceEnd: item.from + index + 1, role: 'text',
+    syntax: 'literal-owner-trailing-whitespace', visible: true, text: item.text[index],
+    visualStart: item.pos + 1 + index, visualEnd: item.pos + 2 + index,
+  });
+  let pos = 0;
+  const ranges = parsed.ranges.map((range, index) => {
+    const mapped = { ...range, pos, size: doc.child(index).nodeSize };
+    pos += mapped.size;
+    return mapped;
+  });
+  return { parsedDoc: parsed.doc, ranges, ledger: { ...base, docSize: doc.content.size, spans,
+    blocks: base.blocks.map((block, index) => ({ ...block, range: ranges[index],
+      spans: spans.filter(span => span.sourceStart >= block.range.start && span.sourceEnd <= block.range.end) })),
+    links: base.links.map(link => ({ ...link, visual: { from: shift(link.visual.from), to: shift(link.visual.to) } })),
+  } };
+}
+
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 function cloneSelection(value: RawSelection): RawSelection {
@@ -761,7 +825,8 @@ export class SourceAuthoritySession {
       return context;
     };
     const parsed = this.parseSource(raw);
-    const literal = literalWhitespaceProjection(raw, parsed, state.doc);
+    const literal = literalWhitespaceProjection(raw, parsed, state.doc)
+      ?? ownerTrailingWhitespaceProjection(raw, parsed, state.doc);
     if (literal) return remember(literal);
     const base = baseLedger(raw, parsed);
     if (parsed.doc.eq(state.doc)) {
@@ -1279,7 +1344,7 @@ export class SourceAuthoritySession {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
       const parsed = this.parseSource(plan.candidate);
-      if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !literalWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
+      if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !literalWhitespaceProjection(plan.candidate, parsed, target.doc) && !ownerTrailingWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
         const proof = implicitLinkReprojectionProof(before.raw, context.ledger, plan, parsed, target.doc, tr.mapping)
           ?? semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');

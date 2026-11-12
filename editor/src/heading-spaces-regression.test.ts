@@ -123,3 +123,92 @@ it.each(['a  \nb', '    code', '**marked**', '# title'])('keeps canonical struct
   if (raw.startsWith('    ')) expect(view.state.doc.firstChild!.type.name).toBe('code_block');
   if (raw.startsWith('**')) expect(view.state.doc.firstChild!.firstChild!.marks[0].type.name).toBe('strong');
 });
+it.each(['# 标题', '# 标题 ##\r\n', '标题\r\n===\r\n', '- a', '- a\r\n- b\r\n', '1. a\r\n2. b\r\n'])('retains each trailing owner space and its directed caret for %j', raw => {
+  const dom = new JSDOM('<main></main>', { pretendToBeVisual: true });
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: dom.window.document });
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: dom.window });
+  runtime = createEditorRuntime(dom.window.document.querySelector('main')!, raw, () => {});
+  const { view, session } = runtime as unknown as { view: EditorView; session: SourceAuthoritySession };
+  let position = -1;
+  let label = '';
+  view.state.doc.descendants((node, pos) => {
+    if (position < 0 && node.isTextblock) { position = pos + 1 + node.content.size; label = node.textContent; }
+  });
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, position)));
+  const rawStart = session.rawSelection.head;
+  let text = '';
+  for (const char of '   b') {
+    view.dispatch(view.state.tr.insertText(char));
+    text += char;
+    expect(view.dom.querySelector('h1,p')!.textContent).toBe(label + text);
+    expect(view.state.selection.head).toBe(position + text.length);
+    expect(session.rawSelection.head).toBe(rawStart + text.length);
+  }
+  const expected = raw.slice(0, rawStart) + text + raw.slice(rawStart);
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: expected });
+  for (const _ of text) expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(raw);
+  for (const _ of text) expect(runtime.redo()).toBe(true);
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: expected });
+  const activeView = (runtime as unknown as { view: EditorView }).view;
+  activeView.dispatch(activeView.state.tr.setSelection(TextSelection.create(activeView.state.doc, position + 2, position + 1)));
+  expect(session.rawSelection.anchor).toBe(rawStart + 2);
+  expect(session.rawSelection.head).toBe(rawStart + 1);
+});
+
+it('keeps two list text owners editable while their hidden suffixes coexist', () => {
+  const dom = new JSDOM('<main></main>', { pretendToBeVisual: true });
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: dom.window.document });
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: dom.window });
+  const raw = '- a\r\n- b\r\n';
+  runtime = createEditorRuntime(dom.window.document.querySelector('main')!, raw, () => {});
+  const { view, session } = runtime as unknown as { view: EditorView; session: SourceAuthoritySession };
+  for (let index = 0; index < 2; index++) {
+    const paragraphs: Array<{ end: number; text: string }> = [];
+    view.state.doc.descendants((node, pos) => { if (node.type.name === 'paragraph') paragraphs.push({ end: pos + 1 + node.content.size, text: node.textContent }); });
+    const owner = paragraphs[index];
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, owner.end)));
+    const start = session.rawSelection.head;
+    for (let count = 1; count <= 3; count++) {
+      view.dispatch(view.state.tr.insertText(' '));
+      expect(view.dom.querySelectorAll('p')[index].textContent).toBe(owner.text + ' '.repeat(count));
+      expect(session.rawSelection.head).toBe(start + count);
+    }
+  }
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: '- a   \r\n- b   \r\n' });
+  for (let index = 0; index < 6; index++) expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(raw);
+  for (let index = 0; index < 6; index++) expect(runtime.redo()).toBe(true);
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: '- a   \r\n- b   \r\n' });
+});
+it.each(['# 标题 ##\r\n', '标题\r\n===\r\n', '- a\r\n- b\r\n'])('deletes every newly appended owner space without changing syntax in %j', raw => {
+  const dom = new JSDOM('<main></main>', { pretendToBeVisual: true });
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: dom.window.document });
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: dom.window });
+  runtime = createEditorRuntime(dom.window.document.querySelector('main')!, raw, () => {});
+  const { view } = runtime as unknown as { view: EditorView };
+  let end = -1;
+  view.state.doc.descendants((node, pos) => { if (end < 0 && node.isTextblock) end = pos + 1 + node.content.size; });
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, end)));
+  for (let count = 0; count < 3; count++) view.dispatch(view.state.tr.insertText(' '));
+  for (let count = 0; count < 3; count++) view.dispatch(view.state.tr.delete(view.state.selection.from - 1, view.state.selection.from));
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: raw });
+  expect(runtime.status.unresolved).toBe(false);
+});
+it('reprojects real hardbreak and four-space code rather than treating them as owner whitespace', () => {
+  const dom = new JSDOM('<main></main>', { pretendToBeVisual: true });
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: dom.window.document });
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: dom.window });
+  runtime = createEditorRuntime(dom.window.document.querySelector('main')!, 'a\nb', () => {});
+  let view = (runtime as unknown as { view: EditorView }).view;
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+  for (const char of '  ') view.dispatch(view.state.tr.insertText(char));
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: 'a  \nb' });
+  expect(view.state.doc.firstChild!.child(1).type.name).toBe('hard_break');
+  runtime.destroy();
+  runtime = createEditorRuntime(dom.window.document.querySelector('main')!, '', () => {});
+  view = (runtime as unknown as { view: EditorView }).view;
+  for (const char of '    code') view.dispatch(view.state.tr.insertText(char));
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: '    code' });
+  expect(view.state.doc.firstChild!.type.name).toBe('code_block');
+});

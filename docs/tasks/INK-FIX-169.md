@@ -78,5 +78,24 @@ snapshot 与 saveEligible，以及 composition、hardbreak、代码、mark 负�
 ## 未完成与风险
 
 - 作者未运行真实 WK、Native、物理输入法、性能、全量门禁、保存/关闭物理验收；由管理者集中补验。
-- 纯文本 paragraph 外（例如有 mark 的段落、标题尾空白）的可见空白不是此有限映射的覆盖范围。
+- 有 mark 的段落、空正文 textblock、非 list 容器（例如 blockquote）中的扩展空白不是本轮 owner 映射的覆盖范围。
 - 与 170 的 Backspace 链同字段修改由管理者合成，保留两个有界命令；不以作者单支结果宣称整体验收通过。
+
+## 追加：heading 与 list 正文尾空格
+
+管理者真实 WK 验证初次提交 d5ab07a：空标题退格、普通段落与空文档起始空格已通过；
+heading/list 逐键仍出现空格回退。因此扩展任务继续，未将初次提交称为用户空格问题整体验收通过。
+
+先加入实际红例：ATX 闭合 hash、setext、无序及有序列表第一项，连续追加三个空格与 `b`，
+第二空格时 DOM 仍只有一个空格或回退无空格。命令仍为上述单文件 vitest。
+
+新增 `ownerTrailingWhitespaceProjection`，只递归配对 doc/list/list_item 与无 mark 的 heading/paragraph。
+正文必须是 canonical 单文本正文加 ASCII 尾空格；同一次 baseLedger 的 visible text span 必须完整、
+连续且源/投影长度相同，并由 accepted 顶层 range 证明从原文正文起点到新增空格终点的归属。
+整段目标正文必须等于对应原文片段。前后语法不会被重写，后续块位置按已证明 textblock 长度差平移。
+不改 parser、source-ledger、列表 planner 或 Backspace 链。
+
+扩展作者验证：7 文件、151 测试通过，TypeScript 通过。新增每键 DOM/原文光标、方向选择、
+Undo/Redo、尾空格逐个删除与 snapshot；ATX 原有闭合 hash、setext 下划线、列表标记及 CRLF 均保持。
+两项列表正文同时持有可见尾空格的账本也已覆盖。实际输入两空格形成 hardbreak、四空格形成代码的
+负控通过，不能被此分支当普通空白保留。真实 WK 扩展仍由管理者串行补验。
