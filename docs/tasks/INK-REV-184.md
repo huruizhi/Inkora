@@ -15,3 +15,9 @@
 固定补正 `8bb27ad0bd0f29237d371551daf4cf694fa9fdd2`；仅临时导出相关五个产品源码文件，在公共runtime接缝自跑原四项反例加EOF无末尾换行Undo/Redo负控。efa对照4失败/1通过，补正5/5通过，退出0，原四项在该固定补正上已解决。原冻结报告逐字保留，追加结果见报告末尾。
 
 固定diff、对照red、补正green与完整探针保留于 `artifacts/INK-REV-184/`。临时源码已恢复，新增产品导出文件与自建依赖软链仅unlink；没有cherry-pick产品提交，没有扩大到全量、Native或其他审查项。仍未独立验证物理输入/IME、Native/WK及真实保存重开。
+
+## INK-FIX-185 必要集成补正审查追加
+
+固定基线 `ad4f22f40ae434d325fcec8a53f60a98bf502eba` 与补正 `bbd80f7e07e07eef71e1de239c214531cda964ba`，只核对快照保护光标/IME任务，不重审表格范围。Spec静态审查missing/scope/wrong均无新增发现；false跳过Native清焦、true/未知保持旧路径，与185任务和AGENTS编辑保护约束一致。
+
+本次未自跑Native、全量或UI，只独立核验固定diff及作者两份证据JSON输出SHA256（均匹配，退出0）；作者修前1红、写作专项22绿明确标作借用证据。物理IME与最终整合CI未验。仅追加报告和本任务，产品源码保持不动，原审查稿与红绿证据均保留。
