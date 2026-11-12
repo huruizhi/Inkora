@@ -1,0 +1,4 @@
+{
+  "sha256": "f15d662a48b72c30d0d08636a95a327f9a6ddc0a04792d584d1bfc83bbb8018b",
+  "output": "xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests tests/InkoraUITests\n/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-190/.tools/node_modules/.bin/pnpm --dir editor lint\n$ tsc --noEmit\nsrc/source-authority.ts(225,95): error TS2353: Object literal may only specify known properties, and 'projection' does not exist in type '{ sourceStart: number; sourceEnd: number; role: SourceRole; syntax: string; visible: boolean; text?: string | undefined; owner?: string | undefined; detail?: string | undefined; visualStart: number | undefined; visualEnd: number | undefined; }'.\n[ELIFECYCLE] Command failed with exit code 1.\nmake: *** [lint] Error 1\n"
+}
