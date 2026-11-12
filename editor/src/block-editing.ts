@@ -25,7 +25,7 @@ import {
   splitListItem,
   wrapInList,
 } from "prosemirror-schema-list";
-import type { Command, Plugin } from "prosemirror-state";
+import { TextSelection, type Command, type Plugin } from "prosemirror-state";
 import { inkoraSchema } from "./schema";
 
 export function setHeading(level: number): Command {
@@ -89,6 +89,31 @@ export const clearEmptyHeading: Command = (state, dispatch, view) => {
   return setParagraph(state, dispatch, view);
 };
 
+// The generic joinBackward first joins list-item wrappers into a tight item
+// with two paragraphs, which has no exact Markdown representation. At the
+// first paragraph boundary, lift one level before continuing backward.
+export const listBoundaryBackspace: Command = (state, dispatch, view) => {
+  const { $from, empty } = state.selection;
+  if (empty && $from.depth === 1 && $from.parent.type === inkoraSchema.nodes.paragraph &&
+      $from.parent.content.size === 0 && $from.index(0) > 0 &&
+      $from.after() === state.doc.content.size && !view?.composing) {
+    const previous = state.doc.child($from.index(0) - 1);
+    if (previous.type === inkoraSchema.nodes.bullet_list || previous.type === inkoraSchema.nodes.ordered_list) {
+      if (dispatch) {
+        const tr = state.tr.delete($from.before(), $from.after());
+        tr.setSelection(TextSelection.near(tr.doc.resolve(tr.doc.content.size), -1));
+        dispatch(tr.setMeta('inkoraEmptyParagraphAfterList', true));
+      }
+      return true;
+    }
+  }
+  if (!empty || $from.parentOffset !== 0 || $from.depth < 2 ||
+      $from.parent.type !== inkoraSchema.nodes.paragraph ||
+      $from.node(-1).type !== inkoraSchema.nodes.list_item ||
+      $from.index(-1) !== 0 || view?.composing) return false;
+  return liftListItem(inkoraSchema.nodes.list_item)(state, dispatch, view);
+};
+
 export const blockKeyBindings: Record<string, Command> = {
   Enter: chainCommands(
     newlineInCode,
@@ -99,7 +124,7 @@ export const blockKeyBindings: Record<string, Command> = {
     splitBlockKeepMarks,
   ),
   "Mod-Enter": exitCode,
-  Backspace: chainCommands(deleteSelection, clearEmptyHeading, joinBackward, selectNodeBackward),
+  Backspace: chainCommands(deleteSelection, clearEmptyHeading, listBoundaryBackspace, joinBackward, selectNodeBackward),
   Tab: chainCommands(
     insertTabInCode,
     sinkListItem(inkoraSchema.nodes.list_item),

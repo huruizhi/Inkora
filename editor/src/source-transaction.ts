@@ -635,20 +635,44 @@ function paragraphJoinPlan(source: string, state: EditorState, tr: Transaction, 
 }
 
 function listJoinPlan(source: string, state: EditorState, tr: Transaction, position: SourcePosition): NativePlan | null {
-  if (!state.selection.empty || countType(tr.doc, 'list_item') >= countType(state.doc, 'list_item')) return null;
+  if (!state.selection.empty || !listContext(state) ||
+      countType(tr.doc, 'list_item') >= countType(state.doc, 'list_item')) return null;
   const contentStart = position(state.selection.from, 'from');
   const lineStart = source.lastIndexOf('\n', Math.max(0, contentStart - 1)) + 1;
   const prefix = source.slice(lineStart, contentStart);
-  if (!/^(\s*)([-+*]|\d+[.)])[\t ]+(?:\[[ xX]\][\t ]*)?$/.test(prefix)) {
-    throw Error('列表 join 的行标记无法安全定位');
-  }
+  const marker = /^(\uFEFF?)([\t ]*)([-+*]|\d+[.)])[\t ]+(?:\[[ xX]\][\t ]*)?$/.exec(prefix);
+  if (!marker) throw Error('列表 join 的行标记无法安全定位');
+  const markerStart = lineStart + marker[1].length;
   let separatorStart = lineStart;
   if (separatorStart > 0 && source[separatorStart - 1] === '\n') {
     separatorStart--;
     if (separatorStart > 0 && source[separatorStart - 1] === '\r') separatorStart--;
   }
-  const patches = [{ from: separatorStart, to: contentStart, insert: '' }];
-  return { patches, candidate: applyNativePatches(source, patches), kind: 'list-join' };
+  const eol = eolForLine(source, lineStart);
+  const previousLineStart = source.lastIndexOf('\n', Math.max(0, separatorStart - 1)) + 1;
+  const previousLine = source.slice(previousLineStart, separatorStart);
+  // Lifting keeps the existing paragraph boundary. Adjacent nonblank lines
+  // need a second EOL so Markdown does not turn them into one softbreak.
+  const liftInsert = separatorStart < lineStart && !/^[\t ]*$/.test(previousLine) ? eol : '';
+  const candidates = [
+    { patches: [{ from: markerStart, to: contentStart, insert: liftInsert }], description: 'lift list item' },
+    { patches: [{ from: separatorStart, to: contentStart, insert: '' }], description: 'join list contents' },
+  ];
+  const matched = matchingStructuralPlan(source, tr.doc, candidates);
+  if (matched) return { ...matched, kind: 'list-join' };
+  // At EOF an empty lifted paragraph is represented by the blank source line,
+  // not by a parser paragraph. Prove the complete remaining document and the
+  // single empty caret block before accepting that bounded projection.
+  const last = tr.doc.lastChild;
+  if (state.selection.$from.parent.content.size === 0 &&
+      (/^(?:\r\n|\n)?$/.test(source.slice(contentStart))) && last?.type.name === 'paragraph' &&
+      last.content.size === 0 && tr.selection.empty &&
+      tr.selection.head === tr.doc.content.size - 1) {
+    const withoutEmpty = tr.doc.copy(tr.doc.content.cut(0, tr.doc.content.size - last.nodeSize));
+    const lifted = matchingStructuralPlan(source, withoutEmpty, [candidates[0]]);
+    if (lifted) return { ...lifted, kind: 'list-join', sourceCaret: lifted.candidate.length };
+  }
+  return null;
 }
 
 type TableCommandMeta = {
@@ -844,16 +868,34 @@ function taskTogglePlan(
   if (!before?.attrs.task || !after?.attrs.task || before.type !== after.type || before.content !== after.content && !before.content.eq(after.content)) {
     throw Error('任务切换目标已过期');
   }
+  const toggledAttrs = { ...before.attrs, checked: meta.checked, stateChar: meta.checked ? 'x' : ' ' };
+  if (!state.tr.setNodeMarkup(pos, undefined, toggledAttrs).doc.eq(tr.doc)) {
+    throw Error('任务切换事务混入其他内容修改');
+  }
   const labelStart = position(pos + 2, 'from');
   const lineStart = source.lastIndexOf('\n', Math.max(0, labelStart - 1)) + 1;
   const prefix = source.slice(lineStart, labelStart);
-  const markers = [...prefix.matchAll(/\[([ xX])\][\t ]+/g)];
+  const markers = [...prefix.matchAll(/\[([ xX])\](?:[\t ]+|$)/g)];
   const marker = markers.at(-1);
   if (!marker) throw Error('任务 checkbox 原文标记无法定位');
   const stateOffset = lineStart + marker.index + 1;
   const patches = [{ from: stateOffset, to: stateOffset + 1, insert: meta.checked ? 'x' : ' ' }];
   const candidate = applyNativePatches(source, patches);
-  if (!parse(candidate).doc.eq(tr.doc)) throw Error('任务切换候选与 PM 投影语义不一致');
+  if (!parse(candidate).doc.eq(tr.doc)) {
+    // A just-entered empty task separator may be an accepted literal space in
+    // the projection. Remove exactly that owner's single unmarked space for
+    // the canonical before/after proof; no other projection mismatch qualifies.
+    const paragraph = before.firstChild;
+    const singleSeparator = paragraph?.childCount === 1 && paragraph.firstChild?.isText &&
+      paragraph.firstChild.text === ' ' && paragraph.firstChild.marks.length === 0 &&
+      source.slice(stateOffset + 2) === ' ';
+    if (!singleSeparator) throw Error('任务切换候选与 PM 投影语义不一致');
+    const canonical = state.tr.delete(pos + 2, pos + 3);
+    if (!parse(source).doc.eq(canonical.doc) ||
+        !parse(candidate).doc.eq(canonical.setNodeMarkup(pos, undefined, toggledAttrs).doc)) {
+      throw Error('空任务分隔空格缺少完整原文归属证明');
+    }
+  }
   return { patches, candidate, kind: 'task-toggle' };
 }
 
@@ -959,6 +1001,19 @@ export function planNativeTransaction(
   if (mark) return mark;
   const attrs = attrPlan(source, state, tr, ranges);
   if (attrs) return attrs;
+  if (tr.getMeta('inkoraEmptyParagraphAfterList') === true && state.selection.empty &&
+      state.selection.$from.depth === 1 && state.selection.$from.parent.type.name === 'paragraph' &&
+      state.selection.$from.parent.content.size === 0 &&
+      state.selection.$from.after() === state.doc.content.size && tr.steps.length === 1) {
+    const previous = ranges.at(-1);
+    if (previous && ['bullet_list', 'ordered_list'].includes(previous.kind) &&
+        /^[\r\n]+$/.test(source.slice(previous.end)) &&
+        tr.doc.eq(state.doc.copy(state.doc.content.cut(0, state.selection.$from.before())))) {
+      const patches = [{ from: previous.end, to: source.length, insert: '' }];
+      const candidate = applyNativePatches(source, patches);
+      if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'paragraph-join', sourceCaret: previous.end };
+    }
+  }
   const structure = structuralPlan(source, state, tr, ranges, position, fallbackEol);
   if (structure) return structure;
 

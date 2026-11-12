@@ -839,7 +839,7 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       tokenIndex: number;
     }>> = Array.from({ length: ranges.length }, () => []);
     tokens.forEach((token, tokenIndex) => {
-      if (!token.map || !['inline', 'table_open', 'fence', 'code_block', 'hr', 'inkora_protected_block'].includes(token.type)) return;
+      if (!token.map || !['inline', 'table_open', 'fence', 'code_block', 'hr', 'inkora_protected_block', 'list_item_open'].includes(token.type)) return;
       const tokenStart = lines[token.map[0]]?.start;
       const tokenEnd = lines[Math.max(token.map[1] - 1, token.map[0])]?.contentEnd;
       if (tokenStart === undefined || tokenEnd === undefined) return;
@@ -983,15 +983,28 @@ export function buildSourceLedger(source: string, pmDoc: PMNode, ranges: readonl
       pmDoc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
         if (node.isTextblock && node.childCount === 0) emptyTextblocks.push(pos + 1);
       });
-      const emptyTaskTokens = inlineTokens.map(({ token }) => token).filter(token =>
-        token.content.length === 0 && typeof token.meta?.inkoraTaskPrefixLength === 'number');
-      for (const [index, token] of emptyTaskTokens.entries()) {
+      const itemTokens = rangeTokens.filter(({ token }) => token.type === 'list_item_open');
+      const modelItems: Array<{ node: PMNode; pos: number }> = [];
+      pmDoc.nodesBetween(range.pos, range.pos + range.size, (node, pos) => {
+        if (node.type.name === 'list_item') modelItems.push({ node, pos });
+      });
+      if (itemTokens.length !== modelItems.length) throw Error('列表项 token 与 PM 归属数量不一致');
+      const ownedEmpty = new Set<number>();
+      for (const [index, { token }] of itemTokens.entries()) {
+        const model = modelItems[index];
+        const paragraph = model.node.firstChild;
+        if (paragraph?.type.name !== 'paragraph' || paragraph.content.size !== 0) continue;
         const line = token.map ? lines[token.map[0]] : undefined;
-        const visual = emptyTextblocks[index];
-        if (!line || visual === undefined) throw Error('空任务缺少唯一 source/PM 锚点');
-        addAnchor(state, line.contentEnd, visual, 'empty-task-label', '空任务标记后的可视插入边界');
+        if (!line || !/^(?:\uFEFF)?[\t ]*(?:>[\t ]*)*(?:[-+*]|\d+[.)])[\t ]*(?:\[[ xX]\][\t ]*)?$/.test(line.text)) {
+          // A schema-required empty first paragraph before code is not an
+          // empty marker line and receives no new editable source anchor.
+          continue;
+        }
+        const visual = model.pos + 2;
+        ownedEmpty.add(visual);
+        addAnchor(state, line.contentEnd, visual, 'empty-list-item', '同次列表项 token 与 PM 首段顺序归属的空插入边界');
       }
-      const remainingEmpty = emptyTextblocks.slice(emptyTaskTokens.length);
+      const remainingEmpty = emptyTextblocks.filter(visual => !ownedEmpty.has(visual));
       if (!state.atoms.length && remainingEmpty.length) {
         if (remainingEmpty.length !== 1) throw Error(`范围 ${range.start}..${range.end} 含多个空 textblock，当前无法唯一定位插入 source 边界`);
         const line = lines.find(item => range.start >= item.start && range.start <= item.contentEnd);

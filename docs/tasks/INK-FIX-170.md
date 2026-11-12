@@ -1,0 +1,36 @@
+# INK-FIX-170：列表删除与空任务切换
+
+基线 `0d6d7fd`（产品 `d4976d3` / build6）。只处理列表边界删除、空任务状态字符及空列表项归属；不扩展裸 `[ ]` 语法，不修改 source-authority。
+
+## 诊断与最小红例
+
+先运行 `cd editor && node scripts/prepare-renderers.mjs && node_modules/.bin/vitest run src/list-input-runtime.test.ts`。
+初始4项2红：`上\n\n- a` 的首字符前 Backspace，PM selection 6，及 `- a\n- b` 的第二项首字符前 Backspace，selection 8，均保持原文但 `unresolved=true/saveEligible=false`。
+去掉前一段/前项后单项 `- a` 变绿，确认承重条件是边界目标不同。
+
+先列三项可证伪假设再逐项探针：
+1. listJoinPlan 无差别删除 EOL 与 marker，而 PM lift/内容 join 目标不同；按完整目标区分候选应解除拒绝。
+2. structuralPlan 缺少 list lift 候选；补精确标记候选应只修 lift 场景。
+3. 源位置边界错误；若保持位置而只改候选即可转绿则不是两个初始失败的原因。
+
+捕获真实 Backspace 命令：前段例产生 replaceAround，目标为两段 paragraph；现候选误删 EOL 成为 softbreak。第二项例产生 replace，默认 joinBackward 把两个 item 变成一个 tight=true item 内的两个 paragraph；合法 Markdown 的双段 item 必须 loose，原 PM 目标不可表示。采用同域列表首段边界命令先 lift，再继续 Backspace 合并，保持完整解析核验。
+
+标准任务逐字输入本身可生成控件，有 label 时点击/Space 可写回。但空 `- [ ]` 和 `- [ ] ` 点击失败：前者 marker regex 要求尾空格；后者已接受 PM 中首段含单个分隔空格，而 canonical 首段为空。后续加入空任务点击、键盘切换和 Undo/Redo 红例后修复。
+
+加载含非空项与普通空项的列表，还发现空项 selection-only 无源锚点；原 ledger 仅在无文字 atom 时为普通空 textblock 补锚。新增同次 accepted list_item_open token.map 与 PM list_item 顺序/数量配对，只对所属行确为空标记的首段建立锚，不为 code/setext 前 schema 补造段落创建位置。
+
+## 修改
+
+- `editor/src/block-editing.ts`：listBoundaryBackspace，首段起点 lift；EOF 空段在列表之后时删除空段并回前列表尾。由168与169标题命令合成最终 Backspace chain。
+- `editor/src/source-transaction.ts`：列表边界保留段落 EOL，必要时增加一条当前行 EOL，唯一候选须完整 parse.eq；EOF 空项只允许无内容或单条现有 EOL，去除唯一末空 paragraph 后完整核验；EOF 空段删除需命令 metadata、完整剩余 PM 与源尾仅 EOL 双重证明。
+- 同文件 taskTogglePlan：事务必须恰好完整 PM 的该 owner 属性切换；EOF marker 允许无尾空格。单分隔空格例外仅限当前 owner 首段一个无 marks ASCII 空格、源 marker 后恰好该空格到 EOF，并分别完整证明 canonicalBefore/After。源补丁仍仅括号内一个字符。
+- `editor/src/source-ledger.ts`：列表项源归属空锚，保留原普通空块回退。
+- `editor/src/list-input-runtime.test.ts`：公共 runtime/DOM keydown、input handler、checkbox click/Space、Undo/Redo、caret、BOM/CRLF、加载空项、嵌套和拒绝误配/混入事务回归。
+
+## 验证与边界
+
+作者运行：`cd editor && node_modules/.bin/vitest run src/list-input-runtime.test.ts src/block-editing.test.ts src/container-ledger-runtime.test.ts src/tables-tasks-runtime.test.ts src/source-authority-runtime.test.ts`，5文件174项通过；`cd editor && node_modules/.bin/tsc --noEmit` 通过。
+
+JSDOM 的 keydown 证明产品 keymap/事务与 DOM 控件接线，不能替代 WebKit 默认文字删除或事件时序。未跑 Native/WK、GUI、perf、整仓 make test/build，统一由168集成执行。没有安装依赖、触及用户文档或产生 App 副本。
+
+风险：列表首段边界 Backspace 现在先去一级列表格式，再继续合并，行为刻意避免不可表示的 tight 双段目标。单分隔空格例外不覆盖多空格、marks 或非 EOF 的投影差异，负控要求继续拒绝；一般连续空格由169负责。裸 `[ ]` 与 code 不生成任务。复杂引用前缀内的空列表与跨保护片段结构修改保持既有保守边界，不声称全部支持。
