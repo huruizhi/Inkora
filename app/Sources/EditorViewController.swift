@@ -198,8 +198,11 @@ final class EditorViewController: NSViewController, EditorBridgeDelegate,
     }
     // Resigning the native first responder commits the real macOS IME before
     // the Web runtime drains compositionend and captures its revision.
-    let restoreFocus = view.window?.firstResponder?.isKind(of: NSView.self) == true
-    view.window?.makeFirstResponder(nil)
+    // An idle snapshot must not reset WebKit's native selection on focus restore.
+    // If the client is unavailable, retain the existing conservative commit path.
+    let hasMarkedText = webView?.inputContext?.client.hasMarkedText() ?? true
+    let restoreFocus = hasMarkedText && view.window?.firstResponder?.isKind(of: NSView.self) == true
+    if hasMarkedText { view.window?.makeFirstResponder(nil) }
     bridge.requestVersionedSnapshot { [weak self] result in
       if restoreFocus, let self, self.view.window?.attachedSheet == nil {
         self.view.window?.makeFirstResponder(self.webView)

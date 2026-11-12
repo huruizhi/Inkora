@@ -1,0 +1,4 @@
+{
+  "sha256": "b350b80d8e49786810dd63310ba900624729388374bdf526b306052431de32a4",
+  "output": "Test Suite 'Idle snapshot focus' started at 2026-11-12 20:37:18.000.\nTest Case '-[main.WritingInteractionHostlessTests testIdleSnapshotPreservesNativeResponderAndDirectedCaret]' started.\n/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-185/tests/InkoraTests/WritingInteractionHostlessTests.swift:17: error: -[main.WritingInteractionHostlessTests testIdleSnapshotPreservesNativeResponderAndDirectedCaret] : XCTAssertEqual failed: (\"1\") is not equal to (\"0\") - 没有系统候选时，普通快照不能清空原生响应者\nTest Case '-[main.WritingInteractionHostlessTests testIdleSnapshotPreservesNativeResponderAndDirectedCaret]' failed (0.362 seconds).\nTest Suite 'Idle snapshot focus' failed at 2026-11-12 20:37:18.363.\n\t Executed 1 test, with 1 failure (0 unexpected) in 0.362 (0.363) seconds\n"
+}
