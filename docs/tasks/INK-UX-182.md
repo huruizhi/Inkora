@@ -23,7 +23,7 @@
 
 正式规格：[typora-table-parity.md](../design/typora-table-parity.md)。完成参数建表、列/数据行重排、拖动范围与位置反馈、网格/数字规模选择和缩减确认。保留原Native/Bridge入口，确认才生成正文变更；取消不改原文。复用锁定依赖，无新增依赖或产品联网。
 
-修改：runtime/main接线；table-editing统一PM命令；source-transaction原文局部重排；纯table-commands类型/尺寸策略；table-interactions与table-size-dialog各自TS/CSS；main和公共runtime回归；新增TableParityHostlessTests.swift/专项脚本。没有修改Native生产保存、权限、Bridge协议、project版本或公开Release。
+修改：runtime/main接线；table-editing统一PM命令；source-transaction原文局部重排；纯table-commands类型/尺寸策略；table-interactions与table-size-dialog各自TS/CSS；main和公共runtime回归；新增TableParityHostlessTests.swift/专项脚本。表格切片未修改Native生产保存、权限、Bridge协议、project版本或公开Release；后续CI阻断补正仅涉及普通快照焦点，见下文。
 
 - `make lint test-editor test-ci` 最终退出0；54文件 **1002项通过**，包含21项新增表格公共runtime/DOM回归；TypeScript与Swift strict格式通过，生产Web构建通过，仅既有chunk体积提示。
 - `pnpm --dir editor exec vitest run src/bridge.test.ts src/table-parity-runtime.test.ts`：补正前32项通过（Bridge16 + 当时表格16）；最终精确提交的完整Bridge/Native由CI门禁结算，不把旧数量冒充最终重跑。
@@ -38,3 +38,7 @@
 未进行物理鼠标拖动、系统IME、VoiceOver、可见paint、macOS14实机测试。隐藏WK/DOM合成事件仅证明相应生产接缝。所有缩减有明确删除确认，但用户确认后被删除的数据仍需Undo恢复；保存前可检查源码。没有本轮安装/公开发行。其余54项保持审计原状，不能宣称完整Typora对齐。主工作树、审查工作树及ignored原始产物保留；只移除本任务自行建立的依赖软链，不清除真实依赖和用户文件。
 
 原始输出在ignored artifacts中逐字保留；提交的证据使用JSON字符串无损承载输出（含CR与尾空白），逐项SHA256及解码字节相等已检查，避免把终端空白误作代码空白问题。
+
+## 完整CI发现的必要集成补正
+
+ad4f22f的CI 43216656865在完整Native出现259通过/1失败/9跳过，失败为已有标题组合输入后版本快照使caret回跳，表格专项未失败。独立任务[INK-FIX-185](INK-FIX-185.md)定位并补正：无系统marked text时不清空/恢复Native responder；候选存在或client未知仍保留既有commit流程。原文事务拒绝规则、Bridge与保存资格保持。新增焦点/反向选区回归修前稳定红，修后写作专项22/22通过；Web bundle与表格固定版本5个文件逐字SHA相等。整合后表格Native/WK4/4重跑，最终完整门禁仍以新精确HEAD的CI结算。此必要集成修复不等同扩大其余54项功能范围。
