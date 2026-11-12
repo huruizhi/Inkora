@@ -36,3 +36,16 @@ trace显示首个d触发有界语义重投影，移除原先被留在正文的�
 
 扩大Native用例覆盖普通段落、裸#、#空格、##双空格、列表；真实原生setMarkedText d→du、insertText读后一次Undo/Redo精确还原。新h2测试初版选择器仅覆盖h1，改为实际h1/h2/p；不将null选择器当产品缺陷。
 25项Native/WK候选全部通过，125项定向DOM通过。恢复代码块既有position:relative（局部CSS探索时误删，最终diff只含标题标记样式）。正式全量检查及固定commit另记。
+
+## 固定产品与本地检查
+
+产品c22e6841a3b5c69197a0556cfe457bd3dcdbb081。最终 `make lint test-editor test-ci` 退出0：
+55文件1029项通过，TypeScript/Vite与Swift严格格式、CI脚本回归通过，仅保留已有chunk/Swift隔离警告。
+`INKORA_WRITING_ARTIFACTS_DIR=artifacts/INK-FIX-190/final tests/InkoraTests/WritingInteractionHostless.sh`
+最终25/25、0失败，原22项全保留，新增灰标记后真实DOM选区/不可编辑装饰，原生d→du→读含五场景和Undo/Redo，列表空格触发/连续Enter与Backspace。
+
+修改文件：heading-entry及CSS、source-authority有界字节/前缀位置证明；两既有runtime测试文件、既有Native写作测试和脚本计数，任务与同域证据。无依赖/Schema/Bridge/Native产品/用户文档/输入法设置变更。
+
+JSON evidence无损保留终端输出与SHA256；所有红例、夹具错误、放弃方案和中间产物另留ignored目录，不删有效断言。
+独立双轴审查和最终精确HEAD CI后续记录。用户已请求本机修复路径，先等保存退出与最终验证才替换。
+截至此记录本机仍build10，未宣告安装完成。物理搜狗输入、可见paint、VoiceOver、macOS14实机未验；原生接口回路不等同物理IME操作。
