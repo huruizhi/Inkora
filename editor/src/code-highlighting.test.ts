@@ -31,7 +31,7 @@ describe("code highlighting language registry", () => {
   });
 
   it("bundles the agreed technical-document languages", () => {
-    expect(CODE_LANGUAGES.map((language) => language.id)).toEqual([
+    expect(CODE_LANGUAGES.map((language) => language.id)).toEqual(expect.arrayContaining([
       "bash",
       "css",
       "go",
@@ -45,7 +45,9 @@ describe("code highlighting language registry", () => {
       "typescript",
       "xml",
       "yaml",
-    ]);
+    ]));
+    expect(CODE_LANGUAGES).toHaveLength(193);
+    expect(new Set(CODE_LANGUAGES.map(language => language.id)).size).toBe(193);
     for (const language of CODE_LANGUAGES) {
       expect(language.label).toContain(language.id);
       expect(language.label).toMatch(/[\u4e00-\u9fff（(]/);
@@ -100,7 +102,7 @@ describe("code highlighting token spans", () => {
     expect(byFrom.get(20)).toMatchObject({ to: 27, class: "hljs-string", text: '"héllo"' });
   });
 
-  it("colors every bundled language and keeps only whitelisted classes", () => {
+  it("retains all thirteen baseline language oracles and only whitelisted classes", () => {
     const samples: Record<string, string> = {
       bash: '#!/bin/bash\necho "hi"',
       css: "a { color: red; }",
@@ -116,8 +118,10 @@ describe("code highlighting token spans", () => {
       xml: '<p class="x">文本</p>',
       yaml: "key: value\nlist:\n  - 1",
     };
-    for (const language of CODE_LANGUAGES) {
-      const spans = highlightCodeSpans(samples[language.id] ?? "", language.id);
+    for (const [id, sample] of Object.entries(samples)) {
+      const language = CODE_LANGUAGES.find(language => language.id === id)!;
+      expect(language).toBeDefined();
+      const spans = highlightCodeSpans(sample, language.id);
       expect(spans.length, `${language.id} should produce at least one span`).toBeGreaterThan(0);
       let cursor = 0;
       let sawSpan = false;

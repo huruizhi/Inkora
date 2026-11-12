@@ -113,6 +113,7 @@ export interface EditorRuntime {
     readonly replacedCount: number;
   }>;
   readonly composing: boolean;
+  readonly auxiliaryInputFocused: boolean;
   insertTable(size?: TableSize): boolean;
   requestTableInsertion(): boolean;
   applyImageDescriptors(values: readonly ImageResourceDescriptor[]): void;
@@ -197,10 +198,22 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     return this.mode === "source";
   }
 
+  private readonly queryCompositions = new Set<object>();
+  private readonly focusedQueries = new Set<object>();
+  get auxiliaryInputFocused(): boolean { return this.focusedQueries.size > 0; }
+
   get composing(): boolean {
-    return this.mode === "source"
+    return this.queryCompositions.size > 0 || (this.mode === "source"
       ? (this.sourceKernel?.composing ?? false)
-      : this.session.composing;
+      : this.session.composing);
+  }
+
+  private setQueryComposition(owner: object, active: boolean): void {
+    const wasActive = this.queryCompositions.has(owner);
+    if (active) this.queryCompositions.add(owner); else this.queryCompositions.delete(owner);
+    if (this.destroyed || wasActive === active) return;
+    if (!this.composing) this.resolveStabilityWaiters(true);
+    this.onChange(this.status, "status");
   }
 
   get status(): EditorRuntimeStatus {
@@ -704,7 +717,9 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     let view: EditorView;
     let lastDispatchAccepted: boolean | undefined;
     const codeBlockNodeView = createCodeBlockNodeViews({
-      isComposing: () => this.session.composing || view?.composing === true,
+      isComposing: () => this.composing || view?.composing === true,
+      onQueryComposition: (owner, active) => this.setQueryComposition(owner, active),
+      onQueryFocus: (owner, focused) => { if (focused) this.focusedQueries.add(owner); else this.focusedQueries.delete(owner); },
       applyLanguageChange: (getPos, expectedNode, nextLanguage) => {
         if (this.session.composing || view.composing) {
           return { ok: false, message: "请先完成中文输入，再选择代码语言。" };
@@ -1220,6 +1235,7 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
   applySourceDraft(): boolean { return false; }
   cancelSourceDraft(): boolean { return false; }
   snapshotText(): SourceNavigationResult<string> { return { ok: true, value: this.text }; }
+  get auxiliaryInputFocused(): boolean { return false; }
   whenCompositionStable(): Promise<boolean> { return Promise.resolve(true); }
   getSourceSelection(raw: string): SourceNavigationResult<DirectedSelection> {
     if (this.text !== raw) return { ok: false, message: "文档已变化，请等待查找刷新" };

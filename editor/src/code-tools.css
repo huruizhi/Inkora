@@ -31,3 +31,23 @@
 }
 
 .inkora-code-toolbar.has-notices { visibility: visible; pointer-events: auto; }
+.inkora-code-toolbar.has-language-picker { visibility: visible; pointer-events: auto; }
+.code-language-query { box-sizing: border-box; width: 150px; min-width: 80px; font: inherit; font-size: 12px; }
+.code-language-choices { position: fixed; inset: auto; margin: 0; z-index: 10; box-sizing: border-box;
+  overflow: auto; padding: 4px; border: 1px solid GrayText; border-radius: 6px; background: Canvas; color: CanvasText;
+  box-shadow: 0 4px 16px #0003; }
+.code-language-choices[hidden] { display: none; }
+.code-language-choices button { display: block; width: 100%; padding: 5px 8px; border: 0; background: transparent;
+  color: inherit; font: 13px system-ui; text-align: left; }
+.code-language-choices [aria-selected=true] { background: Highlight; color: HighlightText; }
+div#editor .inkora-code-body { display: grid; grid-template-columns: minmax(0, 1fr); }
+div#editor .inkora-code-body.has-line-numbers { grid-template-columns: auto minmax(0, 1fr); }
+div#editor .inkora-code-body > pre { min-width: 0; margin: 0; overflow: auto; white-space: pre;
+  font: 14px/1.7 ui-monospace, "SFMono-Regular", Menlo, monospace; }
+div#editor .inkora-code-body > pre > code { font: inherit; }
+div#editor .code-line-numbers { padding: 16px 8px; min-width: 2ch; text-align: right; color: GrayText;
+  font: 14px/1.7 ui-monospace, "SFMono-Regular", Menlo, monospace; white-space: pre;
+  user-select: none; pointer-events: none; }
+div#editor .code-line-numbers[hidden] { display: none; }
+.inkora-code-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.inkora-code-language { max-width: 150px; }
