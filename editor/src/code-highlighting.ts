@@ -1,21 +1,7 @@
 import type { Node as PMNode } from "prosemirror-model";
 import type { EditorState } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
-import hljs from "highlight.js/lib/core";
-import type { LanguageFn } from "highlight.js";
-import bash from "highlight.js/lib/languages/bash";
-import css from "highlight.js/lib/languages/css";
-import go from "highlight.js/lib/languages/go";
-import javascript from "highlight.js/lib/languages/javascript";
-import json from "highlight.js/lib/languages/json";
-import markdown from "highlight.js/lib/languages/markdown";
-import python from "highlight.js/lib/languages/python";
-import rust from "highlight.js/lib/languages/rust";
-import sql from "highlight.js/lib/languages/sql";
-import swift from "highlight.js/lib/languages/swift";
-import typescript from "highlight.js/lib/languages/typescript";
-import xml from "highlight.js/lib/languages/xml";
-import yaml from "highlight.js/lib/languages/yaml";
+import hljs from "highlight.js";
 
 /** 代码块 token 高亮区间；from/to 为相对代码正文的 UTF-16 偏移。 */
 export interface HighlightSpan {
@@ -30,43 +16,20 @@ export interface HighlightSpan {
 export interface CodeLanguage {
   readonly id: string;
   readonly label: string;
+  readonly aliases: readonly string[];
 }
 
-export const CODE_LANGUAGES: readonly CodeLanguage[] = [
-  { id: "bash", label: "Bash Shell（bash）" },
-  { id: "css", label: "CSS（css）" },
-  { id: "go", label: "Go（go）" },
-  { id: "javascript", label: "JavaScript（javascript）" },
-  { id: "json", label: "JSON（json）" },
-  { id: "markdown", label: "Markdown（markdown）" },
-  { id: "python", label: "Python（python）" },
-  { id: "rust", label: "Rust（rust）" },
-  { id: "sql", label: "SQL（sql）" },
-  { id: "swift", label: "Swift（swift）" },
-  { id: "typescript", label: "TypeScript（typescript）" },
-  { id: "xml", label: "XML/HTML（xml）" },
-  { id: "yaml", label: "YAML（yaml）" },
-];
-
-const languageModules: Record<string, LanguageFn> = {
-  bash,
-  css,
-  go,
-  javascript,
-  json,
-  markdown,
-  python,
-  rust,
-  sql,
-  swift,
-  typescript,
-  xml,
-  yaml,
+const preferredLabels: Record<string, string> = {
+  bash: "Bash Shell", css: "CSS", go: "Go", javascript: "JavaScript", json: "JSON",
+  markdown: "Markdown", python: "Python", rust: "Rust", sql: "SQL", swift: "Swift",
+  typescript: "TypeScript", xml: "XML/HTML", yaml: "YAML",
 };
 
-for (const [id, definition] of Object.entries(languageModules)) {
-  hljs.registerLanguage(id, definition);
-}
+/** Complete offline catalog from the pinned package; aliases never rewrite raw implicitly. */
+export const CODE_LANGUAGES: readonly CodeLanguage[] = hljs.listLanguages().sort().map(id => ({
+  id, label: `${preferredLabels[id] ?? hljs.getLanguage(id)?.name ?? id}（${id}）`,
+  aliases: (hljs.getLanguage(id)?.aliases ?? []).filter(alias => hljs.getLanguage(alias) === hljs.getLanguage(id)),
+}));
 
 // highlight.js 11.12.0 语法库静态作用域清单（lib/languages 全量 grep 冻结）。
 const HLJS_SCOPES: Record<string, true> = {
@@ -101,7 +64,9 @@ export function resolveHighlightLanguageId(token: string): string | null {
     for (const language of CODE_LANGUAGES) {
       aliasIndex.set(language.id, language.id);
       const definition = hljs.getLanguage(language.id);
-      for (const alias of definition?.aliases ?? []) aliasIndex.set(alias, language.id);
+      for (const alias of definition?.aliases ?? []) {
+        if (hljs.getLanguage(alias) === definition) aliasIndex.set(alias, language.id);
+      }
     }
   }
   return aliasIndex.get(token) ?? aliasIndex.get(token.toLowerCase()) ?? null;

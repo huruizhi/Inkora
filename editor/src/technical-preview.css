@@ -51,9 +51,7 @@ div#editor .is-mermaid { background: transparent; border-color: transparent; }
   background: Canvas;
   font: 12px/1.5 -apple-system, sans-serif;
 }
-.is-mermaid:has(> .mermaid-preview[data-state="ready"]) > pre { display: none; }
-#editor .is-mermaid.inkora-context-active > pre,
-.is-mermaid:has(> .inkora-code-toolbar:focus-within) > pre { display: block; }
+div#editor .is-mermaid:has(> .mermaid-preview[data-state="ready"]):not(.inkora-context-active):not(:has(> .inkora-code-toolbar:focus-within)) > .inkora-code-body { display: none; }
 #editor .is-mermaid.inkora-context-active > .mermaid-preview,
 .is-mermaid:has(> .inkora-code-toolbar:focus-within) > .mermaid-preview { display: none; }
 #editor .is-mermaid.inkora-context-active > .mermaid-edit,

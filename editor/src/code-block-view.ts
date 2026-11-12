@@ -1,3 +1,5 @@
+import { codeViewPreferences } from "./code-view-preferences";
+import { mountCodeLanguagePicker } from "./code-language-picker";
 import notices from "../public/RENDERER_NOTICES.txt?raw";
 import "./code-tools.css";
 import type { Node as PMNode } from "prosemirror-model";
@@ -55,6 +57,8 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     getPos: () => number | undefined,
   ): CodeBlockNodeView => {
     let node = initialNode;
+    let alive = true;
+    const preferences = codeViewPreferences(view.dom.ownerDocument.defaultView!);
     const dom = document.createElement("div");
     dom.className = "inkora-code-block";
 
@@ -128,11 +132,35 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
       event.stopPropagation();
       closeNotices();
     });
-    toolbar.append(label, message, license, noticePanel);
+    const lineToggle = document.createElement("button");
+    lineToggle.type = "button"; lineToggle.textContent = "行号";
+    lineToggle.setAttribute("aria-label", "显示代码行号");
+    lineToggle.addEventListener("pointerdown", event => event.preventDefault());
+    lineToggle.addEventListener("click", () => {
+      if (alive && lineToggle.isConnected && !context.isComposing() && !view.composing) preferences.toggle();
+    });
+    toolbar.append(label, message, lineToggle, license, noticePanel);
 
+    const body = document.createElement("div"); body.className = "inkora-code-body";
+    const gutter = document.createElement("div"); gutter.className = "code-line-numbers";
+    gutter.contentEditable = "false"; gutter.setAttribute("aria-hidden", "true");
     const pre = document.createElement("pre");
     const code = document.createElement("code");
-    pre.append(code);
+    pre.append(code); body.append(gutter, pre);
+    let previousCount = -1;
+    const renderLineNumbers = (): void => {
+      const enabled = preferences.lineNumbers;
+      lineToggle.setAttribute("aria-pressed", String(enabled));
+      gutter.hidden = !enabled;
+      body.classList.toggle("has-line-numbers", enabled);
+      const count = node.textContent.split(/\r\n|\r|\n/).length;
+      if (count !== previousCount) {
+        previousCount = count;
+        gutter.textContent = Array.from({ length: count }, (_, index) => String(index + 1)).join("\n");
+      }
+    };
+    const unsubscribe = preferences.subscribe(renderLineNumbers);
+    renderLineNumbers();
     const diagram = document.createElement("div");
     diagram.className = "mermaid-preview";
     diagram.contentEditable = "false";
@@ -169,7 +197,12 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     });
     editDiagram.addEventListener("pointerdown", event => event.preventDefault());
     editDiagram.addEventListener("click", enterDiagramCode);
-    dom.append(toolbar, diagram, editDiagram, pre);
+    dom.append(toolbar, diagram, editDiagram, body);
+
+    const picker = mountCodeLanguagePicker({ toolbar, view, node: () => node, getPos,
+      isComposing: context.isComposing, apply: context.applyLanguageChange,
+      message: text => { message.dataset.failure = String(!!text); message.textContent = text; },
+    });
 
     const renderSelector = (): void => {
       const languageAttr = node.attrs.language as string | null;
@@ -209,7 +242,7 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     select.addEventListener("pointerdown", guardComposition);
     select.addEventListener("click", guardComposition);
     select.addEventListener("change", (event) => {
-      if (guardComposition(event)) return;
+      if (!alive || !select.isConnected || !view.editable || guardComposition(event)) return;
       const current = node.attrs.language as string | null;
       const next = buildLanguageAttr(current, select.value);
       if (next === current) return;
@@ -225,6 +258,7 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     });
 
     renderSelector();
+    picker.update();
     renderDiagram();
 
     return {
@@ -235,6 +269,8 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
         node = nextNode;
         message.dataset.failure = "false";
         renderSelector();
+        picker.update();
+        renderLineNumbers();
         renderDiagram();
         return true;
       },
@@ -244,9 +280,9 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
       },
       ignoreMutation(mutation) {
         return toolbar.contains(mutation.target) || diagram.contains(mutation.target) ||
-          editDiagram.contains(mutation.target);
+          editDiagram.contains(mutation.target) || gutter.contains(mutation.target) || mutation.target === body;
       },
-      destroy() { cancelPreview?.(); },
+      destroy() { alive = false; unsubscribe(); picker.destroy(); cancelPreview?.(); },
     };
   };
 }
