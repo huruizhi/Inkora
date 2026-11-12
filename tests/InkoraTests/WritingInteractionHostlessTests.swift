@@ -4,6 +4,92 @@ import XCTest
 
 final class WritingInteractionHostlessTests: XCTestCase {
   @MainActor
+  func testEmptyHeadingReservesPrefixBeforeEditableBody() throws {
+    for prefix in ["#", "# ", "## "] {
+      try withEditor("") { controller, web in
+        web.window?.setContentSize(NSSize(width: 900, height: 600))
+        try focus("#editor p", in: web)
+        try keys(Array(prefix).map(String.init), in: web)
+        let geometry =
+          try js(
+            """
+            (()=>{const h=document.querySelector('.inkora-heading-entry'),m=h.querySelector('.inkora-heading-entry-marker'),s=getSelection();
+            const end=document.createRange();end.setStartAfter(m);end.collapse(true);
+            return {after:s.getRangeAt(0).compareBoundaryPoints(Range.START_TO_START,end)>=0,
+              editable:m.contentEditable,text:m.textContent,width:m.getBoundingClientRect().width};})()
+            """, in: web) as? [String: Any]
+        XCTAssertEqual(geometry?["after"] as? Bool, true)
+        XCTAssertEqual(geometry?["editable"] as? String, "false")
+        XCTAssertEqual(geometry?["text"] as? String, "")
+        XCTAssertGreaterThan(try XCTUnwrap(geometry?["width"] as? Double), 0)
+        XCTAssertEqual(try snapshot(controller), prefix)
+        if prefix.hasSuffix(" ") {
+          try keys(["a"], in: web)
+          XCTAssertEqual(try snapshot(controller), prefix + "a")
+        }
+      }
+    }
+  }
+
+  @MainActor
+  func testNativeMarkedTextDoesNotDuplicateInitialLetter() throws {
+    for prefix in ["", "#", "# ", "##  ", "- "] {
+      try withEditor("") { controller, web in
+        XCTAssertTrue(try XCTUnwrap(web.window).makeFirstResponder(web))
+        try focus("#editor p", in: web)
+        if !prefix.isEmpty { try keys(Array(prefix).map(String.init), in: web) }
+        let client = try XCTUnwrap(web.inputContext?.client)
+        client.setMarkedText(
+          "d", selectedRange: NSRange(location: 1, length: 0),
+          replacementRange: NSRange(location: NSNotFound, length: 0))
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        XCTAssertEqual(
+          try js("document.querySelector('#editor h1,#editor h2,#editor p').textContent", in: web)
+            as? String,
+          "d")
+        client.setMarkedText(
+          "du", selectedRange: NSRange(location: 2, length: 0),
+          replacementRange: NSRange(location: NSNotFound, length: 0))
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        XCTAssertEqual(
+          try js("document.querySelector('#editor h1,#editor h2,#editor p').textContent", in: web)
+            as? String,
+          "du")
+        client.insertText("读", replacementRange: NSRange(location: NSNotFound, length: 0))
+        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        let after = try versionedSnapshot(controller)
+        XCTAssertEqual(after.text, prefix + "读")
+        try history(redo: false, controller: controller)
+        XCTAssertEqual(try snapshot(controller), prefix)
+        try history(redo: true, controller: controller)
+        XCTAssertEqual(try snapshot(controller), prefix + "读")
+      }
+    }
+  }
+
+  @MainActor
+  func testTypedBulletWaitsForSpaceThenEnterAndBackspaceContinue() throws {
+    try withEditor("") { controller, web in
+      try focus("#editor p", in: web)
+      try keys(["-"], in: web)
+      XCTAssertEqual(try js("!!document.querySelector('#editor ul')", in: web) as? Bool, false)
+      XCTAssertEqual(try snapshot(controller), "-")
+      try keys([" "], in: web)
+      XCTAssertEqual(try js("!!document.querySelector('#editor ul')", in: web) as? Bool, true)
+      try keys(["a"], in: web)
+      try pressEnter(in: web)
+      XCTAssertEqual(try snapshot(controller), "- a\n- ")
+      try keys(["b"], in: web)
+      try pressEnter(in: web)
+      XCTAssertEqual(try snapshot(controller), "- a\n- b\n- ")
+      try keys(["<Backspace>"], in: web)
+      XCTAssertEqual(try snapshot(controller), "- a\n- b\n\n")
+      try keys(["c"], in: web)
+      XCTAssertEqual(try snapshot(controller), "- a\n- b\n\nc")
+    }
+  }
+
+  @MainActor
   func testIdleSnapshotPreservesNativeResponderAndDirectedCaret() throws {
     try withEditor("# 标题") { controller, web in
       let window = try XCTUnwrap(web.window as? SnapshotFocusWindow)
@@ -62,8 +148,8 @@ final class WritingInteractionHostlessTests: XCTestCase {
             """
             (() => {const h=document.querySelector('#editor .inkora-heading-entry-ready');
             if(!h)return null;window.writingEntryHeading=h;
-            return [getComputedStyle(h).fontSize,getComputedStyle(h,'::before').content,
-              getComputedStyle(h,'::before').color !== getComputedStyle(h).color,h.textContent];})()
+            return [getComputedStyle(h).fontSize,getComputedStyle(h.querySelector('.inkora-heading-entry-marker'),'::before').content,
+              getComputedStyle(h.querySelector('.inkora-heading-entry-marker')).color !== getComputedStyle(h).color,h.textContent];})()
             """, in: web) as? [Any]
         XCTAssertEqual(presentation?[0] as? String, "17px")
         XCTAssertEqual(presentation?[1] as? String, "\"\(marker) \"")

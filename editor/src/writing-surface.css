@@ -114,12 +114,15 @@ div#editor .inkora-heading-entry {
   padding: 0;
   border: 0;
 }
-div#editor .inkora-heading-entry::before {
-  content: attr(data-heading-entry-marker);
-  white-space: pre;
-  color: inherit;
+div#editor .inkora-heading-entry-marker {
+  display: inline-block;
   user-select: none;
 }
-div#editor .inkora-heading-entry-ready::before {
+div#editor .inkora-heading-entry-marker::before {
+  content: attr(data-marker);
+  white-space: pre;
+  color: inherit;
+}
+div#editor .inkora-heading-entry-ready > .inkora-heading-entry-marker {
   color: color-mix(in srgb, CanvasText 35%, Canvas);
 }

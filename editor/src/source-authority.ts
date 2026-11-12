@@ -162,7 +162,7 @@ function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger
   };
 }
 
-/** Preserve only source-identical plain paragraphs whose edge spaces CommonMark hides. */
+/** Preserve source-identical paragraphs with hidden edge spaces or an uncompleted bullet. */
 function literalWhitespaceProjection(raw: string, parsed: ReturnType<typeof parse>, doc: PMNode): ProjectionContext | null {
   if (parsed.issues.length || parsed.doc.childCount !== doc.childCount) return null;
   const firstLineStart = raw.startsWith('\uFEFF') ? 1 : 0;
@@ -179,12 +179,16 @@ function literalWhitespaceProjection(raw: string, parsed: ReturnType<typeof pars
     const before = parsed.doc.child(index), after = doc.child(index), range = ranges[index];
     positions.push(pos);
     if (!before.eq(after)) {
-      if (before.type.name !== 'paragraph' || after.type.name !== 'paragraph' ||
-          before.childCount > 1 || after.childCount !== 1 || !after.firstChild?.isText ||
-          after.firstChild.marks.length || (before.firstChild && (!before.firstChild.isText || before.firstChild.marks.length))) return null;
+      const pendingBullet = before.type.name === 'bullet_list' && before.childCount === 1 &&
+        before.firstChild?.type.name === 'list_item' && before.firstChild.childCount === 1 &&
+        before.firstChild.firstChild?.type.name === 'paragraph' && before.firstChild.firstChild.content.size === 0 &&
+        after.type.name === 'paragraph' && /^[+*-]$/.test(after.textContent) && before.attrs.bullet === after.textContent;
+      if (after.type.name !== 'paragraph' || after.childCount !== 1 || !after.firstChild?.isText || after.firstChild.marks.length ||
+          (!pendingBullet && (before.type.name !== 'paragraph' || before.childCount > 1 ||
+          (before.firstChild && (!before.firstChild.isText || before.firstChild.marks.length))))) return null;
       const text = after.textContent;
-      if (raw.slice(range.start, range.end) !== text ||
-          text.replace(/^ +| +$/g, '') !== before.textContent || !/^ | $/.test(text)) return null;
+      if (raw.slice(range.start, range.end) !== text || (!pendingBullet &&
+          (text.replace(/^ +| +$/g, '') !== before.textContent || !/^ | $/.test(text)))) return null;
       changed.push({ from: range.start, to: range.end, pos, text });
     }
     pos += after.nodeSize;
@@ -1383,7 +1387,7 @@ export class SourceAuthoritySession {
     return true;
   }
 
-  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner, sourceBoundary?: NativeAnchor): void {
+  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner, sourceBoundary?: NativeAnchor, consumedPrefix = false): void {
     const parsed = this.parseSource(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
@@ -1415,6 +1419,16 @@ export class SourceAuthoritySession {
       };
     });
     if (sourceBoundary) mappedAnchors.push({ visual: sourceBoundary.pmPos, raw: sourceBoundary.sourceOffset, reason: '已接受inline关闭语法后的空白起点' });
+    // A consumed list marker has no remaining visual character boundary.
+    // The same parse's empty-item insertion span proves the new label caret.
+    if (parsed.doc.eq(target.doc) && consumedPrefix && sourceCaret !== undefined && target.selection.empty) {
+      const emptyItem = baseLedger(raw, parsed).spans.some(span => span.role === 'insertion-anchor' &&
+        span.syntax === 'empty-list-item' && span.sourceStart === sourceCaret && span.sourceEnd === sourceCaret &&
+        span.visualStart === target.selection.head && span.visualEnd === target.selection.head);
+      if (emptyItem) for (let index = mappedAnchors.length - 1; index >= 0; index--) {
+        if (mappedAnchors[index].visual === target.selection.head && mappedAnchors[index].raw !== sourceCaret) mappedAnchors.splice(index, 1);
+      }
+    }
     const oldAnchorCount = mappedAnchors.length;
     const step = target.selection;
     if (sourceCaret !== undefined) mappedAnchors.push({ visual: step.head, raw: sourceCaret, reason });
@@ -1563,7 +1577,18 @@ export class SourceAuthoritySession {
         context.ledger, plan, parsed, target.doc) ?? sourceCaret;
       const compositionOwner = this.planCompositionOwner(plan, target);
       if (this.projection.compositionOwner && !compositionOwner && !parsed.doc.eq(target.doc)) throw Error('组合输入事务超出已证明 owner');
-      if (!compositionOwner && !parsed.issues.length && !parsed.doc.eq(target.doc) && !literalWhitespaceProjection(plan.candidate, parsed, target.doc) && !ownerTrailingWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
+      // Empty ATX delimiter whitespace belongs to the source prefix, never to
+      // an editable body. Finish that projection before a native IME opens a
+      // marked range; trimming its first candidate would invalidate that range.
+      const emptyAtxPrefix = !this.composing && plan.kind === 'text' && plan.patches.length === 1 &&
+        /^ +$/.test(plan.patches[0].insert) && parsed.doc.childCount === target.doc.childCount &&
+        parsed.doc.content.content.some((node, index) => node.type.name === 'heading' &&
+          node.attrs.style === 'atx' && node.content.size === 0 &&
+          node.sameMarkup(target.doc.child(index)) && /^ +$/.test(target.doc.child(index).textContent) &&
+          parsed.doc.content.content.every((other, sibling) => sibling === index || other.eq(target.doc.child(sibling))));
+      if (!compositionOwner && !parsed.issues.length && !parsed.doc.eq(target.doc) &&
+          (emptyAtxPrefix || (!literalWhitespaceProjection(plan.candidate, parsed, target.doc) &&
+          !ownerTrailingWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))))) {
         const proof = implicitLinkReprojectionProof(before.raw, context.ledger, plan, parsed, target.doc, tr.mapping)
           ?? semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
@@ -1586,7 +1611,7 @@ export class SourceAuthoritySession {
         if (compositionId !== undefined) this.compactComposition();
         return true;
       }
-      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner, plan.sourceBoundary);
+      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner, plan.sourceBoundary, plan.kind === 'projection-sync');
       if (compositionId !== undefined) this.compactComposition();
       return true;
     } catch (error) {

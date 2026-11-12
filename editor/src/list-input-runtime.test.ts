@@ -358,3 +358,50 @@ it('rejects mixed edits under paragraph-after-list metadata', () => {
   expect(runtime.getText()).toBe(raw);
   expect(runtime.status.unresolved).toBe(true);
 });
+
+it('keeps a typed bare bullet literal until space, then continues and exits the list', () => {
+  const { runtime, view, dom, parent } = setup('');
+  type(view, '-');
+  expect(parent.querySelector('ul')).toBeNull();
+  expect(view.state.doc.firstChild!.type.name).toBe('paragraph');
+  expect(runtime.getText()).toBe('-');
+  type(view, ' ');
+  expect(parent.querySelector('ul')).not.toBeNull();
+  expect(view.state.doc.firstChild!.firstChild!.firstChild!.content.size).toBe(0);
+  type(view, '读书');
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  expect(runtime.status.unresolved, evidence(runtime, view)).toBe(false);
+  expect(runtime.getText()).toBe('- 读书\n- ');
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key:'Backspace',keyCode:8,bubbles:true,cancelable:true}));
+  expect(runtime.status.unresolved, evidence(runtime, view)).toBe(false);
+  expect(runtime.getText()).toBe('- 读书\n\n');
+  type(view, '正文');
+  expect(runtime.getText()).toBe('- 读书\n\n正文');
+});
+
+it.each(['-', '+', '*'])('activates a typed %j only after space and preserves literal continuations', marker => {
+  const {runtime,view,parent}=setup('');
+  type(view,marker);
+  expect(parent.querySelector('ul')).toBeNull();
+  expect(runtime.snapshotText()).toEqual({ok:true,value:marker});
+  type(view,' ');
+  expect(parent.querySelector('ul')).not.toBeNull();
+  expect(runtime.status.unresolved).toBe(false);
+  type(view,'a');
+  expect(runtime.snapshotText()).toEqual({ok:true,value:marker+' a'});
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(marker+' ');
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(marker);
+  expect(parent.querySelector('ul')).toBeNull();
+});
+it.each(['-', '+', '*'])('keeps existing file syntax canonical for %j', marker => {
+  const {runtime,parent}=setup(marker);
+  expect(parent.querySelector('ul')).not.toBeNull();
+  expect(runtime.snapshotText()).toEqual({ok:true,value:marker});
+});
+it.each(['-a','+a','*a','**a**'])('keeps a non-list literal typed as %j', text => {
+  const {runtime,view,parent}=setup('');type(view,text);
+  expect(parent.querySelector('ul')).toBeNull();
+  expect(runtime.snapshotText()).toEqual({ok:true,value:text});
+});
