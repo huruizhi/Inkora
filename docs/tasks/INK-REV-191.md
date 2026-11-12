@@ -9,3 +9,13 @@
 - 结果：书面硬偏离0；possible Mysterious Name低优先级1项；不混入Spec。
 - 未验/风险：未跑完整editor/build、Native/WK、App/GUI、物理IME、paint、VoiceOver/macOS14验收；作者125/Native25未当本人证据。真实候选框/光标行为仍需单独验收。
 - 无代码未完成项；建议重命名未执行，符合只审不修。审查提交与真实remote核验结果由完成回报给出。
+
+## 限定静态后验追加
+
+首稿全文保留；只审 `c22e6841a3b5c69197a0556cfe457bd3dcdbb081...a37ed683237589e27a5212a1095de99bbdb36977` 新增 hunk。`87ad9b3` 的证据文档不算本人实跑。
+
+- 原命名判断项：已改名 `literalParagraphProjection` 并更新两处调用，关闭。
+- 新硬偏离0、新判断项0；尾部空段受多一个空paragraph、LF/CRLF结尾、已证明裸标记及精确EOF插入锚点限制，未见无条件放宽未知事务。
+- Native新增方法与计数26对应；仅静态核对，不声称本人运行。
+- 此次实跑仅 `git diff --check c22e6841a3b5c69197a0556cfe457bd3dcdbb081...a37ed683237589e27a5212a1095de99bbdb36977`（退出0）、diff/提交范围及首稿前缀完整性核对；不重复全量/DOM/Native/WK/GUI/构建。
+- 后验原始diff和检查输出：ignored `artifacts/INK-REV-191/post-review.log`。实际输入、光标绘制与最低平台仍未验；本次无产品修复。
