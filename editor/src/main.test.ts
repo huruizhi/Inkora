@@ -287,9 +287,13 @@ it("原生插表只发布一次并可Undo，过期与组合输入动作原子拒
   const target = h.sent.at(-1)!.state!;
   h.receive({ type: "executeCommand", requestID: "table-menu", documentID: "menu", revision: 0,
     command: "insertTable", selectionAnchor: target.selectionAnchor, selectionHead: target.selectionHead });
+  expect(h.editorHost().querySelector("table")).toBeNull();
+  expect(h.lastRevision()).toBe(0);
+  expect(h.stateMessages()).toHaveLength(3);
+  h.editorHost().querySelector('dialog form')!.dispatchEvent(new h.dom.window.Event('submit', { bubbles: true, cancelable: true }));
   expect(h.editorHost().querySelector("table")).not.toBeNull();
   expect(h.lastRevision()).toBe(1);
-  expect(h.stateMessages()).toHaveLength(3);
+  expect(h.stateMessages()).toHaveLength(4);
   h.receive({ type: "executeCommand", requestID: "stale-menu", documentID: "menu", revision: 0, command: "sourceMode" });
   expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "stale_revision" });
   h.receive({ type: "executeCommand", requestID: "undo-menu", documentID: "menu", revision: 1, command: "undo" });
@@ -1419,6 +1423,9 @@ it("生产 main 工具栏新建两列表格并通过正式 Bridge 快照", async
   expect(h.insertTable().type).toBe("button");
 
   h.insertTable().click();
+  expect(h.lastRevision()).toBe(0);
+  expect(h.editorHost().querySelector('dialog')).not.toBeNull();
+  h.editorHost().querySelector('dialog form')!.dispatchEvent(new h.dom.window.Event('submit', { bubbles: true, cancelable: true }));
 
   expect(h.editorHost().querySelectorAll("table th")).toHaveLength(2);
   expect(h.editorHost().querySelectorAll("table td")).toHaveLength(2);

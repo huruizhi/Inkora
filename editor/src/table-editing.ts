@@ -1,30 +1,13 @@
+import { bindTableInteractions } from "./table-interactions";
 import "./table-menu.css";
 import type { Node as PMNode } from "prosemirror-model";
 import { TextSelection, type EditorState } from "prosemirror-state";
 import type { EditorView, NodeView } from "prosemirror-view";
 import { bindContextToolbar } from "./context-tools";
 
-export type TableAlignment = "none" | "left" | "center" | "right";
-export type TableCommandType =
-  | "add_row_before"
-  | "add_row_after"
-  | "delete_row"
-  | "add_column_before"
-  | "add_column_after"
-  | "delete_column"
-  | "align_none"
-  | "align_left"
-  | "align_center"
-  | "align_right"
-  | "delete_table";
-
-export type TableCommandMeta = {
-  type: TableCommandType;
-  tablePos: number;
-  rowIndex: number;
-  columnIndex: number;
-  alignment?: TableAlignment;
-};
+import { validTableSize, type TableAlignment, type TableCommandType, type TableCommandMeta, type TableSize } from './table-commands';
+export { TABLE_LIMITS, validTableSize } from './table-commands';
+export type { TableAlignment, TableCommandType, TableCommandMeta, TableSize } from './table-commands';
 
 type TableContext = {
   table: PMNode;
@@ -63,7 +46,7 @@ function contextFor(state: EditorState, tablePos: number): TableContext | null {
   return { table, tablePos, rows, rowIndex, columnIndex };
 }
 
-function rebuildTable(context: TableContext, command: TableCommandType): PMNode | null {
+function rebuildTable(context: TableContext, command: TableCommandType, details: Partial<TableCommandMeta>): PMNode | null {
   const { table, rows, rowIndex, columnIndex } = context;
   const schema = table.type.schema;
   const head = rows[0];
@@ -104,6 +87,36 @@ function rebuildTable(context: TableContext, command: TableCommandType): PMNode 
     };
     nextHead = remove(nextHead);
     nextBody = nextBody.map(remove);
+  } else if (command === "move_row") {
+    const target = details.targetIndex;
+    if (!Number.isInteger(target) || target! < 1 || target! >= rows.length || rowIndex < 1 || rowIndex === target) return null;
+    nextBody.splice(target! - 1, 0, nextBody.splice(rowIndex - 1, 1)[0]);
+  } else if (command === "move_column") {
+    const target = details.targetIndex;
+    if (!Number.isInteger(target) || target! < 0 || target! >= columnCount || columnIndex === target) return null;
+    const move = (row: PMNode) => {
+      const cells: PMNode[] = [];
+      row.forEach(cell => cells.push(cell));
+      cells.splice(target!, 0, cells.splice(columnIndex, 1)[0]);
+      return row.copy(schema.nodes.table_row.create(null, cells).content);
+    };
+    nextHead = move(head);
+    nextBody = nextBody.map(move);
+  } else if (command === "resize") {
+    const size = { columns: details.columns!, rows: details.rows! };
+    if (!validTableSize(size) || size.columns === columnCount && size.rows === rows.length ||
+        (size.columns < columnCount || size.rows < rows.length) && !details.confirmShrink) return null;
+    const resize = (row: PMNode, header: boolean) => {
+      const cells: PMNode[] = [];
+      for (let index = 0; index < size.columns; index++) cells.push(index < row.childCount ? row.child(index) :
+        schema.nodes[header ? "table_header" : "table_cell"].create({ alignment: "none" }));
+      return row.copy(schema.nodes.table_row.create(null, cells).content);
+    };
+    nextHead = resize(head, true);
+    nextBody = Array.from({ length: size.rows - 1 }, (_, index) => index < bodyRows.length ?
+      resize(bodyRows[index], false) : schema.nodes.table_row.createChecked(null,
+        Array.from({ length: size.columns }, (_unused, column) =>
+          schema.nodes.table_cell.create({ alignment: nextHead.child(column).attrs.alignment }))));
   } else if (command.startsWith("align_")) {
     const alignment = command.slice("align_".length) as TableAlignment;
     const align = (row: PMNode): PMNode => {
@@ -122,11 +135,16 @@ function rebuildTable(context: TableContext, command: TableCommandType): PMNode 
   return schema.nodes.table.createChecked(table.attrs, sections);
 }
 
-export function applyTableCommand(view: EditorView, tablePos: number, type: TableCommandType): boolean {
-  if (view.composing) return false;
+export function applyTableCommand(view: EditorView, tablePos: number, type: TableCommandType, details: Partial<Omit<TableCommandMeta, "type" | "tablePos">> = {}): boolean {
+  if (view.composing || !view.editable || view.isDestroyed) return false;
   const context = contextFor(view.state, tablePos);
   if (!context) return false;
+  if (details.rowIndex !== undefined) context.rowIndex = details.rowIndex;
+  if (details.columnIndex !== undefined) context.columnIndex = details.columnIndex;
+  if (!Number.isInteger(context.rowIndex) || context.rowIndex < 0 || context.rowIndex >= context.rows.length ||
+      !Number.isInteger(context.columnIndex) || context.columnIndex < 0 || context.columnIndex >= context.rows[0].childCount) return false;
   const meta: TableCommandMeta = {
+    ...details,
     type,
     tablePos,
     rowIndex: context.rowIndex,
@@ -139,45 +157,52 @@ export function applyTableCommand(view: EditorView, tablePos: number, type: Tabl
       .setMeta("inkoraTableCommand", meta));
     return true;
   }
-  const next = rebuildTable(context, type);
+  const next = rebuildTable(context, type, details);
   if (!next) return false;
-  view.dispatch(view.state.tr.replaceWith(tablePos, tablePos + context.table.nodeSize, next)
-    .setMeta("inkoraTableCommand", meta));
-  return true;
+  let tr = view.state.tr.replaceWith(tablePos, tablePos + context.table.nodeSize, next);
+  const targetRow = Math.min(type === "move_row" ? details.targetIndex! : context.rowIndex, tableRows(next).length - 1);
+  const targetColumn = Math.min(type === "move_column" ? details.targetIndex! : context.columnIndex, tableRows(next)[0].childCount - 1);
+  const positions: number[][] = [];
+  next.descendants((child, offset) => {
+    if (child.type.name === "table_row") positions.push([]);
+    if (["table_cell", "table_header"].includes(child.type.name)) positions.at(-1)!.push(tablePos + offset + 2);
+  });
+  const caret = positions[targetRow][targetColumn];
+  tr = tr.setSelection(TextSelection.create(tr.doc, caret));
+  view.dispatch(tr.setMeta("inkoraTableCommand", meta));
+  return view.state.doc.eq(tr.doc);
 }
 
 export const defaultTableMarkdown = "| 列 1 | 列 2 |\n| --- | --- |\n|  |  |";
 
-export function insertDefaultTable(view: EditorView): boolean {
-  if (view.composing) return false;
+export function insertDefaultTable(view: EditorView, size: TableSize = { columns: 2, rows: 2 }): boolean {
+  if (view.composing || !view.editable || !validTableSize(size)) return false;
   const document = view.state.doc;
   const schema = view.state.schema;
-  const header = schema.nodes.table_row.createChecked(null, [
-    schema.nodes.table_header.create(null, schema.text("列 1")),
-    schema.nodes.table_header.create(null, schema.text("列 2")),
-  ]);
-  const data = schema.nodes.table_row.createChecked(null, [
-    schema.nodes.table_cell.create(),
-    schema.nodes.table_cell.create(),
-  ]);
-  const table = schema.nodes.table.createChecked(null, [
-    schema.nodes.table_head.createChecked(null, header),
-    schema.nodes.table_body.createChecked(null, data),
-  ]);
+  const header = schema.nodes.table_row.createChecked(null, Array.from({ length: size.columns }, (_, index) =>
+    schema.nodes.table_header.create(null, schema.text(`列 ${index + 1}`))));
+  const sections = [schema.nodes.table_head.createChecked(null, header)];
+  if (size.rows > 1) sections.push(schema.nodes.table_body.createChecked(null,
+    Array.from({ length: size.rows - 1 }, () => schema.nodes.table_row.createChecked(null,
+      Array.from({ length: size.columns }, () => schema.nodes.table_cell.create())))));
+  const table = schema.nodes.table.createChecked(null, sections);
+  const row = (cells: string[]) => `| ${cells.join(" | ")} |`;
+  const raw = [row(Array.from({ length: size.columns }, (_, index) => `列 ${index + 1}`)),
+    row(Array(size.columns).fill("---")), ...Array.from({ length: size.rows - 1 }, () => row(Array(size.columns).fill("")))].join("\n");
   const empty = document.childCount === 1 && document.firstChild?.type.name === "paragraph" &&
     document.firstChild.content.size === 0;
-  if (empty) {
-    view.dispatch(view.state.tr.replaceWith(0, document.content.size, table)
-      .setMeta("inkoraInsertTable", { raw: defaultTableMarkdown, anchorPos: 0 }));
-    return true;
+  let anchorPos = 0;
+  let tr = view.state.tr;
+  if (empty) tr = tr.replaceWith(0, document.content.size, table);
+  else {
+    const resolved = view.state.selection.$from;
+    if (resolved.depth < 1) return false;
+    anchorPos = resolved.before(1) + resolved.node(1).nodeSize;
+    tr = tr.insert(anchorPos, table);
   }
-  const resolved = view.state.selection.$from;
-  if (resolved.depth < 1) return false;
-  const topPos = resolved.before(1);
-  const top = resolved.node(1);
-  const anchorPos = topPos + top.nodeSize;
-  view.dispatch(view.state.tr.insert(anchorPos, table)
-    .setMeta("inkoraInsertTable", { raw: defaultTableMarkdown, anchorPos }));
+  tr.setSelection(TextSelection.create(tr.doc, anchorPos + 4));
+  view.dispatch(tr.setMeta("inkoraInsertTable", { raw, anchorPos }));
+  view.focus();
   return true;
 }
 
@@ -333,22 +358,28 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
     scroll.className = "inkora-table-scroll";
     scroll.append(contentDOM);
     dom.append(toolbar, scroll);
+    const interactions = bindTableInteractions({ view, shell: dom, toolbar, scroll, table: contentDOM,
+      execute: (type, details) => { const pos = getPos(); return pos !== undefined && applyTableCommand(view, pos, type, details); },
+      isComposing: options.isComposing });
+    interactions.update(node);
     return {
       dom,
       contentDOM,
       update(updated) {
         if (updated.type !== node.type) return false;
         updateAvailability(updated);
+        interactions.update(updated);
         return true;
       },
       destroy() {
         alive = false;
+        interactions.destroy();
         close();
       },
       ignoreMutation(mutation) {
-        return mutation.type !== "selection" && toolbar.contains(mutation.target);
+        return mutation.type !== "selection" && !contentDOM.contains(mutation.target);
       },
-      stopEvent(event) { return toolbar.contains(event.target as Node); },
+      stopEvent(event) { return toolbar.contains(event.target as Node) || interactions.contains(event.target as Node); },
     };
   };
 }

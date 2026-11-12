@@ -1,3 +1,4 @@
+import { openTableSizeDialog } from "./table-size-dialog";
 import { EditorView } from "prosemirror-view";
 import { InkoraEditorSession } from "./editor-session";
 import { TextAreaEditorKernel } from "./editor-kernel";
@@ -32,7 +33,7 @@ import type { Node as PMNode } from "prosemirror-model";
 import { footnoteReference } from "./technical-preview";
 import { protectedPreview } from "./protected-preview";
 import { createCodeBlockNodeViews } from "./code-block-view";
-import { createTableNodeViews, handleTableTab, insertDefaultTable } from "./table-editing";
+import { createTableNodeViews, handleTableTab, insertDefaultTable, type TableSize } from "./table-editing";
 import { createTaskListItemNodeViews } from "./task-list-view";
 import {
   normalizedLinkAttrs,
@@ -112,7 +113,8 @@ export interface EditorRuntime {
     readonly replacedCount: number;
   }>;
   readonly composing: boolean;
-  insertTable(): boolean;
+  insertTable(size?: TableSize): boolean;
+  requestTableInsertion(): boolean;
   applyImageDescriptors(values: readonly ImageResourceDescriptor[]): void;
   insertImage(value: ManagedImageInsertion): boolean;
   rewriteManagedImages(values: readonly ManagedImageRewrite[]): boolean;
@@ -477,8 +479,23 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     this.onChange(this.status, "status");
   }
 
-  insertTable(): boolean {
-    return this.view ? insertDefaultTable(this.view) : false;
+  private tableDialog?: () => void;
+
+  requestTableInsertion(): boolean {
+    const view = this.view;
+    if (!view || this.composing || this.mode !== "visual" || !view.editable || this.tableDialog) return false;
+    const binding = view.state;
+    this.tableDialog = openTableSizeDialog(this.parent, {
+      title: "插入表格", initial: { columns: 2, rows: 2 },
+      isCurrent: () => !this.destroyed && this.view === view && view.state === binding && !this.composing,
+      apply: size => this.insertTable(size),
+      closed: () => { this.tableDialog = undefined; if (!view.isDestroyed) view.focus(); },
+    });
+    return true;
+  }
+
+  insertTable(size?: TableSize): boolean {
+    return !this.composing && this.view ? insertDefaultTable(this.view, size) : false;
   }
 
   undo(): boolean {
@@ -989,6 +1006,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }
 
   private destroySurface(): void {
+    this.tableDialog?.();
     this.sourceCompositionUnsubscribe?.();
     this.sourceCompositionUnsubscribe = undefined;
     if (this.view) {
@@ -1197,6 +1215,7 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
     return { ok: false, message: "只读文档不能执行替换" };
   }
   insertTable(): boolean { return false; }
+  requestTableInsertion(): boolean { return false; }
   enterSourceMode(): boolean { return true; }
   applySourceDraft(): boolean { return false; }
   cancelSourceDraft(): boolean { return false; }
