@@ -1,0 +1,26 @@
+Executable=/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-173/build/DerivedData/Build/Products/Release/Inkora.app/Contents/MacOS/Inkora
+Identifier=com.huruizhi.Inkora
+Format=app bundle with Mach-O universal (x86_64 arm64)
+CodeDirectory v=20500 size=4436 flags=0x10002(adhoc,runtime) hashes=128+7 location=embedded
+VersionPlatform=1
+VersionMin=917504
+VersionSDK=1769984
+Hash type=sha256 size=32
+CandidateCDHash sha256=580af872f871315f64eab72a9987fc76ad221aec
+CandidateCDHashFull sha256=580af872f871315f64eab72a9987fc76ad221aec030d7c4227098454256bcd72
+Hash choices=sha256
+CMSDigest=580af872f871315f64eab72a9987fc76ad221aec030d7c4227098454256bcd72
+CMSDigestType=2
+Executable Segment base=0
+Executable Segment limit=966656
+Executable Segment flags=0x1
+Page size=16384
+CDHash=580af872f871315f64eab72a9987fc76ad221aec
+Signature=adhoc
+Info.plist entries=30
+TeamIdentifier=not set
+Runtime Version=27.2.0
+Sealed Resources version=2 rules=13 files=8
+Internal requirements count=0 size=12
+Total signatures=1
+Chosen signature=1
