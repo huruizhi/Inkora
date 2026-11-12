@@ -82,6 +82,13 @@ const insertTabInCode: Command = (state, dispatch) => {
   return true;
 };
 
+export const clearEmptyHeading: Command = (state, dispatch, view) => {
+  const { empty, $from } = state.selection;
+  if (view?.composing || !empty || $from.depth !== 1 || $from.parent.type.name !== 'heading' ||
+      $from.parent.content.size !== 0 || $from.parentOffset !== 0) return false;
+  return setParagraph(state, dispatch, view);
+};
+
 export const blockKeyBindings: Record<string, Command> = {
   Enter: chainCommands(
     newlineInCode,
@@ -92,7 +99,7 @@ export const blockKeyBindings: Record<string, Command> = {
     splitBlockKeepMarks,
   ),
   "Mod-Enter": exitCode,
-  Backspace: chainCommands(deleteSelection, joinBackward, selectNodeBackward),
+  Backspace: chainCommands(deleteSelection, clearEmptyHeading, joinBackward, selectNodeBackward),
   Tab: chainCommands(
     insertTabInCode,
     sinkListItem(inkoraSchema.nodes.list_item),

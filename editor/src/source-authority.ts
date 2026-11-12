@@ -157,6 +157,57 @@ function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger
   };
 }
 
+/** Preserve only source-identical plain paragraphs whose edge spaces CommonMark hides. */
+function literalWhitespaceProjection(raw: string, parsed: ReturnType<typeof parse>, doc: PMNode): ProjectionContext | null {
+  if (parsed.issues.length || parsed.doc.childCount !== doc.childCount) return null;
+  const firstLineStart = raw.startsWith('\uFEFF') ? 1 : 0;
+  const firstEol = /\r\n|\n/.exec(raw);
+  const ranges = parsed.ranges.length ? parsed.ranges :
+    /^ *(?:\r?\n[ \r\n]*)?$/.test(raw.slice(firstLineStart))
+      ? [{ start: firstLineStart, end: firstEol?.index ?? raw.length,
+        pos: 0, size: parsed.doc.firstChild!.nodeSize, kind: 'paragraph' }] : [];
+  if (ranges.length !== doc.childCount) return null;
+  const changed: Array<{ from: number; to: number; pos: number; text: string }> = [];
+  const positions: number[] = [];
+  let pos = 0;
+  for (let index = 0; index < doc.childCount; index++) {
+    const before = parsed.doc.child(index), after = doc.child(index), range = ranges[index];
+    positions.push(pos);
+    if (!before.eq(after)) {
+      if (before.type.name !== 'paragraph' || after.type.name !== 'paragraph' ||
+          before.childCount > 1 || after.childCount !== 1 || !after.firstChild?.isText ||
+          after.firstChild.marks.length || (before.firstChild && (!before.firstChild.isText || before.firstChild.marks.length))) return null;
+      const text = after.textContent;
+      if (raw.slice(range.start, range.end) !== text ||
+          text.replace(/^ +| +$/g, '') !== before.textContent || !/^ | $/.test(text)) return null;
+      changed.push({ from: range.start, to: range.end, pos, text });
+    }
+    pos += after.nodeSize;
+  }
+  if (!changed.length) return null;
+  const base = baseLedger(raw, parsed);
+  const shift = (visual: number) => {
+    const index = ranges.findIndex(range => visual >= range.pos && visual < range.pos + range.size);
+    return index < 0 ? visual + doc.content.size - parsed.doc.content.size : visual + positions[index] - ranges[index].pos;
+  };
+  const spans = base.spans.filter(span => !changed.some(item => span.sourceStart < item.to && span.sourceEnd > item.from))
+    .map(span => ({ ...span, visualStart: span.visualStart === undefined ? undefined : shift(span.visualStart),
+      visualEnd: span.visualEnd === undefined ? undefined : shift(span.visualEnd) }));
+  for (const item of changed) {
+    for (let index = 0; index < item.text.length; index++) spans.push({
+      sourceStart: item.from + index, sourceEnd: item.from + index + 1,
+      role: 'text', syntax: 'literal-paragraph-whitespace', visible: true,
+      text: item.text[index], visualStart: item.pos + 1 + index, visualEnd: item.pos + 2 + index,
+    });
+  }
+  const mappedRanges = ranges.map((range, index) => ({ ...range, pos: positions[index], size: doc.child(index).nodeSize }));
+  return { parsedDoc: parsed.doc, ranges: mappedRanges, ledger: { ...base, docSize: doc.content.size, spans,
+    blocks: base.blocks.map((block, index) => ({ ...block, range: mappedRanges[index],
+      spans: spans.filter(span => span.sourceStart >= block.range.start && span.sourceEnd <= block.range.end) })),
+    links: base.links.map(link => ({ ...link, visual: { from: shift(link.visual.from), to: shift(link.visual.to) } })),
+  } };
+}
+
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 function cloneSelection(value: RawSelection): RawSelection {
@@ -710,6 +761,8 @@ export class SourceAuthoritySession {
       return context;
     };
     const parsed = this.parseSource(raw);
+    const literal = literalWhitespaceProjection(raw, parsed, state.doc);
+    if (literal) return remember(literal);
     const base = baseLedger(raw, parsed);
     if (parsed.doc.eq(state.doc)) {
       return remember({ ledger: base, ranges: parsed.ranges, parsedDoc: parsed.doc });
@@ -1226,7 +1279,7 @@ export class SourceAuthoritySession {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
       const parsed = this.parseSource(plan.candidate);
-      if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
+      if (!parsed.issues.length && !parsed.doc.eq(target.doc) && !literalWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
         const proof = implicitLinkReprojectionProof(before.raw, context.ledger, plan, parsed, target.doc, tr.mapping)
           ?? semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');

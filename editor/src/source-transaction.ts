@@ -449,7 +449,7 @@ function structuralPlan(
   const add = (patches: NativePatch[], description: string) => candidates.push({ patches, description });
 
   for (let level = 1; level <= 6; level++) add([{ from, to: from, insert: `${'#'.repeat(level)} ` }], 'paragraph to heading');
-  const atx = /^(#{1,6})([\t ]+)/.exec(raw);
+  const atx = /^( {0,3}#{1,6})(?:[\t ]+|$)/.exec(raw);
   if (atx) add([{ from, to: from + atx[0].length, insert: '' }], 'heading to paragraph');
   const setext = /(?:\r\n|\n)(?:=+|-+)[\t ]*$/.exec(raw);
   if (setext) add([{ from: from + setext.index, to, insert: '' }], 'setext heading to paragraph');
@@ -915,7 +915,11 @@ export function planNativeTransaction(
   const step = tr.steps[0].toJSON() as Record<string, any>;
 
   try {
-    if (parse(source).doc.eq(tr.doc)) {
+    const deletedText = step.stepType === 'replace' && step.to > step.from && textSlice(step) === ''
+      ? state.doc.textBetween(step.from, step.to) : '';
+    const deletesOwnedSpaces = /^ +$/.test(deletedText) &&
+      source.slice(position(step.from, 'from'), position(step.to, 'to')) === deletedText;
+    if (!deletesOwnedSpaces && parse(source).doc.eq(tr.doc)) {
       return { patches: [], candidate: source, kind: 'projection-sync' };
     }
   } catch {
