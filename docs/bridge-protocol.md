@@ -265,3 +265,18 @@ context、catalog 与不透明 file/hit 身份；Web 按当前 document/context/
 或在途 open/navigation 票据；迟到取消不能撤销新请求，不清空正常 catalog/watch。
 回复 `cancelled` 包含同次 requestID/doc/context/catalog 与 `cancelledSearch/cancelledOpen`，
 仅作回执，不覆盖当前列表/搜索 UI。Web 返回列表、清空或换视图时不能仅删除本地回包 ID。
+
+## 标题栏拖动布局事件（INK-FIX-164）
+
+`titlebarLayout` 沿用 `inkora` JSON 字符串通道与主框架、本地 origin 校验，
+仅传递 UI 几何，不进入文档 revision、保存、selection 或历史协议。
+发送方是原生安装的离线 `WKUserScript`，在标题行/工具尺寸、窗口尺寸及侧栏阶段变化时更新。
+字段为 `protocolVersion:1`、`type:"titlebarLayout"`，以及 CSS viewport 点数
+`viewportWidth/viewportHeight/left/right/top/bottom`。不含正文、文件路径或编辑命令；
+这是无请求回执的布局通知，不依赖正文 revision。
+
+Native 仅接受有限数值、与当前 viewport 相符的尺寸，以及 x≥90、y∈[0,28] 的矩形；
+矩形右边界由实际右上工具容器左边界确定。非法/过期尺寸清除拖动区域。
+导航开始和窗口尺寸改变时先清旧区域。矩形内真实左键按下由原生透明视图接收，
+交给 `NSWindow.performDrag(with:)`；系统按钮、工具、侧栏及正文继续原来的命中路径。
+布局事件不能启动拖动，拖动仍需要来自同一窗口、同一区域的真实原生鼠标事件。
