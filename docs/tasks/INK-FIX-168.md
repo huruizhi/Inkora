@@ -95,3 +95,12 @@ Vite仅既有chunk体积提示；Swift CLI编译保留既有Document warnings。
 没有做物理IME/可见paint/VoiceOver/macOS14验收；不把synthetic事件当物理输入。
 没有修改`/Applications/Inkora.app`，安装仍build6；没有生成额外.app。
 最终报告以两轴固定补正复审为准，后续文档提交不会改变受检产品树。
+
+
+### Native连续性夹具最后收紧
+
+为使“连续两次Backspace”不被中间snapshot改变时序，最后将列表case拆成
+两个独立新会话：第一个只按一次再检查中间原文；第二个连续两键、期间不snapshot/
+不恢复焦点，末尾才检查合并后的原文。没有修改产品或放宽断言。
+重新自跑`WritingInteractionHostless.sh`仍**16/16、0 failures**，且各会话关闭准备成功。
+输出`wk-sixteen-uninterrupted-green.txt`保留；前一green不删除。

@@ -125,7 +125,11 @@ final class WritingInteractionHostlessTests: XCTestCase {
         try focus(row.selector, atStart: true, in: web)
         try keys(["<Backspace>"], in: web)
         XCTAssertEqual(try snapshot(controller), row.expected, row.raw)
-        try keys(["<Backspace>"], in: web)
+      }
+      // A fresh session proves both keys without an intervening snapshot or refocus.
+      try withEditor(row.raw) { controller, web in
+        try focus(row.selector, atStart: true, in: web)
+        try keys(["<Backspace>", "<Backspace>"], in: web)
         XCTAssertEqual(try snapshot(controller), row.next, row.raw)
       }
     }
