@@ -1,0 +1,25 @@
+{
+  "sourceCommit": "0f3d9c5",
+  "productFix": "18b0e94d49713a331ce256c4e42b7b614f716b46",
+  "build": "11",
+  "signature": "ad-hoc; not notarized",
+  "fileHashes": {
+    "Contents/Info.plist": "ef72c04d9517c1e01b7d963668e6dfd6e1723a829a1795643ca03ca796224eb1",
+    "Contents/PkgInfo": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0",
+    "Contents/_CodeSignature/CodeResources": "019911d119cd37cf32c06943f405b986f2d4d94aeee06d3f8d82b8f86b9df48c",
+    "Contents/MacOS/Inkora": "803f47362fc736d3d01964b5ea947d52ae1fb8a5e80bb10109480db7374e56cf",
+    "Contents/Resources/Sparkle-LICENSE.txt": "816be66341dd11b22806862dffd8392b240babaced1cdf24da2ff413ef00c3fd",
+    "Contents/Resources/AppIcon.icns": "dbdfa6d4fe163bfce818b98bd0ec4bc375de1aca542f85286052f6377c40a5b5",
+    "Contents/Resources/Assets.car": "99adcb8219ca73983df61f1a4cdd954db10da3764c6454bf061f29dffaafb36a",
+    "Contents/Resources/editor/index.html": "608c59abf1ff09fe4cd48e8f5e1710be1efc77a8f53e1894efe76a45a8914fa2",
+    "Contents/Resources/editor/RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "Contents/Resources/editor/THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "Contents/Resources/editor/assets/index-DgeXbQ79.js": "ca91e0a082ea0ba81c09185fe95b4d75dd0cbc92c3f4173686d39735a12b9245",
+    "Contents/Resources/editor/vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+  },
+  "editorMatchesBuild": true,
+  "candidateNativeTests": 26,
+  "candidateNativeFailures": 0,
+  "installed": false,
+  "published": false
+}

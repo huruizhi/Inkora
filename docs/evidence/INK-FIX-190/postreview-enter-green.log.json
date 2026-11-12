@@ -1,0 +1,4 @@
+{
+  "sha256": "3237b61acfa6720add65d9a7a4541086fe591e8b64a7755b2769ce0ec4af1113",
+  "output": "\n RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-190/editor\n\n\n Test Files  3 passed (3)\n      Tests  111 passed (111)\n   Start at  23:38:27\n   Duration  758ms (import 60%, tests 31%, transform 9%)\n\n"
+}

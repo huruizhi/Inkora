@@ -162,34 +162,49 @@ function baseLedger(raw: string, parsed: ReturnType<typeof parse>): SourceLedger
   };
 }
 
-/** Preserve only source-identical plain paragraphs whose edge spaces CommonMark hides. */
-function literalWhitespaceProjection(raw: string, parsed: ReturnType<typeof parse>, doc: PMNode): ProjectionContext | null {
-  if (parsed.issues.length || parsed.doc.childCount !== doc.childCount) return null;
+/** Preserve source-identical paragraphs with hidden edge spaces or an uncompleted bullet. */
+function literalParagraphProjection(raw: string, parsed: ReturnType<typeof parse>, doc: PMNode): ProjectionContext | null {
+  if (parsed.issues.length) return null;
+  const emptyTail = doc.childCount === parsed.doc.childCount + 1 &&
+    doc.lastChild?.type.name === 'paragraph' && doc.lastChild.content.size === 0 && /(?:\r?\n){2}$/.test(raw);
+  if (parsed.doc.childCount !== doc.childCount && !emptyTail) return null;
   const firstLineStart = raw.startsWith('\uFEFF') ? 1 : 0;
   const firstEol = /\r\n|\n/.exec(raw);
-  const ranges = parsed.ranges.length ? parsed.ranges :
+  const ranges = parsed.ranges.length ? [...parsed.ranges] :
     /^ *(?:\r?\n[ \r\n]*)?$/.test(raw.slice(firstLineStart))
       ? [{ start: firstLineStart, end: firstEol?.index ?? raw.length,
         pos: 0, size: parsed.doc.firstChild!.nodeSize, kind: 'paragraph' }] : [];
+  if (emptyTail) ranges.push({ start: raw.length, end: raw.length,
+    pos: parsed.doc.content.size, size: 2, kind: 'paragraph' });
   if (ranges.length !== doc.childCount) return null;
+  let pendingBullets = 0;
   const changed: Array<{ from: number; to: number; pos: number; text: string }> = [];
   const positions: number[] = [];
   let pos = 0;
   for (let index = 0; index < doc.childCount; index++) {
-    const before = parsed.doc.child(index), after = doc.child(index), range = ranges[index];
+    const after = doc.child(index), range = ranges[index];
     positions.push(pos);
+    if (index === parsed.doc.childCount) { pos += after.nodeSize; continue; }
+    const before = parsed.doc.child(index);
     if (!before.eq(after)) {
-      if (before.type.name !== 'paragraph' || after.type.name !== 'paragraph' ||
-          before.childCount > 1 || after.childCount !== 1 || !after.firstChild?.isText ||
-          after.firstChild.marks.length || (before.firstChild && (!before.firstChild.isText || before.firstChild.marks.length))) return null;
+      const pendingBullet = before.type.name === 'bullet_list' && before.childCount === 1 &&
+        before.firstChild?.type.name === 'list_item' && before.firstChild.childCount === 1 &&
+        before.firstChild.firstChild?.type.name === 'paragraph' && before.firstChild.firstChild.content.size === 0 &&
+        after.type.name === 'paragraph' && /^[+*-]$/.test(after.textContent) && before.attrs.bullet === after.textContent;
+      if (pendingBullet) pendingBullets++;
+      if (after.type.name !== 'paragraph' || after.childCount !== 1 || !after.firstChild?.isText || after.firstChild.marks.length ||
+          (!pendingBullet && (before.type.name !== 'paragraph' || before.childCount > 1 ||
+          (before.firstChild && (!before.firstChild.isText || before.firstChild.marks.length))))) return null;
       const text = after.textContent;
-      if (raw.slice(range.start, range.end) !== text ||
-          text.replace(/^ +| +$/g, '') !== before.textContent || !/^ | $/.test(text)) return null;
-      changed.push({ from: range.start, to: range.end, pos, text });
+      const literalEnd = pendingBullet ? range.start + text.length : range.end;
+      if (raw.slice(range.start, literalEnd) !== text ||
+          (pendingBullet && !/^(?:\r?\n)*$/.test(raw.slice(literalEnd, range.end))) || (!pendingBullet &&
+          (text.replace(/^ +| +$/g, '') !== before.textContent || !/^ | $/.test(text)))) return null;
+      changed.push({ from: range.start, to: literalEnd, pos, text });
     }
     pos += after.nodeSize;
   }
-  if (!changed.length) return null;
+  if (!changed.length || (emptyTail && !pendingBullets)) return null;
   const base = baseLedger(raw, parsed);
   const shift = (visual: number) => {
     const index = ranges.findIndex(range => visual >= range.pos && visual < range.pos + range.size);
@@ -205,7 +220,12 @@ function literalWhitespaceProjection(raw: string, parsed: ReturnType<typeof pars
       text: item.text[index], visualStart: item.pos + 1 + index, visualEnd: item.pos + 2 + index,
     });
   }
-  const mappedRanges = ranges.map((range, index) => ({ ...range, pos: positions[index], size: doc.child(index).nodeSize }));
+  if (emptyTail) spans.push({ sourceStart: raw.length, sourceEnd: raw.length,
+    visualStart: positions.at(-1)! + 1, visualEnd: positions.at(-1)! + 1,
+    role: 'insertion-anchor', syntax: 'literal-list-next-paragraph', visible: true, text: '' });
+  const mappedRanges = ranges.map((range, index) => ({ ...range,
+    end: changed.find(item => item.from === range.start)?.to ?? range.end,
+    pos: positions[index], size: doc.child(index).nodeSize, kind: doc.child(index).type.name }));
   return { parsedDoc: parsed.doc, ranges: mappedRanges, ledger: { ...base, docSize: doc.content.size, spans,
     blocks: base.blocks.map((block, index) => ({ ...block, range: mappedRanges[index],
       spans: spans.filter(span => span.sourceStart >= block.range.start && span.sourceEnd <= block.range.end) })),
@@ -903,7 +923,7 @@ export class SourceAuthoritySession {
     };
     const parsed = this.parseSource(raw);
     if (projection.compositionOwner) return remember(this.compositionOwnerContext(projection.compositionOwner, state));
-    const literal = literalWhitespaceProjection(raw, parsed, state.doc)
+    const literal = literalParagraphProjection(raw, parsed, state.doc)
       ?? ownerTrailingWhitespaceProjection(raw, parsed, state.doc);
     if (literal) return remember(literal);
     const base = baseLedger(raw, parsed);
@@ -1383,7 +1403,7 @@ export class SourceAuthoritySession {
     return true;
   }
 
-  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner, sourceBoundary?: NativeAnchor): void {
+  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner, sourceBoundary?: NativeAnchor, consumedPrefix = false): void {
     const parsed = this.parseSource(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
@@ -1415,6 +1435,16 @@ export class SourceAuthoritySession {
       };
     });
     if (sourceBoundary) mappedAnchors.push({ visual: sourceBoundary.pmPos, raw: sourceBoundary.sourceOffset, reason: '已接受inline关闭语法后的空白起点' });
+    // A consumed list marker has no remaining visual character boundary.
+    // The same parse's empty-item insertion span proves the new label caret.
+    if (parsed.doc.eq(target.doc) && consumedPrefix && sourceCaret !== undefined && target.selection.empty) {
+      const emptyItem = baseLedger(raw, parsed).spans.some(span => span.role === 'insertion-anchor' &&
+        span.syntax === 'empty-list-item' && span.sourceStart === sourceCaret && span.sourceEnd === sourceCaret &&
+        span.visualStart === target.selection.head && span.visualEnd === target.selection.head);
+      if (emptyItem) for (let index = mappedAnchors.length - 1; index >= 0; index--) {
+        if (mappedAnchors[index].visual === target.selection.head && mappedAnchors[index].raw !== sourceCaret) mappedAnchors.splice(index, 1);
+      }
+    }
     const oldAnchorCount = mappedAnchors.length;
     const step = target.selection;
     if (sourceCaret !== undefined) mappedAnchors.push({ visual: step.head, raw: sourceCaret, reason });
@@ -1563,7 +1593,18 @@ export class SourceAuthoritySession {
         context.ledger, plan, parsed, target.doc) ?? sourceCaret;
       const compositionOwner = this.planCompositionOwner(plan, target);
       if (this.projection.compositionOwner && !compositionOwner && !parsed.doc.eq(target.doc)) throw Error('组合输入事务超出已证明 owner');
-      if (!compositionOwner && !parsed.issues.length && !parsed.doc.eq(target.doc) && !literalWhitespaceProjection(plan.candidate, parsed, target.doc) && !ownerTrailingWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {
+      // Empty ATX delimiter whitespace belongs to the source prefix, never to
+      // an editable body. Finish that projection before a native IME opens a
+      // marked range; trimming its first candidate would invalidate that range.
+      const emptyAtxPrefix = !this.composing && plan.kind === 'text' && plan.patches.length === 1 &&
+        /^ +$/.test(plan.patches[0].insert) && parsed.doc.childCount === target.doc.childCount &&
+        parsed.doc.content.content.some((node, index) => node.type.name === 'heading' &&
+          node.attrs.style === 'atx' && node.content.size === 0 &&
+          node.sameMarkup(target.doc.child(index)) && /^ +$/.test(target.doc.child(index).textContent) &&
+          parsed.doc.content.content.every((other, sibling) => sibling === index || other.eq(target.doc.child(sibling))));
+      if (!compositionOwner && !parsed.issues.length && !parsed.doc.eq(target.doc) &&
+          (emptyAtxPrefix || (!literalParagraphProjection(plan.candidate, parsed, target.doc) &&
+          !ownerTrailingWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))))) {
         const proof = implicitLinkReprojectionProof(before.raw, context.ledger, plan, parsed, target.doc, tr.mapping)
           ?? semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
@@ -1586,7 +1627,7 @@ export class SourceAuthoritySession {
         if (compositionId !== undefined) this.compactComposition();
         return true;
       }
-      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner, plan.sourceBoundary);
+      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner, plan.sourceBoundary, plan.kind === 'projection-sync');
       if (compositionId !== undefined) this.compactComposition();
       return true;
     } catch (error) {

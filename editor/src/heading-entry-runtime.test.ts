@@ -114,3 +114,14 @@ it('keeps the gray entry marker when formatting a selected part of the heading b
   expect(runtime.getText()).toBe('# **标题**');
   expect(view().dom.querySelector('h1.inkora-heading-entry-ready')).not.toBeNull();
 });
+
+it.each(['# ', '##  ', '######   '])('keeps delimiter spaces out of the editable heading body for %j', prefix => {
+  boot(); type(prefix);
+  expect(view().state.doc.firstChild!.type.name).toBe('heading');
+  expect(view().state.doc.firstChild!.content.size).toBe(0);
+  expect(runtime.directedSelection).toMatchObject({selectionAnchor:prefix.length,selectionHead:prefix.length});
+  type('读');
+  expect(runtime.getText()).toBe(prefix+'读');
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(prefix);
+});

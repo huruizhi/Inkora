@@ -92,6 +92,13 @@ export class HeadingEntryPresentation {
     return [Decoration.node(entry.pos, entry.pos + owner.nodeSize, {
       class: `inkora-heading-entry${entry.ready ? ' inkora-heading-entry-ready' : ''}`,
       'data-heading-entry-marker': entry.marker,
-    })];
+    }), Decoration.widget(entry.pos + 1, view => {
+      const marker = view.dom.ownerDocument.createElement('span');
+      marker.className = 'inkora-heading-entry-marker';
+      marker.dataset.marker = entry.marker;
+      marker.contentEditable = 'false';
+      marker.setAttribute('aria-hidden', 'true');
+      return marker;
+    }, { side: -1, key: `heading-prefix:${entry.marker}`, ignoreSelection: true })];
   }
 }
