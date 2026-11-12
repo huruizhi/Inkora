@@ -1,0 +1,59 @@
+xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests tests/InkoraUITests
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/.tools/node_modules/.bin/pnpm --dir editor lint
+$ tsc --noEmit
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/.tools/node_modules/.bin/pnpm --dir editor build
+$ node scripts/prepare-renderers.mjs && tsc --noEmit && vite build
+vite v8.3.6 building client environment for production...
+transforming...
+✓ 156 modules transformed.
+rendering chunks...
+computing gzip size...
+../build/editor/index.html                    0.62 kB │ gzip:   0.36 kB
+../build/editor/assets/index-CmfhG7vy.js  1,188.68 kB │ gzip: 336.39 kB
+
+✓ built in 105ms
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+mkdir -p "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/artifacts/logs" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/artifacts/failures" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/artifacts/test-results" "/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/artifacts/screenshots" \
+		"/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/artifacts/markdown-snapshots"
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/artifacts" /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/scripts/ci/run-and-capture.sh editor \
+		/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/.tools/node_modules/.bin/pnpm --dir editor exec vitest run --exclude src/bridge.test.ts
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/editor
+
+
+ Test Files  47 passed (47)
+      Tests  819 passed (819)
+   Start at  10:53:56
+   Duration  15.24s (tests 65%, import 29%, transform 6%)
+
+INKORA_ARTIFACTS_DIR="/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-REL-166/artifacts" tests/ci/entrypoint-smoke.sh
+success-output
+failure-output
+tests/ci/release-smoke.sh
+Release argument, missing-credential, redaction and metadata checks passed
+python3 tests/ci/release-scheme-smoke.py
+..
+----------------------------------------------------------------------
+Ran 2 tests in 1.322s
+
+OK
+tests/ci/ui-lock-smoke.sh
+Acquired UI lock (pid=62629)
+Acquired UI lock (pid=62640)
+Timed out after 0s waiting for UI lock: /private/tmp/inkora-ui-lock-test.zbo8CD/lock
+Reclaiming stale UI lock (pid=62661)
+Acquired UI lock (pid=62663)
+Acquired UI lock (pid=62680)
+Waiting for UI lock: /private/tmp/inkora-ui-lock-test.zbo8CD/lock (timeout=8s)
+Acquired UI lock (pid=62689)
+Acquired UI lock (pid=62730)
+Acquired UI lock (pid=62744)
+UI lock smoke passed: acquisition, failure, default budget, manual timeout, stale owner, waiting, TERM/INT
+node scripts/perf/compare-baseline.test.mjs
+Launch memory extraction: median, unit conversion and missing metric checks passed.
+Performance comparison: threshold, warn/strict, missing, invalid and profile checks passed.
