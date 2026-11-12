@@ -38,3 +38,14 @@
 连续状态最终不使用PluginState或历史metadata，按EditorView弱引用+不可变doc/head持有；dispatch后只有真实view.state.doc与tr.doc一致且光标在空列表首段才建立。
 同选区无操作同步不打断；视图销毁显式清理。Undo重建视图的回归先红再绿，防止历史恢复一次旧回车意图。
 Native28最终结果、固定提交与两轴复审随后记录；此处不冒称完整验收或本机已更新。
+
+## 固定验证
+
+产品b2a321a411f227f207c99449e8b2df06a3f20a17。最终`make lint test-editor test-ci`退出0：
+55文件1043项通过，tsc/Vite与Swift严格格式和CI脚本通过；写作hostless实际28/28、0失败。
+新增两Native方法分别覆盖根空项/标题多项/CRLF连续两Enter和真实Native取消中文候选后重启序列。
+原26项全部保留，候选确认的Safari保护仍保留。新PureAPI/任务旧断言通过而非删除重写。
+证据为无损JSON输出加SHA256；原始stdout、试错夹具、放弃PluginState源码和资源保留ignored artifacts。
+
+本轮不以合成DOM或Native文本接口代替物理键盘/搜狗、可见paint、VoiceOver或macOS14实机验收。
+两轴独立复审固定b2另行结算；产品/测试和发布记录按独立工作树保留。本机尚是build11，195准备build12，未提前替换。
