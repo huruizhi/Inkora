@@ -31,3 +31,20 @@
 未独立运行main/Bridge、全量测试、Native/WK、App构建或GUI；未触碰用户文档。物理鼠标拖放、真实IME/settling、屏幕paint、VoiceOver和macOS14实机均未验。
 
 根代理通报的Native 900/360布局、滚动与3/3结果属于他方证据，未计入本报告独立运行。后续修复另附固定SHA复验，不能将他方结果冒称本审查自跑。
+
+## 限定补正复验（追加，2026-11-12）
+
+固定补正 `8bb27ad0bd0f29237d371551daf4cf694fa9fdd2`，比较 `git diff efa551708d824a2c98a808d18faf94ce05ffebd4...8bb27ad0bd0f29237d371551daf4cf694fa9fdd2`，仅一个产品提交 `fix(tables): preserve source boundaries and dialog composition`。差异已导出 `artifacts/INK-REV-184/fix-8bb27ad.diff`。本追加不改变上述冻结审查四项发现。
+
+复验方法：保持报告分支归属，临时通过固定 `git show` 导出 `source-transaction.ts`、`table-commands.ts`、`table-editing.ts`、`table-interactions.ts`、`table-size-dialog.ts` 五个相关产品文件；其余源码维持冻结efa版本。直接复制原四项探针且不改断言，新增一个EOF无末尾换行负控（含Undo/Redo）。临时源码已restore，新导出文件及依赖软链仅unlink；没有cherry-pick产品提交。
+
+| 固定输入 | 自跑命令 | 结果 |
+| --- | --- | --- |
+| efa冻结 | `editor/node_modules/.bin/vitest run editor/src/table-spec-review.test.ts` | 退出1，原四项全部red；EOF负控1/1通过 |
+| 8bb27ad相关源码 | 同上 | 退出0，5/5通过 |
+
+四项分别确认：合法无管道数据行可扩行且保留旧行字节；列表标记首行可重排列且前缀保留；引用数据行重排保留目的前缀；有后续正文的缩行保留存活末行CRLF。EOF负控确认删除末行后仍无最终换行，并且Undo恢复完整旧原文、Redo恢复结果。四项在该固定补正上均已解决。
+
+证据：`artifacts/INK-REV-184/frozen-probe-with-eof.log`、`fix-8bb27ad-probe.log`、`fix-probe-with-eof.ts`、`fix-source-files.txt`。先前 `frozen-probe.log` 保留；没有改有效测试或将red改成宽松断言。未扩大全量或其他专项。
+
+核读了规格新增的“原文件在表格末尾EOF没有换行时继续保留无末尾换行”规则，EOF负控与之相符。此次没有独立复验另一个审查轴提出的对话框composition或循环依赖，也没有自跑作者所报21项、68项、Native结果；本追加只关闭原Spec四项及相邻EOF边界，不扩展整体完成结论。物理IME、鼠标、Native/WK、保存重开、paint等未验边界继续保留。
