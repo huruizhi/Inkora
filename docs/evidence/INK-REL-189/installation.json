@@ -1,0 +1,46 @@
+{
+  "sourceCommit": "6c3342f0e8886e8ae776a55b0b0d8e5d42e322b8",
+  "baseCommit": "3dac317feef5c3850c245c3b1ba634cfad6a58eb",
+  "installed": "/Applications/Inkora.app",
+  "build": "10",
+  "marketingVersion": "0.1.0",
+  "bundleIdentifier": "com.huruizhi.Inkora",
+  "signature": "ad-hoc; not notarized",
+  "architectures": [
+    "arm64",
+    "x86_64"
+  ],
+  "fileHashes": {
+    "Contents/Info.plist": "aba2c9d36a56461ba8d5ece66f65de8ce1a753c8a11cc09a8f9626d7702f53fd",
+    "Contents/MacOS/Inkora": "305f57a5b475ec35343dfdc2c7f264eef232c5469e1c9a622a9257bfe3b11200",
+    "Contents/PkgInfo": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0",
+    "Contents/Resources/AppIcon.icns": "dbdfa6d4fe163bfce818b98bd0ec4bc375de1aca542f85286052f6377c40a5b5",
+    "Contents/Resources/Assets.car": "99adcb8219ca73983df61f1a4cdd954db10da3764c6454bf061f29dffaafb36a",
+    "Contents/Resources/Sparkle-LICENSE.txt": "816be66341dd11b22806862dffd8392b240babaced1cdf24da2ff413ef00c3fd",
+    "Contents/Resources/editor/RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "Contents/Resources/editor/THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "Contents/Resources/editor/assets/index-Bx8Tv0Kw.js": "a4fe1eaef0a93863db6104183e6cc9fd2c717a9d650fcb66cd78d650485456e9",
+    "Contents/Resources/editor/index.html": "a2dca1f681508e3c07216ef56daf880de2c3d5c4922816f6c88fa33f301916bd",
+    "Contents/Resources/editor/vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+    "Contents/_CodeSignature/CodeResources": "fbabb25ff28a6daf9f08423ed78f63452eb24ceacf673dbaf9f3f1e141ec2fe8"
+  },
+  "installedHashesMatch": true,
+  "backup": "/Users/rayhu/Documents/projects/Inkora/artifacts/deployments/build10-20261112-224716",
+  "archives": {
+    "previous-build9.zip": "5cc8e1f78d71f4334bd53bc235d0ba3e6be0738cfb0876eb1ace81c92be139f0",
+    "installed-build10.zip": "aa460d47bcbb830bdf49fbc8dc77a35cb268367544cacbc13141001fa63b5ae5"
+  },
+  "privateRecoveryBackup": true,
+  "published": false,
+  "launchProcessVerified": true,
+  "launchPID": 54716,
+  "visibleLaunchVerified": false,
+  "visibleLaunchBlocker": "Computer Use native pipe startup failed",
+  "installedResourceTests": {
+    "code": 3,
+    "table": 4,
+    "failures": 0
+  },
+  "rollbackTrash": "/Users/rayhu/.Trash/.Inkora-build9-rollback-5afb771900ab4b5baaae4f138f253075.app",
+  "temporaryCandidateArchivedAndRemoved": true
+}
