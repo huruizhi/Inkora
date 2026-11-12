@@ -1,0 +1,7 @@
+xcrun swift-format lint --strict --recursive app/Sources tests/InkoraTests tests/InkoraUITests
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-174/.tools/node_modules/.bin/pnpm --dir editor lint
+$ tsc --noEmit
+src/heading-entry.ts(73,11): error TS18048: 'step' is possibly 'undefined'.
+src/heading-entry.ts(73,50): error TS18048: 'step' is possibly 'undefined'.
+[ELIFECYCLE] Command failed with exit code 1.
+make: *** [lint] Error 1

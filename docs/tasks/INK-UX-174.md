@@ -97,3 +97,13 @@ Spec176：首稿1项P2（strong空格提前显示）在固定512ad4e独立反例
 Enter分段/级别或块类型变化/其他块编辑不继承。只有原先限定文本输入可首次创建此状态。
 这是显示状态连续性的证明，不扩大SourceAuthority输入资格、不发内容或历史事务。
 13例green保留；完整最终计数及固定后验另补。
+
+
+### 最后创建收窄守卫与结果
+
+行内格式补正后首轮完整lint被TS18048阻断：创建分支的step类型无法从闭包外plain判断
+静态收窄。已加显式`if (!plain || !step) return`，使“只有限定文本输入可新建entry”
+在该分支再次明示，未放宽条件；该次失败输出保留creation-typecheck-red.txt。
+再次完整自跑：52文件**965通过**、Bridge**16通过**、真实WK**19/19、0失败**。
+这些是最终代码对应结果，见last-full-green/last-bridge/wk-last-nineteen-green。
+Native既有全部case保留，未改有效断言、未用旧19例输出充作新代码结果。

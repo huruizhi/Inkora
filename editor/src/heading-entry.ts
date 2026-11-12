@@ -68,6 +68,7 @@ export class HeadingEntryPresentation {
         return;
       }
 
+      if (!plain || !step) return;
       const { $from, empty } = before.selection;
       if (!empty || $from.depth !== 1 || $from.parent.type.name !== 'paragraph' || $from.parent.content.size ||
           step.from !== before.selection.from || step.to !== before.selection.to ||
