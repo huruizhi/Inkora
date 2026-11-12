@@ -54,6 +54,29 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testHeadingEntryMarkedTailSpaceDoesNotRenderEarly() throws {
+    try withEditor("") { controller, web in
+      try focus("#editor p", in: web)
+      try keys(["#", " ", "*", "*", "a", "*", "*", " ", "b"], in: web)
+      XCTAssertEqual(try snapshot(controller), "# **a** b")
+      XCTAssertEqual(
+        try js("!!document.querySelector('#editor h1.inkora-heading-entry-ready')", in: web)
+          as? Bool, true)
+      XCTAssertEqual(
+        try js("document.querySelector('#editor h1 strong')?.textContent", in: web) as? String, "a")
+      XCTAssertEqual(
+        try js(
+          "parseFloat(getComputedStyle(document.querySelector('#editor h1')).fontSize)", in: web)
+          as? Double, 17)
+      try pressEnter(in: web)
+      XCTAssertEqual(try snapshot(controller), "# **a** b\n\n")
+      XCTAssertEqual(
+        try js("!!document.querySelector('#editor .inkora-heading-entry')", in: web) as? Bool, false
+      )
+    }
+  }
+
+  @MainActor
   func testNewHeadingEntrySurvivesCompositionBeforeRendering() throws {
     try withEditor("") { controller, web in
       try focus("#editor p", in: web)

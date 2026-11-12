@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-174/editor
+
+
+ Test Files  3 passed (3)
+      Tests  49 passed (49)
+   Start at  18:26:27
+   Duration  1.19s (tests 50%, import 42%, transform 7%)

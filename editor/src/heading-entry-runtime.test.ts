@@ -96,3 +96,11 @@ it('keeps entry scoped to its own repeated heading rather than a first text matc
   expect(headings[1].classList.contains('inkora-heading-entry-ready')).toBe(true);
   expect(runtime.getText()).toBe('# 同文\n\n# 同文');
 });
+it('keeps entry appearance while inline rules and marked-space edits change only its body', () => {
+  boot(); type('# **加粗**');
+  expect(view().dom.querySelector('h1 strong')?.textContent).toBe('加粗');
+  expect(view().dom.querySelector('h1')?.classList.contains('inkora-heading-entry-ready')).toBe(true);
+  type(' 尾部');
+  expect(view().dom.querySelector('h1')?.classList.contains('inkora-heading-entry-ready')).toBe(true);
+  expect(runtime.getText()).toBe('# **加粗** 尾部');
+});

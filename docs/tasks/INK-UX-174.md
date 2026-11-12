@@ -47,3 +47,19 @@ heading-entry-runtime.test.ts、既有WritingInteractionHostlessTests.swift和�
 无新依赖，无语法/位置账本/保存协议变更；Vite既有chunk提示、Swift既有隔离warnings保留。
 未运行全量Native/XCU/远端CI、物理IME、可见paint、VoiceOver/macOS14；隐藏WK不是上述验收。
 本机仍build7，未新建.app/替换安装；尚待固定代码复审与交付。
+
+
+## 行内格式后空格的限定补正
+
+根新增第12个公共runtime回归：输入# **加粗**后再输入空格/尾部，原文字节正确，
+但entry class丢失提前渲染。原12例11通过/1失败输出保留inline-body-red.txt；
+独立Spec也在原固定aec23e2自证，不把根结果代作其自跑。
+原因是SourceAuthority在接受空格时会给同一个可变Transaction追加removeMark安全步骤；
+原先在接受后读steps.length会把一次用户输入误认作多步格式操作。
+改为接受前capture原始有界输入事实，接受成功后才应用外观收据；
+没有放宽单文本/同owner资格，不干涉SourceAuthority附加的有效安全步骤。
+限定3文件49例通过。新增真实WK strong末尾空格外观/原文/Enter例，既有18例保留。
+完整Web/CI/lint复跑52文件964通过，Bridge16通过；Native19结果另记。
+
+初稿evidence末尾空白引发固定range diff-check的工具警告，已只规范化末尾空白，
+原始输出继续保留ignored artifacts；不改删任何失败断言或产品日志事实。

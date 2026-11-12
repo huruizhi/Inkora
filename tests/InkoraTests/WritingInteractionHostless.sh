@@ -17,7 +17,7 @@ import XCTest
   static func main() {
     let suite = XCTestSuite(forTestCaseClass: WritingInteractionHostlessTests.self)
     suite.run()
-    guard let run = suite.testRun, run.executionCount == 18, run.hasSucceeded else { exit(1) }
+    guard let run = suite.testRun, run.executionCount == 19, run.hasSucceeded else { exit(1) }
   }
 }
 SWIFT

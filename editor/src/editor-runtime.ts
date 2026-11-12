@@ -811,10 +811,10 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
         if (transaction.selectionSet || transaction.docChanged) this.footnoteReturn = undefined;
         const before = this.session.currentRaw;
         const beforeState = this.session.state;
-        const sourceAnchor = this.session.rawSelection.anchor;
+        const updateHeadingEntry = this.headingEntry.capture(beforeState, before,
+          this.session.rawSelection.anchor, transaction);
         const accepted = this.session.dispatch(transaction);
-        if (accepted) this.headingEntry.advance(beforeState, this.session.state, before,
-          this.session.currentRaw, sourceAnchor, transaction, this.session.composing);
+        if (accepted) updateHeadingEntry?.(this.session.state, this.session.currentRaw, this.session.composing);
         lastDispatchAccepted = accepted;
         view.updateState(this.session.state);
         if (accepted && this.compositionPhase === "settling" &&

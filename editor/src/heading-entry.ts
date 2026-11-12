@@ -23,9 +23,9 @@ export class HeadingEntryPresentation {
     return { pos, sourceStart, marker: prefix[0], ready: !!prefix[2] };
   }
 
-  advance(before: EditorState, after: EditorState, beforeRaw: string, raw: string,
-    sourceAnchor: number, transaction: Transaction, composing: boolean): void {
-    if (!transaction.docChanged || transaction.before !== before.doc || beforeRaw === raw) return;
+  capture(before: EditorState, beforeRaw: string, sourceAnchor: number, transaction: Transaction):
+    ((after: EditorState, raw: string, composing: boolean) => void) | undefined {
+    if (!transaction.docChanged || transaction.before !== before.doc) return;
     const step = transaction.steps.length === 1 ? transaction.steps[0].toJSON() as {
       stepType?: string; from?: number; to?: number;
       slice?: { content?: Array<{ type?: string; text?: string }> };
@@ -36,28 +36,33 @@ export class HeadingEntryPresentation {
       transaction.getMeta('paste') !== true && transaction.getMeta('uiEvent') !== 'paste';
     if (!plain) return; // Enter/format/paste ends entry; no content transaction is invented.
 
+    // Source acceptance may append its own mark-removal steps to this mutable
+    // transaction. Capture the original user edit before those safety steps.
     const prior = this.entries.get(before.doc);
-    if (prior) {
-      const owner = before.doc.nodeAt(prior.pos);
-      if (owner?.type.name !== 'heading' ||
-          beforeRaw.slice(prior.sourceStart, prior.sourceStart + prior.marker.length) !== prior.marker ||
-          step.from! < prior.pos + 1 || step.to! > prior.pos + owner.nodeSize - 1) return;
-      const next = this.read(after, raw, prior.pos, prior.sourceStart);
-      if (next) this.entries.set(after.doc, next);
-      else if (composing && !prior.ready && after.doc.nodeAt(prior.pos)?.type.name === 'heading') {
-        // A bare-hash IME candidate temporarily keeps its original H1 owner.
-        // Only appearance follows that owner; settlement may canonicalize it to a paragraph.
-        this.entries.set(after.doc, prior);
+    return (after, raw, composing) => {
+      if (beforeRaw === raw) return;
+      if (prior) {
+        const owner = before.doc.nodeAt(prior.pos);
+        if (owner?.type.name !== 'heading' ||
+            beforeRaw.slice(prior.sourceStart, prior.sourceStart + prior.marker.length) !== prior.marker ||
+            step.from! < prior.pos + 1 || step.to! > prior.pos + owner.nodeSize - 1) return;
+        const next = this.read(after, raw, prior.pos, prior.sourceStart);
+        if (next) this.entries.set(after.doc, next);
+        else if (composing && !prior.ready && after.doc.nodeAt(prior.pos)?.type.name === 'heading') {
+          // A bare-hash IME candidate temporarily keeps its original H1 owner.
+          // Only appearance follows that owner; settlement may canonicalize it to a paragraph.
+          this.entries.set(after.doc, prior);
+        }
+        return;
       }
-      return;
-    }
 
-    const { $from, empty } = before.selection;
-    if (!empty || $from.depth !== 1 || $from.parent.type.name !== 'paragraph' || $from.parent.content.size ||
-        step.from !== before.selection.from || step.to !== before.selection.to ||
-        !/^#{1,6}[\t ]*$/.test(text.map(node => node.text).join(''))) return;
-    const next = this.read(after, raw, $from.before(), sourceAnchor);
-    if (next) this.entries.set(after.doc, next);
+      const { $from, empty } = before.selection;
+      if (!empty || $from.depth !== 1 || $from.parent.type.name !== 'paragraph' || $from.parent.content.size ||
+          step.from !== before.selection.from || step.to !== before.selection.to ||
+          !/^#{1,6}[\t ]*$/.test(text.map(node => node.text).join(''))) return;
+      const next = this.read(after, raw, $from.before(), sourceAnchor);
+      if (next) this.entries.set(after.doc, next);
+    };
   }
 
   canonicalized(before: EditorState, after: EditorState, raw: string): void {
