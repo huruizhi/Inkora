@@ -48,3 +48,15 @@
 证据：`artifacts/INK-REV-184/frozen-probe-with-eof.log`、`fix-8bb27ad-probe.log`、`fix-probe-with-eof.ts`、`fix-source-files.txt`。先前 `frozen-probe.log` 保留；没有改有效测试或将red改成宽松断言。未扩大全量或其他专项。
 
 核读了规格新增的“原文件在表格末尾EOF没有换行时继续保留无末尾换行”规则，EOF负控与之相符。此次没有独立复验另一个审查轴提出的对话框composition或循环依赖，也没有自跑作者所报21项、68项、Native结果；本追加只关闭原Spec四项及相邻EOF边界，不扩展整体完成结论。物理IME、鼠标、Native/WK、保存重开、paint等未验边界继续保留。
+
+## 必要CI集成补正 Spec 审查追加（INK-FIX-185）
+
+本追加只审固定 `ad4f22f40ae434d325fcec8a53f60a98bf502eba...bbd80f7e07e07eef71e1de239c214531cda964ba`，一个提交 `fix(editor): preserve idle snapshot responder and caret`。不重审表格原稿，不将继承的标题开头split能力计作新增表格需求。差异导出至 `artifacts/INK-REV-184/fix-bbd80f7.diff`。本次保持报告worktree产品源码不动。
+
+规格源为固定补正中的 `docs/tasks/INK-FIX-185.md` 及 `AGENTS.md` 的“不得破坏中文输入法 composition、光标、选区、撤销重做”。185任务要求：“普通无候选快照不动Native响应者”；“client不可获取时保留旧保守提交路径”。其起因是表格集成CI暴露的焦点回跳，属于原编辑保护约束内的必要集成修复。
+
+**核心结论：missing/partial、scope creep、implemented wrong 均未发现新增问题。** `EditorViewController.requestSnapshot` 对`hasMarkedText()==false`仅跳过清空/恢复Native响应者；版本快照仍通过同一`bridge.requestVersionedSnapshot`及原completion发布。`true`及client不可获取（`?? true`）保持原commit/restore分支，未放宽正文事务或保存资格。修改范围与上述任务吻合。新增回归使用真实NSWindow子类转发公开`makeFirstResponder`，不替换实际实现；断言空闲client、清焦次数不增加、响应者身份不变及DOM反向选区[2,0]，与保光标规格直接对应。既有21项未删除；专项计数21→22对应新增一项。
+
+本次**独立执行仅为固定diff及证据完整性核验**：两份固定JSON的`sha256(output)`均与内嵌摘要一致，检查退出0，见 `artifacts/INK-REV-184/fix-bbd80f7-evidence-check.txt`。借用作者证据分别为 `docs/evidence/INK-FIX-185/focus-red.log.json`（新增焦点回归修前1/1 red）与 `native-tests.log.json`（写作专项22/22 green）；未将它们写成独立自跑测试。首版夹具element offset误判不作为产品缺陷。
+
+未独立运行Native、全量、App或UI，未安装依赖。物理IME及系统候选存在分支未验；该分支仅以固定代码差异确认旧行为保持。不能由22项专项推导完整Native或最终精确HEAD CI通过，整合后的最终CI仍由根任务验收。
