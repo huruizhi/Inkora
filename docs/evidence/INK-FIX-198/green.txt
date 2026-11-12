@@ -1,0 +1,28 @@
+Test Suite 'SidebarNavigationTests' started at 2026-11-13 01:06:02.252.
+Test Case '-[main.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' started.
+Test Case '-[main.SidebarNavigationTests testCancelledOpenReviewKeepsSourceThroughProductionBridgeTicket]' passed (0.080 seconds).
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' started.
+Test Case '-[main.SidebarNavigationTests testChangedOrDeletedTargetDuringReviewKeepsSourceWindow]' passed (0.016 seconds).
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' started.
+Test Case '-[main.SidebarNavigationTests testDelayedCloseReviewCannotNavigateAnotherDocument]' passed (0.001 seconds).
+Test Case '-[main.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' started.
+sandbox_extension_issue_file failed for /var/folders/h8/1j3lv__d781g2q6vf766s5zm0000gn/T/4D89D12F-FED9-4854-B3A8-D1E1DBF959E5/target.md: 2 (No such file or directory)
+Test Case '-[main.SidebarNavigationTests testExistingDirtyTargetCardReusesSessionAndHitRevalidatesAfterSnapshot]' passed (0.238 seconds).
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' started.
+Test Case '-[main.SidebarNavigationTests testFullSizeTitlebarReachesWebViewWithoutCoveringSystemButtons]' passed (7.370 seconds).
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' started.
+Test Case '-[main.SidebarNavigationTests testNavigationReusesWindowAndCancellationOrReadFailureKeepsSource]' passed (0.029 seconds).
+Test Case '-[main.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' started.
+Test Case '-[main.SidebarNavigationTests testPresentationBridgeRequiresAcceptedLoadAckAndSettlesTimeoutOrReload]' passed (0.051 seconds).
+Test Case '-[main.SidebarNavigationTests testTitlebarDoubleClickFillsDesktopAndRestoresAfterLayoutRefresh]' started.
+Test Case '-[main.SidebarNavigationTests testTitlebarDoubleClickFillsDesktopAndRestoresAfterLayoutRefresh]' passed (0.016 seconds).
+Test Case '-[main.SidebarNavigationTests testTitlebarDoubleClickRejectsControlsBodyAndNonresizableWindow]' started.
+Test Case '-[main.SidebarNavigationTests testTitlebarDoubleClickRejectsControlsBodyAndNonresizableWindow]' passed (0.006 seconds).
+Test Case '-[main.SidebarNavigationTests testTitlebarDragHandsOriginalMouseDownToWindowAndRejectsControls]' started.
+Test Case '-[main.SidebarNavigationTests testTitlebarDragHandsOriginalMouseDownToWindowAndRejectsControls]' passed (0.004 seconds).
+Test Case '-[main.SidebarNavigationTests testTitlebarInvalidGeometryAndResetRemoveDragAuthority]' started.
+Test Case '-[main.SidebarNavigationTests testTitlebarInvalidGeometryAndResetRemoveDragAuthority]' passed (0.000 seconds).
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' started.
+Test Case '-[main.SidebarNavigationTests testVerifiedBytesEstablishDiskBaselineAndRejectExternalChange]' passed (0.005 seconds).
+Test Suite 'SidebarNavigationTests' passed at 2026-11-13 01:06:10.069.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 7.815 (7.817) seconds
