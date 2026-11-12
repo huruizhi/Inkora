@@ -25,3 +25,7 @@ Fowler 基线复查未见足以报告的新增 smell；工具强制项不重报�
 既有 entry 的非纯文本延续以根节点数、owner 同 markup、其他 siblings 语义相等及 sourceStart 前原文相同为边界；新建 entry 仍受原单步纯文本资格限制。该分支只接收已接受文档并更新本地显示，不改变 SourceAuthority 的接受资格，符合 ADR-0004、V1「统一内容与会话契约」的内容权威边界。新增 toggleMark 回归保留既有断言（AGENTS.md）。
 
 Fowler 全套基线复查未见新增可报告 smell。本人仅静态读取两文件新 hunks；根报告 entry 13 通过仅属外部证据，不据此认定本人完成行为验收。
+
+## 最终固定点 Standards（716c513）
+
+仅核对 `6eaa308..716c513` 的 heading-entry.ts 创建分支新增 `if (!plain || !step) return;`。该守卫显式重申原有纯文本创建资格，并为闭包内 step 提供类型收窄；未见新增 hard 或 possible smell。不作 Spec 裁定，原结论及验证边界保持。最终产品固定为 `716c5131252ab1311961fc64c4b7b6a9cfc4a2c5`；根报告完整 965/16/19 通过仅属外部证据，本人未运行产品验证。
