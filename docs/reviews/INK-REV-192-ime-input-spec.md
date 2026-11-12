@@ -17,3 +17,13 @@
 - 首版 Backspace仅派发键盘事件，jsdom不执行浏览器默认删除，3个失败属夹具不足；原探针/输出保留，不算产品缺陷。后验 trace确认 Enter实际派发合法 replace 拆段步骤。
 - 作者125项DOM/25项Native及根其他结果均为外部证据。本审未运行Native、App、物理IME、可见光标绘制、VoiceOver或macOS14验收。
 - ignored `artifacts/INK-REV-192/` 与 `editor/artifacts/INK-REV-192/` 保留探针、base冻结副本和原始输出。产品文件与有效测试未修改。
+
+## 限定后验：首稿P2已关闭
+
+固定产品 `18b0e94d49713a331ce256c4e42b7b614f716b46`。此前 `a37ed683237589e27a5212a1095de99bbdb36977` 引入尾段修复；18b0e94仅删除未声明的 `projection:'atom'` 字段。首稿全文与失败证据保留。
+
+先用 `git archive` 导出冻结editor、Native测试与脚本至本worktree ignored artifacts，未读动态193。核对 `source-authority.ts:166–228`：仅在额外尾节点为真正空段、原文以两个LF/CRLF结尾且有逐字匹配的pendingBullet时建立尾段投影；插入span绑定 `raw.length` 的真实EOF，没有改写换行，也没有放宽未知事务/跨owner拒绝规则。Native新增裸标记Enter/续输测试与26项计数只作静态核对。
+
+独立DOM：原3组Enter反例均转绿；原3组普通删除通过；3种标记×LF/CRLF六组BOM原文、EOF续输、普通删除、反向选区替换、Undo/Redo通过；另3组Enter自身原文/选区Undo/Redo通过。合计 **15项通过**，与首稿109项不重复累计为全量回归。首稿P2按此固定SHA的限定证据关闭，无新增已证finding。
+
+a37第一版扩展探针在Undo后继续使用已销毁旧EditorView，6项失败属夹具错误；v2重新读取runtime当前view后完成上述验证，原始失败保留。未运行全量、Native或GUI；作者完整检查/Native26均不算本审实跑。本结论不替代物理IME/光标绘制验收。
