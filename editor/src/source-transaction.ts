@@ -1,3 +1,4 @@
+import type { TableCommandMeta } from "./table-editing";
 import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorState, Transaction } from 'prosemirror-state';
 import MarkdownIt from 'markdown-it';
@@ -698,14 +699,6 @@ function listJoinPlan(source: string, state: EditorState, tr: Transaction, posit
   return null;
 }
 
-type TableCommandMeta = {
-  type: string;
-  tablePos: number;
-  rowIndex: number;
-  columnIndex: number;
-  alignment?: 'none' | 'left' | 'center' | 'right';
-};
-
 type SourceLine = { start: number; contentEnd: number; end: number; eol: string };
 const tableTokenizer = new MarkdownIt('commonmark', { html: false }).enable('table');
 
@@ -763,6 +756,21 @@ function rowCellBounds(source: string, line: SourceLine, column: number): { befo
   return { before, after: line.start + afterPipe, start, end };
 }
 
+function splitTableSourceRow(text: string): { prefix: string; cells: string[]; suffix: string } | null {
+  const pipes = structuralPipes(text);
+  if (!pipes.length) return null;
+  const leading = /^[>\t ]*$/.test(text.slice(0, pipes[0]));
+  const trailing = /^[\t ]*$/.test(text.slice(pipes.at(-1)! + 1));
+  const start = leading ? pipes[0] + 1 : (text.match(/^(?:[ \t]*>[ \t]?)*[ \t]*/)?.[0].length ?? 0);
+  const end = trailing ? pipes.at(-1)! : text.length;
+  const cuts = pipes.filter(at => at >= start && at < end);
+  const cells: string[] = [];
+  let from = start;
+  for (const at of [...cuts, end]) { cells.push(text.slice(from, at)); from = at + 1; }
+  return { prefix: text.slice(0, leading ? pipes[0] : start), cells,
+    suffix: trailing ? text.slice(pipes.at(-1)! + 1) : '' };
+}
+
 function tableCommandSourceRange(
   source: string,
   ranges: readonly NativeRange[],
@@ -808,7 +816,46 @@ function tableCommandPlan(
   if (!columns) throw Error('表格结构命令无法确定列数');
   const patches: NativePatch[] = [];
 
-  if (meta.type === 'add_row_before' || meta.type === 'add_row_after') {
+  if (meta.type === 'move_column' || meta.type === 'move_row' || meta.type === 'resize') {
+    const rowCount = (table?.firstChild?.childCount ?? 0) + (table?.lastChild?.type.name === 'table_body' ? table.lastChild.childCount : 0);
+    if (lines.length !== rowCount + 1) throw Error('表格源码行数与当前投影不一致');
+    const content = lines.map(line => source.slice(line.start, line.contentEnd));
+    if (meta.type === 'move_row') {
+      const target = meta.targetIndex!;
+      if (!Number.isInteger(target) || target < 1 || target >= rowCount || meta.rowIndex < 1 || meta.rowIndex >= rowCount) throw Error('移动数据行范围无效');
+      // Move row payloads; EOL and container prefix belong to their destination.
+      const original = [...content];
+      original.splice(target + 1, 0, original.splice(meta.rowIndex + 1, 1)[0]);
+      content.splice(0, content.length, ...original);
+    } else {
+      for (let index = 0; index < lines.length; index++) {
+        const line = splitTableSourceRow(content[index]);
+        if (!line) throw Error('无法确定表格单元格范围');
+        const cells = [...line.cells];
+        while (cells.length < columns) cells.push('  ');
+        if (meta.type === 'move_column') {
+          if (!Number.isInteger(meta.targetIndex) || meta.targetIndex! < 0 || meta.targetIndex! >= columns) throw Error('移动列范围无效');
+          cells.splice(meta.targetIndex!, 0, cells.splice(meta.columnIndex, 1)[0]);
+        } else {
+          const count = meta.columns!;
+          if (!Number.isInteger(count) || count < 1 || count > 20 || !Number.isInteger(meta.rows) || meta.rows! < 1 || meta.rows! > 100) throw Error('表格规模无效');
+          if ((count < columns || meta.rows! < rowCount) && !meta.confirmShrink) throw Error('缩减表格尚未确认');
+          if (count > columns) cells.splice(columns, 0, ...Array(count - columns).fill(index === 1 ? ' --- ' : '  '));
+          else cells.splice(count, columns - count);
+        }
+        content[index] = line.prefix + '|' + cells.join('|') + '|' + line.suffix;
+      }
+      if (meta.type === 'resize') {
+        const total = meta.rows! + 1;
+        const prefix = splitTableSourceRow(content[1])!.prefix;
+        while (content.length < total) content.push(prefix + '|' + '  |'.repeat(meta.columns!));
+        content.length = total;
+      }
+    }
+    const replacement = content.map((text, index) => text + (index < content.length - 1 ?
+      (lines[index]?.eol || eolForLine(source, range.start, fallbackEol)) : '')).join('');
+    patches.push({ from: range.start, to: range.end, insert: replacement });
+  } else if (meta.type === 'add_row_before' || meta.type === 'add_row_after') {
     const row = meta.rowIndex === 0 ? 1 : Math.min(meta.rowIndex + 1, lines.length - 1);
     const selectedLine = lines[row];
     const rowEol = selectedLine.eol || eolForLine(source, selectedLine.start, fallbackEol);
@@ -931,14 +978,14 @@ function insertTablePlan(
 ): NativePlan | null {
   const meta = tr.getMeta('inkoraInsertTable') as { raw?: unknown; anchorPos?: unknown } | undefined;
   if (!meta) return null;
-  if (typeof meta.raw !== 'string' || !/^\|[^\n]+\|\n\|[^\n]+\|\n\|[^\n]*\|$/.test(meta.raw)) {
-    throw Error('新建表格命令缺少合法固定原文');
+  if (typeof meta.raw !== 'string' || !/^\|[^\n]+\|\n\|[^\n]+\|(?:\n\|[^\n]*\|)*$/.test(meta.raw)) {
+    throw Error('新建表格命令缺少合法原文');
   }
   let at: number;
   let insert: string;
   if (source.slice(source.startsWith('\uFEFF') ? 1 : 0).trim().length === 0) {
     at = emptySourceAnchor(source);
-    insert = meta.raw;
+    insert = meta.raw.replace(/\n/g, eolForLine(source, at, fallbackEol));
   } else {
     if (!Number.isInteger(meta.anchorPos)) throw Error('新建表格命令缺少当前块边界');
     const anchorPos = meta.anchorPos as number;

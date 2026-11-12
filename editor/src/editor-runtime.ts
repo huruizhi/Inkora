@@ -32,7 +32,7 @@ import type { Node as PMNode } from "prosemirror-model";
 import { footnoteReference } from "./technical-preview";
 import { protectedPreview } from "./protected-preview";
 import { createCodeBlockNodeViews } from "./code-block-view";
-import { createTableNodeViews, handleTableTab, insertDefaultTable } from "./table-editing";
+import { createTableNodeViews, handleTableTab, insertDefaultTable, type TableSize } from "./table-editing";
 import { createTaskListItemNodeViews } from "./task-list-view";
 import {
   normalizedLinkAttrs,
@@ -112,7 +112,7 @@ export interface EditorRuntime {
     readonly replacedCount: number;
   }>;
   readonly composing: boolean;
-  insertTable(): boolean;
+  insertTable(size?: TableSize): boolean;
   applyImageDescriptors(values: readonly ImageResourceDescriptor[]): void;
   insertImage(value: ManagedImageInsertion): boolean;
   rewriteManagedImages(values: readonly ManagedImageRewrite[]): boolean;
@@ -477,8 +477,8 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
     this.onChange(this.status, "status");
   }
 
-  insertTable(): boolean {
-    return this.view ? insertDefaultTable(this.view) : false;
+  insertTable(size?: TableSize): boolean {
+    return !this.composing && this.view ? insertDefaultTable(this.view, size) : false;
   }
 
   undo(): boolean {
