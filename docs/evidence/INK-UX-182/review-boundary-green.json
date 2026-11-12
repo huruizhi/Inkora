@@ -1,0 +1,5 @@
+{
+  "originalFile": "review-boundary-green.txt",
+  "sha256": "75ee9ce22788a50b041d9c4057b24537d1e1abfbf7bd89fb38a7cc40a4777746",
+  "output": "\n RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-182/editor\n\n\n Test Files  1 passed (1)\n      Tests  21 passed (21)\n   Start at  20:10:43\n   Duration  445ms (import 45%, tests 43%, transform 12%)\n\n"
+}
