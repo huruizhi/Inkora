@@ -33,3 +33,15 @@ Fowler 基线逐项检查：Mysterious Name、Duplicated Code、Feature Envy、D
 只新增本任务记录和 `docs/reviews/INK-REV-175-heading-entry-standards.md`。未完成事项：本任务无；行为、物理 IME、可见 paint、VoiceOver 与最低系统的验收不在本次范围。风险：静态检查无法证明组合候选、选区/复制或真实界面的所有行为；无 Standards 发现不等于这些行为已通过。
 
 评审文档 commit 以本任务分支最新 `docs(review): record heading entry standards review` 为准；其 SHA 随最终交付回报。不 push、不建 PR、不 merge。
+
+## 限定静态后验（512ad4e）
+
+在原评审提交 `6749baeb3d6cc9762705e9fc5c3c87f6d2f37afc`、clean 工作树上追加。固定产品为 `512ad4e41660355fe14dd6a7db6fa0c2672fa2a9`；唯一新增评审范围为 `git diff aec23e2663ac5c624a0bdf071bf7a2a13c16feca...512ad4e41660355fe14dd6a7db6fa0c2672fa2a9`。未将产品提交合入本审查分支，只用 git 静态读取对象。
+
+限定原因：根与独立 Spec 发现 strong 后尾空格使显示状态提前消失；SourceAuthority 接受时会向同一可变 Transaction 附加 removeMark，原先接受后检查 steps 数量误判用户输入。本次只检查 capture-before/receipt-after 的规范边界，新增 hard 0、possible 0；不重判 Spec。原输入资格保留，收据没有写入正文、历史或 Bridge。按原 Fowler 全套基线复查，无新增可报告 smell。
+
+新 runtime 红→绿及 Native strong 例均为外部证据；根报告 editor 964、Bridge 16，Native 套件新增到 19，本人未执行这些产品验证，也不把先前 963/16/18 累加成本次实跑。提交内 evidence 仅删除六份日志的末尾空行，失败断言与事实保留；ignored 原件按根说明保留，本人未读取验证该 ignored 副本。
+
+本人实跑：固定新增范围 `git diff --check aec23e2663ac5c624a0bdf071bf7a2a13c16feca...512ad4e41660355fe14dd6a7db6fa0c2672fa2a9` 退出 0；本次文档 `git diff --cached --check` 通过；以原提交 blob 对两文件作 byte prefix 校验通过。未跑产品测试、build、WK/App/UI、新 Agent 或网络。
+
+只向原两文档末尾追加；未完成事项无。静态结论仍不证明输入法、选区/复制、真实 paint 或最低系统验收通过。后验 commit subject 为 `docs(review): append heading entry standards follow-up`，SHA 随交付回报；不 push、不建 PR、不 merge。
