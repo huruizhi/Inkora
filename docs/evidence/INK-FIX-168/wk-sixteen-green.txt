@@ -1,0 +1,35 @@
+Test Suite 'WritingInteractionHostlessTests' started at 2026-11-12 13:43:53.630.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' started.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' passed (2.174 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' passed (0.596 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' passed (0.375 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' passed (0.367 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' passed (0.899 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' started.
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' passed (0.164 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' passed (0.356 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' passed (0.373 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' passed (0.441 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' passed (0.367 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' passed (0.413 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' passed (0.373 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace]' passed (0.844 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' passed (0.520 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret]' started.
+Test Case '-[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret]' passed (2.345 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' started.
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' passed (0.556 seconds).
+Test Suite 'WritingInteractionHostlessTests' passed at 2026-11-12 13:44:04.797.
+	 Executed 16 tests, with 0 failures (0 unexpected) in 11.163 (11.167) seconds
