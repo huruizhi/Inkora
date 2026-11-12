@@ -58,3 +58,12 @@ JSON evidence无损保留终端输出与SHA256；所有红例、夹具错误、�
 额外段必须一个空paragraph且raw末尾有两换行；原source prefix/换行不改写。返回输入span和真实sourceEOF，后续正文继续可映射。
 未扩大未知结构replace资格；原回归新增3例通过。补真实Native bare marker Enter/继续输入，专项计数25→26，旧25项保留。
 后验固定与完整结果另记，安装仍被复审/用户退出状态阻断；不提前宣告完成。
+
+## 最终补正验证
+
+最终产品18b0e94d49713a331ce256c4e42b7b614f716b46。a37新增span初版多带一个LedgerSpan未声明字段，
+完整lint/tsc真实TS2353红；18b只删除多余字段，未修改运行语义，tsc与全量重新通过。
+最终`make lint test-editor test-ci`：55文件1032项通过；写作Native/WK26/26、0失败。
+新增3项bare-marker Enter及原25项全保留。严格格式、TypeScript/Vite和CI脚本通过。
+191独立静态后验原命名判断关闭，无新hard；192独立冻结18b的12组有限DOM对照通过，
+首稿P2仍以审查者追加结论为准，不以作者结果代替独立关闭。物理输入法/paint等边界不变。
