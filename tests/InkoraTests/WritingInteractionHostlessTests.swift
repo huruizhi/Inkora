@@ -4,6 +4,37 @@ import XCTest
 
 final class WritingInteractionHostlessTests: XCTestCase {
   @MainActor
+  func testIdleSnapshotPreservesNativeResponderAndDirectedCaret() throws {
+    try withEditor("# 标题") { controller, web in
+      let window = try XCTUnwrap(web.window as? SnapshotFocusWindow)
+      XCTAssertTrue(window.makeFirstResponder(web))
+      try focus("#editor h1", in: web)
+      _ = try js(
+        """
+        (()=>{const text=document.querySelector('#editor h1').firstChild;
+        getSelection().setBaseAndExtent(text,2,text,0);return true})()
+        """, in: web)
+      RunLoop.current.run(until: Date().addingTimeInterval(0.03))
+      let client = try XCTUnwrap(web.inputContext?.client)
+      XCTAssertFalse(client.hasMarkedText())
+      let before = window.focusResetRequests
+      let responder = window.firstResponder
+      XCTAssertEqual(try versionedSnapshot(controller).text, "# 标题")
+      XCTAssertEqual(window.focusResetRequests, before, "没有系统候选时，普通快照不能清空原生响应者")
+      XCTAssertTrue(window.firstResponder === responder)
+      XCTAssertEqual(try js("getSelection().anchorNode.textContent", in: web) as? String, "标题")
+      let direction =
+        try js(
+          """
+          (()=>{const e=document.querySelector('#editor'),s=getSelection();
+          const at=(node,offset)=>{const r=document.createRange();r.selectNodeContents(e);r.setEnd(node,offset);return r.toString().length;};
+          return [at(s.anchorNode,s.anchorOffset),at(s.focusNode,s.focusOffset)];})()
+          """, in: web) as? [Int]
+      XCTAssertEqual(direction, [2, 0])
+    }
+  }
+
+  @MainActor
   func testHeadingContinuousTextWithoutIntermediateSnapshots() throws {
     try withEditor("") { controller, web in
       try focus("#editor p", in: web)
@@ -532,7 +563,7 @@ final class WritingInteractionHostlessTests: XCTestCase {
     let document = InkoraDocument()
     try document.read(from: Data(raw.utf8), ofType: "net.daringfireball.markdown")
     let controller = EditorViewController(document: document, resourceBundle: bundle)
-    let window = NSWindow(contentViewController: controller)
+    let window = SnapshotFocusWindow(contentViewController: controller)
     let web = try XCTUnwrap(controller.view as? WKWebView)
     document.attachSidebarEditor(controller)
     defer {
@@ -643,5 +674,15 @@ final class WritingInteractionHostlessTests: XCTestCase {
       RunLoop.current.run(until: Date().addingTimeInterval(0.005))
     }
     return try XCTUnwrap(result).get()
+  }
+}
+
+// Forwards to a real NSWindow/WKView. The public responder transition is observed,
+// not replaced; snapshots must not defocus an idle authoring surface.
+private final class SnapshotFocusWindow: NSWindow {
+  var focusResetRequests = 0
+  override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
+    if responder == nil { focusResetRequests += 1 }
+    return super.makeFirstResponder(responder)
   }
 }
