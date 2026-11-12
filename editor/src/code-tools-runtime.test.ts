@@ -81,7 +81,7 @@ it('uses keyboard completion, cancels without edits and rejects detached or stal
   const selected = runtime.getText(); runtime.destroy(); stale.click(); expect(runtime.getText()).toBe(selected);
 });
 
-it('keeps query composition local and blocks confirmation/Escape until it ends', () => {
+it('keeps query text outside source while blocking commands until composition settles', async () => {
   const raw = '```js\nx\n```';
   const { host, runtime, dom } = open(raw);
   const input = host.querySelector<HTMLInputElement>('[role=combobox]')!;
@@ -91,10 +91,12 @@ it('keeps query composition local and blocks confirmation/Escape until it ends',
   input.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   input.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   expect(document.activeElement).toBe(input); expect(input.value).toBe('py'); expect(runtime.getText()).toBe(raw);
-  expect(runtime.composing).toBe(false);
+  expect(runtime.composing).toBe(true);
   input.dispatchEvent(new dom.window.CompositionEvent('compositionend', { bubbles: true }));
   input.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   expect(runtime.getText()).toBe(raw);
+  await new Promise(resolve => setTimeout(resolve, 130));
+  expect(runtime.composing).toBe(false);
   document.querySelector<HTMLButtonElement>('[data-language=python]')!.click();
   expect(runtime.getText()).toBe('```python\nx\n```');
 });
@@ -143,4 +145,24 @@ it('offers exact aliases before longer prefix matches and caps the empty result 
   expect(document.querySelector<HTMLButtonElement>('[data-language=xml]')).not.toBeNull();
   input.value = 'py'; input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
   expect(document.querySelector<HTMLElement>('[role=option][aria-selected=true]')!.dataset.language).toBe('python');
+});
+
+it('retains the existing Mermaid choice in language search as well as the native select', () => {
+  const { host, dom, runtime } = open('```js\ngraph TD; A-->B\n```');
+  const input = host.querySelector<HTMLInputElement>('[role=combobox]')!;
+  input.focus(); input.value = 'merm'; input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  const choice = document.querySelector<HTMLButtonElement>('[role=option][data-language=mermaid]');
+  expect(choice).not.toBeNull(); choice!.click();
+  expect(runtime.getText()).toBe('```mermaid\ngraph TD; A-->B\n```');
+});
+
+it('does not revive a removed candidate with the binding of a newer query', () => {
+  const { host, runtime, dom } = open('```js\nx\n```');
+  const input = host.querySelector<HTMLInputElement>('[role=combobox]')!;
+  input.focus(); input.value = 'py'; input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  const old = document.querySelector<HTMLButtonElement>('[data-language=python]')!;
+  input.value = 'rust'; input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  expect(old.isConnected).toBe(false); const before = runtime.status;
+  old.click(); expect(runtime.getText()).toBe('```js\nx\n```'); expect(runtime.status).toEqual(before);
+  expect(document.querySelector<HTMLElement>('[role=listbox]')!.hidden).toBe(false);
 });

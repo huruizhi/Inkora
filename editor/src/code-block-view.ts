@@ -15,6 +15,8 @@ export interface CodeLanguageChangeResult {
 }
 
 export interface CodeBlockViewContext {
+  readonly onQueryFocus?: (owner: object, focused: boolean) => void;
+  readonly onQueryComposition?: (owner: object, active: boolean) => void;
   readonly isComposing: () => boolean;
   readonly applyLanguageChange: (
     getPos: () => number | undefined,
@@ -199,8 +201,11 @@ export function createCodeBlockNodeViews(context: CodeBlockViewContext) {
     editDiagram.addEventListener("click", enterDiagramCode);
     dom.append(toolbar, diagram, editDiagram, body);
 
+    const queryOwner = {};
     const picker = mountCodeLanguagePicker({ toolbar, view, node: () => node, getPos,
       isComposing: context.isComposing, apply: context.applyLanguageChange,
+      onCompositionChange: active => context.onQueryComposition?.(queryOwner, active),
+      onFocusChange: focused => context.onQueryFocus?.(queryOwner, focused),
       message: text => { message.dataset.failure = String(!!text); message.textContent = text; },
     });
 

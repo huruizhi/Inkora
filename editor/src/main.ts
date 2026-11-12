@@ -318,7 +318,7 @@ function availableEditorCommands(): EditorCommand[] {
       commands.push("applySource");
     }
   }
-  if (searchPanel.ownsFocus || panel.ownsInputFocus || activeLinkEditor?.contains(document.activeElement)) return commands;
+  if (current.auxiliaryInputFocused || searchPanel.ownsFocus || panel.ownsInputFocus || activeLinkEditor?.contains(document.activeElement)) return commands;
   if (current.status.canUndo) commands.push("undo");
   if (current.status.canRedo) commands.push("redo");
   if (current.mode === "visual") commands.push("insertTable", "insertImage");
@@ -949,7 +949,7 @@ window.inkora = {
           try {
             const before = runtime?.getText();
             const historyCommand = command.command === "undo" || command.command === "redo";
-            const documentCommandBlocked = runtime?.composing ||
+            const documentCommandBlocked = runtime?.composing || runtime?.auxiliaryInputFocused ||
               searchPanel.ownsFocus || searchPanel.isInputComposing || panel.ownsInputFocus || panel.isInputComposing ||
               !!activeLinkEditor && (composingLinkEditors.has(activeLinkEditor) ||
                 activeLinkEditor.contains(document.activeElement));

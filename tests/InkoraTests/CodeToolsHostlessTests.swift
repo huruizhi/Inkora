@@ -35,6 +35,9 @@ final class CodeToolsHostlessTests: XCTestCase {
       XCTAssertNil(failure)
       XCTAssertEqual(try snapshot(controller), presentation(expected))
       XCTAssertEqual(try Data(contentsOf: url), Data(expected.utf8))
+      let reopened = InkoraDocument()
+      try reopened.read(from: url, ofType: "net.daringfireball.markdown")
+      XCTAssertEqual(reopened.text, presentation(expected))
     }
   }
 
@@ -110,10 +113,17 @@ final class CodeToolsHostlessTests: XCTestCase {
         try js(
           "codeToolsQuery.isConnected&&document.activeElement===codeToolsQuery&&codeToolsQuery.value==='py'",
           web) as? Bool, true)
+      try history(.sourceMode, controller)
+      XCTAssertEqual(
+        try js("codeToolsQuery.isConnected&&document.activeElement===codeToolsQuery", web) as? Bool,
+        true)
+      _ = try js(
+        "codeToolsQuery.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}));true",
+        web)
+      RunLoop.current.run(until: Date().addingTimeInterval(0.13))
       XCTAssertEqual(try snapshot(controller), presentation(raw))
       _ = try js(
         """
-        codeToolsQuery.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}));
         codeToolsQuery.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
         const e=document.querySelector('#editor'),p=e.querySelector('p');e.focus();const r=document.createRange();r.selectNodeContents(p);r.collapse(true);
         getSelection().removeAllRanges();getSelection().addRange(r);true

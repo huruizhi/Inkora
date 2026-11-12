@@ -4,9 +4,10 @@ import { CODE_LANGUAGES, buildLanguageAttr, firstInfoToken, resolveHighlightLang
 import type { CodeLanguageChangeResult } from './code-block-view';
 
 let nextPicker = 0;
+const pickerLanguages = [...CODE_LANGUAGES, { id: 'mermaid', label: 'Mermaid 图表（mermaid）', aliases: [] as string[] }];
 type Context = { toolbar: HTMLElement; view: EditorView; node: () => PMNode; getPos: () => number | undefined;
   isComposing: () => boolean; apply: (getPos: () => number | undefined, node: PMNode, language: string | null) => CodeLanguageChangeResult;
-  message: (text: string) => void };
+  message: (text: string) => void; onCompositionChange?: (active: boolean) => void; onFocusChange?: (focused: boolean) => void };
 
 export function mountCodeLanguagePicker(context: Context) {
   const { toolbar, view } = context;
@@ -19,7 +20,8 @@ export function mountCodeLanguagePicker(context: Context) {
   list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', '代码语言候选'); list.contentEditable = 'false'; list.hidden = true;
   input.setAttribute('aria-controls', list.id); input.setAttribute('aria-expanded', 'false');
   list.setAttribute('popover', 'manual'); doc.body.append(list); toolbar.append(input);
-  let alive = true; let composing = false; let endedAt = -Infinity;
+  let alive = true; let composing = false; let compositionActive = false; let endedAt = -Infinity;
+  let settlingTimer: number | undefined;
   let binding: { state: typeof view.state; node: PMNode; pos: number } | undefined;
   let choices: Array<{ id: string; label: string }> = []; let active = 0;
   const valid = () => alive && input.isConnected && !view.isDestroyed && view.editable &&
@@ -41,9 +43,10 @@ export function mountCodeLanguagePicker(context: Context) {
     if (target.top < bounds.top) list.scrollTop -= bounds.top - target.top;
     else if (target.bottom > bounds.bottom) list.scrollTop += target.bottom - bounds.bottom;
   };
-  const choose = (id: string) => {
+  const choose = (id: string, expected = binding) => {
     if (composing || context.isComposing() || view.composing) return;
-    if (!valid() || !binding || binding.state !== view.state) { close(); return; }
+    if (!binding || expected !== binding || list.hidden) return;
+    if (!valid() || binding.state !== view.state) { close(); return; }
     const target = binding;
     const next = buildLanguageAttr(target.node.attrs.language as string | null, id);
     close();
@@ -63,17 +66,18 @@ export function mountCodeLanguagePicker(context: Context) {
     const score = (language: typeof CODE_LANGUAGES[number]) =>
       language.id === query || language.aliases.some(alias => alias.toLowerCase() === query) ? 0 :
         language.id.startsWith(query) ? 1 : language.label.toLowerCase().startsWith(query) ? 2 : 3;
-    choices = CODE_LANGUAGES.filter(language => language.id.startsWith(query) ||
+    choices = pickerLanguages.filter(language => language.id.startsWith(query) ||
       language.label.toLowerCase().startsWith(query) || language.aliases.some(alias => alias.toLowerCase().startsWith(query)) || resolveHighlightLanguageId(query) === language.id)
       .sort((left, right) => score(left) - score(right)).slice(0, 30);
     active = 0;
     list.replaceChildren();
+    const lease = binding;
     for (const [index, language] of choices.entries()) {
       const item = doc.createElement('button'); item.type = 'button'; item.tabIndex = -1;
       item.id = `${list.id}-${index}`; item.setAttribute('role', 'option'); item.dataset.language = language.id;
       item.textContent = language.label;
       item.addEventListener('pointerdown', event => event.preventDefault());
-      item.addEventListener('click', () => choose(language.id)); list.append(item);
+      item.addEventListener('click', () => { if (item.isConnected) choose(language.id, lease); }); list.append(item);
     }
     list.hidden = false; toolbar.classList.add('has-language-picker');
     if (typeof list.showPopover === 'function' && !list.matches(':popover-open')) list.showPopover();
@@ -89,9 +93,24 @@ export function mountCodeLanguagePicker(context: Context) {
   const outside = (event: Event) => { if (!composing && !toolbar.contains(event.target as Node) && !list.contains(event.target as Node)) close(); };
   const scrolled = (event: Event) => { if (!composing && event.target !== list && !list.contains(event.target as Node)) close(); };
   const resized = () => { if (!composing) close(); };
-  input.addEventListener('focus', render); input.addEventListener('input', render);
-  input.addEventListener('compositionstart', event => { composing = true; event.stopPropagation(); });
-  input.addEventListener('compositionend', event => { composing = false; endedAt = Date.now(); event.stopPropagation(); if (doc.activeElement === input) render(); else close(); });
+  const settleQuery = () => {
+    if (settlingTimer !== undefined) win.clearTimeout(settlingTimer);
+    settlingTimer = win.setTimeout(() => {
+      settlingTimer = undefined;
+      if (!alive || compositionActive) return;
+      composing = false; context.onCompositionChange?.(false);
+      if (doc.activeElement === input) render(); else close();
+    }, 100);
+  };
+  input.addEventListener('focus', () => { context.onFocusChange?.(true); render(); });
+  input.addEventListener('input', () => { if (composing) { if (!compositionActive) settleQuery(); } else render(); });
+  input.addEventListener('compositionstart', event => {
+    if (settlingTimer !== undefined) win.clearTimeout(settlingTimer);
+    composing = compositionActive = true; context.onCompositionChange?.(true); event.stopPropagation();
+  });
+  input.addEventListener('compositionend', event => {
+    compositionActive = false; endedAt = Date.now(); event.stopPropagation(); settleQuery();
+  });
   input.addEventListener('keydown', event => {
     if (['Escape', 'Enter', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) event.stopPropagation();
     if (event.isComposing || composing || context.isComposing()) return;
@@ -107,13 +126,14 @@ export function mountCodeLanguagePicker(context: Context) {
       (active + (event.key === 'ArrowDown' ? 1 : -1) + choices.length) % Math.max(1, choices.length);
     selected();
   });
-  input.addEventListener('blur', () => { if (!composing) close(); });
+  input.addEventListener('blur', () => { context.onFocusChange?.(false); if (!composing) close(); });
   return {
     update() {
       input.disabled = context.node().attrs.style === 'indented';
       input.placeholder = `搜索语言（${firstInfoToken(context.node().attrs.language) || '纯文本'}）`;
       if (!composing && binding && binding.state !== view.state) close();
     },
-    destroy() { alive = false; close(); list.remove(); },
+    destroy() { alive = false; context.onFocusChange?.(false); if (settlingTimer !== undefined) win.clearTimeout(settlingTimer);
+      if (composing) { composing = false; context.onCompositionChange?.(false); } close(); list.remove(); },
   };
 }

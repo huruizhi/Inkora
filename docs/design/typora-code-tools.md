@@ -8,7 +8,7 @@
 2. 保留已有中文语言select与未知/别名保持项，新增搜索combobox。前缀、别名和名称可过滤，方向键/Enter确认，Esc关闭并返回编辑位置，点击亦可选。输入查询不修改正文，只有确认改首info token，保留其他选项和空白，Undo/Redo一次。列表最多呈现30项且可滚动；空查询显示首批，完整select仍可访问全部。已打开动作绑定当前EditorState及节点生命周期，过期/销毁/不允许编辑/正文composition或settling时拒绝。
 3. 代码工具“行号”作为本机显示偏好，默认关闭；同一Web会话代码块同步，localStorage可用时持久化，不可用则仅内存。无源码标记/dirty/revision/历史变化，不恢复代码节点、光标或选区。行号在contentDOM以外，aria-hidden/user-select:none，代码正文仍由PM拥有。空代码1行，尾换行保留末空行；LF/CRLF都正确计数。横向滚动仅代码区域，行号留在左侧。Mermaid阅读预览不显示代码行号，进入代码编辑时显示。
 
-语言查询本身的组合输入是本地UI输入，不冒充正文composition；期间不确认/取消/重建该输入。完成后的候选确认Enter与紧随compositionend的同一次Enter区分，避免误选。所有动作检查连接和存活资格。
+语言查询文字仍是本地UI输入，不写入正文session，但活动composition及结束后100ms静默窗口纳入runtime忙碌资格；原生模式/历史/插入命令与快照等待都消费该保护。期间不确认/取消/重建该输入；后续input重置静默窗口。普通查询焦点阻止正文Undo/插入，避免把查询编辑误当正文历史。完成后的候选确认Enter与紧随compositionend的同一次Enter区分，避免误选。所有候选动作检查当前查询lease、控件连接、EditorState及存活资格；旧查询的延迟动作不能借新查询执行。
 
 ## 验证接缝与边界
 

@@ -3055,3 +3055,36 @@ it("侧栏输入持焦和composition时原生Undo与模式命令不越过输入�
   await settle();
   expect(h.sent.find(message => message.requestID === "side-focus-snap")).toMatchObject({ text: "当前原文\n", revision });
 });
+
+it("代码语言查询组合输入阻断原生模式/历史命令，稳定后恢复且不写入查询", async () => {
+  const h = await bootMain();
+  const raw = "```js\nx\n```";
+  h.receive({ type: "loadDocument", requestID: "code-query-load", documentID: "code-query", revision: 0, text: raw });
+  const input = h.editorHost().querySelector<HTMLInputElement>('[role=combobox]')!;
+  input.focus(); input.value = 'py'; input.dispatchEvent(new h.dom.window.CompositionEvent('compositionstart', { bubbles: true }));
+  h.receive({ type: "queryState", requestID: "code-query-busy" });
+  expect(h.sent.at(-1)).toMatchObject({ state: { availableCommands: [] } });
+  h.receive({ type: "executeCommand", requestID: "code-query-mode", documentID: "code-query", revision: 0, command: "sourceMode" });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  expect(input.isConnected).toBe(true); expect(h.dom.window.document.activeElement).toBe(input);
+  input.dispatchEvent(new h.dom.window.CompositionEvent('compositionend', { bubbles: true }));
+  h.receive({ type: "executeCommand", requestID: "code-query-settling", documentID: "code-query", revision: 0, command: "sourceMode" });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  await new Promise(resolve => setTimeout(resolve, 130));
+  h.receive({ type: "createSnapshot", requestID: "code-query-clean", documentID: "code-query", revision: 0 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: raw, revision: 0 });
+  h.receive({ type: "executeCommand", requestID: "code-query-finished", documentID: "code-query", revision: 0, command: "sourceMode" });
+  expect(h.sent.at(-1)).toMatchObject({ type: "stateChanged", state: { revision: 0 } });
+});
+
+it("语言搜索普通焦点不把原生Undo转发给正文历史", async () => {
+  const h = await bootMain();
+  h.receive({ type: "loadDocument", requestID: "query-focus-load", documentID: "query-focus", revision: 0, text: "```js\nx\n```" });
+  const select = h.editorHost().querySelector<HTMLSelectElement>('select.inkora-code-language')!;
+  select.value = 'python'; select.dispatchEvent(new h.dom.window.Event('change', { bubbles: true }));
+  const input = h.editorHost().querySelector<HTMLInputElement>('[role=combobox]')!; input.focus();
+  h.receive({ type: "executeCommand", requestID: "query-focus-undo", documentID: "query-focus", revision: 1, command: "undo" });
+  expect(h.sent.at(-1)).toMatchObject({ type: "editorError", code: "command_rejected" });
+  h.receive({ type: "createSnapshot", requestID: "query-focus-snapshot", documentID: "query-focus", revision: 1 });
+  expect(h.sent.at(-1)).toMatchObject({ type: "snapshotReady", text: "```python\nx\n```", revision: 1 });
+});
