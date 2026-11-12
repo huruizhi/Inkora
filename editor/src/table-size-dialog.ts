@@ -1,4 +1,4 @@
-import { TABLE_LIMITS, validTableSize, type TableSize } from './table-editing';
+import { TABLE_LIMITS, validTableSize, type TableSize } from './table-commands';
 import './table-size-dialog.css';
 
 type Options = {
@@ -101,14 +101,14 @@ export function openTableSizeDialog(parent: HTMLElement, options: Options): () =
     }
     form.append(grid);
   }
-  const observer = new doc.defaultView!.MutationObserver(() => { if (!options.isCurrent()) dispose(); });
+  const observer = new doc.defaultView!.MutationObserver(() => { if (!composing && !options.isCurrent()) dispose(); });
   form.append(warning, error, actions); dialog.append(form); parent.append(dialog);
   observer.observe(parent, { childList: true, subtree: true });
   columns.addEventListener('input', () => { confirm.checked = false; refresh(); });
   rows.addEventListener('input', () => { confirm.checked = false; refresh(); });
   confirm.addEventListener('change', refresh);
   dialog.addEventListener('compositionstart', () => { composing = true; });
-  dialog.addEventListener('compositionend', () => { composing = false; });
+  dialog.addEventListener('compositionend', () => { composing = false; if (!options.isCurrent()) dispose(); });
   dialog.addEventListener('cancel', event => { event.preventDefault(); if (!composing) dispose(); });
   dialog.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !event.isComposing && !composing) { event.preventDefault(); dispose(); }

@@ -1,15 +1,15 @@
 import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorView } from 'prosemirror-view';
-import { applyTableCommand } from './table-editing';
+import type { TableCommandType, TableCommandMeta } from './table-commands';
 import { openTableSizeDialog } from './table-size-dialog';
 import './table-interactions.css';
 
 type Options = { view: EditorView; shell: HTMLElement; toolbar: HTMLElement; scroll: HTMLElement;
-  table: HTMLTableElement; getPos: () => number | undefined; isComposing: () => boolean };
+  table: HTMLTableElement; execute: (type: TableCommandType, details: Partial<TableCommandMeta>) => boolean; isComposing: () => boolean };
 
 /** Drag previews stay outside contentDOM. Only a verified drop crosses the command seam. */
 export function bindTableInteractions(options: Options) {
-  const { view, shell, toolbar, scroll, table, getPos, isComposing } = options;
+  const { view, shell, toolbar, scroll, table, execute, isComposing } = options;
   const doc = shell.ownerDocument;
   const win = doc.defaultView!;
   const handles = doc.createElement('div'); handles.className = 'inkora-table-handles'; handles.contentEditable = 'false';
@@ -38,9 +38,8 @@ export function bindTableInteractions(options: Options) {
   };
   const key = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.isComposing) { event.preventDefault(); cancel(); } };
   const commit = (axis: 'row' | 'column', from: number, to: number) => {
-    const pos = getPos();
-    if (!valid() || pos === undefined) return false;
-    const result = applyTableCommand(view, pos, axis === 'row' ? 'move_row' : 'move_column',
+    if (!valid()) return false;
+    const result = execute(axis === 'row' ? 'move_row' : 'move_column',
       axis === 'row' ? { rowIndex: from, targetIndex: to } : { columnIndex: from, targetIndex: to });
     view.focus(); return result;
   };
@@ -149,11 +148,10 @@ export function bindTableInteractions(options: Options) {
     const binding = view.state;
     const initial = { columns: current.firstChild!.firstChild!.childCount,
       rows: 1 + (current.lastChild?.type.name === 'table_body' ? current.lastChild.childCount : 0) };
-    closeDialog = openTableSizeDialog(shell, { title: '调整表格规模', initial, grid: true,
+    closeDialog = openTableSizeDialog(view.dom.parentElement ?? shell, { title: '调整表格规模', initial, grid: true,
       isCurrent: () => valid() && view.state === binding,
       apply: (size, confirmShrink) => {
-        const pos = getPos();
-        return pos !== undefined && applyTableCommand(view, pos, 'resize', { ...size, confirmShrink });
+        return execute('resize', { ...size, confirmShrink });
       },
       closed: () => { closeDialog = undefined; if (!view.isDestroyed) view.focus(); },
     });

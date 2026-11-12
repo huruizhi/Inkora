@@ -5,34 +5,9 @@ import { TextSelection, type EditorState } from "prosemirror-state";
 import type { EditorView, NodeView } from "prosemirror-view";
 import { bindContextToolbar } from "./context-tools";
 
-export type TableAlignment = "none" | "left" | "center" | "right";
-export type TableCommandType =
-  | "add_row_before"
-  | "add_row_after"
-  | "delete_row"
-  | "add_column_before"
-  | "add_column_after"
-  | "delete_column"
-  | "align_none"
-  | "align_left"
-  | "align_center"
-  | "align_right"
-  | "delete_table"
-  | "move_row"
-  | "move_column"
-  | "resize";
-
-export type TableCommandMeta = {
-  type: TableCommandType;
-  tablePos: number;
-  rowIndex: number;
-  columnIndex: number;
-  alignment?: TableAlignment;
-  targetIndex?: number;
-  columns?: number;
-  rows?: number;
-  confirmShrink?: boolean;
-};
+import { validTableSize, type TableAlignment, type TableCommandType, type TableCommandMeta, type TableSize } from './table-commands';
+export { TABLE_LIMITS, validTableSize } from './table-commands';
+export type { TableAlignment, TableCommandType, TableCommandMeta, TableSize } from './table-commands';
 
 type TableContext = {
   table: PMNode;
@@ -198,12 +173,6 @@ export function applyTableCommand(view: EditorView, tablePos: number, type: Tabl
   return view.state.doc.eq(tr.doc);
 }
 
-export type TableSize = { columns: number; rows: number };
-export const TABLE_LIMITS = { columns: 20, rows: 100 } as const;
-export function validTableSize(size: TableSize): boolean {
-  return Number.isInteger(size.columns) && Number.isInteger(size.rows) &&
-    size.columns >= 1 && size.columns <= TABLE_LIMITS.columns && size.rows >= 1 && size.rows <= TABLE_LIMITS.rows;
-}
 export const defaultTableMarkdown = "| 列 1 | 列 2 |\n| --- | --- |\n|  |  |";
 
 export function insertDefaultTable(view: EditorView, size: TableSize = { columns: 2, rows: 2 }): boolean {
@@ -389,7 +358,8 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
     scroll.className = "inkora-table-scroll";
     scroll.append(contentDOM);
     dom.append(toolbar, scroll);
-    const interactions = bindTableInteractions({ view, shell: dom, toolbar, scroll, table: contentDOM, getPos,
+    const interactions = bindTableInteractions({ view, shell: dom, toolbar, scroll, table: contentDOM,
+      execute: (type, details) => { const pos = getPos(); return pos !== undefined && applyTableCommand(view, pos, type, details); },
       isComposing: options.isComposing });
     interactions.update(node);
     return {

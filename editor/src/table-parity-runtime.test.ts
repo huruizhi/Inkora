@@ -206,3 +206,61 @@ it('blocks active interactions during composition and rejects an intent after se
   host.querySelector<HTMLButtonElement>('[aria-label="调整表格规模"]')!.click();
   expect(host.querySelector('dialog')).toBeNull(); expect(runtime.getText()).toBe(raw);
 });
+
+it('reorders a table beginning on the list marker line without moving that marker', async () => {
+  const { applyTableCommand } = await import('./table-editing');
+  const raw = '- | A | C | B |\r\n  | --- | --- | --- |\r\n  | a | c | b |';
+  const { runtime, view } = setup(raw);
+  let tablePos = -1; view.state.doc.descendants((node, pos) => { if (node.type.name === 'table') tablePos = pos; });
+  expect(tablePos).toBeGreaterThan(0);
+  expect(applyTableCommand(view, tablePos, 'move_column', { columnIndex: 2, targetIndex: 1 })).toBe(true);
+  expect(runtime.getText()).toBe('- | A | B | C |\r\n  | --- | --- | --- |\r\n  | a | b | c |');
+});
+
+it('resizes valid pipe-less data rows and materializes missing edge cells only when necessary', async () => {
+  const { applyTableCommand } = await import('./table-editing');
+  const { runtime, view } = setup('| A |\n| --- |\none\ntwo');
+  expect(applyTableCommand(view, 0, 'resize', { columns: 1, rows: 4 })).toBe(true);
+  expect(runtime.getText()).toBe('| A |\n| --- |\none\ntwo\n|  |');
+  expect(runtime.undo()).toBe(true);
+  const current = (runtime as unknown as { view: EditorView }).view;
+  expect(applyTableCommand(current, 0, 'resize', { columns: 3, rows: 3 })).toBe(true);
+  expect(runtime.getText()).toBe('| A |  |  |\n| --- | --- | --- |\none|  |  |\ntwo|  |  |');
+});
+
+it('keeps destination container prefixes and EOLs when moving row payloads', async () => {
+  const { applyTableCommand } = await import('./table-editing');
+  const raw = '> | A | B |\r\n> | --- | --- |\n> | one | 1 |\r\n>  | two | 2 |';
+  const { runtime, view } = setup(raw);
+  let pos = -1; view.state.doc.descendants((node, at) => { if (node.type.name === 'table') pos = at; });
+  expect(applyTableCommand(view, pos, 'move_row', { rowIndex: 2, targetIndex: 1 })).toBe(true);
+  expect(runtime.getText()).toBe('> | A | B |\r\n> | --- | --- |\n> | two | 2 |\r\n>  | one | 1 |');
+  expect(runtime.undo()).toBe(true); expect(runtime.getText()).toBe(raw);
+});
+
+it('preserves the surviving last row CRLF instead of borrowing a removed row LF when shrinking', async () => {
+  const { applyTableCommand } = await import('./table-editing');
+  const raw = '| A | B |\n| --- | --- |\n| one | 1 |\r\n| two | 2 |\n\n尾';
+  const { runtime, view } = setup(raw);
+  expect(applyTableCommand(view, 0, 'resize', { columns: 2, rows: 2, confirmShrink: true })).toBe(true);
+  expect(runtime.getText()).toBe('| A | B |\n| --- | --- |\n| one | 1 |\r\n\n尾');
+  expect(runtime.undo()).toBe(true); expect(runtime.getText()).toBe(raw);
+});
+
+it('retains the scale input instance, value and focus during its own composition', async () => {
+  const { dom, host, runtime } = setup('| A |\n| --- |\n| one |');
+  host.querySelector<HTMLButtonElement>('[aria-label="调整表格规模"]')!.click();
+  const field = host.querySelector<HTMLInputElement>('dialog [name=columns]')!;
+  field.focus(); field.value = '3';
+  field.dispatchEvent(new dom.window.CompositionEvent('compositionstart', { bubbles: true }));
+  await Promise.resolve();
+  expect(field.isConnected).toBe(true); expect(document.activeElement).toBe(field);
+  const dialog = host.querySelector('dialog')!;
+  dialog.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  dialog.querySelector('form')!.dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+  expect(field.isConnected).toBe(true); expect(field.value).toBe('3');
+  expect(runtime.getText()).toBe('| A |\n| --- |\n| one |');
+  field.dispatchEvent(new dom.window.CompositionEvent('compositionend', { bubbles: true }));
+  dialog.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  expect(field.isConnected).toBe(false);
+});

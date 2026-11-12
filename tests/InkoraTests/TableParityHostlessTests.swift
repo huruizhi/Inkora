@@ -98,6 +98,8 @@ final class TableParityHostlessTests: XCTestCase {
             """, web) as? [Any]
         XCTAssertLessThanOrEqual(
           (geometry?[0] as? Double) ?? .infinity, ((geometry?[1] as? Double) ?? 0) + 1)
+        XCTAssertEqual((geometry?[1] as? Double) ?? 0, Double(width), accuracy: 1)
+        XCTAssertEqual(geometry?[2] as? Bool, true, "long table must scroll locally")
         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         let hit =
           try js(
@@ -134,6 +136,32 @@ final class TableParityHostlessTests: XCTestCase {
       XCTAssertEqual(try js("document.querySelectorAll('th').length", web) as? Int, 4)
       XCTAssertNotEqual(try snapshot(controller), raw)
       try history(.undo, controller)
+      XCTAssertEqual(try snapshot(controller), raw)
+    }
+  }
+
+  @MainActor
+  func testScaleInputCompositionKeepsFieldFocusAndCanCancelAfterEnd() throws {
+    let raw = "| A |\n| --- |\n| one |"
+    try withEditor(raw) { _, controller, web, _, _ in
+      let preserved =
+        try js(
+          """
+          (()=>{document.querySelector('[aria-label="调整表格规模"]').click();
+          const d=document.querySelector('dialog'),f=d.querySelector('[name=columns]');f.focus();f.value='3';
+          f.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));
+          d.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));d.querySelector('form').requestSubmit();
+          window.tableComposingField=f;
+          return f.isConnected&&document.activeElement===f&&f.value==='3';})()
+          """, web) as? Bool
+      XCTAssertEqual(preserved, true)
+      XCTAssertEqual(try snapshot(controller), raw)
+      _ = try js(
+        """
+        tableComposingField.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}));
+        document.querySelector('dialog').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));true
+        """, web)
+      XCTAssertEqual(try js("tableComposingField.isConnected", web) as? Bool, false)
       XCTAssertEqual(try snapshot(controller), raw)
     }
   }

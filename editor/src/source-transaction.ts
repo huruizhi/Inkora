@@ -1,4 +1,4 @@
-import type { TableCommandMeta } from "./table-editing";
+import { validTableSize, type TableCommandMeta } from "./table-commands";
 import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorState, Transaction } from 'prosemirror-state';
 import MarkdownIt from 'markdown-it';
@@ -758,10 +758,11 @@ function rowCellBounds(source: string, line: SourceLine, column: number): { befo
 
 function splitTableSourceRow(text: string): { prefix: string; cells: string[]; suffix: string; leading: boolean; trailing: boolean } | null {
   const pipes = structuralPipes(text);
-  if (!pipes.length) return null;
-  const leading = /^[>\t ]*$/.test(text.slice(0, pipes[0]));
+  const containerPrefix = /^(?:(?:[ \t]*>[ \t]?)|(?:[ \t]*(?:[-+*]|\d+[.)])[ \t]+))*[ \t]*/.exec(text)![0];
+  if (!pipes.length) return { prefix: containerPrefix, cells: [text.slice(containerPrefix.length)], suffix: '', leading: false, trailing: false };
+  const leading = text.slice(0, pipes[0]) === containerPrefix;
   const trailing = /^[\t ]*$/.test(text.slice(pipes.at(-1)! + 1));
-  const start = leading ? pipes[0] + 1 : (text.match(/^(?:[ \t]*>[ \t]?)*[ \t]*/)?.[0].length ?? 0);
+  const start = leading ? pipes[0] + 1 : containerPrefix.length;
   const end = trailing ? pipes.at(-1)! : text.length;
   const cuts = pipes.filter(at => at >= start && at < end);
   const cells: string[] = [];
@@ -824,9 +825,10 @@ function tableCommandPlan(
       const target = meta.targetIndex!;
       if (!Number.isInteger(target) || target < 1 || target >= rowCount || meta.rowIndex < 1 || meta.rowIndex >= rowCount) throw Error('移动数据行范围无效');
       // Move row payloads; EOL and container prefix belong to their destination.
-      const original = [...content];
+      const prefixes = content.map(text => splitTableSourceRow(text)?.prefix ?? '');
+      const original = content.map((text, index) => text.slice(prefixes[index].length));
       original.splice(target + 1, 0, original.splice(meta.rowIndex + 1, 1)[0]);
-      content.splice(0, content.length, ...original);
+      content.splice(0, content.length, ...original.map((payload, index) => prefixes[index] + payload));
     } else {
       for (let index = 0; index < lines.length; index++) {
         const line = splitTableSourceRow(content[index]);
@@ -838,12 +840,13 @@ function tableCommandPlan(
           cells.splice(meta.targetIndex!, 0, cells.splice(meta.columnIndex, 1)[0]);
         } else {
           const count = meta.columns!;
-          if (!Number.isInteger(count) || count < 1 || count > 20 || !Number.isInteger(meta.rows) || meta.rows! < 1 || meta.rows! > 100) throw Error('表格规模无效');
+          if (!validTableSize({ columns: count, rows: meta.rows! })) throw Error('表格规模无效');
           if ((count < columns || meta.rows! < rowCount) && !meta.confirmShrink) throw Error('缩减表格尚未确认');
           if (count > columns) cells.splice(columns, 0, ...Array(count - columns).fill(index === 1 ? ' --- ' : '  '));
           else cells.splice(count, columns - count);
         }
-        content[index] = line.prefix + (line.leading ? '|' : '') + cells.join('|') + (line.trailing ? '|' : '') + line.suffix;
+        content[index] = line.prefix + (line.leading || !cells[0].trim() ? '|' : '') + cells.join('|') +
+          (line.trailing || !cells.at(-1)!.trim() ? '|' : '') + line.suffix;
       }
       if (meta.type === 'resize') {
         const total = meta.rows! + 1;
@@ -854,7 +857,12 @@ function tableCommandPlan(
     }
     const replacement = content.map((text, index) => text + (index < content.length - 1 ?
       (lines[index]?.eol || eolForLine(source, range.start, fallbackEol)) : '')).join('');
-    patches.push({ from: range.start, to: range.end, insert: replacement });
+    const trailingEol = /^(\r\n|\n)/.exec(source.slice(range.end))?.[0] ?? '';
+    const shrinksRows = meta.type === 'resize' && meta.rows! < rowCount;
+    // Keep the surviving physical row's terminator, not the deleted last row's.
+    // At EOF without a terminator retain the original no-final-newline policy.
+    const retainedEol = shrinksRows && trailingEol ? lines[content.length - 1].eol : '';
+    patches.push({ from: range.start, to: range.end + (shrinksRows ? trailingEol.length : 0), insert: replacement + retainedEol });
   } else if (meta.type === 'add_row_before' || meta.type === 'add_row_after') {
     const row = meta.rowIndex === 0 ? 1 : Math.min(meta.rowIndex + 1, lines.length - 1);
     const selectedLine = lines[row];
