@@ -1,0 +1,11 @@
+div#editor .inkora-table-scroll { position: relative; padding: 22px 0 0 22px; }
+.inkora-table-handles { position: absolute; inset: 0; pointer-events: none; }
+.table-reorder-handle { position: absolute; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 3px;
+  font: 13px system-ui; cursor: grab; color: GrayText; background: Canvas; pointer-events: auto; touch-action: none;
+  opacity: 0; }
+.inkora-table-shell:hover .table-reorder-handle, .inkora-table-shell:focus-within .table-reorder-handle,
+.table-dragging .table-reorder-handle { opacity: 1; }
+.table-reorder-handle:focus-visible { opacity: 1; outline: 2px solid Highlight; }
+.table-drag-shade { position: absolute; background: color-mix(in srgb, Highlight 20%, transparent); }
+.table-drop-indicator { position: absolute; background: Highlight; }
+.table-drag-shade[hidden], .table-drop-indicator[hidden] { display: none; }

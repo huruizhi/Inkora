@@ -1,0 +1,20 @@
+.inkora-table-size-dialog {
+  box-sizing: border-box; width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  overflow: auto; padding: 20px; border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 10px; background: Canvas; color: CanvasText; box-shadow: 0 8px 30px #0003;
+}
+.inkora-table-size-dialog::backdrop { background: #0003; }
+.inkora-table-size-dialog h2 { margin: 0 0 16px; font: bold 18px system-ui; }
+.inkora-table-size-dialog form { display: grid; gap: 12px; font: 14px system-ui; }
+.table-size-fields { display: flex; flex-wrap: wrap; gap: 12px; }
+.table-size-fields label { display: grid; gap: 4px; }
+.table-size-fields input { width: 100px; font: inherit; }
+.table-size-grid { display: grid; gap: 3px; width: min(280px, 100%); }
+.table-size-grid > div { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+.table-size-grid button { padding: 0; aspect-ratio: 1; border: 1px solid GrayText; border-radius: 2px; background: Canvas; }
+.table-size-grid [aria-selected="true"] { background: Highlight; }
+.table-size-grid button:focus-visible { outline: 2px solid CanvasText; outline-offset: 1px; }
+.table-shrink-warning { font-size: 13px; }
+.table-shrink-warning[hidden] { display: none; }
+.table-size-actions { display: flex; justify-content: end; gap: 10px; }
+.table-size-actions button { font: inherit; }

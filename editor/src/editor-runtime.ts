@@ -1,3 +1,4 @@
+import { openTableSizeDialog } from "./table-size-dialog";
 import { EditorView } from "prosemirror-view";
 import { InkoraEditorSession } from "./editor-session";
 import { TextAreaEditorKernel } from "./editor-kernel";
@@ -113,6 +114,7 @@ export interface EditorRuntime {
   }>;
   readonly composing: boolean;
   insertTable(size?: TableSize): boolean;
+  requestTableInsertion(): boolean;
   applyImageDescriptors(values: readonly ImageResourceDescriptor[]): void;
   insertImage(value: ManagedImageInsertion): boolean;
   rewriteManagedImages(values: readonly ManagedImageRewrite[]): boolean;
@@ -475,6 +477,21 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   markSaved(text: string): void {
     this.session.markSaved(text);
     this.onChange(this.status, "status");
+  }
+
+  private tableDialog?: () => void;
+
+  requestTableInsertion(): boolean {
+    const view = this.view;
+    if (!view || this.composing || this.mode !== "visual" || !view.editable || this.tableDialog) return false;
+    const binding = view.state;
+    this.tableDialog = openTableSizeDialog(this.parent, {
+      title: "插入表格", initial: { columns: 2, rows: 2 },
+      isCurrent: () => !this.destroyed && this.view === view && view.state === binding && !this.composing,
+      apply: size => this.insertTable(size),
+      closed: () => { this.tableDialog = undefined; if (!view.isDestroyed) view.focus(); },
+    });
+    return true;
   }
 
   insertTable(size?: TableSize): boolean {
@@ -989,6 +1006,7 @@ class SourceAuthorityEditorRuntime implements EditorRuntime {
   }
 
   private destroySurface(): void {
+    this.tableDialog?.();
     this.sourceCompositionUnsubscribe?.();
     this.sourceCompositionUnsubscribe = undefined;
     if (this.view) {
@@ -1197,6 +1215,7 @@ class ReadOnlyEditorRuntime implements EditorRuntime {
     return { ok: false, message: "只读文档不能执行替换" };
   }
   insertTable(): boolean { return false; }
+  requestTableInsertion(): boolean { return false; }
   enterSourceMode(): boolean { return true; }
   applySourceDraft(): boolean { return false; }
   cancelSourceDraft(): boolean { return false; }

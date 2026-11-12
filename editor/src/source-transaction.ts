@@ -756,7 +756,7 @@ function rowCellBounds(source: string, line: SourceLine, column: number): { befo
   return { before, after: line.start + afterPipe, start, end };
 }
 
-function splitTableSourceRow(text: string): { prefix: string; cells: string[]; suffix: string } | null {
+function splitTableSourceRow(text: string): { prefix: string; cells: string[]; suffix: string; leading: boolean; trailing: boolean } | null {
   const pipes = structuralPipes(text);
   if (!pipes.length) return null;
   const leading = /^[>\t ]*$/.test(text.slice(0, pipes[0]));
@@ -768,7 +768,7 @@ function splitTableSourceRow(text: string): { prefix: string; cells: string[]; s
   let from = start;
   for (const at of [...cuts, end]) { cells.push(text.slice(from, at)); from = at + 1; }
   return { prefix: text.slice(0, leading ? pipes[0] : start), cells,
-    suffix: trailing ? text.slice(pipes.at(-1)! + 1) : '' };
+    suffix: trailing ? text.slice(pipes.at(-1)! + 1) : '', leading, trailing };
 }
 
 function tableCommandSourceRange(
@@ -843,7 +843,7 @@ function tableCommandPlan(
           if (count > columns) cells.splice(columns, 0, ...Array(count - columns).fill(index === 1 ? ' --- ' : '  '));
           else cells.splice(count, columns - count);
         }
-        content[index] = line.prefix + '|' + cells.join('|') + '|' + line.suffix;
+        content[index] = line.prefix + (line.leading ? '|' : '') + cells.join('|') + (line.trailing ? '|' : '') + line.suffix;
       }
       if (meta.type === 'resize') {
         const total = meta.rows! + 1;

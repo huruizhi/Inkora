@@ -1,3 +1,4 @@
+import { bindTableInteractions } from "./table-interactions";
 import "./table-menu.css";
 import type { Node as PMNode } from "prosemirror-model";
 import { TextSelection, type EditorState } from "prosemirror-state";
@@ -388,22 +389,27 @@ export function createTableNodeViews(options: TableNodeViewOptions) {
     scroll.className = "inkora-table-scroll";
     scroll.append(contentDOM);
     dom.append(toolbar, scroll);
+    const interactions = bindTableInteractions({ view, shell: dom, toolbar, scroll, table: contentDOM, getPos,
+      isComposing: options.isComposing });
+    interactions.update(node);
     return {
       dom,
       contentDOM,
       update(updated) {
         if (updated.type !== node.type) return false;
         updateAvailability(updated);
+        interactions.update(updated);
         return true;
       },
       destroy() {
         alive = false;
+        interactions.destroy();
         close();
       },
       ignoreMutation(mutation) {
-        return mutation.type !== "selection" && toolbar.contains(mutation.target);
+        return mutation.type !== "selection" && !contentDOM.contains(mutation.target);
       },
-      stopEvent(event) { return toolbar.contains(event.target as Node); },
+      stopEvent(event) { return toolbar.contains(event.target as Node) || interactions.contains(event.target as Node); },
     };
   };
 }

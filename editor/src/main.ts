@@ -103,7 +103,7 @@ const insertTableButton = document.createElement("button");
 insertTableButton.type = "button";
 insertTableButton.className = "insert-table";
 insertTableButton.textContent = "插入表格";
-insertTableButton.setAttribute("aria-label", "插入两列表格");
+insertTableButton.setAttribute("aria-label", "插入表格");
 const modeStatus = document.createElement("span");
 modeStatus.className = "editor-mode-status";
 modeStatus.setAttribute("role", "status");
@@ -349,7 +349,7 @@ function performEditorAction(command: EditorCommand): boolean {
     case "visualMode":
     case "cancelSource": applied = runtime!.cancelSourceDraft(); break;
     case "applySource": applied = runtime!.applySourceDraft(); break;
-    case "insertTable": return runtime!.insertTable();
+    case "insertTable": return runtime!.requestTableInsertion();
     case "find": searchPanel.open(); return true;
     case "toggleOutline": panel.setCollapsed(!panel.isCollapsed); return true;
     case "readingWidth760":
