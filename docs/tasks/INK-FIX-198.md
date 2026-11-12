@@ -31,3 +31,10 @@
 安装后重新核对版本/双架构/签名权限/全包资源，使用真实安装包资源跑同一Native12项，再正常启动。
 不沿用上一轮对build11的强退授权；无公开Release/tag/feed或Keychain操作。仍为本机ad-hoc预览，不冒称公证或完整桌面验收。
 保留原始产物与工作树待两层备份，不删除用户文档或共享依赖。
+
+## 固定本机构建
+
+构建源89c2f4b68443bad9265ced9dcd7f86d6b48059b8。`make lint`和`make build-release`退出0；源entitlements重签ad-hoc/runtime后strict/deep签名、精确权限及离线bundle-smoke通过。
+实际候选0.1.0 build13、正式ID、macOS14、x86_64+arm64；使用候选App资源运行同一Native12项全通过，隐藏窗口无物理输入。
+构建与lint原始输出保留artifacts/INK-FIX-198，tracked JSON记录长度和SHA；既有Swift隔离/Any转换及Vite chunk警告保留。
+完整默认CI仅对随后固定提交结算，安装收据另记私有artifacts；此处不冒称已安装或桌面可见行为已验。
