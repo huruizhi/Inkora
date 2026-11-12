@@ -19,7 +19,7 @@
 ## 独立运行证据
 
 - `node scripts/prepare-renderers.mjs`（editor目录）：退出0，只准备本地离线生成资源。
-- `node_modules/.bin/vitest run src/table-parity-runtime.test.ts`（editor目录）：退出0，18/18通过；覆盖参数建表、隐藏尾格/缺格、嵌套缩进、取消、缩减确认、历史和合成拖放。
+- `node_modules/.bin/vitest run src/table-parity-runtime.test.ts`（editor目录）：退出0，16/16通过；覆盖参数建表、隐藏尾格/缺格、嵌套缩进、取消、缩减确认、历史和合成拖放。
 - `editor/node_modules/.bin/vitest run editor/src/table-spec-review.test.ts`：退出1，四个规格反例全部red；前三项为拒绝/字节断言失败，第四项为存活行EOL断言失败。日志 `artifacts/INK-REV-184/frozen-probe.log`，原探针归档 [INK-REV-184-table-spec.probe.ts](INK-REV-184-table-spec.probe.ts)，复现时复制到 `editor/src/table-spec-review.test.ts`，不改产品或有效测试。
 - 探针早期遇到截取setup语法错误、未准备renderer资源，均已纠正；这些运行不作为产品失败依据。
 - 自建依赖软链仅指向主仓锁定 `editor/node_modules`，结束仅unlink；没有安装新依赖。
