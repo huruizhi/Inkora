@@ -222,7 +222,7 @@ function literalParagraphProjection(raw: string, parsed: ReturnType<typeof parse
   }
   if (emptyTail) spans.push({ sourceStart: raw.length, sourceEnd: raw.length,
     visualStart: positions.at(-1)! + 1, visualEnd: positions.at(-1)! + 1,
-    role: 'insertion-anchor', syntax: 'literal-list-next-paragraph', visible: true, text: '', projection: 'atom' });
+    role: 'insertion-anchor', syntax: 'literal-list-next-paragraph', visible: true, text: '' });
   const mappedRanges = ranges.map((range, index) => ({ ...range,
     end: changed.find(item => item.from === range.start)?.to ?? range.end,
     pos: positions[index], size: doc.child(index).nodeSize, kind: doc.child(index).type.name }));
