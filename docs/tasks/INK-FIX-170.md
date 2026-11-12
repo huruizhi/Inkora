@@ -34,3 +34,11 @@
 JSDOM 的 keydown 证明产品 keymap/事务与 DOM 控件接线，不能替代 WebKit 默认文字删除或事件时序。未跑 Native/WK、GUI、perf、整仓 make test/build，统一由168集成执行。没有安装依赖、触及用户文档或产生 App 副本。
 
 风险：列表首段边界 Backspace 现在先去一级列表格式，再继续合并，行为刻意避免不可表示的 tight 双段目标。单分隔空格例外不覆盖多空格、marks 或非 EOF 的投影差异，负控要求继续拒绝；一般连续空格由169负责。裸 `[ ]` 与 code 不生成任务。复杂引用前缀内的空列表与跨保护片段结构修改保持既有保守边界，不声称全部支持。
+
+## WebKit 后续：末字符删除的 tight 属性错误
+
+168 集成后真实 WebKit 从 `上一段\n\n- 项目\n` 连续删除，在删完最后一个列表字符时仍被语义闸门拒绝。追加公共 runtime 最小红：`上一段\n\n- 项\n` 上仅执行 `view.state.tr.delete` 删除“项”，无需 DOM `br` 即稳定复现。记录 canonical 与请求 PM，唯一差异是列表 `tight=false` 对 `tight=true`，排除原先怀疑的 DOM hard_break 和源 EOL 映射。
+
+根因是 `markdown-codec.ts:listIsTight` 取 list_item_open 后首个非 item_open token.hidden，空项首个 token 为 list_item_close，hidden=false，错误成为 loose。修复只扫描当前列表直接 item 的 paragraph_open.hidden，在当前列表闭合 level 停止，无 paragraph 时 tight=true；不读取嵌套列表或后邻段落，不扩大语法集合，不改会话语义闸门。
+
+先跑新增末字符 runtime 与8项 grammar 回归，初次9项中6红；修复后9项绿。追加连续删除、lift空项、回到前段并继续删除文字的公共 runtime 回归。最终运行前述5文件另加 `src/markdown-codec.test.ts src/schema.test.ts`，7文件209项通过；`tsc --noEmit`通过。WebKit 复验仍由168管理者执行。尾换行遵循既有原文保真，不能将 PM 空段消失等同于全部尾 EOL 已删除。

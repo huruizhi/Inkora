@@ -214,3 +214,40 @@ it('does not invent an insertion anchor for a schema-only paragraph before setex
   expect(result.ok, JSON.stringify(result)).toBe(true);
   if (result.ok) expect(visualToSource(result.ledger, 3, 3).ok).toBe(false);
 });
+it('deletes the final list character without a semantic mismatch', () => {
+  const { runtime, view } = setup('上一段\n\n- 项\n');
+  let pos = -1;
+  view.state.doc.descendants((node, at) => { if (node.isText && node.text === '项') pos = at; });
+  view.dispatch(view.state.tr.delete(pos, pos + 1));
+  expect(runtime.status.unresolved, evidence(runtime, view)).toBe(false);
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: '上一段\n\n- \n' });
+});
+
+it.each([
+  ['- \n', true],
+  ['1. \n', true],
+  ['- [ ]\n', true],
+  ['- \n- a', true],
+  ['- \n\n- a', false],
+  ['- a\n\n- b', false],
+  ['- a\n  - nested\n\n  - next', true],
+  ['- \n\nplain', true],
+])('derives tightness from only the current list paragraphs: %j', (raw, expected) => {
+  expect(parse(raw).doc.firstChild!.attrs.tight).toBe(expected);
+});
+it('deletes all list text, lifts, and merges into the previous paragraph', () => {
+  const { runtime, view, dom } = setup('上一段\n\n- 项\n');
+  let pos = -1;
+  view.state.doc.descendants((node, at) => { if (node.isText && node.text === '项') pos = at; });
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos + 1)));
+  view.dispatch(view.state.tr.delete(pos, pos + 1));
+  for (let count = 0; count < 2; count++) {
+    view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, bubbles: true, cancelable: true }));
+    expect(runtime.status.unresolved, evidence(runtime, view)).toBe(false);
+  }
+  expect(view.state.doc.childCount).toBe(1);
+  expect(view.state.selection.head).toBe(4);
+  view.dispatch(view.state.tr.delete(3, 4));
+  expect(runtime.status.unresolved, evidence(runtime, view)).toBe(false);
+  expect(view.state.doc.textContent).toBe('上一');
+});
