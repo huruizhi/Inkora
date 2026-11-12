@@ -1,0 +1,36 @@
+{
+  "sourceCommit": "127a3f48a97e30cb53628149531400033235a9a4",
+  "baseCommit": "1caa9b9a46e4d3f79349ae8d70929c2540962778",
+  "build": "7",
+  "bundleIdentifier": "com.huruizhi.Inkora",
+  "signature": "ad-hoc; not notarized",
+  "fileHashes": {
+    "Contents/Info.plist": "5e8c624d8de85bc7b88a4433a5691800e07f4d0597ed618aed6e0757df18713c",
+    "Contents/MacOS/Inkora": "e64d8e750a5542f399d4a3e14e3d37d19e27bf50532408d5cee7caf20e66360c",
+    "Contents/PkgInfo": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0",
+    "Contents/Resources/AppIcon.icns": "dbdfa6d4fe163bfce818b98bd0ec4bc375de1aca542f85286052f6377c40a5b5",
+    "Contents/Resources/Assets.car": "99adcb8219ca73983df61f1a4cdd954db10da3764c6454bf061f29dffaafb36a",
+    "Contents/Resources/Sparkle-LICENSE.txt": "816be66341dd11b22806862dffd8392b240babaced1cdf24da2ff413ef00c3fd",
+    "Contents/Resources/editor/RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "Contents/Resources/editor/THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "Contents/Resources/editor/assets/index-CjeM754S.js": "912edc2cefa39b4e431921f121137cb3de9834257656e293becd9615bd755949",
+    "Contents/Resources/editor/index.html": "57ce57e5ca9ce2e9cc3391d224aafbe5c851e8e9b96080015024f8aa1165ad80",
+    "Contents/Resources/editor/vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+    "Contents/_CodeSignature/CodeResources": "d0c90e0c4597ec9278b3fe6a2064f779bd078bb546061ee94924c34ff3680d32"
+  },
+  "installed": "/Applications/Inkora.app",
+  "backup": "/Users/rayhu/Documents/projects/Inkora/artifacts/deployments/build7-20261112-154629",
+  "installedHashesMatch": true,
+  "installedResourceTests": {
+    "writing": 16,
+    "failures": 0
+  },
+  "launchVerified": false,
+  "published": false,
+  "rollbackTrash": "/Users/rayhu/.Trash/.Inkora-build6-rollback-ba0f33c2c19e4616bf5d3b62c8b47fd4.app",
+  "launchBlocker": "Computer Use native pipe startup failed",
+  "archives": {
+    "previous-build6.zip": "335105cde72491f4e762536f7a0592355732112099938ed4f75834c0879ab388",
+    "installed-build7.zip": "01c60cc2c3d1b7f3ae29cc48deb1b140ea8527af328657b8845fb319870d3e08"
+  }
+}
