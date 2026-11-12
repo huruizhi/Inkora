@@ -42,3 +42,15 @@ JSDOM 的 keydown 证明产品 keymap/事务与 DOM 控件接线，不能替代 
 根因是 `markdown-codec.ts:listIsTight` 取 list_item_open 后首个非 item_open token.hidden，空项首个 token 为 list_item_close，hidden=false，错误成为 loose。修复只扫描当前列表直接 item 的 paragraph_open.hidden，在当前列表闭合 level 停止，无 paragraph 时 tight=true；不读取嵌套列表或后邻段落，不扩大语法集合，不改会话语义闸门。
 
 先跑新增末字符 runtime 与8项 grammar 回归，初次9项中6红；修复后9项绿。追加连续删除、lift空项、回到前段并继续删除文字的公共 runtime 回归。最终运行前述5文件另加 `src/markdown-codec.test.ts src/schema.test.ts`，7文件209项通过；`tsc --noEmit`通过。WebKit 复验仍由168管理者执行。尾换行遵循既有原文保真，不能将 PM 空段消失等同于全部尾 EOL 已删除。
+
+## 固定审查后的容器与松散列表补正
+
+172 Spec 独立报告两个现存缺口；本分支在修改前复现 `- a\n\n- b`、`> - b` 与引用松散变体三红。松散列表 lift 后剩下单项单段，但 PM 沿用 `tight=false`，canonical 为 `tight=true`；引用列表的完整源前缀包含 `>`，原 marker 定位只支持空格。新增回归后修复，未放宽 parse.eq。
+
+`listBoundaryBackspace` 现在只在原列表映射范围、同父深度，将 lift 后的单项单 paragraph 剩余列表恢复 canonical tight 属性；多项/多段/范围外不改。专用 lift metadata 可规划这一带属性更新的多步事务，但仍只准 marker 局部补丁并完整目标 eq，混入正文负控拒绝。`listJoinPlan` 保留全部引用前缀/BOM，只去列表 marker；必要空行继承原 EOL 与引用前缀。末空 paragraph 的有界证明允许在最后引用路径，每层须是末 child，删去该空 paragraph 后完整剩余 doc eq。
+
+按管理者两次连续 Backspace 验收要求继续补两个直接连接：同一 blockquote 中相邻 paragraph 可删其内容端点间仅含 EOL/quote prefix 的 separator；同容器 list 后首字符 paragraph 可并入前 list 末 item 唯一 paragraph，caret 留拼接点。后者有专用 metadata，完整源候选 eq 仍是接受条件；非相邻、多段 item、混入正文继续拒绝。均不触及 source-authority 或未知保护语法。
+
+公共 runtime 增加精确字节及 Undo/Redo：`- a\n\n- b` → `- a\n\nb` → `- ab`；`> a\n>\n> - b` → `> a\n>\n> b` → `> ab`；`> - b` 可继续去引用。覆盖重复引用、BOM/CRLF、空 task 位于引用末段及 negative metadata。引用 task 三种 label/尾空格变体点击原本已绿，未修改其产品路径。
+
+最终同前7文件229项通过，`tsc --noEmit`、`git diff --check`通过。作者未跑 Native/WK、App 或新增语法矩阵；管理者进行真实连续事件验收与冻结复审。本文早期“复杂引用空列表保守拒绝”仅描述第一版边界，本次明确覆盖上述引用路径，不将它当作已完成需求的豁免。

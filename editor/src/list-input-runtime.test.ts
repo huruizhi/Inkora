@@ -3,6 +3,7 @@ import { TextSelection } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 import { afterEach, expect, it } from 'vitest';
 import { buildSourceLedger, visualToSource } from './source-ledger';
+import { listBoundaryBackspace } from './block-editing';
 import { parse } from './source-document';
 import { planNativeTransaction } from './source-transaction';
 import { createInkoraProjectionState } from './editor-session';
@@ -250,4 +251,110 @@ it('deletes all list text, lifts, and merges into the previous paragraph', () =>
   view.dispatch(view.state.tr.delete(3, 4));
   expect(runtime.status.unresolved, evidence(runtime, view)).toBe(false);
   expect(view.state.doc.textContent).toBe('上一');
+});
+it.each(['- a\n\n- b', '> - b', '> - a\n>\n> - b'])('lifts loose and quoted list boundaries: %j', raw => {
+  const { runtime, view, dom } = setup(raw);
+  let pos = -1;
+  view.state.doc.descendants((node, at) => { if (node.isText) pos = at; });
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, bubbles: true, cancelable: true }));
+  expect(runtime.status.unresolved, evidence(runtime, view)).toBe(false);
+  expect(runtime.getText()).not.toBe(raw);
+});
+it.each([
+  ['- a\n\n- b', '- a\n\nb'],
+  ['> - b', '> b'],
+  ['> - a\n>\n> - b', '> - a\n>\n> b'],
+  ['\uFEFF> > - b\r\n', '\uFEFF> > b\r\n'],
+  ['- a\n\n- b\n\n- c', '- a\n\nb\n\n- c'],
+])('preserves surrounding bytes and source history on lift: %j', (raw, expected) => {
+  const { runtime, view, dom } = setup(raw);
+  let pos = -1;
+  view.state.doc.descendants((node, at) => { if (node.isText && node.text === 'b') pos = at; });
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, bubbles: true, cancelable: true }));
+  expect(runtime.snapshotText(), evidence(runtime, view)).toEqual({ ok: true, value: expected });
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(raw);
+  expect(runtime.redo()).toBe(true);
+  expect(runtime.getText()).toBe(expected);
+});
+it('continues backward from a quoted list through the quote boundary', () => {
+  const { runtime, view, dom } = setup('> - b');
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 4)));
+  for (let count = 0; count < 2; count++) view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, bubbles: true, cancelable: true }));
+  expect(runtime.snapshotText(), evidence(runtime, view)).toEqual({ ok: true, value: 'b' });
+});
+it.each(['> - [ ]', '> - [ ] ', '> - [ ] label'])('toggles quoted task with exact owner: %j', raw => {
+  const { runtime, parent } = setup(raw);
+  parent.querySelector<HTMLInputElement>('input')!.click();
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: raw.replace('[ ]', '[x]') });
+});
+it('continues from a lifted quoted list into its previous quoted paragraph', () => {
+  const { runtime, view, dom } = setup('> a\n>\n> - b');
+  let pos = -1;
+  view.state.doc.descendants((node, at) => { if (node.isText && node.text === 'b') pos = at; });
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+  for (let count = 0; count < 2; count++) {
+    view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, bubbles: true, cancelable: true }));
+  }
+  expect(runtime.snapshotText(), evidence(runtime, view)).toEqual({ ok: true, value: '> ab' });
+});
+
+it('rejects mixed text under list lift metadata', () => {
+  const raw = '- a\n\n- b';
+  const { runtime, view } = setup(raw);
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 8)));
+  expect(listBoundaryBackspace(view.state, tr => {
+    view.dispatch(tr.insertText('X', tr.doc.content.size - 1));
+  }, view)).toBe(true);
+  expect(runtime.getText()).toBe(raw);
+  expect(runtime.status).toMatchObject({ unresolved: true, canUndo: false });
+});
+it('joins adjacent quoted paragraphs without rewriting BOM or CRLF', () => {
+  const raw = '\uFEFF> > a\r\n> >\r\n> > - b\r\n';
+  const { runtime, view, dom } = setup(raw);
+  let pos = -1;
+  view.state.doc.descendants((node, at) => { if (node.isText && node.text === 'b') pos = at; });
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+  for (let count = 0; count < 2; count++) view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, bubbles: true, cancelable: true }));
+  expect(runtime.snapshotText()).toEqual({ ok: true, value: '\uFEFF> > ab\r\n' });
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(raw.replace('- b', 'b'));
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe(raw);
+});
+it('lifts an empty final task inside a quote after a previous paragraph', () => {
+  const { runtime, view, dom } = setup('> a\n>\n> - [ ]\n');
+  let pos = -1;
+  view.state.doc.descendants((node, at) => { if (node.type.name === 'paragraph' && node.content.size === 0) pos = at + 1; });
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, bubbles: true, cancelable: true }));
+  expect(runtime.status.unresolved, evidence(runtime, view)).toBe(false);
+});
+it('continues from a lifted loose item into the previous list paragraph', () => {
+  const { runtime, view, dom } = setup('- a\n\n- b');
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 8)));
+  for (let count = 0; count < 2; count++) view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Backspace', keyCode: 8, bubbles: true, cancelable: true }));
+  expect(runtime.snapshotText(), evidence(runtime, view)).toEqual({ ok: true, value: '- ab' });
+  expect(view.state.selection.head).toBe(4);
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe('- a\n\nb');
+  expect(runtime.undo()).toBe(true);
+  expect(runtime.getText()).toBe('- a\n\n- b');
+});
+it.each(['- a\n\n  more\n\nb', '- a\n\n---\n\nb'])('declines list paragraph join outside its owner shape: %j', raw => {
+  const { runtime, view } = setup(raw);
+  const pos = view.state.doc.content.size - 2;
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+  expect(listBoundaryBackspace(view.state, view.dispatch, view)).toBe(false);
+  expect(runtime.getText()).toBe(raw);
+});
+it('rejects mixed edits under paragraph-after-list metadata', () => {
+  const raw = '- a\n\nb';
+  const { runtime, view } = setup(raw);
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 8)));
+  expect(listBoundaryBackspace(view.state, tr => view.dispatch(tr.insertText('X', 3)), view)).toBe(true);
+  expect(runtime.getText()).toBe(raw);
+  expect(runtime.status.unresolved).toBe(true);
 });

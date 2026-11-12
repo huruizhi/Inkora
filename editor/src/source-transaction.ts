@@ -619,9 +619,24 @@ function splitPlan(
   return null;
 }
 
-function paragraphJoinPlan(source: string, state: EditorState, tr: Transaction, ranges: readonly NativeRange[]): NativePlan | null {
+function paragraphJoinPlan(source: string, state: EditorState, tr: Transaction, ranges: readonly NativeRange[], position: SourcePosition): NativePlan | null {
   if (!state.selection.empty || countType(tr.doc, 'paragraph') >= countType(state.doc, 'paragraph')) return null;
   const caret = state.selection.from;
+  const { $from } = state.selection;
+  if ($from.parent.type.name === 'paragraph' && $from.parentOffset === 0 &&
+      $from.depth > 1 && $from.node(-1).type.name === 'blockquote' && $from.index(-1) > 0 &&
+      $from.node(-1).child($from.index(-1) - 1).type.name === 'paragraph') {
+    const from = position($from.before() - 1, 'to');
+    const to = position(caret, 'from');
+    const separator = source.slice(from, to);
+    // The two adjacent paragraphs share this quote owner. Only their line
+    // endings and repeated quote prefixes may be removed, never hidden syntax.
+    if (from < to && /^(?:[\t ]*(?:\r\n|\n)[\t ]*(?:>[\t ]*)*)+$/.test(separator)) {
+      const patches = [{ from, to, insert: '' }];
+      const candidate = applyNativePatches(source, patches);
+      if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'paragraph-join' };
+    }
+  }
   let left: NativeRange | undefined;
   let right: NativeRange | undefined;
   for (let index = 0; index < ranges.length; index++) {
@@ -642,9 +657,9 @@ function listJoinPlan(source: string, state: EditorState, tr: Transaction, posit
   const contentStart = position(state.selection.from, 'from');
   const lineStart = source.lastIndexOf('\n', Math.max(0, contentStart - 1)) + 1;
   const prefix = source.slice(lineStart, contentStart);
-  const marker = /^(\uFEFF?)([\t ]*)([-+*]|\d+[.)])[\t ]+(?:\[[ xX]\][\t ]*)?$/.exec(prefix);
+  const marker = /^(\uFEFF?)((?:[\t ]*>[\t ]*)*)[\t ]*([-+*]|\d+[.)])[\t ]*(?:\[[ xX]\][\t ]*)?$/.exec(prefix);
   if (!marker) throw Error('列表 join 的行标记无法安全定位');
-  const markerStart = lineStart + marker[1].length;
+  const markerStart = lineStart + marker[1].length + marker[2].length;
   let separatorStart = lineStart;
   if (separatorStart > 0 && source[separatorStart - 1] === '\n') {
     separatorStart--;
@@ -655,7 +670,8 @@ function listJoinPlan(source: string, state: EditorState, tr: Transaction, posit
   const previousLine = source.slice(previousLineStart, separatorStart);
   // Lifting keeps the existing paragraph boundary. Adjacent nonblank lines
   // need a second EOL so Markdown does not turn them into one softbreak.
-  const liftInsert = separatorStart < lineStart && !/^[\t ]*$/.test(previousLine) ? eol : '';
+  const previousContent = previousLine.replace(/^(?:\uFEFF)?(?:[\t ]*>[\t ]*)*/, '');
+  const liftInsert = separatorStart < lineStart && !/^[\t ]*$/.test(previousContent) ? eol + marker[2] : '';
   const candidates = [
     { patches: [{ from: markerStart, to: contentStart, insert: liftInsert }], description: 'lift list item' },
     { patches: [{ from: separatorStart, to: contentStart, insert: '' }], description: 'join list contents' },
@@ -665,12 +681,17 @@ function listJoinPlan(source: string, state: EditorState, tr: Transaction, posit
   // At EOF an empty lifted paragraph is represented by the blank source line,
   // not by a parser paragraph. Prove the complete remaining document and the
   // single empty caret block before accepting that bounded projection.
-  const last = tr.doc.lastChild;
+  const targetCaret = tr.selection.$from;
+  const last = targetCaret.parent;
+  const quotedEof = targetCaret.depth > 1 && Array.from({ length: targetCaret.depth - 1 }, (_, index) => index + 1)
+    .every(depth => targetCaret.node(depth).type.name === 'blockquote' &&
+      targetCaret.index(depth - 1) === targetCaret.node(depth - 1).childCount - 1);
   if (state.selection.$from.parent.content.size === 0 &&
-      (/^(?:\r\n|\n)?$/.test(source.slice(contentStart))) && last?.type.name === 'paragraph' &&
+      /^(?:\r\n|\n)?$/.test(source.slice(contentStart)) && last.type.name === 'paragraph' &&
       last.content.size === 0 && tr.selection.empty &&
-      tr.selection.head === tr.doc.content.size - 1) {
-    const withoutEmpty = tr.doc.copy(tr.doc.content.cut(0, tr.doc.content.size - last.nodeSize));
+      targetCaret.index(-1) === targetCaret.node(-1).childCount - 1 &&
+      (targetCaret.depth === 1 || quotedEof)) {
+    const withoutEmpty = tr.doc.replace(targetCaret.before(), targetCaret.after(), tr.doc.slice(0, 0));
     const lifted = matchingStructuralPlan(source, withoutEmpty, [candidates[0]]);
     if (lifted) return { ...lifted, kind: 'list-join', sourceCaret: lifted.candidate.length };
   }
@@ -1001,6 +1022,28 @@ export function planNativeTransaction(
   ledger?: SourceLedger,
 ): NativePlan {
   if (!tr.docChanged) throw Error('原生补丁规划器只接受文档事务');
+  if (tr.getMeta('inkoraParagraphAfterListJoin') === true && state.selection.empty &&
+      state.selection.$from.parentOffset === 0 && state.selection.$from.parent.type.name === 'paragraph' &&
+      state.selection.$from.index(-1) > 0) {
+    const resolved = state.selection.$from;
+    const previous = resolved.node(-1).child(resolved.index(-1) - 1);
+    if ((resolved.depth === 1 || resolved.node(-1).type.name === 'blockquote') &&
+        ['bullet_list', 'ordered_list'].includes(previous.type.name) && previous.lastChild?.childCount === 1 &&
+        previous.lastChild.firstChild?.type.name === 'paragraph') {
+      const from = position(resolved.before() - 3, 'to');
+      const to = position(resolved.pos, 'from');
+      if (from < to && /^(?:[\t ]*(?:\r\n|\n)[\t ]*(?:>[\t ]*)*)+$/.test(source.slice(from, to))) {
+        const patches = [{ from, to, insert: '' }];
+        const candidate = applyNativePatches(source, patches);
+        if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'list-join', sourceCaret: from };
+      }
+    }
+  }
+  if (tr.getMeta('inkoraListBoundaryLift') === true && tr.steps[0]?.toJSON().stepType === 'replaceAround' &&
+      state.selection.empty && state.selection.$from.parentOffset === 0) {
+    const listLift = listJoinPlan(source, state, tr, position);
+    if (listLift) return listLift;
+  }
   const supplemental = tr.steps.slice(1).map(step => step.toJSON() as Record<string, any>);
   if (supplemental.some(step => step.stepType !== 'addMark' && step.stepType !== 'removeMark' && !(step.stepType === 'replace' && step.structure))) throw Error('该多步原生事务尚未支持；可信原文与 PM 状态保持不变');
   const step = tr.steps[0].toJSON() as Record<string, any>;
@@ -1111,7 +1154,7 @@ export function planNativeTransaction(
   if (split) return split;
   const listJoin = listJoinPlan(source, state, tr, position);
   if (listJoin) return listJoin;
-  const paragraphJoin = paragraphJoinPlan(source, state, tr, ranges);
+  const paragraphJoin = paragraphJoinPlan(source, state, tr, ranges, position);
   if (paragraphJoin) return paragraphJoin;
   throw Error(`该原生事务尚未支持（${step.stepType ?? 'unknown'}）；可信原文与 PM 状态保持不变`);
 }
