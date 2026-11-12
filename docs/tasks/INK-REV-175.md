@@ -45,3 +45,13 @@ Fowler 基线逐项检查：Mysterious Name、Duplicated Code、Feature Envy、D
 本人实跑：固定新增范围 `git diff --check aec23e2663ac5c624a0bdf071bf7a2a13c16feca...512ad4e41660355fe14dd6a7db6fa0c2672fa2a9` 退出 0；本次文档 `git diff --cached --check` 通过；以原提交 blob 对两文件作 byte prefix 校验通过。未跑产品测试、build、WK/App/UI、新 Agent 或网络。
 
 只向原两文档末尾追加；未完成事项无。静态结论仍不证明输入法、选区/复制、真实 paint 或最低系统验收通过。后验 commit subject 为 `docs(review): append heading entry standards follow-up`，SHA 随交付回报；不 push、不建 PR、不 merge。
+
+## 行内格式限定静态后验（6eaa308）
+
+开始 HEAD `77cf6c267082a7167548b060258c3cb8e5554e86`，工作树 clean。固定产品 `6eaa308496ca876ec4e70ad42304c3a597b23945`；仅审 `git diff 512ad4e41660355fe14dd6a7db6fa0c2672fa2a9..6eaa308496ca876ec4e70ad42304c3a597b23945 -- editor/src/heading-entry.ts editor/src/heading-entry-runtime.test.ts`。其他 diff 文件仅见 stat，不扩读或评审；未合入产品提交。
+
+根公共 toggleMark 回归发现选中标题正文加粗会提前丢失 entry 显示。补正仅延续既有 entry 的同一根 heading 正文外观，按 root childCount、sameMarkup、其他 siblings.eq 与 sourceStart 前原文共同限定；不改变内容接受契约。原限定纯文本才可创建 entry。新增 hard 0、possible 0；不作 Spec 裁定，不修改生产文件。
+
+根报告 entry 13 已绿，全量与 19 WK 在本次指令时仍在运行；均属外部证据，本人未执行或确认其完成结果。本人只执行 git 状态/差异静态读取、本次文档 `git diff --cached --check` 与 byte prefix 校验，后两项通过；无产品测试、build、WK/App/UI、新 Agent 或网络操作。
+
+仅追加原两文档，`77cf6c2` 原 blob 的 byte prefix 均保持。未完成事项无，静态评审的行为验收风险保持。追加 commit subject 为 `docs(review): append inline heading format standards`，SHA 随交付回报；不 push、不建 PR、不 merge。
