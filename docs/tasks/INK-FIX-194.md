@@ -72,3 +72,8 @@ NativeAnchor增加可选reason描述新空段位置，当前原文新空段ancho
 
 新增文件list-gap-projection.ts；补source-authority接线与heading-input-runtime回归。其余产品归属不变，无Native产品/协议/依赖变更。
 全部尝试、原始日志与冻结baseline保留ignored artifacts；两轴后验和安装CI另记。build12尚未安装。
+
+## 最终有界复验
+
+197首稿两P2由审查者固定2a1580e复验关闭：既有两文件111、原问题5、新边界10项均通过；首稿全文保留，未把作者Native31当作其自跑。
+本机候选195已以相同产品跑实际App资源Native31/31、0失败。余最终CI/安装仍由195门禁执行；未提前宣告完成。
