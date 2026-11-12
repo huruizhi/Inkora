@@ -3,7 +3,7 @@ import { TextSelection } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 import { afterEach, expect, it } from 'vitest';
 import { buildSourceLedger, visualToSource } from './source-ledger';
-import { listBoundaryBackspace } from './block-editing';
+import { blockKeyBindings, listBoundaryBackspace } from './block-editing';
 import { parse } from './source-document';
 import { planNativeTransaction } from './source-transaction';
 import { createInkoraProjectionState } from './editor-session';
@@ -414,4 +414,122 @@ it.each(['-', '+', '*'])('allows Enter after an uncompleted %j without activatin
   expect(parent.querySelector('ul')).toBeNull();
   type(view,'after');
   expect(runtime.snapshotText()).toEqual({ok:true,value:marker+'\n\nafter'});
+});
+
+it.each(['- ', '# 水电费\n\n- 水电费\n- 第三方\n- '])('creates an empty item on first Enter then exits on consecutive Enter in %j', raw => {
+  const {runtime,view,dom}=setup(raw);
+  let at=-1;view.state.doc.descendants((node,pos)=>{if(node.type.name==='paragraph' && node.content.size===0)at=pos+1;});
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,at)));
+  const before=view.dom.querySelectorAll('li').length;
+  const enter=()=>view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  enter();
+  expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(view.dom.querySelectorAll('li').length).toBe(before+1);
+  expect(runtime.getText()).toBe(raw+'\n- ');
+  enter();
+  expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(view.dom.querySelectorAll('li').length).toBe(before);
+  expect(view.state.selection.$from.depth).toBe(1);
+  expect(runtime.getText()).toBe(raw+'\n\n');
+  type(view,'正文');
+  expect(runtime.snapshotText()).toEqual({ok:true,value:raw+'\n\n正文'});
+});
+it.each([
+  ['- ','- \n- ','- \n\n'],
+  ['\uFEFF- \r\n','\uFEFF- \r\n- \r\n','\uFEFF- \r\n\r\n\r\n'],
+  ['1. ','1. \n1. ','1. \n\n'],
+])('retains exact source bytes across two Enters: %j', (raw,first,second)=>{
+  const {runtime,view,dom}=setup(raw);let at=-1;
+  view.state.doc.descendants((node,pos)=>{if(node.type.name==='paragraph'&&node.content.size===0)at=pos+1;});
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,at)));
+  const enter=()=>view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  enter();expect(runtime.snapshotText(),evidence(runtime,view)).toEqual({ok:true,value:first});
+  enter();expect(runtime.snapshotText(),evidence(runtime,view)).toEqual({ok:true,value:second});
+  expect(runtime.undo()).toBe(true);expect(runtime.getText()).toBe(first);
+  expect(runtime.undo()).toBe(true);expect(runtime.getText()).toBe(raw);
+});
+it.each(['selection','pointer','arrow','modifier','composition','edit'] as const)('resets the Enter sequence on %s',action=>{
+  const {runtime,view,dom}=setup('- ');
+  const enter=()=>view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  enter();
+  if(action==='selection'){
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,3)));
+    view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+  }else if(action==='pointer')view.dom.dispatchEvent(new dom.window.MouseEvent('mousedown',{bubbles:true}));
+  else if(action==='arrow')view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+  else if(action==='modifier')view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',ctrlKey:true,bubbles:true,cancelable:true}));
+  else if(action==='composition'){
+    // The public UI event resets only the gesture; native composition itself
+    // has dedicated WK coverage and must not be fabricated as text here.
+    view.someProp('handleDOMEvents',handlers=>{handlers.compositionstart?.(view,new dom.window.CompositionEvent('compositionstart'));return false;});
+  }else{type(view,'x');view.dispatch(view.state.tr.delete(view.state.selection.head-1,view.state.selection.head));}
+  enter();expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(view.dom.querySelectorAll('li').length).toBe(3);
+});
+it('does not restore a consecutive Enter gesture through Undo and a rebuilt view',()=>{
+  const {runtime,view,dom}=setup('- ');
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  type(view,'x');expect(runtime.undo()).toBe(true);
+  const current=(runtime as unknown as {view:EditorView}).view;
+  current.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  expect(runtime.status.unresolved,evidence(runtime,current)).toBe(false);
+  expect(current.dom.querySelectorAll('li').length).toBe(3);
+});
+it.each(['- \n- b','- a\n- \n- b'])('exits a middle empty item into an editable source gap: %j',raw=>{
+  const {runtime,view,dom}=setup(raw);let at=-1;
+  view.state.doc.descendants((node,pos)=>{if(at<0&&node.type.name==='paragraph'&&node.content.size===0)at=pos+1;});
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,at)));
+  const enter=()=>view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  enter();enter();expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(view.state.selection.$from.depth).toBe(1);
+  type(view,'正文');expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(runtime.snapshotText().ok).toBe(true);
+  expect(view.state.doc.child(1).textContent).toBe('正文');
+  expect(runtime.getText()).toContain('- b');
+});
+
+it.each(['- abc','- [ ] abc'])('keeps selected-text Enter splitting list items in %j',raw=>{
+  const {view}=setup(raw);view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,4,5)));
+  let result=view.state;
+  expect(blockKeyBindings.Enter(view.state,tr=>{result=view.state.apply(tr);},view)).toBe(true);
+  expect(result.doc.firstChild!.childCount).toBe(2);
+  expect(result.doc.firstChild!.child(0).textContent).toBe('a');
+  expect(result.doc.firstChild!.child(1).textContent).toBe('c');
+});
+it('continues ordinary Enter and Backspace inside a middle list source gap',()=>{
+  const {runtime,view,dom}=setup('- \n- b');
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,3)));
+  const key=(key:string)=>view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key,keyCode:key==='Enter'?13:8,bubbles:true,cancelable:true}));
+  key('Enter');key('Enter');key('Enter');
+  expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  type(view,'正文');expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(runtime.snapshotText().ok).toBe(true);
+});
+it.each(['- \n\n水电费\n\n- 第三方\n- ', '- \n\n水电费\n- 第三方\n- '])('Backspace at a paragraph start reaches the previous list line: %j',raw=>{
+  const {runtime,view,dom}=setup(raw);let at=-1;
+  view.state.doc.descendants((node,pos)=>{if(node.type.name==='paragraph'&&node.textContent==='水电费')at=pos+1;});
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,at)));
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Backspace',keyCode:8,bubbles:true,cancelable:true}));
+  expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(runtime.getText()).toContain('- 水电费');
+  expect(runtime.getText()).toContain('- 第三方');
+  expect(runtime.directedSelection.selectionHead).toBe(2);
+  expect(runtime.undo()).toBe(true);expect(runtime.getText()).toBe(raw);
+});
+it('Backspace returns from an empty middle paragraph to the preceding list line',()=>{
+  const {runtime,view,dom}=setup('- \n- b');view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,3)));
+  const key=(key:string)=>view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key,keyCode:key==='Enter'?13:8,bubbles:true,cancelable:true}));
+  key('Enter');key('Enter');key('Backspace');
+  expect(runtime.status.unresolved,evidence(runtime,view)).toBe(false);
+  expect(view.state.selection.$from.depth).toBe(3);
+  expect(runtime.snapshotText().ok).toBe(true);
+});
+
+it('rejects an unrelated text mutation attached to a middle list exit',()=>{
+  const {runtime,view,dom}=setup('- \n- b');view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,3)));
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  const before=runtime.getText();
+  blockKeyBindings.Enter(view.state,tr=>view.dispatch(tr.insertText('X',tr.doc.content.size-3)),view);
+  expect(runtime.getText()).toBe(before);
+  expect(runtime.status.unresolved).toBe(true);
 });
