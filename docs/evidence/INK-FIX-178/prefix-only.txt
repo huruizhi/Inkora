@@ -1,0 +1,69 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/editor
+
+{"input":{"raw":"-[]","at":1,"expected":"- []","checkbox":false},"raw":"- []","html":"<ul><li><p>[]</p></li></ul>","selection":{"selectionAnchor":2,"selectionHead":2},"status":{"dirty":true,"canUndo":true,"canRedo":false,"draftDirty":false,"unresolved":false,"saveEligible":true},"diagnostic":""}
+{"input":{"raw":"- []","at":3,"expected":"- [ ]","checkbox":true},"raw":"- []","html":"<ul><li><p>[]</p></li></ul>","selection":{"selectionAnchor":3,"selectionHead":3},"status":{"dirty":false,"canUndo":false,"canRedo":false,"draftDirty":false,"unresolved":true,"saveEligible":false},"diagnostic":"原文 4 位于非可视 block-prefix/block-prefix，不盲映射到正文"}
+{"input":{"raw":"[]","at":1,"expected":"[ ]","checkbox":false},"raw":"[ ]","html":"<p>[ ]</p>","selection":{"selectionAnchor":2,"selectionHead":2},"status":{"dirty":true,"canUndo":true,"canRedo":false,"draftDirty":false,"unresolved":false,"saveEligible":true},"diagnostic":""}
+{"input":{"raw":"- []\r\n","at":3,"expected":"- [ ]\r\n","checkbox":true},"raw":"- []\r\n","html":"<ul><li><p>[]</p></li></ul>","selection":{"selectionAnchor":3,"selectionHead":3},"status":{"dirty":false,"canUndo":false,"canRedo":false,"draftDirty":false,"unresolved":true,"saveEligible":false},"diagnostic":"原文 4 位于非可视 block-prefix/block-prefix，不盲映射到正文"}
+{"raw":"- [ ]","html":"<ul><li data-task-state=\" \"><input type=\"checkbox\" class=\"inkora-task-checkbox\" tabindex=\"0\" aria-label=\"任务：未命名任务\"><div class=\"inkora-task-content\"><p><br class=\"ProseMirror-trailingBreak\"></p></div></li></ul>","status":{"dirty":true,"canUndo":true,"canRedo":false,"draftDirty":false,"unresolved":false,"saveEligible":true},"diagnostic":""}
+ ❯ src/task-space-input-runtime.test.ts (6 tests | 3 failed) 71ms
+   × inserts a space at raw offset 3 of - [] 7ms
+   × inserts a space at raw offset 3 of - []
+ 4ms
+   × repairs both missing spaces in -[] in two explicit steps 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > inserts a space at raw offset 3 of - []
+AssertionError: expected '- []' to be '- [ ]' // Object.is equality
+
+Expected: "- [ ]"
+Received: "- []"
+
+ ❯ src/task-space-input-runtime.test.ts:32:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > inserts a space at raw offset 3 of - []
+
+AssertionError: expected '- []\r\n' to be '- [ ]\r\n' // Object.is equality
+
+- Expected
++ Received
+
+- - [ ]
++ - []
+
+
+ ❯ src/task-space-input-runtime.test.ts:32:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > repairs both missing spaces in -[] in two explicit steps
+TypeError: target.getClientRects is not a function
+ ❯ singleRect ../../../editor/node_modules/.pnpm/prosemirror-view@1.42.9/node_modules/prosemirror-view/dist/index.js:529:24
+ ❯ coordsAtPos ../../../editor/node_modules/.pnpm/prosemirror-view@1.42.9/node_modules/prosemirror-view/dist/index.js:577:29
+ ❯ EditorView.coordsAtPos ../../../editor/node_modules/.pnpm/prosemirror-view@1.42.9/node_modules/prosemirror-view/dist/index.js:5863:16
+ ❯ EditorView.scrollToSelection ../../../editor/node_modules/.pnpm/prosemirror-view@1.42.9/node_modules/prosemirror-view/dist/index.js:5721:43
+ ❯ EditorView.updateStateInner ../../../editor/node_modules/.pnpm/prosemirror-view@1.42.9/node_modules/prosemirror-view/dist/index.js:5702:18
+ ❯ EditorView.updateState ../../../editor/node_modules/.pnpm/prosemirror-view@1.42.9/node_modules/prosemirror-view/dist/index.js:5622:14
+ ❯ EditorView.dispatchTransaction src/editor-runtime.ts:819:14
+    817|         if (accepted) updateHeadingEntry?.(this.session.state, this.se…
+    818|         lastDispatchAccepted = accepted;
+    819|         view.updateState(this.session.state);
+       |              ^
+    820|         if (accepted && this.compositionPhase === "settling" &&
+    821|             (continuesOwner || (compositionID !== undefined && composi…
+ ❯ EditorView.dispatch ../../../editor/node_modules/.pnpm/prosemirror-view@1.42.9/node_modules/prosemirror-view/dist/index.js:5998:29
+ ❯ SourceAuthorityEditorRuntime.navigateRawRange src/editor-runtime.ts:569:16
+ ❯ src/task-space-input-runtime.test.ts:46:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 3 passed (6)
+   Start at  19:04:10
+   Duration  496ms (import 70%, tests 18%, transform 12%)

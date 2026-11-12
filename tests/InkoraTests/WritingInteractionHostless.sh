@@ -17,7 +17,7 @@ import XCTest
   static func main() {
     let suite = XCTestSuite(forTestCaseClass: WritingInteractionHostlessTests.self)
     suite.run()
-    guard let run = suite.testRun, run.executionCount == 19, run.hasSucceeded else { exit(1) }
+    guard let run = suite.testRun, run.executionCount == 21, run.hasSucceeded else { exit(1) }
   }
 }
 SWIFT
@@ -29,5 +29,5 @@ xcrun swiftc -swift-version 6 -I "$platform/Developer/usr/lib" -L "$platform/Dev
   -Xlinker -rpath -Xlinker "$platform/Developer/usr/lib" \
   "${sources[@]}" "$root/tests/InkoraTests/WritingInteractionHostlessTests.swift" "$out/Runner.swift" \
   -o "$out/writing-tests" > "$out/compile.log" 2>&1
-INKORA_WRITING_RESOURCE_BUNDLE="$out/Resources.bundle" "$out/writing-tests" > "$out/native-tests.log" 2>&1
+INKORA_WRITING_RESOURCE_BUNDLE="${INKORA_WRITING_RESOURCE_BUNDLE:-$out/Resources.bundle}" "$out/writing-tests" > "$out/native-tests.log" 2>&1
 cat "$out/native-tests.log"

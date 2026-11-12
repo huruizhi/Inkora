@@ -377,6 +377,45 @@ function nodeCount(doc: PMNode, type: string): number {
   return count;
 }
 
+/** Completing [] hides its newly accepted task marker; prove the new label caret. */
+function completedTaskMarkerCaret(beforeRaw: string, beforeDoc: PMNode, ledger: SourceLedger,
+  plan: NativePlan, parsed: ReturnType<typeof parse>, target: PMNode): number | undefined {
+  if (plan.kind !== 'text' || plan.patches.length !== 1 || parsed.issues.length ||
+      ledger.sourceLength !== beforeRaw.length || ledger.docSize !== beforeDoc.content.size) return;
+  const patch = plan.patches[0];
+  if (patch.from !== patch.to || patch.insert !== ' ' ||
+      beforeRaw.slice(patch.from - 1, patch.from + 1) !== '[]') return;
+  const left = ledger.spans.filter(span => span.visible && span.role === 'text' &&
+    span.sourceStart === patch.from - 1 && span.sourceEnd === patch.from && span.text === '[');
+  const right = ledger.spans.filter(span => span.visible && span.role === 'text' &&
+    span.sourceStart === patch.from && span.sourceEnd === patch.from + 1 && span.text === ']');
+  if (left.length !== 1 || right.length !== 1 || left[0].visualEnd === undefined ||
+      left[0].visualEnd !== right[0].visualStart) return;
+  const point = left[0].visualEnd;
+  const resolved = beforeDoc.resolve(point);
+  if (resolved.parent.type.name !== 'paragraph' || resolved.parentOffset !== 1 ||
+      resolved.depth < 2 || resolved.index(-1) !== 0 || resolved.node(-1).type.name !== 'list_item' ||
+      resolved.node(-1).attrs.task ||
+      !EditorState.create({ doc: beforeDoc }).tr.insertText(' ', point).doc.eq(target)) return;
+  const itemPos = resolved.before(resolved.depth - 1);
+  const item = target.nodeAt(itemPos), paragraph = item?.firstChild;
+  const visualPrefix = /^\[ \](?:[\t ]+|$)/.exec(paragraph?.textContent ?? '')?.[0];
+  const rawPrefix = /^\[ \](?:[\t ]+|(?=\r?\n|$))/.exec(plan.candidate.slice(patch.from - 1))?.[0];
+  if (!item || item.attrs.task || !paragraph || !visualPrefix || !rawPrefix ||
+      !paragraph.firstChild?.isText || paragraph.firstChild.marks.length ||
+      paragraph.firstChild.text!.length < visualPrefix.length) return;
+  const content = item.content.replaceChild(0, paragraph.copy(paragraph.content.cut(visualPrefix.length)));
+  const task = item.type.create({ ...item.attrs, task: true, checked: false, stateChar: ' ' }, content, item.marks);
+  const expected = EditorState.create({ doc: target }).tr.replaceWith(itemPos, itemPos + item.nodeSize, task).doc;
+  if (!expected.eq(parsed.doc)) return;
+  const nextLedger = baseLedger(plan.candidate, parsed);
+  const label = itemPos + 2;
+  const endpoint = visualToSource(nextLedger, label, label, { collapsedAffinity: 'right' });
+  if (!endpoint.ok || endpoint.snapped.length || endpoint.head < patch.from - 1 + rawPrefix.length) return;
+  const mapped = sourceToVisual(nextLedger, endpoint.head, endpoint.head, { collapsedAffinity: 'right' });
+  return mapped.ok && !mapped.snapped.length && mapped.anchor === label ? endpoint.head : undefined;
+}
+
 function semanticReprojectionProof(beforeRaw: string, beforeDoc: PMNode, projection: ProjectionAudit, plan: NativePlan, parsedDoc: PMNode, targetDoc: PMNode): string | null {
   if (!['text', 'empty-text', 'projection-sync'].includes(plan.kind) || plan.patches.length !== 1) return null;
   const patch = plan.patches[0];
@@ -1520,6 +1559,8 @@ export class SourceAuthoritySession {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
       const parsed = this.parseSource(plan.candidate);
+      if (!this.composing) sourceCaret = completedTaskMarkerCaret(before.raw, before.state.doc,
+        context.ledger, plan, parsed, target.doc) ?? sourceCaret;
       const compositionOwner = this.planCompositionOwner(plan, target);
       if (this.projection.compositionOwner && !compositionOwner && !parsed.doc.eq(target.doc)) throw Error('组合输入事务超出已证明 owner');
       if (!compositionOwner && !parsed.issues.length && !parsed.doc.eq(target.doc) && !literalWhitespaceProjection(plan.candidate, parsed, target.doc) && !ownerTrailingWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))) {

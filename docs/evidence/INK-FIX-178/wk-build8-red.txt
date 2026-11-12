@@ -1,0 +1,51 @@
+Test Suite 'WritingInteractionHostlessTests' started at 2026-11-12 19:11:53.814.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' started.
+Test Case '-[main.WritingInteractionHostlessTests testCompositionKeepsCandidateOwnerAfterBareHash]' passed (2.099 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConfirmedBareHashTextCanBeDeletedBackToBlank]' passed (0.591 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' started.
+Test Case '-[main.WritingInteractionHostlessTests testConsecutiveSpacesRetainEveryTypedByte]' passed (0.375 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyHeadingBackspaceRemovesFormatAndAcceptsText]' passed (0.362 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' started.
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskCheckboxCanToggleBeforeLabelIsTyped]' passed (0.840 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskLabelCompositionKeepsCheckboxAndCandidate]' started.
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/tests/InkoraTests/WritingInteractionHostlessTests.swift:227: error: -[main.WritingInteractionHostlessTests testEmptyTaskLabelCompositionKeepsCheckboxAndCandidate] : XCTAssertEqual failed: ("Optional(false)") is not equal to ("Optional(true)")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/tests/InkoraTests/WritingInteractionHostlessTests.swift:230: error: -[main.WritingInteractionHostlessTests testEmptyTaskLabelCompositionKeepsCheckboxAndCandidate] : XCTAssertEqual failed: ("Optional(false)") is not equal to ("Optional(true)")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/tests/InkoraTests/WritingInteractionHostlessTests.swift:234: error: -[main.WritingInteractionHostlessTests testEmptyTaskLabelCompositionKeepsCheckboxAndCandidate] : XCTAssertEqual failed: ("- [ ]zh") is not equal to ("- [ ] 中")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/tests/InkoraTests/WritingInteractionHostlessTests.swift:236: error: -[main.WritingInteractionHostlessTests testEmptyTaskLabelCompositionKeepsCheckboxAndCandidate] : XCTAssertEqual failed: ("Optional(false)") is not equal to ("Optional(true)")
+/Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/tests/InkoraTests/WritingInteractionHostlessTests.swift:241: error: -[main.WritingInteractionHostlessTests testEmptyTaskLabelCompositionKeepsCheckboxAndCandidate] : XCTAssertEqual failed: ("- [ ]zh") is not equal to ("- [ ] 中")
+Test Case '-[main.WritingInteractionHostlessTests testEmptyTaskLabelCompositionKeepsCheckboxAndCandidate]' failed (0.499 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' started.
+Test Case '-[main.WritingInteractionHostlessTests testExistingStandardTaskMarkdownHasCheckbox]' passed (0.167 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingContinuousTextWithoutIntermediateSnapshots]' passed (0.337 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingEntryKeepsGrayMarkerAndBodySizeUntilEnter]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingEntryKeepsGrayMarkerAndBodySizeUntilEnter]' passed (1.219 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingEntryMarkedTailSpaceDoesNotRenderEarly]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingEntryMarkedTailSpaceDoesNotRenderEarly]' passed (0.663 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testHeadingTrailingSpacesRemainVisibleDuringTyping]' passed (0.363 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLateFinalCompositionMutationStaysInSameHistoryUnit]' passed (0.456 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLeadingSpacesStayVisibleAndKeepTheirCaret]' passed (0.364 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListDeletionLiftsEmptyItemAndContinuesIntoPreviousParagraph]' passed (0.410 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' started.
+Test Case '-[main.WritingInteractionHostlessTests testListTrailingSpacesRemainVisibleDuringTyping]' passed (0.357 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace]' started.
+Test Case '-[main.WritingInteractionHostlessTests testLooseAndQuotedListBoundariesAcceptContinuousBackspace]' passed (1.206 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testNewHeadingEntrySurvivesCompositionBeforeRendering]' started.
+Test Case '-[main.WritingInteractionHostlessTests testNewHeadingEntrySurvivesCompositionBeforeRendering]' passed (1.024 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' started.
+Test Case '-[main.WritingInteractionHostlessTests testOrdinaryInputAfterCompositionIsASeparateHistoryUnit]' passed (0.485 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret]' started.
+Test Case '-[main.WritingInteractionHostlessTests testQuoteAndMarkedTrailingSpacesPreserveSyntaxAndCaret]' passed (2.228 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' started.
+Test Case '-[main.WritingInteractionHostlessTests testTaskCheckboxAppearsWhileTypingAndWritesCheckedMarker]' passed (0.533 seconds).
+Test Case '-[main.WritingInteractionHostlessTests testTaskMarkerSpaceRepairThroughNativeKeypress]' started.
+<unknown>:0: error: -[main.WritingInteractionHostlessTests testTaskMarkerSpaceRepairThroughNativeKeypress] : failed: caught error: "The editor request failed: 该多步原生事务尚未支持；可信原文与 PM 状态保持不变"
+Test Case '-[main.WritingInteractionHostlessTests testTaskMarkerSpaceRepairThroughNativeKeypress]' failed (0.209 seconds).
+Test Suite 'WritingInteractionHostlessTests' failed at 2026-11-12 19:12:08.605.
+	 Executed 21 tests, with 6 failures (1 unexpected) in 14.787 (14.791) seconds

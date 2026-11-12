@@ -1045,7 +1045,16 @@ export function planNativeTransaction(
     if (listLift) return listLift;
   }
   const supplemental = tr.steps.slice(1).map(step => step.toJSON() as Record<string, any>);
-  if (supplemental.some(step => step.stepType !== 'addMark' && step.stepType !== 'removeMark' && !(step.stepType === 'replace' && step.structure))) throw Error('该多步原生事务尚未支持；可信原文与 PM 状态保持不变');
+  if (supplemental.some(step => step.stepType !== 'addMark' && step.stepType !== 'removeMark' && !(step.stepType === 'replace' && step.structure))) {
+    // A real wrapping input rule can delete its prefix and wrap the remaining
+    // body. Accept it only when its original typed patch proves the entire target.
+    const rule = inputRulePlan(source, tr, position, fallbackEol);
+    if (rule) {
+      const parsed = parse(rule.candidate);
+      if (!parsed.issues.length && parsed.doc.eq(tr.doc)) return rule;
+    }
+    throw Error('该多步原生事务尚未支持；可信原文与 PM 状态保持不变');
+  }
   const step = tr.steps[0].toJSON() as Record<string, any>;
 
   try {
@@ -1130,6 +1139,21 @@ export function planNativeTransaction(
     const inTableCell = selectionInsideTableCell(state, step.from, step.to);
     const visibleInsert = inTableCell ? encodeTableCellText(insert) : insert;
     const sourceInsert = visibleInsert.replace(/\n/g, eolForLine(source, from, fallbackEol));
+    const resolved = state.doc.resolve(step.from);
+    if (!inTableCell && step.from === step.to && resolved.depth >= 2 &&
+        resolved.parent.type.name === 'paragraph' && resolved.parent.content.size === 0 &&
+        resolved.node(-1).type.name === 'list_item' && resolved.node(-1).attrs.task === true &&
+        resolved.index(-1) === 0 && /^[^\s]/u.test(sourceInsert) &&
+        /^\[[ xX]\]$/.test(source.slice(Math.max(0, from - 3), from))) {
+      // The empty task's label has no visible separator yet. Add only the
+      // necessary source space, and keep the already accepted task structure.
+      const patches = [{ from, to, insert: ` ${sourceInsert}` }];
+      const candidate = applyNativePatches(source, patches);
+      const parsed = parse(candidate);
+      if (!parsed.issues.length && parsed.doc.eq(tr.doc)) {
+        return { patches, candidate, kind: 'text', sourceCaret: from + patches[0].insert.length };
+      }
+    }
     if (inTableCell) {
       const spellings = [sourceInsert];
       if (step.from === step.to && sourceInsert.length > 0) {

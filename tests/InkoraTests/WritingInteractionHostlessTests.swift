@@ -160,6 +160,89 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testTaskMarkerSpaceRepairThroughNativeKeypress() throws {
+    try withEditor("-[]") { controller, web in
+      try focusTextOffset("#editor p", offset: 1, in: web)
+      try asciiKeypress(" ", in: web)
+      let separated = try snapshot(controller)
+      XCTAssertEqual(separated, "- []")
+      XCTAssertEqual(
+        try js("document.querySelector('#editor li p')?.textContent", in: web) as? String, "[]")
+      try focusTextOffset("#editor li p", offset: 1, in: web)
+      try asciiKeypress(" ", in: web)
+      XCTAssertEqual(try snapshot(controller), "- [ ]")
+      XCTAssertEqual(
+        try js("!!document.querySelector('#editor input[type=checkbox]')", in: web) as? Bool, true)
+      try asciiKeypress("a", in: web)
+      XCTAssertEqual(try snapshot(controller), "- [ ] a")
+      XCTAssertEqual(
+        try js("!!document.querySelector('#editor input[type=checkbox]')", in: web) as? Bool, true)
+      try history(redo: false, controller: controller)
+      XCTAssertEqual(try snapshot(controller), "- [ ]")
+      try history(redo: false, controller: controller)
+      XCTAssertEqual(try snapshot(controller), "- []")
+      try history(redo: false, controller: controller)
+      XCTAssertEqual(try snapshot(controller), "-[]")
+      try history(redo: true, controller: controller)
+      try history(redo: true, controller: controller)
+      try history(redo: true, controller: controller)
+      XCTAssertEqual(try snapshot(controller), "- [ ] a")
+    }
+  }
+
+  @MainActor
+  private func focusTextOffset(_ selector: String, offset: Int, in web: WKWebView) throws {
+    let data = try JSONEncoder().encode(selector)
+    let json = try XCTUnwrap(String(data: data, encoding: .utf8))
+    XCTAssertEqual(
+      try js(
+        """
+        (() => {const e=document.querySelector('#editor');e.focus();
+        const p=document.querySelector(\(json));if(!p)return false;
+        const walker=document.createTreeWalker(p,NodeFilter.SHOW_TEXT);const n=walker.nextNode();
+        if(!n || n.length < \(offset))return false;
+        const r=document.createRange();r.setStart(n,\(offset));r.collapse(true);
+        const s=getSelection();s.removeAllRanges();s.addRange(r);return true;})()
+        """, in: web) as? Bool, true)
+  }
+
+  @MainActor
+  private func asciiKeypress(_ character: String, in web: WKWebView) throws {
+    let data = try JSONEncoder().encode(character)
+    let json = try XCTUnwrap(String(data: data, encoding: .utf8))
+    _ = try js(
+      """
+      (() => {const e=document.querySelector('#editor'),text=\(json),code=text.charCodeAt(0);
+      const key=new KeyboardEvent('keypress',{key:text,charCode:code,keyCode:code,which:code,bubbles:true,cancelable:true});
+      if(e.dispatchEvent(key))document.execCommand('insertText',false,text);return true;})()
+      """, in: web)
+    RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+  }
+
+  @MainActor
+  func testEmptyTaskLabelCompositionKeepsCheckboxAndCandidate() throws {
+    try withEditor("- [ ]") { controller, web in
+      try focus("#editor li p", in: web)
+      try startCandidate(in: web)
+      XCTAssertEqual(try js("window.writingCandidate.isConnected", in: web) as? Bool, true)
+      try confirmCandidate(in: web)
+      RunLoop.current.run(until: Date().addingTimeInterval(0.04))
+      XCTAssertEqual(try js("window.writingCandidate.isConnected", in: web) as? Bool, true)
+      try endCandidate(in: web)
+      RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+      let accepted = try versionedSnapshot(controller)
+      XCTAssertEqual(accepted.text, "- [ ] 中")
+      XCTAssertEqual(accepted.revision, 1)
+      XCTAssertEqual(
+        try js("!!document.querySelector('#editor input[type=checkbox]')", in: web) as? Bool, true)
+      try history(redo: false, controller: controller)
+      XCTAssertEqual(try snapshot(controller), "- [ ]")
+      try history(redo: true, controller: controller)
+      XCTAssertEqual(try snapshot(controller), "- [ ] 中")
+    }
+  }
+
+  @MainActor
   func testExistingStandardTaskMarkdownHasCheckbox() throws {
     try withEditor("- [ ] 任务\n") { controller, web in
       XCTAssertEqual(

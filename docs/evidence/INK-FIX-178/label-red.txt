@@ -1,0 +1,29 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-FIX-178/editor
+
+ ❯ src/task-space-input-runtime.test.ts (7 tests | 1 failed) 72ms
+   × keeps a completed empty task while the first label text is typed 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/task-space-input-runtime.test.ts > keeps a completed empty task while the first label text is typed
+AssertionError: expected '- [ ]任务' to be '- [ ] 任务' // Object.is equality
+
+Expected: "- [ ] 任务"
+Received: "- [ ]任务"
+
+ ❯ src/task-space-input-runtime.test.ts:57:29
+     55|   expect(runtime.navigateRawRange('- [ ]',{anchor:5,head:5}).ok).toBe(…
+     56|   type('任务');
+     57|   expect(runtime.getText()).toBe('- [ ] 任务');
+       |                             ^
+     58|   expect(view().dom.querySelector('input[type=checkbox]')).not.toBeNul…
+     59| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  19:05:53
+   Duration  437ms (import 71%, tests 21%, transform 8%)
