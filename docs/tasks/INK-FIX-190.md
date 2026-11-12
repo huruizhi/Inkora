@@ -49,3 +49,12 @@ trace显示首个d触发有界语义重投影，移除原先被留在正文的�
 JSON evidence无损保留终端输出与SHA256；所有红例、夹具错误、放弃方案和中间产物另留ignored目录，不删有效断言。
 独立双轴审查和最终精确HEAD CI后续记录。用户已请求本机修复路径，先等保存退出与最终验证才替换。
 截至此记录本机仍build10，未宣告安装完成。物理搜狗输入、可见paint、VoiceOver、macOS14实机未验；原生接口回路不等同物理IME操作。
+
+## 独立复审的补正
+
+191书面hard0，保留一项低优先级命名判断；已将literalWhitespaceProjection更名literalParagraphProjection以覆盖裸列表字面量职责。
+192固定c22e684发现P2：裸-、+、*直接Enter被拒。新增真实keydown DOM回归先红，保留原报告待追加。
+补正只为同次已证明裸marker字面量提供尾部空段插入位置：根节点余项一致，源范围只允许marker后原有LF/CRLF，
+额外段必须一个空paragraph且raw末尾有两换行；原source prefix/换行不改写。返回输入span和真实sourceEOF，后续正文继续可映射。
+未扩大未知结构replace资格；原回归新增3例通过。补真实Native bare marker Enter/继续输入，专项计数25→26，旧25项保留。
+后验固定与完整结果另记，安装仍被复审/用户退出状态阻断；不提前宣告完成。
