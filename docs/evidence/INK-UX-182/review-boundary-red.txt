@@ -1,0 +1,77 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-182/editor
+
+ ❯ src/table-parity-runtime.test.ts (21 tests | 3 failed) 148ms
+   × resizes valid pipe-less data rows and materializes missing edge cells only when necessary 5ms
+   × preserves the surviving last row CRLF instead of borrowing a removed row LF when shrinking 3ms
+   × retains the scale input instance, value and focus during its own composition 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/table-parity-runtime.test.ts > resizes valid pipe-less data rows and materializes missing edge cells only when necessary
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/table-parity-runtime.test.ts:223:73
+    221|   const { applyTableCommand } = await import('./table-editing');
+    222|   const { runtime, view } = setup('| A |\n| --- |\none\ntwo');
+    223|   expect(applyTableCommand(view, 0, 'resize', { columns: 1, rows: 4 })…
+       |                                                                         ^
+    224|   expect(runtime.getText()).toBe('| A |\n| --- |\none\ntwo\n|  |');
+    225|   expect(runtime.undo()).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/table-parity-runtime.test.ts > preserves the surviving last row CRLF instead of borrowing a removed row LF when shrinking
+AssertionError: expected '| A | B |\n| --- | --- |\n| one | 1 |…' to be '| A | B |\n| --- | --- |\n| one | 1 |…' // Object.is equality
+
+- Expected
++ Received
+
+  | A | B |
+  | --- | --- |
+- | one | 1 |
++ | one | 1 |
+
+  尾
+
+ ❯ src/table-parity-runtime.test.ts:246:29
+    244|   const { runtime, view } = setup(raw);
+    245|   expect(applyTableCommand(view, 0, 'resize', { columns: 2, rows: 2, c…
+    246|   expect(runtime.getText()).toBe('| A | B |\n| --- | --- |\n| one | 1 …
+       |                             ^
+    247|   expect(runtime.undo()).toBe(true); expect(runtime.getText()).toBe(ra…
+    248| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/table-parity-runtime.test.ts > retains the scale input instance, value and focus during its own composition
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/table-parity-runtime.test.ts:257:29
+    255|   field.dispatchEvent(new dom.window.CompositionEvent('compositionstar…
+    256|   await Promise.resolve();
+    257|   expect(field.isConnected).toBe(true); expect(document.activeElement)…
+       |                             ^
+    258|   const dialog = host.querySelector('dialog')!;
+    259|   dialog.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 18 passed (21)
+   Start at  20:10:42
+   Duration  427ms (import 45%, tests 43%, transform 11%)
+

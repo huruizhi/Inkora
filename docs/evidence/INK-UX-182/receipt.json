@@ -1,0 +1,23 @@
+{
+  "baseline": "16d0a6282f60b1357780aa7b964746be7e62b9bd",
+  "productCommit": "8bb27ad0bd0f29237d371551daf4cf694fa9fdd2",
+  "auditSHA256": "416ab7a22c6aca8f46e87a795faadfaeed4c143a5a4a6793303de2206ce73bbf",
+  "tests": {
+    "editor": {
+      "files": 54,
+      "passed": 1002
+    },
+    "tableNativeWK": {
+      "passed": 4,
+      "windowVisible": false,
+      "physicalInput": false
+    }
+  },
+  "resources": {
+    "RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "assets/index-BTejFEjK.js": "995618a8bd94cec105a9811b0a56fe60064c324c0e7b35f96295203cc3789adc",
+    "index.html": "f545f23160963a6da8494f2ba1b02c167ab1a5d0799c120571d7ff4de8cc0c90",
+    "vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+  }
+}

@@ -1,0 +1,11 @@
+Test Suite 'TableParityHostlessTests' started at 2026-11-12 20:12:53.601.
+Test Case '-[main.TableParityHostlessTests testNativeParameterizedInsertSaveAndReopen]' started.
+Test Case '-[main.TableParityHostlessTests testNativeParameterizedInsertSaveAndReopen]' passed (0.552 seconds).
+Test Case '-[main.TableParityHostlessTests testScaleInputCompositionKeepsFieldFocusAndCanCancelAfterEnd]' started.
+Test Case '-[main.TableParityHostlessTests testScaleInputCompositionKeepsFieldFocusAndCanCancelAfterEnd]' passed (0.212 seconds).
+Test Case '-[main.TableParityHostlessTests testSyntheticPointerDragFeedbackDropAndCancellation]' started.
+Test Case '-[main.TableParityHostlessTests testSyntheticPointerDragFeedbackDropAndCancellation]' passed (0.374 seconds).
+Test Case '-[main.TableParityHostlessTests testWideNarrowGridAndScrolledHandleHitTesting]' started.
+Test Case '-[main.TableParityHostlessTests testWideNarrowGridAndScrolledHandleHitTesting]' passed (0.653 seconds).
+Test Suite 'TableParityHostlessTests' passed at 2026-11-12 20:12:55.393.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 1.791 (1.792) seconds
