@@ -104,3 +104,16 @@ Vite仅既有chunk体积提示；Swift CLI编译保留既有Document warnings。
 不恢复焦点，末尾才检查合并后的原文。没有修改产品或放宽断言。
 重新自跑`WritingInteractionHostless.sh`仍**16/16、0 failures**，且各会话关闭准备成功。
 输出`wk-sixteen-uninterrupted-green.txt`保留；前一green不删除。
+
+
+## Matt两轴复审结算
+
+- Standards：首稿hard 0、possible 2（账本重建形状重复、组合收据Data Clumps）；
+  固定新产品53ffb58及后续Native夹具0594833静态后验新增hard 0/possible 0，
+  两项保留为非阻断维护建议。见INK-REV-171原稿及追加，审查者未运行产品测试。
+- Spec：首稿三个P2在同一产品53ffb58的独立公共runtime原9例与补7例均通过后关闭；
+  不把管理者Native结果冒充审查者结果。见INK-REV-172原稿及追加。
+
+所有首稿逐字保留，未改写早期失败结论。最终受检产品源与53ffb58一致；
+后续提交只增加夹具、报告与证据。本轮修复开发与限定验证完成；本机安装、
+可见桌面/物理IME验收及完整远端CI不在本轮已执行结果中。
