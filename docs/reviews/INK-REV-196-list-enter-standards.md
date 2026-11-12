@@ -30,3 +30,32 @@
 - 只自行建立 `.tools`、`editor/node_modules` 软链复用既有依赖，结束时 unlink；没有安装依赖或触碰源工作树依赖。
 - 日志保留在本工作树 ignored `artifacts/review-196/`，待管理者备份；无临时测试或产品修改。
 - 未运行全量 editor、完整 Native、GUI/App、安装发布、Keychain、物理IME、paint、VoiceOver 或 macOS14实机。作者1043/Native28是作者结果，不属于本人验证。以上未验范围仍有风险；本报告不能替代 Spec 或物理验收。
+
+## 限定后验：2a1580e（保留以上首稿）
+
+后验固定 `2a1580eb0a0b7423e53093680b3ff507ac21f998`，只审首稿候选之后的新增 hunk：`git diff b2a321a411f227f207c99449e8b2df06a3f20a17 2a1580eb0a0b7423e53093680b3ff507ac21f998`。原先对 b2a321a 的结论不追溯改写。197所报两P2及用户新增边界需求仅作此次范围依据，不代行 Spec 裁定。
+
+### Standards 后验核心（少于400词）
+
+本轮未发现有据的书面规范违反（hard：0），无新增值得整改的 Fowler 判断项（possible：0）。规范仍为前述四文件；工具覆盖项跳过。
+
+`list-gap-projection.ts:10–53` 将例外限制在一个根列表分片之间的空段：项目合并后内容精确相等，其他兄弟必须 eq，属性只豁免 parser 派生 tightness；每个空段须绑定真实空白源行中唯一且单调的 anchor。ledger、ranges 与 links 同步迁移，没有伪正文或不可审计 trim。符合 ADR-0004 原文保真与 V1「位置依据」「原子更新」边界。
+
+`sameListContent:82–90` 递归检查全部节点、文本及 marks，只允许列表 tight 属性差异；`source-authority.ts` 仅把该证明用于 list-join，未采用“解析成功即可接受”。`middleListExitPlan` 删除的仍是已定位的空项目行标记，附带无关文字的退出事务继续原子拒绝，符合 V1 对未知结构事务保守拒绝的规则。
+
+`source-transaction.ts:603–610` 的标题起点入口虽先于通用多步拒绝，但必须证明完整目标 doc、owner 和选区；插入补丁局限 owner.start，空段位置与标题 caret 分开绑定，未升级为通用放行。
+
+新增模块承载有界列表投影与其内容比较职责；12类 Fowler baseline 未见需要整改的命名、职责分散、重复分支或预设抽象。没有发现依赖或平台边界扩大。功能需求是否全部达成仍由 Spec 轴判断。
+
+### 后验本人验证
+
+在本工作树 ignored `artifacts/review-196/postreview-source/` 用 `git archive` 提取固定候选；仅在该冻结副本自行软链复用既有 `.tools` 与 `editor/node_modules`，无安装依赖。新增的两项本人检查仅保留在此 ignored 副本，未改候选或产品分支。
+
+- `node editor/scripts/prepare-renderers.mjs`：退出0，既有离线资源准备成功。
+- `make lint`：退出0，Swift严格格式及 `tsc --noEmit` 通过。
+- `.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/list-input-runtime.test.ts src/heading-input-runtime.test.ts`：退出0，两文件111/111；包括附带无关文字的中间退出负控。
+- `.tools/node_modules/.bin/pnpm --dir editor exec vitest run src/review-196-controls.test.ts`：本人补充2/2通过，验证 tightness 的正例，以及文字、marks、非tight属性变化和 gap 缺失/边界外 anchor 的拒绝。此为有限纯模块负控，未宣称全面对抗覆盖。
+- 两组测试均属 synthetic DOM/纯模块，不能代替真实 WK 或物理IME。未跑全量 editor、Native、GUI/App、安装、Keychain、物理IME、paint、VoiceOver、macOS14实机。作者1056/Native31不计为本人结果。
+- `git diff --check b2a321a411f227f207c99449e8b2df06a3f20a17 2a1580eb0a0b7423e53093680b3ff507ac21f998`：退出0。完成后仅 unlink 本人软链；冻结源码、临时控制夹具和日志保留在 ignored `artifacts/review-196/`，待管理者两层备份。
+
+本次仅追加报告与任务记录，不修产品。未验范围风险仍在；后验结论不替代整体验收。
