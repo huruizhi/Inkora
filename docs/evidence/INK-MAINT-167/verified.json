@@ -1,0 +1,16 @@
+{
+  "kept": "/Applications/Inkora.app",
+  "version": "0.1.0",
+  "build": "6",
+  "appsTrashed": 17,
+  "oldInstallersTrashed": 22,
+  "oldVolumesDetached": 2,
+  "remainingAppBundles": [
+    "/Applications/Inkora.app"
+  ],
+  "latestAppBytesUnchanged": true,
+  "strictSignatureVerified": true,
+  "recoveryFilesUnchanged": true,
+  "exampleArchivesPreserved": 4,
+  "trashNotEmptied": true
+}
