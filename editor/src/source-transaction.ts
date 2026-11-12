@@ -571,6 +571,7 @@ function splitPlan(
   source: string,
   state: EditorState,
   tr: Transaction,
+  ranges: readonly NativeRange[],
   position: SourcePosition,
   fallbackEol: '\r\n' | '\n',
 ): NativePlan | null {
@@ -588,6 +589,25 @@ function splitPlan(
     const insertion = `${eol}${marker[1]}${marker[2]}${marker[3]}${taskMarker}`;
     const patches = [{ from: anchor, to: anchor, insert: insertion }];
     return { patches, candidate: applyNativePatches(source, patches), kind: 'list-split', mayStage: true, sourceCaret: anchor + insertion.length };
+  }
+  // WebKit's native Enter at a heading end inserts a closed empty paragraph
+  // after the heading, whereas PM splitBlock may express the same result as
+  // an open slice. Prove the complete target doc before granting this intent.
+  const $from = state.selection.$from;
+  if ($from.depth === 1 && $from.parent.type.name === 'heading' &&
+      $from.parentOffset === $from.parent.content.size) {
+    const owner = ranges.find(range => range.kind === 'heading' && range.pos === $from.before());
+    const paragraph = state.schema.nodes.paragraph.create();
+    const expected = state.tr.insert($from.after(), paragraph);
+    if (owner && expected.doc.eq(tr.doc)) {
+      // range.end is after ATX closing hashes / the setext underline, before
+      // the original line ending. Keep those source bytes on the heading.
+      const at = owner.end;
+      const insertion = eol + eol;
+      const patches = [{ from: at, to: at, insert: insertion }];
+      return { patches, candidate: applyNativePatches(source, patches), kind: 'paragraph-split',
+        mayStage: true, sourceCaret: at + insertion.length };
+    }
   }
   if (state.selection.$from.parent.type.name === 'paragraph' && countType(tr.doc, 'paragraph') === countType(state.doc, 'paragraph') + 1) {
     const insertion = eol + eol;
@@ -977,7 +997,7 @@ export function planNativeTransaction(
     return { patches, candidate: applyNativePatches(source, patches), kind: ranges.length ? 'text' : 'empty-text' };
   }
 
-  const split = splitPlan(source, state, tr, position, fallbackEol);
+  const split = splitPlan(source, state, tr, ranges, position, fallbackEol);
   if (split) return split;
   const listJoin = listJoinPlan(source, state, tr, position);
   if (listJoin) return listJoin;
