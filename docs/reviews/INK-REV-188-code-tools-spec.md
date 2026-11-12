@@ -21,3 +21,15 @@
 - Mermaid 阅读/编辑隐藏规则和新 body 包裹经源码核对；本轴未运行真实 WK、Native、GUI/App、物理 IME、VoiceOver、安装或全量测试。作者执行记录不作为本人实跑。
 
 剩余：候选缺陷修复与限定复验、真正重开验证；显示几何与物理输入仍受独立验收边界约束。保留 worktree 和忽略产物供双备份。
+
+## 限定修复复验：e8e9760
+
+本节追加，不改写上文冻结提交的发现与原始红例。固定修复为 `e8e976084170e32f2b7fd7b3d68828f4f80597ed`，其 parent 为 `9d9dca5b1458596aa984c07dc17c0e7e0a18b311`。完整新增 diff 保留在忽略产物 `editor/artifacts/INK-REV-188/limited-fix.diff`。临时按 SHA 导出 7 个产品/测试文件做定向运行，结束逐个恢复至本报告分支 HEAD；正式规格变更仅从固定 diff 读取。
+
+本人执行命令（editor 目录）：`./node_modules/.bin/vitest run artifacts/INK-REV-188/spec.test.ts -t 'rejects a detached candidate|rejects an old candidate|limited fix'`，退出 0，**5 通过、10 跳过**。日志为 `fix-limited.log`，没有扩大到全量。原 2 个过期候选反例均由红转绿；另 3 个必要正向核对：旧按钮点击不会关闭新列表，当前 Rust 按钮仍可确认并 Undo；旧按钮重新插回 DOM 后虽连接仍被 lease 拒绝，Enter 选择当前轮次；Mermaid 可以搜索并确认。`code-language-picker.ts` 的候选 click 同时检查 `item.isConnected` 与创建时 lease 身份，旧轮次不再借新 binding 生效。原产品缺陷在此固定修复下已关闭。
+
+Native 验证缺口经本人**静态**核对：固定 diff 在保存和精确 `Data(expected.utf8)` 对照之后新增 `InkoraDocument()`、`read(from:ofType:)`、`reopened.text == presentation(expected)`；因此已有真正新文档读取与 BOM 解码后正文对照代码。静态缺口已补齐。主代理另报告 CodeToolsHostless 3 绿及全量 1015 绿，属于外部运行信息；本人本次未运行 Native/WK，也未读取其执行日志，不将它们计入上述 5 个公共 DOM 实跑结果。
+
+该修复也把查询 composition/100ms 静默资格通过独立 owner Set 汇报给 runtime，并由 main 原命令守卫消费；普通查询焦点参与文档 Undo/插入资格。正式规格第 11 行已追加对应约束。此处只核对新增 diff，不把候选限定复验扩张为这些主代理回归、物理 IME 或可见 paint 的验收结论。注册语法仍为 193，搜索额外提供既有 Mermaid 图表入口，不把它算成新增 highlighter 语法。
+
+收尾：`git diff --check` 通过，临时产品导出均已恢复，本人 `editor/node_modules` 链接已 unlink；本报告和任务记录是唯一提交修改。原 `baseline-red.log`、限定绿日志、反例及 diff 均保持忽略并留在原 worktree，待双备份。
