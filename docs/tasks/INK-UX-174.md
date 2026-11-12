@@ -63,3 +63,17 @@ heading-entry-runtime.test.ts、既有WritingInteractionHostlessTests.swift和�
 
 初稿evidence末尾空白引发固定range diff-check的工具警告，已只规范化末尾空白，
 原始输出继续保留ignored artifacts；不改删任何失败断言或产品日志事实。
+
+
+## 补正固定验证
+
+固定产品512ad4e41660355fe14dd6a7db6fa0c2672fa2a9。
+完整`make lint test-editor test-ci`实际exit0：52文件964例；Bridge16例。
+真实后台WK **19/19、0失败**，新增strong文字末尾空格始终17px/灰标记，
+Enter后正常渲染；旧18例全部保留，关闭准备成功。
+同域final-full-checks.txt、final-bridge.txt、wk-nineteen-green.txt留完整结果，
+原18例与早期失败输出不删除，不重复累计作者/审查者结果。
+
+最终固定两轴复审另记175/176，原首稿P2必须保留并追加后验关闭，不改写历史。
+任务开发与限定验证不等于安装：`/Applications/Inkora.app`仍为原build7，
+本轮无.app构建、强退、替换或用户文档操作；可见paint/物理IME等仍未验。
