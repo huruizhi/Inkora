@@ -34,18 +34,30 @@ export class HeadingEntryPresentation {
     const plain = step?.stepType === 'replace' && step.from !== undefined && step.to !== undefined &&
       text.every(node => node.type === 'text' && typeof node.text === 'string' && !/[\r\n]/.test(node.text)) &&
       transaction.getMeta('paste') !== true && transaction.getMeta('uiEvent') !== 'paste';
-    if (!plain) return; // Enter/format/paste ends entry; no content transaction is invented.
+    const prior = this.entries.get(before.doc);
+    if (!plain && !prior) return; // Only a genuine text entry can start this display state.
 
     // Source acceptance may append its own mark-removal steps to this mutable
     // transaction. Capture the original user edit before those safety steps.
-    const prior = this.entries.get(before.doc);
     return (after, raw, composing) => {
       if (beforeRaw === raw) return;
       if (prior) {
         const owner = before.doc.nodeAt(prior.pos);
         if (owner?.type.name !== 'heading' ||
-            beforeRaw.slice(prior.sourceStart, prior.sourceStart + prior.marker.length) !== prior.marker ||
-            step.from! < prior.pos + 1 || step.to! > prior.pos + owner.nodeSize - 1) return;
+            beforeRaw.slice(prior.sourceStart, prior.sourceStart + prior.marker.length) !== prior.marker) return;
+        if (plain) {
+          if (step!.from! < prior.pos + 1 || step!.to! > prior.pos + owner.nodeSize - 1) return;
+        } else {
+          // Inline formatting is still editing this line. A split, block-format
+          // change, sibling edit or moved source prefix cannot inherit its appearance.
+          const index = before.doc.resolve(prior.pos).index();
+          if (before.doc.childCount !== after.doc.childCount ||
+              !owner.sameMarkup(after.doc.child(index)) ||
+              beforeRaw.slice(0, prior.sourceStart) !== raw.slice(0, prior.sourceStart)) return;
+          for (let sibling = 0; sibling < before.doc.childCount; sibling++) {
+            if (sibling !== index && !before.doc.child(sibling).eq(after.doc.child(sibling))) return;
+          }
+        }
         const next = this.read(after, raw, prior.pos, prior.sourceStart);
         if (next) this.entries.set(after.doc, next);
         else if (composing && !prior.ready && after.doc.nodeAt(prior.pos)?.type.name === 'heading') {

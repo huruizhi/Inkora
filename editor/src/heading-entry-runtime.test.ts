@@ -2,6 +2,7 @@ import { afterEach, expect, it } from 'vitest';
 import { JSDOM } from 'jsdom';
 import type { EditorView } from 'prosemirror-view';
 import { TextSelection } from 'prosemirror-state';
+import { toggleMark } from 'prosemirror-commands';
 import { createEditorRuntime, type EditorRuntime } from './editor-runtime';
 
 let dom: JSDOM;
@@ -103,4 +104,13 @@ it('keeps entry appearance while inline rules and marked-space edits change only
   type(' 尾部');
   expect(view().dom.querySelector('h1')?.classList.contains('inkora-heading-entry-ready')).toBe(true);
   expect(runtime.getText()).toBe('# **加粗** 尾部');
+});
+
+it('keeps the gray entry marker when formatting a selected part of the heading body', () => {
+  boot(); type('# 标题');
+  view().dispatch(view().state.tr.setSelection(TextSelection.create(view().state.doc, 1, 3)));
+  expect(toggleMark(view().state.schema.marks.strong)(view().state, tr => view().dispatch(tr))).toBe(true);
+  expect(runtime.status.unresolved).toBe(false);
+  expect(runtime.getText()).toBe('# **标题**');
+  expect(view().dom.querySelector('h1.inkora-heading-entry-ready')).not.toBeNull();
 });

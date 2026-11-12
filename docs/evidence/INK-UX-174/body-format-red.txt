@@ -1,0 +1,25 @@
+
+ RUN  v5.1.0 /Users/rayhu/Documents/projects/Inkora/.worktrees/INK-UX-174/editor
+
+ ❯ src/heading-entry-runtime.test.ts (13 tests | 1 failed) 112ms
+   × keeps the gray entry marker when formatting a selected part of the heading body 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/heading-entry-runtime.test.ts > keeps the gray entry marker when formatting a selected part of the heading body
+AssertionError: expected null not to be null
+ ❯ src/heading-entry-runtime.test.ts:115:73
+    113|   expect(runtime.status.unresolved).toBe(false);
+    114|   expect(runtime.getText()).toBe('# **标题**');
+    115|   expect(view().dom.querySelector('h1.inkora-heading-entry-ready')).no…
+       |                                                                         ^
+    116| });
+    117|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+   Start at  18:33:05
+   Duration  534ms (import 65%, tests 25%, transform 10%)
