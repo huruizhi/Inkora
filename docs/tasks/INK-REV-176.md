@@ -30,3 +30,10 @@
 - 证据：ignored `artifacts/INK-REV-176/final-recheck/`、config和`final-recheck-entry-results.txt`；本轮依赖链接已移除。
 - 前两阶段内容不变，仅追加两文档；无产品/原测试修改、依赖安装或push/PR/merge。965/16/19仅外部，不是本人执行；仍未自跑Native/App/WK/Bridge/全量/物理IME/paint与整体验收。
 - 本追加独立commit，完整SHA见完成回报。
+
+## 交付固定HEAD静态确认（仅追加）
+
+- 最终产品HEAD：`716c5131252ab1311961fc64c4b7b6a9cfc4a2c5`。
+- 仅静态核对相对6eaa308的唯一editor产品hunk：首次创建分支增加`if (!plain || !step) return;`，重申原限定文本输入约束并完成step类型收窄，不扩行为。原P2限定关闭，Spec结论保持。
+- 本阶段未运行测试；前述13/13属于6eaa308，最终965/16/19仅管理者外部报告，不计为本人自跑。
+- 两文档仅追加、原前缀保留；无产品修改或push/PR/merge。独立追加commit完整SHA见完成回报。
