@@ -21,3 +21,41 @@
 
 分工初始仅诊断：169 标题/空格；170 列表/复选框；168 管理真实 WK 与集成。
 所有作者结果与管理者/审查者实跑区分。当前没有整体验收或修复完成结论。
+
+## 实现与管理者独立阶段结果
+
+已整合169初稿/扩展与170列表/任务修复；Backspace链由管理者显式合并为
+`deleteSelection → clearEmptyHeading → listBoundaryBackspace → joinBackward → selectNodeBackward`。
+169/170作者的运行命令与证据仅在各自任务文档列出，不冒称管理者实跑。
+
+管理者真实隐藏WK的10例基线有7个case不符（10个失败断言）：
+空标题Backspace、空任务toggle、普通/heading/list尾空白、起始空白、列表完整删字链。
+空格不能只检查最终raw：原实现最终原文可能有三个空格，但输入中PM DOM依次只显示一格、零格、一格。
+先补逐键settled DOM与caret断言才抓住该问题。
+
+进一步确认裸#组合候选丢失：公开CompositionEvent/InputEvent+同一候选Text更新，
+真实WK '' / '# ' 对照正常，'#'活动阶段Text已detached，最终错误保留'#zh'而非'#中'。
+169新增有界组合owner证明，稳定前保持候选，稳定后canonical更新；
+late final与下一普通输入分别分组，真实snapshot仍受组合稳定边界守卫。
+
+管理者实际自跑：
+- 两作者首轮合并runtime：2文件55 passed；扩展/组合后3文件93 passed。
+- `make editor-build` 多个阶段实际通过（prepare-renderers/tsc/Vite，既有chunk提示）。
+- 最终 `WritingInteractionHostless.sh`：**14 tests / 0 failures**。
+  含空/裸#/#space/CRLF对照，候选active与确认前存活、稳定后原文/DOMcaret、一次Bridge revision，
+  compositionend后5ms late-final、5ms普通后续输入独立revision/Undo、最终删除回空白、
+  连续空格、列表删除、空任务勾选。没有中间每字snapshot来改变输入节奏。
+
+14项的history通过真正Native菜单接口performEditorCommand+queryState回执，
+没有向ProseMirror伪造结束composition/清composing。早期synthetic Cmd-Z夹具在end后500ms内
+触发锁定PM Safari inOrNearComposition的一次保护，连空文档对照也吞第一键；
+这是错误测试路径，改用实际应用菜单路由，保留失败输出，不修改有效产品IME保护。
+另一次诊断console override返回JS函数导致unsupported-result夹具失败，已纠正并移除。
+Native原始输出保留artifacts/INK-FIX-168；同域evidence保存基线、阶段和最终输出。
+
+## 证据层级与剩余门槛
+
+这是不可见真实WK+实际生产Native/Bridge编译验证，composition事件为synthetic，
+不是物理搜狗、可见paint、VoiceOver或macOS14实机验收。
+没有启动/强退用户App，没有替换安装，没有生成可启动.app副本。
+本机仍build6。当前待冻结两轴独立审查及最终完整Web回归/lint/Bridge检查。
