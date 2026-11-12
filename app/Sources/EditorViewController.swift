@@ -1362,6 +1362,7 @@ enum InkoraPastePayload {
 
 @MainActor
 final class InkoraWebView: WKWebView {
+  let titlebarDragSurface = WindowTitlebarDragSurface(frame: .zero)
   var imageFileHandler: ((URL) -> Void)?
   var bitmapPNGHandler: ((Data) -> Void)?
   var pastePayloadProvider: @MainActor () -> InkoraPastePayload =
@@ -1370,10 +1371,29 @@ final class InkoraWebView: WKWebView {
   override init(frame: CGRect, configuration: WKWebViewConfiguration) {
     super.init(frame: frame, configuration: configuration)
     registerForDraggedTypes([.fileURL])
+    configuration.userContentController.addUserScript(
+      WKUserScript(
+        source: WindowTitlebarDragSurface.layoutScript,
+        injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+    titlebarDragSurface.frame = bounds
+    titlebarDragSurface.autoresizingMask = [.width, .height]
+    addSubview(titlebarDragSurface)
   }
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+  override func hitTest(_ point: NSPoint) -> NSView? {
+    if let dragSurface = titlebarDragSurface.hitTest(convert(point, from: superview)) {
+      return dragSurface
+    }
+    return super.hitTest(point)
+  }
+
+  override func setFrameSize(_ newSize: NSSize) {
+    if newSize != frame.size { titlebarDragSurface.clear() }
+    super.setFrameSize(newSize)
+  }
 
   override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
     Self.fileURLs(from: sender.draggingPasteboard).isEmpty ? super.draggingEntered(sender) : .copy

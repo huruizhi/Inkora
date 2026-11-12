@@ -237,6 +237,7 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
   }
 
   func prepareForNavigation() {
+    (webView as? InkoraWebView)?.titlebarDragSurface.clear()
     lifecycle = .loading
     failPendingRequests(EditorBridgeError.editorNotReady)
   }
@@ -535,6 +536,15 @@ final class EditorBridge: NSObject, WKScriptMessageHandler {
       message.frameInfo.securityOrigin.host == "app"
     else {
       becomeUnavailable(EditorBridgeError.invalidMessage)
+      return
+    }
+    // Geometry-only UI event; it never enters the document/revision state machine.
+    if let serialized = message.body as? String, serialized.utf8.count <= 512,
+      let data = serialized.data(using: .utf8),
+      let layout = try? JSONDecoder().decode(TitlebarDragLayout.self, from: data),
+      layout.type == "titlebarLayout"
+    {
+      (webView as? InkoraWebView)?.titlebarDragSurface.apply(layout)
       return
     }
     guard
