@@ -12,6 +12,7 @@ import {
 } from "./source-ledger";
 import { applyNativePatches, planNativeTransaction, type NativePatch, type NativePlan, type NativeAnchor } from "./source-transaction";
 import { createInkoraProjectionState, type EditorStateOptions } from "./editor-session";
+import { listGapProjection, sameListContent } from "./list-gap-projection";
 import { isWellFormed } from "./source-replacement";
 import type { VisualTextEdit } from "./visual-search";
 import { escapeEditableText, planVisualReplacementPatch, renderAutolinkLabel } from "./visual-replacement";
@@ -927,6 +928,8 @@ export class SourceAuthoritySession {
       ?? ownerTrailingWhitespaceProjection(raw, parsed, state.doc);
     if (literal) return remember(literal);
     const base = baseLedger(raw, parsed);
+    const listGap = listGapProjection(raw, parsed, state.doc, projection.anchors, base);
+    if (listGap) return remember(listGap);
     if (parsed.doc.eq(state.doc)) {
       return remember({ ledger: base, ranges: parsed.ranges, parsedDoc: parsed.doc });
     }
@@ -1434,7 +1437,7 @@ export class SourceAuthoritySession {
           visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
       };
     });
-    if (sourceBoundary) mappedAnchors.push({ visual: sourceBoundary.pmPos, raw: sourceBoundary.sourceOffset, reason: '已接受inline关闭语法后的空白起点' });
+    if (sourceBoundary) mappedAnchors.push({ visual: sourceBoundary.pmPos, raw: sourceBoundary.sourceOffset, reason: sourceBoundary.reason ?? '已接受inline关闭语法后的空白起点' });
     // A consumed list marker has no remaining visual character boundary.
     // The same parse's empty-item insertion span proves the new label caret.
     if (parsed.doc.eq(target.doc) && consumedPrefix && sourceCaret !== undefined && target.selection.empty) {
@@ -1602,10 +1605,19 @@ export class SourceAuthoritySession {
           node.attrs.style === 'atx' && node.content.size === 0 &&
           node.sameMarkup(target.doc.child(index)) && /^ +$/.test(target.doc.child(index).textContent) &&
           parsed.doc.content.content.every((other, sibling) => sibling === index || other.eq(target.doc.child(sibling))));
-      if (!compositionOwner && !parsed.issues.length && !parsed.doc.eq(target.doc) &&
+      let listGap: ProjectionContext | null = null;
+      if (!parsed.issues.length && target.doc.childCount >= parsed.doc.childCount + 2) {
+        const gapAnchors = this.projection.anchors.map(anchor => ({ visual: tr.mapping.map(anchor.visual, -1),
+          raw: mapRawOffset(anchor.raw, plan.patches, -1) }));
+        if (sourceCaret !== undefined) gapAnchors.push({ visual: target.selection.head, raw: sourceCaret });
+        listGap = listGapProjection(plan.candidate, parsed, target.doc, gapAnchors, baseLedger(plan.candidate, parsed));
+      }
+      if (!compositionOwner && !listGap && !parsed.issues.length && !parsed.doc.eq(target.doc) &&
           (emptyAtxPrefix || (!literalParagraphProjection(plan.candidate, parsed, target.doc) &&
           !ownerTrailingWhitespaceProjection(plan.candidate, parsed, target.doc) && !comparableDoc(parsed.doc).eq(comparableDoc(target.doc))))) {
-        const proof = implicitLinkReprojectionProof(before.raw, context.ledger, plan, parsed, target.doc, tr.mapping)
+        const proof = (!this.composing && plan.kind === 'list-join' && sameListContent(parsed.doc, target.doc)
+          ? 'semantic-contract: joined list spacing follows the exact parser-derived tightness' : null)
+          ?? implicitLinkReprojectionProof(before.raw, context.ledger, plan, parsed, target.doc, tr.mapping)
           ?? semanticReprojectionProof(before.raw, before.state.doc, before.projection, plan, parsed.doc, target.doc);
         if (!proof) throw Error('parser 与 PM 事务的语义差异没有共享字节/意图契约，已原子拒绝');
         const semanticCaret = sourceCaret ?? plan.patches.at(-1)!.from + plan.patches.at(-1)!.insert.length;

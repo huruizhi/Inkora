@@ -47,3 +47,19 @@ for (const path of ["native", "keymap"] as const) it.each([
   expect(runtime.redo()).toBe(true);
   expect(runtime.getText()).toBe(expected);
 });
+it.each(['# 水电费','## 水电费\r\n\r\n- 第三方\r\n- ','\uFEFF# 水电费\r\n'])('Enter at the heading start moves it down without changing its text: %j',raw=>{
+  const dom=new JSDOM('<main></main>',{pretendToBeVisual:true});
+  Object.defineProperty(globalThis,'document',{configurable:true,value:dom.window.document});
+  Object.defineProperty(globalThis,'window',{configurable:true,value:dom.window});
+  const runtime=createEditorRuntime(dom.window.document.querySelector('main')!,raw,()=>{});live.push(runtime);
+  const view=(runtime as unknown as {view:EditorView}).view;
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,1)));
+  view.dom.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',keyCode:13,bubbles:true,cancelable:true}));
+  expect(runtime.status.unresolved).toBe(false);
+  const at=raw.startsWith('\uFEFF')?1:0,eol=raw.includes('\r\n')?'\r\n':'\n';
+  expect(runtime.snapshotText()).toEqual({ok:true,value:raw.slice(0,at)+eol+eol+raw.slice(at)});
+  expect(view.state.doc.child(0).type.name).toBe('paragraph');
+  expect(view.state.doc.child(1).textContent).toBe('水电费');
+  expect(view.state.selection.head).toBe(3);
+  expect(runtime.undo()).toBe(true);expect(runtime.getText()).toBe(raw);
+});
