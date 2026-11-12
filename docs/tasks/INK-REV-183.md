@@ -47,3 +47,24 @@ pnpm --dir editor exec vitest run src/table-parity-runtime.test.ts src/tables-ta
 ## 未完成事项与风险
 
 S1 未修复；J1 为可选维护改进。App、UI、WK、物理输入法与屏幕 paint 未验，不能据此宣称发布验收通过。此分支仅审查文档，无产品行为变化，不创建PR、不合并、不触发CI。commit 及实际远端核验值由提交后的交接消息报告（避免文档自引用提交哈希）。
+
+
+## 限定补正复验追加（8bb27ad）
+
+冻结补正：`8bb27ad0bd0f29237d371551daf4cf694fa9fdd2`；仅审新增 diff `efa551708d824a2c98a808d18faf94ce05ffebd4...8bb27ad0bd0f29237d371551daf4cf694fa9fdd2`，不重跑全量或 Spec 轴探针，不改原报告正文。
+
+执行前 clean；用 `git show <fix>:<path>` 临时导出新增 diff 的 editor 文件（路径清单保存在证据目录），复验后恢复原 HEAD 文件并移除仅由本次导出的 `table-commands.ts`。自建 `editor/node_modules` symlink 结束 unlink。没有导出或执行 Native/WK测试，也没有修改共享依赖。
+
+实际命令（pnpm 仍为前述已存在的绝对路径）：
+
+```sh
+pnpm --dir editor exec vitest run --root .. --config editor/vite.config.ts artifacts/INK-REV-183/composition-probe.test.ts
+pnpm --dir editor exec vitest run --root .. --config editor/vite.config.ts artifacts/INK-REV-183/composition-fix-probe.test.ts
+pnpm --dir editor exec vitest run src/table-parity-runtime.test.ts -t 'dialog|grid|composition'
+```
+
+结果：原 probe 逐字未改，1失败，失败点是其旧缺陷断言 `expect(dialog).toBeNull()`，而补正产品实际保留 dialog；不把该缺陷形态探针当作验收失败。正向独立 probe 1/1通过，覆盖连接、焦点、值、raw/status以及组合期apply/cancel/Esc与observer的保护；compositionend后正常退出。已有控件定向4通过、17因名称过滤未执行。无全量、lint、构建、GUI、App、UI、WK、物理输入法结果。
+
+新增 ignored 证据（原件全部保留待双备份）：`fix-increment.patch`、`fix-export-paths.txt`、`composition-original-on-fix.log`、`composition-fix-probe.test.ts`、`composition-fix-probe.log`、`fix-targeted-controls.log`，均位于 `artifacts/INK-REV-183/`。本次结果完全独立执行，未借用外部通过证据。
+
+结论：S1在合成DOM事件边界闭合；J1策略重复已消除，原文独立证明仍保留。新增diff未发现新的Standards硬项或判断项。Spec source边界只做静态标准检查，未重复Spec探针，不替代其裁定。原“未修复”状态为首轮历史记录，以本追加闭合口径为准；物理输入法等未验风险仍然存在。分支保持 `task/INK-REV-183-table-standards`，提交与真实远端校验值在交接消息给出。
