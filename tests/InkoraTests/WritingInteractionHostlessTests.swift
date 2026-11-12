@@ -154,6 +154,57 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testMiddleEmptyItemCanExitTypeAndBackspaceToPreviousLine() throws {
+    try withEditor("- \n- b") { controller, web in
+      try focus("#editor li:first-child p", in: web)
+      try pressEnter(in: web)
+      try pressEnter(in: web)
+      XCTAssertEqual(try snapshot(controller), "- \n\n- b")
+      try keys(["水电费"], in: web)
+      XCTAssertEqual(try snapshot(controller), "- \n水电费\n- b")
+      try focus("#editor > p", atStart: true, in: web)
+      try keys(["<Backspace>"], in: web)
+      XCTAssertEqual(try snapshot(controller), "- 水电费\n- b")
+    }
+  }
+
+  @MainActor
+  func testParagraphAfterEmptyListAcceptsRepeatedBoundaryBackspace() throws {
+    try withEditor("- \n\n水电费\n\n- 第三方\n- ") { controller, web in
+      try focus("#editor > p", atStart: true, in: web)
+      try keys(["<Backspace>"], in: web)
+      XCTAssertEqual(try snapshot(controller), "- 水电费\n\n- 第三方\n- ")
+      try keys(["<Backspace>"], in: web)
+      XCTAssertEqual(try snapshot(controller), "水电费\n\n- 第三方\n- ")
+    }
+  }
+
+  @MainActor
+  func testEnterAtHeadingStartMovesTitleDownAndKeepsCaretOnTitle() throws {
+    for raw in ["# 水电费", "# 水电费\n\n- 第三方\n- "] {
+      try withEditor(raw) { controller, web in
+        web.window?.setContentSize(NSSize(width: 900, height: 600))
+        try focus("#editor h1", atStart: true, in: web)
+        let top = try XCTUnwrap(
+          try js("document.querySelector('#editor h1').getBoundingClientRect().top", in: web)
+            as? Double)
+        try pressEnter(in: web)
+        XCTAssertEqual(try snapshot(controller), "\n\n" + raw)
+        XCTAssertEqual(
+          try js("document.querySelector('#editor').firstElementChild.tagName", in: web) as? String,
+          "P")
+        let moved = try XCTUnwrap(
+          try js("document.querySelector('#editor h1').getBoundingClientRect().top", in: web)
+            as? Double)
+        XCTAssertGreaterThan(moved, top)
+        try keys(["a"], in: web)
+        XCTAssertEqual(
+          try snapshot(controller), "\n\n" + raw.replacingOccurrences(of: "# 水电费", with: "# a水电费"))
+      }
+    }
+  }
+
+  @MainActor
   func testIdleSnapshotPreservesNativeResponderAndDirectedCaret() throws {
     try withEditor("# 标题") { controller, web in
       let window = try XCTUnwrap(web.window as? SnapshotFocusWindow)

@@ -83,7 +83,7 @@ const listEnterSequences = new WeakMap<EditorView, EmptyListEnter>();
 // consecutive Enter. Only the exact accepted document/caret can continue it.
 const enterListItem: Command = (state, dispatch, view) => {
   const { $from, empty } = state.selection;
-  if (!empty || view?.composing || $from.depth < 3 ||
+  if (view?.composing || $from.depth < 3 ||
       $from.parent.type !== inkoraSchema.nodes.paragraph ||
       $from.node(-1).type !== inkoraSchema.nodes.list_item) return false;
   const split = chainCommands(splitTaskListItem, splitListItem(inkoraSchema.nodes.list_item));
@@ -98,7 +98,7 @@ const enterListItem: Command = (state, dispatch, view) => {
       listEnterSequences.set(view, { doc: view.state.doc, head: selected.head });
     } else listEnterSequences.delete(view);
   } : undefined;
-  const isEmpty = $from.parent.content.size === 0;
+  const isEmpty = empty && $from.parent.content.size === 0;
   const consecutive = last?.doc === state.doc && last.head === state.selection.head;
   if (isEmpty && !consecutive && $from.index(-1) === 0 && $from.node(-1).childCount === 1) {
     const item = $from.node(-1);
@@ -108,6 +108,9 @@ const enterListItem: Command = (state, dispatch, view) => {
     try { tr.split($from.pos, 2, types); } catch { return false; }
     send?.(tr.scrollIntoView());
     return true;
+  }
+  if (isEmpty && consecutive) {
+    return listBoundaryBackspace(state, send ? tr => send(tr.setMeta('inkoraListEnterExit', true)) : undefined, view);
   }
   return split(state, send, view);
 };
@@ -133,7 +136,8 @@ export const clearEmptyHeading: Command = (state, dispatch, view) => {
 export const listBoundaryBackspace: Command = (state, dispatch, view) => {
   const { $from, empty } = state.selection;
   if (empty && $from.parentOffset === 0 && $from.parent.type === inkoraSchema.nodes.paragraph &&
-      $from.parent.content.size > 0 && $from.index(-1) > 0 && !view?.composing &&
+      ($from.parent.content.size > 0 || $from.index(-1) < $from.node(-1).childCount - 1) &&
+      $from.index(-1) > 0 && !view?.composing &&
       ($from.depth === 1 || $from.node(-1).type === inkoraSchema.nodes.blockquote)) {
     const previous = $from.node(-1).child($from.index(-1) - 1);
     if ((previous.type === inkoraSchema.nodes.bullet_list || previous.type === inkoraSchema.nodes.ordered_list) &&
@@ -141,6 +145,10 @@ export const listBoundaryBackspace: Command = (state, dispatch, view) => {
       if (dispatch) {
         const joinAt = $from.before() - 3;
         const tr = state.tr.delete($from.before(), $from.after()).insert(joinAt, $from.parent.content);
+        const boundary = tr.mapping.map($from.after(), 1);
+        const adjacent = tr.doc.resolve(boundary);
+        if (adjacent.nodeBefore && adjacent.nodeAfter && adjacent.nodeBefore.sameMarkup(adjacent.nodeAfter) &&
+            [inkoraSchema.nodes.bullet_list, inkoraSchema.nodes.ordered_list].includes(adjacent.nodeBefore.type)) tr.join(boundary);
         tr.setSelection(TextSelection.create(tr.doc, joinAt));
         dispatch(tr.setMeta('inkoraParagraphAfterListJoin', true));
       }
@@ -216,7 +224,8 @@ export function createBlockKeymap(): Plugin {
     ...bindings.spec,
     props: {
       handleKeyDown(view, event) {
-        if (event.key !== 'Enter' || event.isComposing || view.composing) reset(view);
+        if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey ||
+            event.isComposing || view.composing) reset(view);
         return bindings.props.handleKeyDown?.call(bindings, view, event) ?? false;
       },
       handleDOMEvents: { pointerdown: reset, mousedown: reset, blur: reset, compositionstart: reset },

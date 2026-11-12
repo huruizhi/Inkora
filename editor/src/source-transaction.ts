@@ -3,11 +3,12 @@ import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorState, Transaction } from 'prosemirror-state';
 import MarkdownIt from 'markdown-it';
 import { parse } from './source-document';
-import type { SourceLedger } from './source-ledger';
+import { buildSourceLedger, type SourceLedger } from './source-ledger';
+import { listGapProjection, sameListContent } from './list-gap-projection';
 
 export type NativeRange = { start: number; end: number; pos: number; size: number; kind: string };
 export type NativePatch = { from: number; to: number; insert: string };
-export type NativeAnchor = { pmPos: number; sourceOffset: number };
+export type NativeAnchor = { pmPos: number; sourceOffset: number; reason?: string };
 
 export type NativePlan = {
   patches: NativePatch[];
@@ -411,12 +412,13 @@ function matchingStructuralPlan(
   source: string,
   target: PMNode,
   candidates: Array<{ patches: NativePatch[]; description: string }>,
+  listLayout = false,
 ): NativePlan | null {
   const matches = candidates.map(candidate => ({
     ...candidate,
     raw: applyNativePatches(source, candidate.patches),
   })).filter(candidate => {
-    try { return parse(candidate.raw).doc.eq(target); } catch { return false; }
+    try { const parsed = parse(candidate.raw); return parsed.doc.eq(target) || (listLayout && !parsed.issues.length && sameListContent(parsed.doc, target)); } catch { return false; }
   });
   const unique = matches.filter((candidate, index, all) =>
     all.findIndex(value => value.raw === candidate.raw) === index);
@@ -598,6 +600,16 @@ function splitPlan(
   // after the heading, whereas PM splitBlock may express the same result as
   // an open slice. Prove the complete target doc before granting this intent.
   const $from = state.selection.$from;
+  if ($from.depth === 1 && $from.parent.type.name === 'heading' && $from.parent.content.size > 0 && $from.parentOffset === 0) {
+    const owner = ranges.find(range => range.kind === 'heading' && range.pos === $from.before());
+    const expected = state.tr.insert($from.before(), state.schema.nodes.paragraph.create());
+    if (owner && tr.selection.empty && [ $from.before() + 1, $from.before() + 3 ].includes(tr.selection.head) && expected.doc.eq(tr.doc)) {
+      const patches = [{ from: owner.start, to: owner.start, insert: eol + eol }];
+      const sourceCaret = tr.selection.head === $from.before() + 1 ? owner.start : position($from.pos, 'from') + eol.length * 2;
+      return { patches, candidate: applyNativePatches(source, patches), kind: 'paragraph-split', sourceCaret,
+        sourceBoundary: { pmPos: $from.before() + 1, sourceOffset: owner.start, reason: '已证明标题前新空段的原文起点' } };
+    }
+  }
   if ($from.depth === 1 && $from.parent.type.name === 'heading' &&
       $from.parentOffset === $from.parent.content.size) {
     const owner = ranges.find(range => range.kind === 'heading' && range.pos === $from.before());
@@ -678,7 +690,7 @@ function listJoinPlan(source: string, state: EditorState, tr: Transaction, posit
     { patches: [{ from: markerStart, to: contentStart, insert: liftInsert }], description: 'lift list item' },
     { patches: [{ from: separatorStart, to: contentStart, insert: '' }], description: 'join list contents' },
   ];
-  const matched = matchingStructuralPlan(source, tr.doc, candidates);
+  const matched = matchingStructuralPlan(source, tr.doc, candidates, true);
   if (matched) return { ...matched, kind: 'list-join' };
   // At EOF an empty lifted paragraph is represented by the blank source line,
   // not by a parser paragraph. Prove the complete remaining document and the
@@ -694,7 +706,7 @@ function listJoinPlan(source: string, state: EditorState, tr: Transaction, posit
       targetCaret.index(-1) === targetCaret.node(-1).childCount - 1 &&
       (targetCaret.depth === 1 || quotedEof)) {
     const withoutEmpty = tr.doc.replace(targetCaret.before(), targetCaret.after(), tr.doc.slice(0, 0));
-    const lifted = matchingStructuralPlan(source, withoutEmpty, [candidates[0]]);
+    const lifted = matchingStructuralPlan(source, withoutEmpty, [candidates[0]], true);
     if (lifted) return { ...lifted, kind: 'list-join', sourceCaret: lifted.candidate.length };
   }
   return null;
@@ -1068,6 +1080,21 @@ function trailingMarkedSpacePlan(source: string, state: EditorState, tr: Transac
     sourceBoundary: { pmPos: step.from, sourceOffset: from } };
 }
 
+function middleListExitPlan(source: string, state: EditorState, tr: Transaction, position: SourcePosition): NativePlan | null {
+  const { $from, empty } = state.selection;
+  if (tr.getMeta('inkoraListEnterExit') !== true || !empty || $from.depth !== 3 ||
+      $from.parent.type.name !== 'paragraph' || $from.parent.content.size !== 0 ||
+      $from.node(-1).type.name !== 'list_item' || $from.node(-1).childCount !== 1 ||
+      $from.index(-2) === 0 || $from.index(-2) >= $from.node(-2).childCount - 1) return null;
+  const to = position($from.pos, 'from');
+  const from = source.lastIndexOf('\n', to - 1) + 1;
+  if (!/^[\t ]{0,3}(?:[-+*]|\d+[.)])[\t ]*$/.test(source.slice(from, to)) || !/^(?:\r\n|\n)/.test(source.slice(to))) return null;
+  const patches = [{ from, to, insert: '' }], candidate = applyNativePatches(source, patches), parsed = parse(candidate);
+  const base = buildSourceLedger(candidate, parsed.doc, parsed.ranges, parsed.tokenEvidence);
+  if (!base.ok || !listGapProjection(candidate, parsed, tr.doc, [{ visual: tr.selection.head, raw: from }], base.ledger)) return null;
+  return { patches, candidate, kind: 'list-join', sourceCaret: from };
+}
+
 export function planNativeTransaction(
   source: string,
   state: EditorState,
@@ -1078,6 +1105,13 @@ export function planNativeTransaction(
   ledger?: SourceLedger,
 ): NativePlan {
   if (!tr.docChanged) throw Error('原生补丁规划器只接受文档事务');
+  const selection = state.selection.$from;
+  if (state.selection.empty && selection.depth === 1 && selection.parent.type.name === 'heading' && selection.parent.content.size > 0 && selection.parentOffset === 0) {
+    const headingStart = splitPlan(source, state, tr, ranges, position, fallbackEol);
+    if (headingStart) return headingStart;
+  }
+  const middleExit = middleListExitPlan(source, state, tr, position);
+  if (middleExit) return middleExit;
   if (tr.getMeta('inkoraParagraphAfterListJoin') === true && state.selection.empty &&
       state.selection.$from.parentOffset === 0 && state.selection.$from.parent.type.name === 'paragraph' &&
       state.selection.$from.index(-1) > 0) {
@@ -1091,7 +1125,8 @@ export function planNativeTransaction(
       if (from < to && /^(?:[\t ]*(?:\r\n|\n)[\t ]*(?:>[\t ]*)*)+$/.test(source.slice(from, to))) {
         const patches = [{ from, to, insert: '' }];
         const candidate = applyNativePatches(source, patches);
-        if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'list-join', sourceCaret: from };
+        const parsed = parse(candidate);
+        if (!parsed.issues.length && sameListContent(parsed.doc, tr.doc)) return { patches, candidate, kind: 'list-join', sourceCaret: from };
       }
     }
   }

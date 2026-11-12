@@ -49,3 +49,26 @@ Native28最终结果、固定提交与两轴复审随后记录；此处不冒称
 
 本轮不以合成DOM或Native文本接口代替物理键盘/搜狗、可见paint、VoiceOver或macOS14实机验收。
 两轴独立复审固定b2另行结算；产品/测试和发布记录按独立工作树保留。本机尚是build11，195准备build12，未提前替换。
+
+## 用户追加与独立审查补正
+
+用户随后补充：段落行首Backspace应到上一行；标题文字行首Enter应插入上方空段、让标题下移。
+197首稿两P2均保留：中间空项第二Enter的replaceAround被拒；!empty提前返回改了选区Enter的普通/任务拆项结构。
+恢复选区进入原拆项命令；新增普通/任务选中b保留a/c两项目的公开命令对照。
+
+中间列表退出新增有界list-gap投影：只允许同一root列表的两个片段夹一个或多个空paragraph，合并片段后全部项目与同次canonical doc精确相等；唯一变化可为parser派生tight属性。
+每个空段必须有唯一、单调的已接受source anchor，位于同次列表项目之间真实的空白源行，不插ZWS/注释/假正文。
+块外兄弟/内容/marks不变，BOM/CRLF边界不切断。计划只删除当前空项目实际行标记，随后普通段可继续Enter/正文输入/退格；混入别处X的伪造退出事务回归原子拒绝。
+
+段落接回上一列表时，同时合并相邻同型列表；原文删除范围仍只允许位置账本证明的换行/引用前缀。
+合并后tight/loose差异按完整同内容证明采用parser属性，不改原文空行，其他节点/marks/属性必须相同。
+标题起点Enter以完整目标doc证明插入一个上方空paragraph，可在严格多步拒绝前识别该唯一意图；不放宽未知多步事务。
+NativeAnchor增加可选reason描述新空段位置，当前原文新空段anchor与标题caret分别绑定，保留BOM前不可编辑边界。
+
+原build11冻结归档+新增测试复跑：两段落Backspace与三标题起点Enter共5例红；新边界代码两文件110例绿。
+初版标题断言误以为光标应留在上方空段；已按普通插入语义保留光标在下移后的标题起点（PM3），未删标题位移/原文字节断言。
+最终`make lint test-editor test-ci`：55文件1056例通过；Native/WK31/31、0失败，原28例全部保留。
+新增Native包括中间gap退出/输入/退格、带后续列表的连续边界退格、标题真实WK y下移与继续输入；均用自有文本、窗口不可见。
+
+新增文件list-gap-projection.ts；补source-authority接线与heading-input-runtime回归。其余产品归属不变，无Native产品/协议/依赖变更。
+全部尝试、原始日志与冻结baseline保留ignored artifacts；两轴后验和安装CI另记。build12尚未安装。
