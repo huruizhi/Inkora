@@ -19,3 +19,9 @@
 - Native新增方法与计数26对应；仅静态核对，不声称本人运行。
 - 此次实跑仅 `git diff --check c22e6841a3b5c69197a0556cfe457bd3dcdbb081...a37ed683237589e27a5212a1095de99bbdb36977`（退出0）、diff/提交范围及首稿前缀完整性核对；不重复全量/DOM/Native/WK/GUI/构建。
 - 后验原始diff和检查输出：ignored `artifacts/INK-REV-191/post-review.log`。实际输入、光标绘制与最低平台仍未验；本次无产品修复。
+
+## 最终限定补验：18b0e94d
+
+最终产品冻结为 `18b0e94d49713a331ce256c4e42b7b614f716b46`。相对 `a37ed683237589e27a5212a1095de99bbdb36977` 仅删除新插入 span 上 LedgerSpan 未声明的 `projection: 'atom'` 字段；其余 EOF 位置与源换行证明未变。此项由类型工具捕获，依基线跳过工具项，不列审查 finding。原命名项仍关闭，最终书面硬偏离0、开放判断项0。
+
+本人仅静态检查该单行 diff，并实跑 `git diff --check a37ed683237589e27a5212a1095de99bbdb36977...18b0e94d49713a331ce256c4e42b7b614f716b46`（退出0）。父任务告知 tsc 已退出0；该结果不是本人实跑。不扩展运行时验收结论。
