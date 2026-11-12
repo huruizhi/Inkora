@@ -1,4 +1,4 @@
-import { Node as PMNode } from 'prosemirror-model';
+import { Fragment, Node as PMNode } from 'prosemirror-model';
 import { EditorState, TextSelection, Transaction } from 'prosemirror-state';
 import { parse, schema, type Issue, type Range } from "./source-document";
 import {
@@ -10,7 +10,7 @@ import {
   type SourceLedger,
   type SourceRange,
 } from "./source-ledger";
-import { applyNativePatches, planNativeTransaction, type NativePatch, type NativePlan } from "./source-transaction";
+import { applyNativePatches, planNativeTransaction, type NativePatch, type NativePlan, type NativeAnchor } from "./source-transaction";
 import { createInkoraProjectionState, type EditorStateOptions } from "./editor-session";
 import { isWellFormed } from "./source-replacement";
 import type { VisualTextEdit } from "./visual-search";
@@ -213,7 +213,7 @@ function literalWhitespaceProjection(raw: string, parsed: ReturnType<typeof pars
   } };
 }
 
-/** Prove trailing spaces against accepted plain-text owners, including list paragraphs. */
+/** Preserve the accepted inline Fragment and expose only its source-owned trailing spaces. */
 function ownerTrailingWhitespaceProjection(raw: string, parsed: ReturnType<typeof parse>, doc: PMNode): ProjectionContext | null {
   if (parsed.issues.length || parsed.doc.eq(doc)) return null;
   const base = baseLedger(raw, parsed);
@@ -222,28 +222,32 @@ function ownerTrailingWhitespaceProjection(raw: string, parsed: ReturnType<typeo
     if (before.eq(after)) return true;
     if (!before.sameMarkup(after)) return false;
     if (before.isTextblock) {
-      if (!['paragraph', 'heading'].includes(before.type.name) || before.childCount !== 1 || after.childCount !== 1 ||
-          !before.firstChild?.isText || !after.firstChild?.isText || before.firstChild.marks.length || after.firstChild.marks.length ||
-          !after.textContent.startsWith(before.textContent) || !/^ +$/.test(after.textContent.slice(before.textContent.length))) return false;
-      const body = base.spans.filter(span => span.visible && span.role === 'text' && span.visualStart !== undefined &&
-        span.visualEnd !== undefined && span.visualStart >= oldPos + 1 && span.visualEnd <= oldPos + 1 + before.content.size)
-        .sort((left, right) => left.visualStart! - right.visualStart!);
-      if (!body.length) return false;
-      const from = body[0].sourceStart;
-      let visual = oldPos + 1;
-      for (const span of body) {
-        if (span.visualStart !== visual || span.sourceStart !== from + visual - oldPos - 1 ||
-            span.sourceEnd - span.sourceStart !== span.visualEnd! - span.visualStart!) return false;
-        visual = span.visualEnd!;
-      }
-      if (visual !== oldPos + 1 + before.content.size) return false;
-      const to = from + after.textContent.length;
+      const extra = after.content.size - before.content.size;
+      const tail = extra > 0 ? after.textBetween(before.content.size, after.content.size) : '';
+      if (!['paragraph', 'heading'].includes(before.type.name) || !/^ +$/.test(tail) ||
+          !after.content.eq(before.content.append(Fragment.from(schema.text(tail))))) return false;
+      const bodyEnd = oldPos + 1 + before.content.size;
+      const last = base.spans.filter(span => span.visible && span.visualEnd === bodyEnd && span.text !== undefined)
+        .sort((left, right) => right.sourceEnd - left.sourceEnd)[0];
       const owner = parsed.ranges.find(range => oldPos >= range.pos && oldPos + before.nodeSize <= range.pos + range.size);
-      if (!owner || from < owner.start || to > owner.end || raw.slice(from, to) !== after.textContent) return false;
-      changed.push({ from, to, oldPos, pos, beforeSize: before.nodeSize, afterSize: after.nodeSize, text: after.textContent });
+      if (!last || !owner) return false;
+      let from = last.sourceEnd;
+      // Walk only accepted inline closing/tail ownership, never source text search.
+      while (from < owner.end) {
+        const closing = base.spans.filter(span => !span.visible && span.sourceStart === from && span.sourceEnd > from &&
+          ['delimiter', 'href', 'title', 'reference-label'].includes(span.role));
+        if (closing.length !== 1) break;
+        from = closing[0].sourceEnd;
+      }
+      const to = from + tail.length;
+      const hidden = base.spans.filter(span => !span.visible && span.sourceStart <= from && span.sourceEnd >= to &&
+        ['block-suffix', 'gap'].includes(span.role));
+      if (to > owner.end || raw.slice(from, to) !== tail || hidden.length !== 1) return false;
+      changed.push({ from, to, oldPos, pos: pos + 1 + before.content.size,
+        beforeSize: before.nodeSize, afterSize: after.nodeSize, text: tail });
       return true;
     }
-    if (!['doc', 'bullet_list', 'ordered_list', 'list_item'].includes(before.type.name) || before.childCount !== after.childCount) return false;
+    if (!['doc', 'bullet_list', 'ordered_list', 'list_item', 'blockquote'].includes(before.type.name) || before.childCount !== after.childCount) return false;
     let oldOffset = before.type.name === 'doc' ? 0 : oldPos + 1;
     let offset = after.type.name === 'doc' ? 0 : pos + 1;
     for (let index = 0; index < before.childCount; index++) {
@@ -256,13 +260,20 @@ function ownerTrailingWhitespaceProjection(raw: string, parsed: ReturnType<typeo
   if (!pair(parsed.doc, doc, 0, 0) || !changed.length) return null;
   const shift = (visual: number) => visual + changed.reduce((delta, item) =>
     delta + (visual >= item.oldPos + item.beforeSize ? item.afterSize - item.beforeSize : 0), 0);
-  const spans = base.spans.filter(span => !changed.some(item => span.sourceStart < item.to && span.sourceEnd > item.from))
-    .map(span => ({ ...span, visualStart: span.visualStart === undefined ? undefined : shift(span.visualStart),
-      visualEnd: span.visualEnd === undefined ? undefined : shift(span.visualEnd) }));
+  const spans = base.spans.flatMap(span => {
+    let parts = [span];
+    for (const item of changed) parts = parts.flatMap(part => {
+      if (part.sourceStart >= item.to || part.sourceEnd <= item.from) return [part];
+      return [part.sourceStart < item.from ? { ...part, sourceEnd: item.from } : undefined,
+        part.sourceEnd > item.to ? { ...part, sourceStart: item.to } : undefined].filter((value): value is LedgerSpan => !!value);
+    });
+    return parts;
+  }).map(span => ({ ...span, visualStart: span.visualStart === undefined ? undefined : shift(span.visualStart),
+    visualEnd: span.visualEnd === undefined ? undefined : shift(span.visualEnd) }));
   for (const item of changed) for (let index = 0; index < item.text.length; index++) spans.push({
     sourceStart: item.from + index, sourceEnd: item.from + index + 1, role: 'text',
     syntax: 'literal-owner-trailing-whitespace', visible: true, text: item.text[index],
-    visualStart: item.pos + 1 + index, visualEnd: item.pos + 2 + index,
+    visualStart: item.pos + index, visualEnd: item.pos + 1 + index,
   });
   let pos = 0;
   const ranges = parsed.ranges.map((range, index) => {
@@ -1017,7 +1028,7 @@ export class SourceAuthoritySession {
     try {
       const context = this.projectionContext();
       const plan = planNativeTransaction(this.currentRaw, this.state, context.ranges, transaction,
-        (position, side = 'any') => this.mapVisualEndpoint(position, side), this.preferredEol);
+        (position, side = 'any') => this.mapVisualEndpoint(position, side), this.preferredEol, context.ledger);
       return !!this.planCompositionOwner(plan, this.state.apply(transaction));
     } catch { return false; }
   }
@@ -1333,7 +1344,7 @@ export class SourceAuthoritySession {
     return true;
   }
 
-  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner): void {
+  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner, sourceBoundary?: NativeAnchor): void {
     const parsed = this.parseSource(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
@@ -1364,6 +1375,7 @@ export class SourceAuthoritySession {
           visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
       };
     });
+    if (sourceBoundary) mappedAnchors.push({ visual: sourceBoundary.pmPos, raw: sourceBoundary.sourceOffset, reason: '已接受inline关闭语法后的空白起点' });
     const oldAnchorCount = mappedAnchors.length;
     const step = target.selection;
     if (sourceCaret !== undefined) mappedAnchors.push({ visual: step.head, raw: sourceCaret, reason });
@@ -1495,7 +1507,7 @@ export class SourceAuthoritySession {
           } catch (error) {
             throw Error(`事务 PM ${position}/${side} 映射失败：${error instanceof Error ? error.message : String(error)}`);
           }
-        }, this.preferredEol);
+        }, this.preferredEol, context.ledger);
       attemptedRaw = plan.candidate;
       const target = this.state.apply(tr);
       let sourceCaret = plan.sourceCaret;
@@ -1533,7 +1545,7 @@ export class SourceAuthoritySession {
         if (compositionId !== undefined) this.compactComposition();
         return true;
       }
-      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner);
+      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner, plan.sourceBoundary);
       if (compositionId !== undefined) this.compactComposition();
       return true;
     } catch (error) {

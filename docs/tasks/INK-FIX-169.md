@@ -187,3 +187,45 @@ endComposition 在安静且 PM composing=false 后以最终原文恢复 canonica
 普通 DOM Backspace 到空，以及故障注入的原子失败→合法位置恢复→公开 drain 重试。
 故障注入直接构造非法 session.rawSelection；正常公开 setRawSelection 会拒绝该非法边界，
 不能把该注入当成真实用户输入错误证据。重试不清无关 unresolved 的负控也通过。
+
+## 追加：INK-REV-172 的引用与 marked/link 空白缺口
+
+本轮先只读审查首稿与 probe，不改写原审查报告。作者独立最小三例实际红：`> a` 第二空格消失；
+`**bold**`、`# **bold**` 第一空格错误插在关闭定界符之前，使 strong 变为字面文本。
+管理者另外以真实 WK 复现 strong/link 的原生继承 mark 空格路径；这是管理者证据，不是作者自跑。
+
+有界修复：
+
+- ownerTrailingWhitespaceProjection 增加 accepted blockquote 的递归配对；不改引用/列表结构 planner。
+- 对任何变化的 paragraph/heading，仅接受“原 canonical 正文 Fragment 完全保留 + 无 mark ASCII 尾空格”。
+  不再重建已有正文 spans。只把同次 ledger 中关闭 inline 语法之后、accepted owner 内的隐藏空格区间暴露为可见；
+  原 inline marks、URL/title、定界符、块前后缀与真正 hardbreak 保持原样。
+- planNativeTransaction 增加末尾可选 ledger 参数，SourceAuthority 的两个实际调用传同次 context.ledger。
+  专用 trailingMarkedSpacePlan 只处理 strong/em/strike/link 的 textblock 末尾插空格。
+  核对 sourceLength/docSize、source canonical 与当前 state、accepted owner range、正文末端 span、
+  mark close spans 或已接受完整 link source，以及最终 PM 目标。
+  按关闭语法的已接受跨度把插入点放到其后；没有全文寻找第一次同文或关闭符号，也不 trim/serialize 正文。
+- 只有该专用 planner 可签发 sourceBoundary，accept 保留关闭语法前/后的方向边界，
+  连续 Backspace 删除无 mark 空格时不能跨掉原 closing span。现有通用位置映射规则不变。
+- Native 原始空格 step 可以继承 marks；session 原有的纯空格 removeMark 处理后再证明最终目标，
+  因此不是只支持 API 人工无 mark 的输入。
+
+新增 `marked-whitespace-runtime.test.ts` 20 例：引用、strong/em/strike/嵌套 marks、link/title、
+link 内 strong/strong 内 link、重复同文、marked 引用和列表、ATX 闭合 hash、setext、BOM/CRLF。
+覆盖逐键可见、原 Fragment、无 mark 尾空格与后续 b、源/PM caret、有向选区、连续删除复原、Undo/Redo。
+现有 hardbreak、组合输入、只读保护、格式与可视替换回归一同运行。
+
+作者实际运行：
+
+```sh
+./editor/node_modules/.bin/vitest run --root editor \
+  src/marked-whitespace-runtime.test.ts src/heading-spaces-regression.test.ts \
+  src/heading-composition-runtime.test.ts src/source-authority-runtime.test.ts \
+  src/source-boundary-sequence.test.ts src/heading-input-runtime.test.ts src/block-editing.test.ts \
+  src/composition-publication.test.ts src/protected-source-runtime.test.ts src/inline-formatting.test.ts \
+  src/gfm-autolink-runtime.test.ts src/visual-replacement-runtime.test.ts
+./editor/node_modules/.bin/tsc --noEmit -p editor/tsconfig.json
+```
+
+结果：12 文件 230 例全绿，TypeScript、diff 检查通过。未运行 Native/WK、物理 IME、性能或全量门禁；
+等待管理者原生复验与 172 对固定新 SHA 的 finding 复审，不用本次作者结果代替两者。

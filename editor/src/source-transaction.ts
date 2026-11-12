@@ -2,6 +2,7 @@ import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorState, Transaction } from 'prosemirror-state';
 import MarkdownIt from 'markdown-it';
 import { parse } from './source-document';
+import type { SourceLedger } from './source-ledger';
 
 export type NativeRange = { start: number; end: number; pos: number; size: number; kind: string };
 export type NativePatch = { from: number; to: number; insert: string };
@@ -15,6 +16,7 @@ export type NativePlan = {
   mayStage?: boolean;
   /** Proven source caret in candidate coordinates after a text/input-rule edit. */
   sourceCaret?: number;
+  sourceBoundary?: NativeAnchor;
 };
 
 type SourcePosition = (position: number, side?: 'from' | 'to' | 'any') => number;
@@ -943,6 +945,52 @@ function insertTablePlan(
   return { patches, candidate, kind: 'table-structure' };
 }
 
+function trailingMarkedSpacePlan(source: string, state: EditorState, tr: Transaction,
+  ranges: readonly NativeRange[], ledger: SourceLedger | undefined): NativePlan | null {
+  const step = tr.steps[0]?.toJSON() as Record<string, any>;
+  const insert = step && textSlice(step);
+  if (!ledger || insert === null || !/^ +$/.test(insert) || step.from !== step.to ||
+      !state.selection.empty || state.selection.from !== step.from ||
+      ledger.sourceLength !== source.length || ledger.docSize !== state.doc.content.size) return null;
+  const position = state.doc.resolve(step.from);
+  const marks = position.nodeBefore?.marks ?? [];
+  if (!marks.length || marks.some(mark => !['strong', 'em', 'strike', 'link'].includes(mark.type.name)) ||
+      !['paragraph', 'heading'].includes(position.parent.type.name) || position.parentOffset !== position.parent.content.size ||
+      !parse(source).doc.eq(state.doc)) return null;
+  const owner = ledger.blocks.find(block => step.from > block.range.pos && step.from < block.range.pos + block.range.size);
+  if (!owner || !ranges.some(range => range.start === owner.range.start && range.end === owner.range.end &&
+      range.pos === owner.range.pos && range.size === owner.range.size)) return null;
+  const last = owner.spans.filter(span => span.visible && span.visualEnd === step.from &&
+    ['text', 'link-label'].includes(span.role)).sort((left, right) => right.sourceEnd - left.sourceEnd)[0];
+  if (!last) return null;
+  const link = marks.find(mark => mark.type.name === 'link');
+  const links = link ? ledger.links.filter(item => item.visual.to === step.from && item.source.from >= owner.range.start &&
+    item.source.to <= owner.range.end && item.href === link.attrs.href && item.title === link.attrs.title) : [];
+  if (link && links.length !== 1) return null;
+  let from = last.sourceEnd;
+  const closed = new Set<string>();
+  while (from < owner.range.end) {
+    const candidates = owner.spans.filter(span => !span.visible && span.sourceStart === from && span.sourceEnd > from &&
+      (span.role === 'delimiter' || (!!link && ['href', 'title', 'reference-label'].includes(span.role))));
+    if (candidates.length !== 1) break;
+    const closing = candidates[0];
+    const emphasis = /^(strong|em|strike)-close$/.exec(closing.syntax);
+    if (emphasis) closed.add(emphasis[1]);
+    else if (!link || closing.owner !== links[0].owner) return null;
+    from = closing.sourceEnd;
+  }
+  if (marks.some(mark => mark.type.name !== 'link' && !closed.has(mark.type.name)) ||
+      (link && from < links[0].source.to) || from <= last.sourceEnd || /[\r\n]/.test(source.slice(last.sourceEnd, from))) return null;
+  const expected = state.tr.insertText(insert, step.from, step.to).removeMark(step.from, step.from + insert.length).doc;
+  if (!expected.eq(tr.doc)) return null;
+  const patches = [{ from, to: from, insert }];
+  const candidate = applyNativePatches(source, patches);
+  const parsed = parse(candidate);
+  if (parsed.issues.length || !parsed.doc.eq(state.doc)) return null;
+  return { patches, candidate, kind: 'text', sourceCaret: from + insert.length,
+    sourceBoundary: { pmPos: step.from, sourceOffset: from } };
+}
+
 export function planNativeTransaction(
   source: string,
   state: EditorState,
@@ -950,6 +998,7 @@ export function planNativeTransaction(
   tr: Transaction,
   position: SourcePosition,
   fallbackEol: '\r\n' | '\n' = '\n',
+  ledger?: SourceLedger,
 ): NativePlan {
   if (!tr.docChanged) throw Error('原生补丁规划器只接受文档事务');
   const supplemental = tr.steps.slice(1).map(step => step.toJSON() as Record<string, any>);
@@ -1022,6 +1071,8 @@ export function planNativeTransaction(
 
   const insert = textSlice(step);
   if (insert !== null) {
+    const trailingSpace = trailingMarkedSpacePlan(source, state, tr, ranges, ledger);
+    if (trailingSpace) return trailingSpace;
     const inlineCode = inlineCodePlan(source, state, step, insert, position);
     if (inlineCode) return inlineCode;
     let from: number;
