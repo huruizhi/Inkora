@@ -27,3 +27,13 @@ git diff --check b7cdd790a702dc38c0709035098c986a7252360f...6d373122a245bee219fb
 未跑全量、Native、GUI、Xcode、构建、CI、安装；作者1079项不作本人结果。限定审查无未完成事项；主任务的build16资源、Native绿、精确HEAD CI及物理验收仍需独立结算。风险：6项公开模型契约不等于真实IME、WK焦点及保存/关闭通过。没有PR/merge/Issue、应用或用户文档操作。
 
 交付提交以本分支HEAD及执行回报完整SHA为准，避免文档自引用commit；提交后push自有分支，并以真实 `git ls-remote` 核对远端HEAD一致、statusclean。worktree及ignored产物保留待两层备份。
+
+## 2026-11-14 固定afa00ca限定追加
+
+受检 `afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe`，追加基线 `6d373122a245bee219fb7523fef2e9fd31e357b2`；refs/merge-base/非空diff已核。原首稿逐字prefix保留，仅追加本节及报告追加节。
+
+完成：核新语法删除区间减去可见span的hunk及第7公开测试；沿原8份未变化标准逐项核12个Fowler heuristic。新增hard0/possible0；不代判207 P1关闭。只读Git固定导出，不读取根动态Native夹具。
+
+本人实际：`pnpm --dir artifacts/INK-REV-206/visible-syntax/fixed/editor exec vitest run src/heading-edit-contract.test.ts` 退出0、7/7通过；固定追加 `git diff --check` 退出0；157份导出editor文件逐字核目标Git blob一致。首稿report/task与原commit及目标整合blob核prefix一致。原始日志与清单在 `artifacts/INK-REV-206/visible-syntax/`，仅自建依赖链接已unlink。
+
+仅追加原两文档，无产品修改；无全量、Native、构建、GUI、CI、安装或IME结果。限定审查无未完成；Spec关闭、WK/IME及候选交付仍属独立门槛。提交/push后真实核远端=HEAD及statusclean，完整SHA以执行回报为准；worktree及产物保留。

@@ -52,3 +52,54 @@ git diff b7cdd790a702dc38c0709035098c986a7252360f...6d373122a245bee219fb7523fef2
 - 未跑全量、Native、GUI、Xcode、构建、CI、安装或物理IME；未验证build16包资源。文档中的作者1079项不是本人结果。Native两次100ms等待只作静态阅读，当前没有本人重复运行的稳定性证据。
 
 未完成：限定Standards审查内无；构建/Native绿、精确HEAD CI与新候选真实验收由主任务继续结算。风险：本次有界模型测试不能证明实际WK焦点、IME、保存/关闭及资源打包正确。worktree与ignored原始产物保留待两层备份，不清理。
+
+## 2026-11-14 限定追加：固定afa00ca可见空白语法区间补正
+
+本节仅追加，前述固定6d37312首稿保持原始字节；该首稿结论仍只针对原受检diff，不得作为后来发现P1不存在的证明。本次只核 Standards，不代判207的Spec finding关闭。
+
+追加固定基线 `6d373122a245bee219fb7523fef2e9fd31e357b2`，新受检 `afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe`。ref有效、merge-base等于追加基线、diff非空；中间两提交只整合206/207首稿，唯一新增产品提交 `afa00ca fix(editor): retain visible whitespace in heading delimiters`。固定命令：
+
+```sh
+git diff 6d373122a245bee219fb7523fef2e9fd31e357b2...afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe
+```
+
+8份全文标准相对此次基线均无修改，沿用已读原文。全部受检来源为Git固定diff及目标Git archive导出；未读取根工作区正在校准的Native夹具。本次diff共8文件，产品仅 `heading-start-edit.ts` 及公开测试文件；其他为已整合审查文档、任务记录和证据。
+
+### Standards追加核心（≤400词）
+
+新增已证硬违规0项；新增有证据支持的Fowler possible 0项。
+
+`heading-start-edit.ts:121-143` 读取当前ledger可见原文span，与prefix/suffix语法区间求交，只将其间隙形成删除patch。`if (!/^[\t ]*$/.test(source.slice(from, to))) return null` 保守拒绝重叠的非空白可见语法；不把原文或投影统一trim。缺ledger且source parse与当前doc不一致则拒绝。此证据对应 ADR-0004第6/10行的已接受空白、禁止无审计trim与无法证明时保留意图规则，及GLOSSARY“当前原文”包含已接受空白的定义，未见新hunk违反。
+
+原共享operation的canonical语法证明保留，只将parse结果局部复用为 `sourceDoc`；完整editable文档/Selection检查与placement文档身份绑定未修改，符合 `docs/editor-session.md` 的位置依据和旧事务拒绝契约。没有引入新依赖、网络、Bridge、权限或测试旁路，符合V1接缝及AGENTS约束。
+
+第7测试 `heading-edit-contract.test.ts:178-202` 增加closing hash前后插入、strong、原文字节、UndoRedo/save与重开字节检查，并保留prefix语法对照；未删除有效旧测试。任务与证据明确P1独立关闭、Native夹具校准、全回归与物理验收待结算，未将作者结果等同本人验证。其功能覆盖是否足以关闭P1由Spec独立结论决定。
+
+### 追加12项heuristic核查
+
+各项仍属判断性possible而非硬规则，repo标准优先；本轮不重复报告工具强制项。
+
+| Heuristic → 常见修正 | 追加hunk证据及判断 |
+| --- | --- |
+| Mysterious Name → 重命名 | `sourceDoc/syntax/visible/cursor` 对应parse结果、语法区间、相交可见span和扫描端点，未报。 |
+| Duplicated Code → 提取 | prefix/suffix复用同一差集扫描；operation复用保留，未复制判断树，未报。 |
+| Feature Envy → 移动职责 | ledger只是提供通用span，标题模块负责本地删除意图；移动至ledger反会引入标题编辑职责，未报。 |
+| Data Clumps → 领域类型 | 区间仍用已有NativePatch，未新增反复同行参数组，未报。 |
+| Primitive Obsession → 小类型 | source坐标仍遵循既有NativePatch/LedgerSpan，空白正则是明确语法约束，未报。 |
+| Repeated Switches → 多态/映射 | 未新增同类重复分支树；循环扫描同一类区间，未报。 |
+| Shotgun Surgery → 聚合 | 产品只在标题证明与对应契约测试修改，文档用于证据记录，未报。 |
+| Divergent Change → 拆分 | 新增分支均处理标题语法与可见字节冲突，无无关职责，未报。 |
+| Speculative Generality → 删除/内联 | 直接局部算法，无新hook或为未来预留抽象，未报。 |
+| Message Chains → 封装 | `ledger?.spans.filter(...).sort(...)` 是本地集合变换，不依赖长对象导航，未报。 |
+| Middle Man → 删除转发 | 无新增转发函数或类，未报。 |
+| Refused Bequest → 组合 | 无新增继承或违背继承契约，未报。 |
+
+### 本人实际追加验证
+
+- Git archive目标editor在ignored `artifacts/INK-REV-206/visible-syntax/fixed/` 导出，Python核157份editor文件逐字等于目标Git blob，全数相同；`export-check.json`保留结果。
+- `pnpm --dir artifacts/INK-REV-206/visible-syntax/fixed/editor exec vitest run src/heading-edit-contract.test.ts`：退出0，1文件7项通过；原始 `heading-edit-contract.log` 保留。
+- 固定追加diff的 `git diff --check`：退出0，无输出；`diff-check.log`保留；完整追加diff为 `fixed.diff`。
+- 首稿report/task按 `0f12625f0a9c592426521b72b1271a9f9cb4c755` Git blob验证为追加后文件的逐字prefix，且首稿Git blob与新受检整合版本相同；原始核对清单保留 `prefix-check.json`。
+- 仅对导出目录自建根node_modules借用链接，测试后unlink；未安装依赖。未运行全量、Native、构建、GUI、CI、安装或真实IME，未把作者7项或旧1079项作为本人结果。
+
+限定追加审查内无未完成事项。风险与外部门槛：上述7项不能证明真实WK焦点、保存关闭、候选资源和IME稳定；207独立P1复验、主任务最终资源/回归/CI/物理验收仍需结算。worktree、固定导出及原始产物保留待两层备份。
