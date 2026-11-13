@@ -47,4 +47,3 @@ export function eolForLine(
   const before = source.slice(0, offset).match(/(?:\r\n|\n)(?![\s\S]*(?:\r\n|\n))/);
   return (before?.[0] ?? fallback) as '\r\n' | '\n';
 }
-
