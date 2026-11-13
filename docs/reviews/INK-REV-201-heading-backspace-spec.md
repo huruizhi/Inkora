@@ -23,3 +23,15 @@
 - 静态核读：空段ledger限定同次 `insertion-anchor`、唯一sourceStart及一/两次EOL；先完整目标doc证明再删空段。额外文本负控已实跑，不能代替选区证明。
 - 初次根外filter、依赖解析及缺renderer资源未执行到产品断言；原始失败日志保留。随后仅运行既有prepare-renderers生成当前worktree离线资源；未安装依赖。
 - 未运行全量1070、Native33、make lint/test或构建；未使用作者结果冒称本人证据。未启动App、GUI、访问用户文档、Keychain或外部服务。真实搜狗、paint、VoiceOver、macOS14及实际关闭/保存仍未由本次审查验证。
+
+## 限定复验：7eb1eb0（追加，不覆盖首稿）
+
+固定补正SHA：`7eb1eb0c4261f13ec25e8f02e81fe86a994c0b2d`；通过 `git archive` 导出到本worktree ignored `artifacts/INK-REV-201/recheck/candidate/`，没有更换本审查分支产品源码。静态确认仅在目标doc匹配后增加目标Selection相等证明，不符抛错原子拒绝；source-authority产品未改。
+
+**首稿P1在该补正上关闭。** 本人运行自有 `closure-session.test.ts` 2项、`closure-runtime.test.ts` 6项，合计8/8通过：format/join/empty三类错误目标选区均被拒绝，原文、完整PM doc、PM选区、rawCaret和history长度不变，未解决意图存在且snapshot阻断；原join反例被拒后再次输入落在原标题起点。三种正常Backspace均成功并通过Undo/Redo。
+
+命令：`./.tools/node_modules/.bin/pnpm --dir editor exec vitest run --root .. --config editor/vite.config.ts artifacts/INK-REV-201/recheck/closure-runtime.test.ts artifacts/INK-REV-201/recheck/closure-session.test.ts`；本人日志 `artifacts/INK-REV-201/recheck/closure.log`。未借用作者17项结果作为本人的验证。
+
+另逐字重放原会话/runtime夹具（只换固定候选import），日志 `original-replay.log`：原5个正常检查仍通过，原3项故障演示在“预期接受或接受后内容”的旧断言失败；输出显示补正已拒绝原事务。这些旧断言的失败不冒称新回归或通过，关闭结论依据上述专用原子拒绝断言8/8。原始失败夹具和日志原封保留。
+
+仅关闭已列P1；未扩大全量/Native/物理键盘/GUI/实际关闭保存验收。离线资源仅在副本生成，未安装依赖。复验后仅unlink本人依赖symlink，保留worktree、资源和原始证据待双备份。

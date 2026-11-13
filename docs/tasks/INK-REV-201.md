@@ -18,3 +18,9 @@
 ## 风险与未完成
 
 固定09af不应据此审查通过发布门禁；修复归作者/主任务。收到补正SHA后可另做限定复验，保留原首稿。无其他要求内未完成项。
+
+## 限定复验追加
+
+固定补正 `7eb1eb0c4261f13ec25e8f02e81fe86a994c0b2d` 通过git archive隔离副本检验；未修改本分支产品。本人专用会话2项/runtime6项合计8/8通过：原错误事务原子拒绝且不污染选区、位置、history，三种正常Backspace及UndoRedo仍成功，首稿P1在该SHA关闭。原始故障演示重放显示入口拒绝；旧故障演示的3项失败断言和5项正常通过另存原样日志，不把失败冒充通过。
+
+两个文件均只追加；用首稿提交 `2d338bc3f23e96a694da6bd28e7f04ff7633693c` 的完整blob做前缀bytes断言并记录SHA-256于ignored `artifacts/INK-REV-201/recheck/prefix-proof.json`。仅限定复验，未跑全量/Native/App。证据及worktree继续保留。提交并推送本分支后核远端fullSHA与clean状态。
