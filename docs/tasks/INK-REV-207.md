@@ -20,3 +20,7 @@ ignored `artifacts/INK-REV-207`保留probe、校准日志、冻结source、最�
 本人当前7/7、原27/27、原P1最小2/2、额外44/44、marker8/8。修正前6d同第7项及P1最小仍红；额外44项旧32通过/12个可见空格原文丢失失败。40组输入trace新旧相同（28接受/12继承拒绝），对suffix被视作语法的空格/tab保留正确control，不以canonical重开PM省略空白视作原文丢字节。精确currentRaw/save/new-session raw全部核对；拒绝与历史/完整Selection边界保持。
 
 仅追加原报告/任务单。无产品修改、private getter、依赖安装、全量/Native/Xcode/GUI/构建/CI/安装；作者结果不算本人证据。未完成的真实IME/可见光标/保存关闭旅程及最终候选资源验证仍由实现任务处理。额外防御性无ledger/非空白可见重叠分支只静态审查，不伪报动态覆盖；可见tab在delimiter直接输入本轮未建立接受路径。ignored postfix证据及worktree保留，解除自建依赖链接，commit/push/真实remote核对见回报。
+
+## 2026-11-14 最后Native夹具静态收口
+
+仅静态核afa00cab...16860d7：editor/app/project产品diff为空；Native新用例去除makeFirstResponder切换、增加公开heading起点caret断言，全部输入/真实Save As/精确磁盘字节及withEditor prepareForClose断言保留，未削弱Spec验证。无新增finding，原P1在afa公开Session有界关闭范围不变。作者同冻结35项binary切旧/新资源的红绿仅为作者证据，本人未实跑/独立核日志，不把夹具失配当产品红或合成DOM算物理输入。本轮不运行任何测试/构建/GUI；只追加原报告/任务单并核953e0a2全文prefix保持。静态diff/SHA证据保留final-static，真实验收仍待实现任务结算。

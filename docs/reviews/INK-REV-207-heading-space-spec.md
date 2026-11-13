@@ -71,3 +71,9 @@
 首稿报告4867字节（SHA-256 `1ed930d45fe4265067d2a26ca8f9eb660f8bc58d77ace994b138b933a39cda2e`）、任务单1580字节（`0773b8feb24baf9cc930148005c955e7718a7dd5c6e542f23ab69e28c91c238b`）与9353897逐字节核对，本次仍为修改后文件的完整prefix。
 
 本轮仅公开Session。未跑全量/Native/Xcode/GUI/构建/CI/安装，也未操作App或用户文档；不把作者7项/Native结果当本人实跑。作者Native35焦点夹具、全量1080与最终CI仍待独立结算，真实用户v2/build15失败现场不因本报告转为通过。仅移除本轮自建两处依赖链接，冻结source、原始证据与worktree继续保留待两层备份。
+
+## 2026-11-14 最后Native夹具静态收口（固定16860d7）
+
+仅核 `git diff afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe...16860d7fbcfe4370f2dc6dcbc7ea969dfbe143cf` 与固定Git show。`editor/`、`app/`、`project.yml` diff为空，原P1在afa的有界关闭范围保持。(a)新增缺失0、(b)scope creep0、(c)新增实现错误0。Native测试438–482行只删除新增的Native makeFirstResponder切换，并在Backspace前增加公开DOM collapsed selection、offset0及heading归属断言；focus/keys既有DOM seam仍在。任务项空格输入及snapshot、标题取消格式、真实Save As completion、精确磁盘bytes均未削弱，883–918行withEditor的真实prepareForClose与错误断言也保留。去掉responder检查并非删除保存/关闭或真实系统键盘验收门槛；本用例仍是WK合成DOM操作，不能冒充物理输入。
+
+作者固定证据 `build16-software-checks.json` 记录同一冻结35项binary仅切资源，旧v2原34通过、新1在snapshot/save/close返回用户replaceAround，新afa资源35通过；本次只阅读该记录，未实跑或独立核原日志/二进制。夹具焦点失配不算产品红。本轮没有运行Session/Native/build/GUI/CI，不改变上一节证据层级或物理验收待办。只追加两文件，953e0a2版完整字节仍为prefix（核对摘要保留ignored `artifacts/INK-REV-207/final-static/`），所有旧证据与工作树继续保留。
