@@ -1,0 +1,18 @@
+{
+  "command": "INKORA_WRITING_RESOURCE_BUNDLE=<fixed bundle> native-green/writing-tests",
+  "exitCode": 1,
+  "tests": 33,
+  "failedTests": 2,
+  "rawPath": "artifacts/INK-FIX-199/native-final-baseline-red.txt",
+  "rawBytes": 16483,
+  "rawSHA256": "40940c09ea524a4530bcd80a9324e7f1f30138b66d4d997364fa6bd33e6168a8",
+  "physicalInput": false,
+  "visibleWindows": false,
+  "failedAssertions": 23,
+  "unexpectedFailures": 6,
+  "failedMethods": [
+    "testHeadingBoundaryBackspaceMovesUpEachInsertedBlankLineAndCanClose",
+    "testNonemptyHeadingBoundaryBackspacePreservesTextAndHistory"
+  ],
+  "old31Passed": true
+}

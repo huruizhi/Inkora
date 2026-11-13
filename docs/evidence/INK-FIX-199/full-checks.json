@@ -1,0 +1,10 @@
+{
+  "rawPath": "artifacts/INK-FIX-199/full-checks.txt",
+  "rawSHA256": "119707eacc24936c03d462a46d8046707a75c539734ee71f6bbb5307b499e4f6",
+  "rawBytes": 3244,
+  "exitCode": 0,
+  "tests": 1070,
+  "failedTests": 0,
+  "physicalInput": false,
+  "visibleWindows": false
+}

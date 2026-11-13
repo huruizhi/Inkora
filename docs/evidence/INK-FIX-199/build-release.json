@@ -1,0 +1,11 @@
+{
+  "command": "make build-release",
+  "exitCode": 0,
+  "tests": null,
+  "failedTests": null,
+  "rawPath": "artifacts/INK-FIX-199/build-release.raw.txt",
+  "rawBytes": 10398,
+  "rawSHA256": "fd90470750fccfc88f68fdcdb4b88fa91fc27a898702899cdb282b5a9a5610e1",
+  "physicalInput": false,
+  "visibleWindows": false
+}

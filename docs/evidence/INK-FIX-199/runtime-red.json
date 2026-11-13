@@ -1,0 +1,10 @@
+{
+  "rawPath": "artifacts/INK-FIX-199/runtime-red.txt",
+  "rawSHA256": "20389f4048fffbf00e85a36c2ae6b514219988ff8e60329f3c735f047d1444b0",
+  "rawBytes": 12666,
+  "exitCode": 1,
+  "tests": 6,
+  "failedTests": 6,
+  "physicalInput": false,
+  "visibleWindows": false
+}

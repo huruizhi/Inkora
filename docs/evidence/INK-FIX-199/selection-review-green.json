@@ -1,0 +1,10 @@
+{
+  "rawPath": "artifacts/INK-FIX-199/selection-review-green.txt",
+  "rawBytes": 2528,
+  "rawSHA256": "ff8593c4c6f07ada4f03eef8d47d8e216a380346328d773a58d941e0ffeefabb",
+  "exitCode": 0,
+  "tests": 17,
+  "failedTests": 0,
+  "layer": "public runtime dispatch; synthetic DOM",
+  "physicalInput": false
+}

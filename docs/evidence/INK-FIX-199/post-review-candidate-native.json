@@ -1,0 +1,11 @@
+{
+  "buildSourceCommit": "7eb1eb0c4261f13ec25e8f02e81fe86a994c0b2d",
+  "rawPath": "artifacts/INK-FIX-199/post-review-candidate-native.txt",
+  "rawBytes": 8289,
+  "rawSHA256": "12c44c39247558d55a923f854714c4b5b1f04086d38cea8a3bf1c2913a6a6ea6",
+  "exitCode": 0,
+  "tests": 33,
+  "failedTests": 0,
+  "physicalInput": false,
+  "visibleWindows": false
+}

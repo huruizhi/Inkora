@@ -1,0 +1,34 @@
+{
+  "buildSourceCommit": "7eb1eb0c4261f13ec25e8f02e81fe86a994c0b2d",
+  "bundleIdentifier": "com.huruizhi.Inkora",
+  "build": "14",
+  "marketingVersion": "0.1.0",
+  "minimumSystemVersion": "14.0",
+  "architectures": [
+    "x86_64",
+    "arm64"
+  ],
+  "signature": "ad-hoc; hardened runtime; not notarized",
+  "strictDeepSignature": true,
+  "sourceEntitlementsMatch": true,
+  "offlineBundleSmoke": true,
+  "candidateNativeTests": 33,
+  "candidateNativeFailures": 0,
+  "editorFiles": {
+    "RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "assets/index-Cq1mpSAa.js": "5c0b8c9e77a06a7e038528f46be9b9c3d2382f4a77f03cfdfab078b80fdfe5f4",
+    "index.html": "8cfdf2f3f643459276b912ba9b9b41643155062d941761d6465000d425fb6799",
+    "vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+  },
+  "baselineEditorFiles": {
+    "RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "assets/index-D3sT5Ajd.js": "241f897d8b3e846b8f4ec36d9cead26723b5c4dfb9a620468ddc6d263b9bbcf3",
+    "index.html": "3356b169cbd0e8c8d92469b640220dd783e38eb8e3eb10d2170928069095a722",
+    "vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+  },
+  "installed": false,
+  "published": false,
+  "selectionFixIncluded": true
+}

@@ -1,0 +1,11 @@
+{
+  "buildSourceCommit": "7eb1eb0c4261f13ec25e8f02e81fe86a994c0b2d",
+  "rawPath": "artifacts/INK-FIX-199/post-review-build-release.txt",
+  "rawBytes": 2200,
+  "rawSHA256": "b3bd4ddbc348050b9a33ca3a8cdbeeaf360638db3a30f27fe4a8e29cbdc73287",
+  "exitCode": 0,
+  "tests": null,
+  "failedTests": null,
+  "physicalInput": false,
+  "visibleWindows": false
+}
