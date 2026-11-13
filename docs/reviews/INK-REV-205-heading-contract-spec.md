@@ -17,3 +17,17 @@
 ## 证据与限制
 
 独立工作树 `task/INK-REV-205-heading-contract-spec`。命令、原始日志、SHA与测试夹具见任务记录。未运行全量/Native/构建/GUI/CI/物理输入；不新增macOS14实机要求。没有更改产品、有效测试、用户文档或安装App。
+
+## 追加复验：4cad6f1 新空段发布（原文逐字保留）
+
+新固定受检 `4cad6f10ec8520afd25f3139c046764ea82b89cb`；限定新增 hunk：`git diff 27b5180ad6ba4ba40ac05b0d1e8f21699b0009f3...4cad6f10ec8520afd25f3139c046764ea82b89cb`。从 git 对象提取冻结源码，在原审查工作树隔离运行，不改变旧受审产品。
+
+追加结论：**新增实现 finding 0**。
+
+(a) Missing/partial：新契约 `INK-STAB-203.md:79–82` 明确标题起点 Enter 后点击新空段输入的继承缺口。本人用同一新增第4项公开会话测试，仅切换源码 import，build14、bdbd 均在输入 X 时失败，诊断相同；4cad 的4项契约测试全部通过。此前172差分明确包含继承拒绝，其“新增问题0”不等于旧路径正确，故与本次红绿不矛盾。物理输入/可见光标/保存关闭、精确HEAD软件交付门槛仍另行结算。
+
+(b) Scope creep：未发现。`:80` 要求“只撤销该点的旧raw别名”；`source-authority.ts:1441–1449` 仅完整契约 placement 发布点进入替换分支，其他 visual 点不清理；原标量 sourceBoundary 继续追加原 anchor。当前唯一完整 placement 提供方仍是标题起点模块，未扩到其他 planner。
+
+(c) Implemented wrong：未发现新增反例。`:80–82` 的目标行为有公开红绿实证；`:21,39` 的完整doc/Selection凭据绑定未变，仍先验证再进入 accept，异常仍由会话恢复 snapshot。原拒绝后原文/doc/完整选区/历史及随后输入、只读保护、重开epoch测试继续通过，没有以消除alias放宽无法证明事务。
+
+本人实跑：4个测试文件 **192/192**，其中契约4、原172有界对照、14个其他位置/旧标量关闭语法affinity对照、2个源码边界测试。对照含marks、Setext、BOM/CRLF、其他位置双affinity、UndoRedo/save与拒绝状态；差分仍包含不适用分支和继承行为，不是192条成功输入证明。未跑全量、Native、构建、GUI或物理验收；主任务1077/34结果未作为本人证据。原始证据与夹具失败日志保留，见任务追加。
