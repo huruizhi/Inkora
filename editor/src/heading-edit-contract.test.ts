@@ -174,3 +174,29 @@ it('keeps an unformat intent unresolved when the source would become a list or m
     expect(session.saveMemory()).toBe(false);
   }
 });
+
+it('preserves visible spaces even when they lie inside heading delimiter ranges', () => {
+  for (const row of [
+    { source: '# a #', at: 3, expected: 'a ', text: 'a ' },
+    { source: '# a #', at: 5, expected: 'a ', text: 'a ' },
+    { source: '# **a** z ##', at: 9, expected: '**a** z ', text: 'a z ' },
+    { source: '# a', at: 2, expected: 'a', text: 'a' },
+  ]) {
+    const session = new SourceAuthoritySession(row.source);
+    expect(session.setRawSelection(row.at)).toBe(true);
+    expect(session.dispatch(session.state.tr.insertText(' ')), session.diagnostic).toBe(true);
+    expect(session.state.doc.textContent).toBe(row.text);
+    const before = session.currentRaw;
+    expect(session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, 1)))).toBe(true);
+    expect(blockKeyBindings.Backspace(session.state, tr =>
+      expect(session.dispatch(tr), session.diagnostic).toBe(true))).toBe(true);
+    expect(session.currentRaw).toBe(row.expected);
+    expect(session.state.doc.textContent).toBe(row.text);
+    expect(session.saveMemory()).toBe(true);
+    expect(new SourceAuthoritySession(session.currentRaw).currentRaw).toBe(row.expected);
+    expect(session.undo()).toBe(true);
+    expect(session.currentRaw).toBe(before);
+    expect(session.redo()).toBe(true);
+    expect(session.currentRaw).toBe(row.expected);
+  }
+});

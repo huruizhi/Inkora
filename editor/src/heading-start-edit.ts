@@ -118,13 +118,31 @@ export function planHeadingStartEdit(context: Context): NativePlan | null {
     }
     if (!parts) return null;
     if (edit.kind === 'unformat') {
+      const sourceDoc = parse(source).doc;
+      if (!ledger && !sourceDoc.eq(state.doc)) return null;
+      const syntax: NativePatch[] = [];
+      if (parts.prefix) syntax.push({ from: owner.start, to: owner.start + parts.prefix.length, insert: '' });
+      if (parts.suffix) syntax.push({ from: owner.end - parts.suffix.length, to: owner.end, insert: '' });
       const patches: NativePatch[] = [];
-      if (parts.prefix) patches.push({ from: owner.start, to: owner.start + parts.prefix.length, insert: '' });
-      if (parts.suffix) patches.push({ from: owner.end - parts.suffix.length, to: owner.end, insert: '' });
+      for (const range of syntax) {
+        const visible = ledger?.spans.filter(span => span.visible && span.sourceStart < span.sourceEnd &&
+          span.sourceStart < range.to && span.sourceEnd > range.from)
+          .sort((a, b) => a.sourceStart - b.sourceStart) ?? [];
+        let cursor = range.from;
+        for (const span of visible) {
+          const from = Math.max(range.from, span.sourceStart), to = Math.min(range.to, span.sourceEnd);
+          // Delimiter whitespace can also contain already accepted author input.
+          // Preserve its proven visible bytes; ambiguous visible syntax stays refused.
+          if (!/^[\t ]*$/.test(source.slice(from, to))) return null;
+          if (cursor < from) patches.push({ from: cursor, to: from, insert: '' });
+          cursor = Math.max(cursor, to);
+        }
+        if (cursor < range.to) patches.push({ from: cursor, to: range.to, insert: '' });
+      }
       const result = plan(context, patches, 'block-structure', owner.start);
       // Prove the source syntax change against the same operation on its parse.
       // The editable target may also contain already accepted whitespace anchors.
-      const sourceEdit = operation(EditorState.create({ doc: parse(source).doc }), 'Backspace');
+      const sourceEdit = operation(EditorState.create({ doc: sourceDoc }), 'Backspace');
       return sourceEdit?.kind === 'unformat' && parse(result.candidate).doc.eq(sourceEdit.transaction.doc) ? result : null;
     }
     const previous = state.doc.child($from.index(0) - 1), previousPos = $from.before() - previous.nodeSize;

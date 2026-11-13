@@ -124,3 +124,13 @@ Native反馈初期的原生修饰键/隐藏窗焦点切换脚本失配，曾左�
 新增Native用例包括任务项实际输入空格→标题取消格式→NSDocument Save As→精确磁盘字节→prepareForClose；原34项保留，harness计数35。重建资源GREEN、双轴独立复审、最终精确HEAD CI及新候选真实验收随后结算，当前不宣告修复交付。下一候选build16，旧v2/build15失败现场不覆盖。
 
 证据摘要[unformat-acceptance-failure.json](../evidence/INK-STAB-203/unformat-acceptance-failure.json)。全部原始失败/夹具/缩减/假设/红绿日志保留ignored artifacts。无生产依赖、Schema/Bridge/Native产品变更、权限放宽或公开发行。
+
+## 206/207独立审查与P1补正（尚未交付）
+
+Standards206固定6d37312：hard0/possible0，本人6项契约及diff检查；未运行Native/GUI。报告已整合。
+Spec207固定6d37312：发现1项P1 implemented wrong，最小为“# a #→在closing hash前接受一个可见空格→行首Backspace”：新raw变a，PM仍a加空格，saveEligible/saveMemory均真；原b7拒绝并保持内容。该问题不能因1079或首次精确Native反馈通过而放行；6d的build16包未启动，已私有ZIP逐文件核验保留。
+
+根补正先加公开第7项，真实RED为a与a加空格的字节差异。语法prefix/suffix的正则范围可能包含已接受的可见空白，现只删其中不属于当前ledger可见source span的语法区间；保留被证明的空格/tab字节，对重叠的非空白可见语法仍拒绝，无ledger且当前doc非canonical也拒绝。共享operation在source parse上的语法边界证明及完整editable目标doc/Selection绑定保留，不放宽保存/关闭守卫。
+第7项覆盖closing hash前/后插入、带strong标题、UndoRedo/save和原文字节重开保持；另保留标题prefix扩展空格被既有规则认作语法的对照。初期将该prefix空格误当正文空格的oracle被公开状态证伪（插入后PM文本仍a），原误断言日志保留，修正对照而未删有效测试。当前公开7项通过；P1关闭须207独立复验，不能由作者自判关闭。
+
+此前精确单个Native/WK反馈用重建6d资源为GREEN，真实save磁盘字节和prepareForClose通过；但全35套件中新用例焦点夹具仍有时删掉任务尾空格，尚不能计Native全绿。该夹具失败及后续定向定位日志完整保留，后续校准必须保持实际输入/Save As/字节/close断言，不删失败用例。最终资源/完整回归/精确CI/物理旅程均待重新结算。
