@@ -1582,17 +1582,18 @@ export class SourceAuthoritySession {
         }, this.preferredEol, context.ledger);
       attemptedRaw = plan.candidate;
       const target = this.state.apply(tr);
-      let sourceCaret = plan.sourceCaret;
+      const placement = plan.resolvePlacement?.(target);
+      let sourceCaret = placement?.sourceCaret ?? plan.sourceCaret;
       // Only a text replacement proves that the resulting caret belongs at
       // the end of inserted source. Attribute/format patches can be far from
       // the unchanged selection (for example a task marker before its label).
       const textReplacement = step?.stepType === 'replace' &&
         !(step.slice?.content ?? []).some(node => node.text === undefined);
-      if (sourceCaret === undefined && plan.patches.length === 1 && textReplacement) {
+      if (!placement && sourceCaret === undefined && plan.patches.length === 1 && textReplacement) {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
       const parsed = this.parseSource(plan.candidate);
-      if (!this.composing) sourceCaret = completedTaskMarkerCaret(before.raw, before.state.doc,
+      if (!placement && !this.composing) sourceCaret = completedTaskMarkerCaret(before.raw, before.state.doc,
         context.ledger, plan, parsed, target.doc) ?? sourceCaret;
       const compositionOwner = this.planCompositionOwner(plan, target);
       if (this.projection.compositionOwner && !compositionOwner && !parsed.doc.eq(target.doc)) throw Error('组合输入事务超出已证明 owner');
@@ -1639,7 +1640,8 @@ export class SourceAuthoritySession {
         if (compositionId !== undefined) this.compactComposition();
         return true;
       }
-      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner, plan.sourceBoundary, plan.kind === 'projection-sync');
+      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner,
+        placement?.sourceBoundary ?? plan.sourceBoundary, plan.kind === 'projection-sync');
       if (compositionId !== undefined) this.compactComposition();
       return true;
     } catch (error) {

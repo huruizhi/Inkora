@@ -1,3 +1,4 @@
+import { planHeadingStartEdit } from './heading-start-edit';
 import { validTableSize, type TableCommandMeta } from "./table-commands";
 import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorState, Transaction } from 'prosemirror-state';
@@ -6,22 +7,9 @@ import { parse } from './source-document';
 import { buildSourceLedger, type SourceLedger } from './source-ledger';
 import { listGapProjection, sameListContent } from './list-gap-projection';
 
-export type NativeRange = { start: number; end: number; pos: number; size: number; kind: string };
-export type NativePatch = { from: number; to: number; insert: string };
-export type NativeAnchor = { pmPos: number; sourceOffset: number; reason?: string };
-
-export type NativePlan = {
-  patches: NativePatch[];
-  candidate: string;
-  kind: 'text' | 'empty-text' | 'paste' | 'inline-code' | 'inline-mark' | 'image-attrs' | 'block-structure' | 'table-text' | 'table-structure' | 'task-toggle' | 'projection-sync' | 'heading-level' | 'fence-language' | 'paragraph-split' | 'paragraph-join' | 'list-split' | 'list-join' | 'code-exit';
-  /** A Markdown source cannot represent a newly-created empty paragraph. */
-  mayStage?: boolean;
-  /** Proven source caret in candidate coordinates after a text/input-rule edit. */
-  sourceCaret?: number;
-  sourceBoundary?: NativeAnchor;
-};
-
-type SourcePosition = (position: number, side?: 'from' | 'to' | 'any') => number;
+import { applyNativePatches, eolForLine, type NativeRange, type NativePatch, type NativePlan, type LegacyNativePlan, type NativeAnchor, type SourcePosition } from './native-source-edit';
+export { applyNativePatches } from './native-source-edit';
+export type { NativeRange, NativePatch, NativePlan, NativeAnchor } from './native-source-edit';
 
 function imageSource(attrs: Record<string, unknown>): string {
   const href = attrs.href;
@@ -116,25 +104,6 @@ function inputRulePlan(
   return { patches, candidate, kind: 'projection-sync', sourceCaret: from + insert.length };
 }
 
-export function applyNativePatches(source: string, patches: readonly NativePatch[]): string {
-  let candidate = source;
-  for (const patch of [...patches].sort((a, b) => b.from - a.from)) {
-    if (patch.from < 0 || patch.to < patch.from || patch.to > candidate.length) throw Error('原文补丁范围无效');
-    candidate = candidate.slice(0, patch.from) + patch.insert + candidate.slice(patch.to);
-  }
-  return candidate;
-}
-
-function eolForLine(
-  source: string,
-  offset: number,
-  fallback: '\r\n' | '\n' = '\n',
-): '\r\n' | '\n' {
-  const after = source.slice(offset).match(/\r\n|\n/);
-  if (after) return after[0] as '\r\n' | '\n';
-  const before = source.slice(0, offset).match(/(?:\r\n|\n)(?![\s\S]*(?:\r\n|\n))/);
-  return (before?.[0] ?? fallback) as '\r\n' | '\n';
-}
 
 function textSlice(step: Record<string, any>): string | null {
   if (step.stepType !== 'replace' || step.structure || step.slice?.openStart || step.slice?.openEnd) return null;
@@ -413,7 +382,7 @@ function matchingStructuralPlan(
   target: PMNode,
   candidates: Array<{ patches: NativePatch[]; description: string }>,
   listLayout = false,
-): NativePlan | null {
+): LegacyNativePlan | null {
   const matches = candidates.map(candidate => ({
     ...candidate,
     raw: applyNativePatches(source, candidate.patches),
@@ -600,16 +569,6 @@ function splitPlan(
   // after the heading, whereas PM splitBlock may express the same result as
   // an open slice. Prove the complete target doc before granting this intent.
   const $from = state.selection.$from;
-  if ($from.depth === 1 && $from.parent.type.name === 'heading' && $from.parent.content.size > 0 && $from.parentOffset === 0) {
-    const owner = ranges.find(range => range.kind === 'heading' && range.pos === $from.before());
-    const expected = state.tr.insert($from.before(), state.schema.nodes.paragraph.create());
-    if (owner && tr.selection.empty && [ $from.before() + 1, $from.before() + 3 ].includes(tr.selection.head) && expected.doc.eq(tr.doc)) {
-      const patches = [{ from: owner.start, to: owner.start, insert: eol + eol }];
-      const sourceCaret = tr.selection.head === $from.before() + 1 ? owner.start : position($from.pos, 'from') + eol.length * 2;
-      return { patches, candidate: applyNativePatches(source, patches), kind: 'paragraph-split', sourceCaret,
-        sourceBoundary: { pmPos: $from.before() + 1, sourceOffset: owner.start, reason: '已证明标题前新空段的原文起点' } };
-    }
-  }
   if ($from.depth === 1 && $from.parent.type.name === 'heading' &&
       $from.parentOffset === $from.parent.content.size) {
     const owner = ranges.find(range => range.kind === 'heading' && range.pos === $from.before());
@@ -665,78 +624,6 @@ function paragraphJoinPlan(source: string, state: EditorState, tr: Transaction, 
   return { patches, candidate: applyNativePatches(source, patches), kind: 'paragraph-join' };
 }
 
-function headingSourceParts(raw: string, node: PMNode): { prefix: string; body: string; suffix: string } | null {
-  if (node.attrs.style === 'atx') {
-    const opening = /^( {0,3}#{1,6})(?:[\t ]+|$)/.exec(raw);
-    if (!opening || opening[1].trim().length !== node.attrs.level) return null;
-    const rest = raw.slice(opening[0].length);
-    const closing = /[\t ]+#+[\t ]*$/.exec(rest);
-    return { prefix: opening[0], body: closing ? rest.slice(0, closing.index) : rest,
-      suffix: closing?.[0] ?? '' };
-  }
-  if (node.attrs.style === 'setext') {
-    const underline = /(?:\r\n|\n) {0,3}(?:=+|-+)[\t ]*$/.exec(raw);
-    if (underline) return { prefix: '', body: raw.slice(0, underline.index), suffix: underline[0] };
-  }
-  return null;
-}
-
-/** Only the selected root heading boundary may change; all other PM content must match. */
-function headingBackwardPlan(source: string, state: EditorState, tr: Transaction,
-  ranges: readonly NativeRange[], position: SourcePosition, ledger?: SourceLedger): NativePlan | null {
-  const { empty, $from } = state.selection;
-  if (!empty || $from.depth !== 1 || $from.parent.type.name !== 'heading' || $from.parentOffset !== 0) return null;
-  const owner = ranges.find(range => range.kind === 'heading' && range.pos === $from.before());
-  if (!owner) return null;
-  const parts = headingSourceParts(source.slice(owner.start, owner.end), $from.parent);
-  if (!parts) return null;
-  const index = $from.index(0);
-  const provesBoundaryTarget = (expected: Transaction): boolean => {
-    if (!expected.doc.eq(tr.doc)) return false;
-    if (!expected.selection.eq(tr.selection)) throw Error('标题边界事务的目标选区与已证明意图不符');
-    return true;
-  };
-  if (index === 0 && provesBoundaryTarget(state.tr.setNodeMarkup($from.before(), state.schema.nodes.paragraph))) {
-    const patches: NativePatch[] = [];
-    if (parts.prefix) patches.push({ from: owner.start, to: owner.start + parts.prefix.length, insert: '' });
-    if (parts.suffix) patches.push({ from: owner.end - parts.suffix.length, to: owner.end, insert: '' });
-    const candidate = applyNativePatches(source, patches);
-    if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'block-structure', sourceCaret: owner.start };
-    return null;
-  }
-  if (index === 0) return null;
-  const previous = state.doc.child(index - 1), previousPos = $from.before() - previous.nodeSize;
-  if (previous.type.name === 'paragraph' && previous.content.size === 0 &&
-      provesBoundaryTarget(state.tr.delete(previousPos, $from.before()))) {
-    const to = owner.start;
-    // A former heading caret may share this visual position after Enter.
-    // Use only the accepted blank-line witness, not that former text anchor.
-    const anchors = ledger?.spans.filter(span => span.role === 'insertion-anchor' &&
-      span.visualStart === previousPos + 1 && span.visualEnd === previousPos + 1 &&
-      span.sourceStart === span.sourceEnd && span.sourceStart < to &&
-      /^(?:[\t ]*(?:\r\n|\n)){1,2}$/.test(source.slice(span.sourceStart, to))) ?? [];
-    const starts = [...new Set(anchors.map(span => span.sourceStart))];
-    if (starts.length !== 1) throw Error('标题前空段缺少唯一的已接受原文空行依据');
-    const from = starts[0];
-    const patches = [{ from, to, insert: '' }];
-    return { patches, candidate: applyNativePatches(source, patches), kind: 'paragraph-join',
-      sourceCaret: position($from.pos, 'from') - (to - from) };
-  }
-  if (!['paragraph', 'heading'].includes(previous.type.name) ||
-      !provesBoundaryTarget(state.tr.join($from.before()))) return null;
-  const left = ranges.find(range => range.pos === previousPos && range.kind === previous.type.name);
-  if (!left || !/^[\t \r\n]+$/.test(source.slice(left.end, owner.start))) return null;
-  const leftRaw = source.slice(left.start, left.end);
-  const leftParts = previous.type.name === 'heading' ? headingSourceParts(leftRaw, previous)
-    : { prefix: '', body: leftRaw, suffix: '' };
-  if (!leftParts) return null;
-  const patches = [{ from: left.start, to: owner.end,
-    insert: leftParts.prefix + leftParts.body + parts.body + leftParts.suffix }];
-  const candidate = applyNativePatches(source, patches);
-  if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'paragraph-join',
-    sourceCaret: left.start + leftParts.prefix.length + leftParts.body.length };
-  return null;
-}
 
 function listJoinPlan(source: string, state: EditorState, tr: Transaction, position: SourcePosition): NativePlan | null {
   if (!state.selection.empty || !listContext(state) ||
@@ -1178,13 +1065,8 @@ export function planNativeTransaction(
   ledger?: SourceLedger,
 ): NativePlan {
   if (!tr.docChanged) throw Error('原生补丁规划器只接受文档事务');
-  const headingBackward = headingBackwardPlan(source, state, tr, ranges, position, ledger);
-  if (headingBackward) return headingBackward;
-  const selection = state.selection.$from;
-  if (state.selection.empty && selection.depth === 1 && selection.parent.type.name === 'heading' && selection.parent.content.size > 0 && selection.parentOffset === 0) {
-    const headingStart = splitPlan(source, state, tr, ranges, position, fallbackEol);
-    if (headingStart) return headingStart;
-  }
+  const heading = planHeadingStartEdit({ source, state, transaction: tr, ranges, position, fallbackEol, ledger });
+  if (heading) return heading;
   const middleExit = middleListExitPlan(source, state, tr, position);
   if (middleExit) return middleExit;
   if (tr.getMeta('inkoraParagraphAfterListJoin') === true && state.selection.empty &&
