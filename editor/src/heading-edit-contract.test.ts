@@ -134,3 +134,43 @@ it('keeps both inserted blank paragraphs editable after a visual selection', () 
   expect(session.currentRaw).toBe(expected);
   expect(session.saveMemory()).toBe(true);
 });
+
+it('unformats a heading without losing already accepted spaces in its editable projection', () => {
+  for (const source of ['# a', '\uFEFF# 稳定化验收\r\n\r\n- [ ] sdf']) {
+    const session = new SourceAuthoritySession(source);
+    expect(session.setRawSelection(source.length)).toBe(true);
+    expect(session.dispatch(session.state.tr.insertText(' ')), session.diagnostic).toBe(true);
+    const before = source + ' ';
+    expect(session.setRawSelection(source.startsWith('\uFEFF') ? 3 : 2)).toBe(true);
+    expect(blockKeyBindings.Backspace(session.state, tr =>
+      expect(session.dispatch(tr), session.diagnostic).toBe(true))).toBe(true);
+    const expected = source.startsWith('\uFEFF')
+      ? '\uFEFF稳定化验收\r\n\r\n- [ ] sdf '
+      : 'a ';
+    expect(session.currentRaw).toBe(expected);
+    expect(session.state.doc.textContent.endsWith(' ')).toBe(true);
+    expect(session.saveEligible).toBe(true);
+    expect(session.unresolvedIntent).toBeNull();
+    expect(session.undo()).toBe(true);
+    expect(session.currentRaw).toBe(before);
+    expect(session.redo()).toBe(true);
+    expect(session.currentRaw).toBe(expected);
+    expect(session.saveMemory(), session.diagnostic).toBe(true);
+  }
+});
+
+it('keeps an unformat intent unresolved when the source would become a list or merge blocks', () => {
+  for (const source of ['# - item', '# 标题\n后文']) {
+    const session = new SourceAuthoritySession(source);
+    expect(session.setRawSelection(2)).toBe(true);
+    const beforeDoc = session.state.doc, beforeSelection = session.state.selection;
+    let accepted: boolean | undefined;
+    expect(blockKeyBindings.Backspace(session.state, tr => { accepted = session.dispatch(tr); })).toBe(true);
+    expect(accepted).toBe(false);
+    expect(session.currentRaw).toBe(source);
+    expect(session.state.doc.eq(beforeDoc)).toBe(true);
+    expect(session.state.selection.eq(beforeSelection)).toBe(true);
+    expect(session.unresolvedIntent).not.toBeNull();
+    expect(session.saveMemory()).toBe(false);
+  }
+});

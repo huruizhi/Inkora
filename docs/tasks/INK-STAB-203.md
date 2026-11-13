@@ -104,3 +104,23 @@ make lint test-editor test-ci退出0（57文件1077项）；make build-release�
 旧隔离bdbd候选已按精确路径普通退出，未强退；其样稿仍原始字节，没有用户物理通过记录。修订隔离候选在AcceptanceDerivedData-v2，独立样稿STAB203-acceptance-v2、defaults/recovery UUID与短清单已准备；此时未启动。最终精确HEAD CI结果另存ignored ci-result-v2.json与draft PR101，不能用早先27b518 CI替代。
 当前系统物理中文输入、可见光标、点击新空行输入、实际保存/退出/重开待确认。只在这条旅程通过后才考虑合并/安装；不能完成则保持draft候选、不扩功能。当前正式/Applications/Inkora.app仍build14，其运行文档未触碰。无公开Release/tag/feed、Keychain操作、权限放宽或新增依赖。
 所有原始红绿/冻结资源、候选/样稿及worktree保留待最终两层备份。摘要见[publication-candidate.json](../evidence/INK-STAB-203/publication-candidate.json)。
+
+## 2026-11-14 物理验收失败与限定补正
+
+用户恢复验收后明确报告：第5步标题行首退格无反应，仍为标题；第6步保存、退出均异常。提示原文为“The editor request failed: 该原生事务尚未支持（replaceAround）；可信原文与 PM 状态保持不变”。因此v2/build15验收为失败，不是待验或通过；PR101继续draft，正式build14不动。隔离样稿及其专用recovery会话已私有复制保留，未强退、未修改用户正式文档。
+
+### 先建立真实反馈
+
+公开会话重放最初清单（含composition、UndoRedo）2项通过，未复现该故障，不作通过用户问题的证据。按现场样稿中已接受的列表尾空格补查，公共会话复现同条replaceAround；逐次缩减后只需“# a末尾输入一个空格→回标题起点Backspace”。4组缩减均拒绝并阻断saveMemory，无空格对照通过；命令为pnpm --dir editor exec vitest run --root .. --config artifacts/INK-STAB-203/unformat-projection-feedback.config.ts。
+
+提出并逐项验证三个判断：①全篇parse/投影比较：同字节重开可取消格式、原会话拒绝，已证实；②位置偏移：显式恢复raw起点仍拒绝，未获支持；③键盘生成不同目标：直接PM命令的doc/Selection相同且同样拒绝，未获支持。根因是unformat源码证明拿canonical parse与含已接受空格的可编辑投影整篇比较，混淆源语法变更与合法投影差别。
+
+Native反馈初期的原生修饰键/隐藏窗焦点切换脚本失配，曾左移一字或删掉列表尾空格；这些日志保留为夹具失败，不冒称产品RED。校准既有DOM按键seam，并等待前一输入的位置发布后，真实旧build15包内资源在同一新增WK/Bridge/NSDocument用例精确失败：snapshot、save completion、prepareForClose都返回同条replaceAround；目标测试1项、5个失败断言。没有改动或重签旧包来制造红例。
+
+### 实现与已跑检查
+
+只改heading-start-edit的unformat源码语法证明：同一operation在source parse上重放后与候选parse比较；原完整editable doc/Selection绑定、源局部patch、anchor发布、未解决意图、回滚与保存关闭守卫保留。不会删除可见空格、整篇序列化或无条件放行；保留source的列表/邻接段落边界证明。
+新增公开行为测试覆盖标题自身与另一任务项的已接受尾空格、BOM/CRLF、UndoRedo/save；另保留“去掉标记会变列表或合并段落”的拒绝、原文/选区保持与保存阻断。6项公开契约通过，原20旅程检查点仍与冻结build14相同。make lint test-editor test-ci退出0（57文件1079项）。
+新增Native用例包括任务项实际输入空格→标题取消格式→NSDocument Save As→精确磁盘字节→prepareForClose；原34项保留，harness计数35。重建资源GREEN、双轴独立复审、最终精确HEAD CI及新候选真实验收随后结算，当前不宣告修复交付。下一候选build16，旧v2/build15失败现场不覆盖。
+
+证据摘要[unformat-acceptance-failure.json](../evidence/INK-STAB-203/unformat-acceptance-failure.json)。全部原始失败/夹具/缩减/假设/红绿日志保留ignored artifacts。无生产依赖、Schema/Bridge/Native产品变更、权限放宽或公开发行。

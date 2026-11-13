@@ -1,5 +1,5 @@
 import { setBlockType, splitBlockKeepMarks } from 'prosemirror-commands';
-import { TextSelection, type Command, type EditorState, type Selection, type Transaction } from 'prosemirror-state';
+import { EditorState, TextSelection, type Command, type Selection, type Transaction } from 'prosemirror-state';
 import type { Node as PMNode } from 'prosemirror-model';
 import { parse } from './source-document';
 import type { SourceLedger } from './source-ledger';
@@ -122,7 +122,10 @@ export function planHeadingStartEdit(context: Context): NativePlan | null {
       if (parts.prefix) patches.push({ from: owner.start, to: owner.start + parts.prefix.length, insert: '' });
       if (parts.suffix) patches.push({ from: owner.end - parts.suffix.length, to: owner.end, insert: '' });
       const result = plan(context, patches, 'block-structure', owner.start);
-      return parse(result.candidate).doc.eq(transaction.doc) ? result : null;
+      // Prove the source syntax change against the same operation on its parse.
+      // The editable target may also contain already accepted whitespace anchors.
+      const sourceEdit = operation(EditorState.create({ doc: parse(source).doc }), 'Backspace');
+      return sourceEdit?.kind === 'unformat' && parse(result.candidate).doc.eq(sourceEdit.transaction.doc) ? result : null;
     }
     const previous = state.doc.child($from.index(0) - 1), previousPos = $from.before() - previous.nodeSize;
     if (edit.kind === 'remove-before') {
