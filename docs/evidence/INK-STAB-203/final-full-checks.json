@@ -1,0 +1,10 @@
+{
+  "buildSourceCommit": "bdbd5827b29fb92a214fc3bdfce0b5cb32f5f967",
+  "rawPath": "artifacts/INK-STAB-203/final-full-checks.txt",
+  "rawBytes": 3256,
+  "rawSHA256": "03c94b4e3f4e48377e151cf3053ff1ce568df0db0e0690dcd58500f84846c226",
+  "exitCode": 0,
+  "tests": 1076,
+  "physicalInput": false,
+  "visibleWindows": false
+}

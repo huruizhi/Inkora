@@ -57,3 +57,19 @@ Runtime不需了解ledger/anchor，SourceAuthoritySession负责现有原子提�
 project.yml准备build15以区别已安装build14，marketing0.1.0不变。版本更改不表示允许跳过物理验收。
 下一步固定提交独立Standards/Spec复核，重新构建及实际候选资源Native33；完整精确HEAD CI之后，当前系统隔离候选完成真实输入/保存关闭旅程才可安装。
 若屏幕控制仍失败，将提供自有隔离样稿及可核对字节的短清单请求配合，不用旧build14测试代替新候选、不碰用户正式文档；不能完成则留候选，不安装。
+
+## Standards
+
+204独立固定bdbd审查：书面hard0、Fowler possible0。本人公开会话新契约3/3，固定产品diff检查通过；未跑全量/Native/GUI。报告[204](../reviews/INK-REV-204-heading-contract-standards.md)。
+
+## Spec
+
+205独立固定bdbd：新增实现finding0，确认共享operation确实删除外围重复规则，并非单纯wrapper；完整doc/Selection绑定、只读保护和epoch既有拒绝未发现放宽。本人172组旧/新差分与边界一致、新测试3/3，冻结116份源码字节核基线一致。包含不适用分支及继承拒绝，不代表所有输入行为都正确；合成composing入口不算真实IME。报告[205](../reviews/INK-REV-205-heading-contract-spec.md)。
+
+Standards0项；Spec新增实现0项，物理旅程仍是已披露交付门槛，两个轴不跨轴重排。
+
+## 固定软件候选
+
+固定源bdbd5827b29fb92a214fc3bdfce0b5cb32f5f967重新make lint test-editor test-ci退出0：57文件1076测试；make build-release成功。源entitlements重签后strict/deep、精确权限、离线资源校验通过；实际formal build15包内资源Native33/33通过。
+另外构建同源码UITesting隔离候选build15，签名及离线资源通过，两包editor逐文件相等；独立defaults/recovery UUID及自有BOM/CRLF样稿已准备，未启动。机器屏幕工具复查仍为native pipe失败、browser host不可用，不能宣称物理验收完成。
+后续精确HEAD CI及当前系统用户配合的真实输入结果另记私有artifacts/INK-STAB-203/acceptance。当前正式安装仍build14，不替换、不扩功能、不创建公开Release/tag/feed。

@@ -1,0 +1,10 @@
+{
+  "buildSourceCommit": "bdbd5827b29fb92a214fc3bdfce0b5cb32f5f967",
+  "rawPath": "artifacts/INK-STAB-203/isolated-build.txt",
+  "rawBytes": 10436,
+  "rawSHA256": "f1449fa5537c32bec6d06279e1e034ac8829907409c8828beec373d703e7e497",
+  "exitCode": 0,
+  "tests": null,
+  "physicalInput": false,
+  "visibleWindows": false
+}

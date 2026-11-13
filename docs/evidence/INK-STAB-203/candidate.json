@@ -1,0 +1,29 @@
+{
+  "buildSourceCommit": "bdbd5827b29fb92a214fc3bdfce0b5cb32f5f967",
+  "formalIdentifier": "com.huruizhi.Inkora",
+  "isolatedIdentifier": "com.huruizhi.Inkora.UITesting",
+  "build": "15",
+  "minimumSystemVersion": "14.0",
+  "architectures": [
+    "x86_64",
+    "arm64"
+  ],
+  "strictSignatureAndSourceEntitlements": true,
+  "signature": "ad-hoc; hardened runtime; not notarized",
+  "offlineBundleSmoke": true,
+  "isolatedEditorFilesIdentical": true,
+  "editorFiles": {
+    "RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "assets/index--rR8IOBR.js": "396f0f753ddea70f2166fd534c4c65deb2b97e33888d79c719a0baba23287335",
+    "index.html": "c167b879c8708495a7c74f62cc4c05a4f3f55a5daa668811d664bf0c7a227387",
+    "vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+  },
+  "candidateNative": {
+    "tests": 33,
+    "failures": 0
+  },
+  "physicalAcceptance": false,
+  "installed": false,
+  "published": false
+}
