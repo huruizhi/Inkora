@@ -438,8 +438,6 @@ final class WritingInteractionHostlessTests: XCTestCase {
   @MainActor
   func testHeadingUnformatAfterTaskSpaceCanSaveAndClose() throws {
     try withEditor("# 稳定化验收\r\n\r\n- [ ] sdf") { controller, web in
-      let window = try XCTUnwrap(web.window)
-      XCTAssertTrue(window.makeFirstResponder(web))
       try focus("#editor li p", in: web)
       try keys([" "], in: web)
       XCTAssertEqual(try snapshot(controller), "# 稳定化验收\r\n\r\n- [ ] sdf ")
@@ -447,6 +445,13 @@ final class WritingInteractionHostlessTests: XCTestCase {
       RunLoop.current.run(until: Date().addingTimeInterval(0.1))
       try focus("#editor h1", atStart: true, in: web)
       RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+      XCTAssertEqual(
+        try js(
+          """
+          (() => {const s=getSelection(),h=document.querySelector('#editor h1');
+          return s.isCollapsed && s.focusOffset===0 &&
+            (s.focusNode===h || s.focusNode?.parentElement===h);})()
+          """, in: web) as? Bool, true, "The structural key must target the heading start")
       try keys(["<Backspace>"], in: web)
       let expected = "稳定化验收\r\n\r\n- [ ] sdf "
       XCTAssertEqual(try snapshot(controller), expected)

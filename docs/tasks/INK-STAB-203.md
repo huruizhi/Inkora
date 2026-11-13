@@ -134,3 +134,12 @@ Spec207固定6d37312：发现1项P1 implemented wrong，最小为“# a #→在c
 第7项覆盖closing hash前/后插入、带strong标题、UndoRedo/save和原文字节重开保持；另保留标题prefix扩展空格被既有规则认作语法的对照。初期将该prefix空格误当正文空格的oracle被公开状态证伪（插入后PM文本仍a），原误断言日志保留，修正对照而未删有效测试。当前公开7项通过；P1关闭须207独立复验，不能由作者自判关闭。
 
 此前精确单个Native/WK反馈用重建6d资源为GREEN，真实save磁盘字节和prepareForClose通过；但全35套件中新用例焦点夹具仍有时删掉任务尾空格，尚不能计Native全绿。该夹具失败及后续定向定位日志完整保留，后续校准必须保持实际输入/Save As/字节/close断言，不删失败用例。最终资源/完整回归/精确CI/物理旅程均待重新结算。
+
+## build16软件门禁结算（产品固定afa00ca）
+
+207独立post-fix已限定关闭P1，无新增finding：本人新7/7、27/27、最小2/2、44/44、marker8/8；旧6d第7与最小真实红，44组中12个原P1字节差异。40组新旧输入trace相等，区分可见空格与语法扩展，未建立的可见tab路径和无ledger/非白可见重叠防御分支只静态核。206追加hard0/possible0，独立7/7。两个首稿逐字prefix保留；原P1记录不删除，关闭只适用于新固定源。
+
+最终make lint test-editor test-ci退出0（57文件1080项）、make build-release退出0，原20个旅程检查点再次与冻结build14相等。Native夹具使用DOM caret起点公开断言校准，删除其新增的多余Native responder切换，所有输入/Save As/精确磁盘字节/close断言保留；所有临时DEBUG日志已从产品和测试移除。
+同一冻结35项Native执行文件只切换真实App资源：旧v2/build15的原34项通过、新项在snapshot/save completion/prepareForClose均报用户同条replaceAround；新afa资源35/35通过。二进制SHA与完整红绿日志见[build16-software-checks.json](../evidence/INK-STAB-203/build16-software-checks.json)。未把夹具失配当产品RED，也未把合成DOM按键算物理中文输入。
+
+正式build16签名结构、精确源权限及离线资源检查通过；隔离v3同源码构建完成，签名/资源身份、最终精确HEAD CI、实际用户输入与保存退出随后结算。正式安装仍build14；旧v2失败现场和被Spec拒绝的6d build16私有包均保留，未启动旧6d build16候选。没有合并、安装或公开发行。
