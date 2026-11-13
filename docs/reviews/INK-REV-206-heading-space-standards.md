@@ -103,3 +103,11 @@ git diff 6d373122a245bee219fb7523fef2e9fd31e357b2...afa00cab84a5fd184cc63b0ba65e
 - 仅对导出目录自建根node_modules借用链接，测试后unlink；未安装依赖。未运行全量、Native、构建、GUI、CI、安装或真实IME，未把作者7项或旧1079项作为本人结果。
 
 限定追加审查内无未完成事项。风险与外部门槛：上述7项不能证明真实WK焦点、保存关闭、候选资源和IME稳定；207独立P1复验、主任务最终资源/回归/CI/物理验收仍需结算。worktree、固定导出及原始产物保留待两层备份。
+
+## 2026-11-14 最终Native夹具限定静态收口
+
+固定 `afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe...16860d7fbcfe4370f2dc6dcbc7ea969dfbe143cf`；refs有效、merge-base=afa00ca、diff非空。通过固定 `git diff` 和 `git show 16860d7:tests/InkoraTests/WritingInteractionHostlessTests.swift` 静态核查；editor/app/project.yml产品diff为空。只新增夹具变更及记录/已整合审查，未读根动态源码，未重新测试。
+
+新增Standards硬违规0项、Fowler possible0项。Native hunk `:438-457` 删除本用例额外的 `makeFirstResponder`，仍通过原 `focus` 建立DOM焦点；新增公开 `getSelection()` collapsed、focusOffset=0及heading归属断言，随后才发Backspace。实际空格输入、原文snapshot、标题消失、真实NSDocument Save As、回调无错误、精确磁盘bytes及withEditor的prepareForClose均保持，未删除或绕过有效测试，符合AGENTS与docs/testing.md；未改内容/Selection生产边界。12项baseline沿既有定义均已核：命名清楚；没有重复算法、他者职责迁移、字段组、原始值领域约定、重复分支树、散改/无关职责、新抽象、长对象导航、转发层或继承变更，因此不报 Mysterious Name、Duplicated Code、Feature Envy、Data Clumps、Primitive Obsession、Repeated Switches、Shotgun Surgery、Divergent Change、Speculative Generality、Message Chains、Middle Man、Refused Bequest。heuristic仍仅为判断性possible，不升级硬规则。
+
+本人仅静态核查及固定diff检查（退出0），没有新增测试/Native/构建/GUI/CI结果。记录中的同一35项binary旧资源34绿新1报replaceAround、新afa资源35绿及1080全量为作者证据，未经本人重跑；不据此宣称物理验收。固定源码/差异保留ignored `artifacts/INK-REV-206/native-static/`；本节追加前两文档全体字节按13437ca验证prefix，并核与16860d7整合blob相同，结果在 `prefix-check.json`。仅追加原两文档，无自建依赖链接；限定审查无未完成，主任务精确HEAD CI与用户物理旅程仍独立结算，worktree/产物继续保留。

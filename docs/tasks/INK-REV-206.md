@@ -37,3 +37,7 @@ git diff --check b7cdd790a702dc38c0709035098c986a7252360f...6d373122a245bee219fb
 本人实际：`pnpm --dir artifacts/INK-REV-206/visible-syntax/fixed/editor exec vitest run src/heading-edit-contract.test.ts` 退出0、7/7通过；固定追加 `git diff --check` 退出0；157份导出editor文件逐字核目标Git blob一致。首稿report/task与原commit及目标整合blob核prefix一致。原始日志与清单在 `artifacts/INK-REV-206/visible-syntax/`，仅自建依赖链接已unlink。
 
 仅追加原两文档，无产品修改；无全量、Native、构建、GUI、CI、安装或IME结果。限定审查无未完成；Spec关闭、WK/IME及候选交付仍属独立门槛。提交/push后真实核远端=HEAD及statusclean，完整SHA以执行回报为准；worktree及产物保留。
+
+## 2026-11-14 Native夹具最终静态追加
+
+固定afa00ca...16860d7fbcfe4370f2dc6dcbc7ea969dfbe143cf：editor/app/project.yml差异为空；仅固定Git show/diff静态核新增DOM heading-start caret断言及删除多余Native responder切换。实际输入、snapshot、真实Save As、磁盘bytes及prepareForClose断言保留。新增hard0/possible0，12项Fowler已核；不重复测试/Native/构建/GUI/CI，作者35项红绿及1080项不算本人结果。固定diff检查退出0；原两文档全体prefix逐字保留并核目标整合blob一致，证据在 `artifacts/INK-REV-206/native-static/`。仅追加原报告/任务；无产品修改或依赖链接，限定审查内无未完成；物理旅程和主任务精确HEAD CI仍待独立结算。提交/push/真实remote=HEAD/statusclean见执行回报，worktree和产物保留。
