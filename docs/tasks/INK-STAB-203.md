@@ -143,3 +143,10 @@ Spec207固定6d37312：发现1项P1 implemented wrong，最小为“# a #→在c
 同一冻结35项Native执行文件只切换真实App资源：旧v2/build15的原34项通过、新项在snapshot/save completion/prepareForClose均报用户同条replaceAround；新afa资源35/35通过。二进制SHA与完整红绿日志见[build16-software-checks.json](../evidence/INK-STAB-203/build16-software-checks.json)。未把夹具失配当产品RED，也未把合成DOM按键算物理中文输入。
 
 正式build16签名结构、精确源权限及离线资源检查通过；隔离v3同源码构建完成，签名/资源身份、最终精确HEAD CI、实际用户输入与保存退出随后结算。正式安装仍build14；旧v2失败现场和被Spec拒绝的6d build16私有包均保留，未启动旧6d build16候选。没有合并、安装或公开发行。
+
+## 最终候选与复验入口
+
+最后Native夹具hunk固定16860d7再次经206/207静态收口：新增Standards hard0/possible0；Spec无新增finding，原P1有界关闭保持。仅追加旧报告/任务，既有全文prefix保持；此轮未冒称任何重测，作者Native红绿单列。
+Formal与隔离v3均0.1.0 build16、x86_64+arm64；ad-hoc strict/deep结构、源entitlements逐项相等及离线bundle检查通过，editor逐文件相同；不是正式Developer ID/公证。最终两包私有ZIP逐文件与原App核对并记录SHA。产品源固定afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe，其后只有Native测试夹具/报告/证据改变，app/editor/project树身份保持。
+自有STAB203-acceptance-v3样稿、独立defaults/recovery UUID已准备，带BOM/CRLF、不可改的第二段及任务项末尾空格复验。此时尚未启动；最后精确HEAD默认CI结果另记ignored ci-result-v3.json与draft PR101。旧v2/build15记录为用户验收失败，未覆盖现场，正式build14未替换。
+最终当前系统真实中文/可见光标/退格取消格式/保存退出/同路径重开待v3完成，不能用旧CI、作者测试或审查0finding替代。用户暂缓或有异常时继续保留候选，不合并、不安装、不扩功能；不追加macOS14专门硬件验收。两层备份前不回收worktree、原始日志、失败包或样稿。

@@ -1,0 +1,38 @@
+{
+  "productSource": "afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe",
+  "build": "16",
+  "architectures": [
+    "x86_64",
+    "arm64"
+  ],
+  "formalAndIsolatedEditorIdentical": true,
+  "editorHashes": {
+    "index.html": "4abb4ba04730054f2d43757632b145d0fec8d648985257b67ca0f03ee4e399b3",
+    "RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
+    "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
+    "assets/index-1gCIN5xo.js": "63956eb6c58bac6ecf5e8c7f03aadf43d089e035243198ddc0122d2300e4dc50",
+    "vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+  },
+  "signedEntitlementsEqualToSource": true,
+  "adHocPreview": true,
+  "notarized": false,
+  "physicalAcceptance": false,
+  "installed": false,
+  "logs": [
+    {
+      "path": "artifacts/INK-STAB-203/unformat-final-isolated-build.txt",
+      "bytes": 2233,
+      "sha256": "54da41d6da4b576c202be0b297dcf11a12821a276d0b8a5186c61c3f3834dec6"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-final-isolated-sign.txt",
+      "bytes": 95,
+      "sha256": "06c6356b0a3b383cdced145b151d4f741ba3ea50c7570caaca84ae6138fc3810"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-final-isolated-bundle.txt",
+      "bytes": 224,
+      "sha256": "9a13385fed6b72afa06129571d350a479476d6e261bb1b93e8204dc2e0dfb0c8"
+    }
+  ]
+}
