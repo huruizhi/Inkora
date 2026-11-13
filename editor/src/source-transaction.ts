@@ -691,7 +691,12 @@ function headingBackwardPlan(source: string, state: EditorState, tr: Transaction
   const parts = headingSourceParts(source.slice(owner.start, owner.end), $from.parent);
   if (!parts) return null;
   const index = $from.index(0);
-  if (index === 0 && state.tr.setNodeMarkup($from.before(), state.schema.nodes.paragraph).doc.eq(tr.doc)) {
+  const provesBoundaryTarget = (expected: Transaction): boolean => {
+    if (!expected.doc.eq(tr.doc)) return false;
+    if (!expected.selection.eq(tr.selection)) throw Error('标题边界事务的目标选区与已证明意图不符');
+    return true;
+  };
+  if (index === 0 && provesBoundaryTarget(state.tr.setNodeMarkup($from.before(), state.schema.nodes.paragraph))) {
     const patches: NativePatch[] = [];
     if (parts.prefix) patches.push({ from: owner.start, to: owner.start + parts.prefix.length, insert: '' });
     if (parts.suffix) patches.push({ from: owner.end - parts.suffix.length, to: owner.end, insert: '' });
@@ -702,7 +707,7 @@ function headingBackwardPlan(source: string, state: EditorState, tr: Transaction
   if (index === 0) return null;
   const previous = state.doc.child(index - 1), previousPos = $from.before() - previous.nodeSize;
   if (previous.type.name === 'paragraph' && previous.content.size === 0 &&
-      state.tr.delete(previousPos, $from.before()).doc.eq(tr.doc)) {
+      provesBoundaryTarget(state.tr.delete(previousPos, $from.before()))) {
     const to = owner.start;
     // A former heading caret may share this visual position after Enter.
     // Use only the accepted blank-line witness, not that former text anchor.
@@ -718,7 +723,7 @@ function headingBackwardPlan(source: string, state: EditorState, tr: Transaction
       sourceCaret: position($from.pos, 'from') - (to - from) };
   }
   if (!['paragraph', 'heading'].includes(previous.type.name) ||
-      !state.tr.join($from.before()).doc.eq(tr.doc)) return null;
+      !provesBoundaryTarget(state.tr.join($from.before()))) return null;
   const left = ranges.find(range => range.pos === previousPos && range.kind === previous.type.name);
   if (!left || !/^[\t \r\n]+$/.test(source.slice(left.end, owner.start))) return null;
   const leftRaw = source.slice(left.start, left.end);

@@ -140,3 +140,18 @@ it('can repeatedly remove inserted blank lines, clear the heading and continue t
   for (let count = 0; count < 5; count++) expect(runtime.redo()).toBe(true);
   expect(runtime.snapshotText()).toEqual({ ok: true, value: '\uFEFF新地方\r\n\r\n- 后文\r\n' });
 });
+
+it.each(['format', 'join', 'empty-line'] as const)('rejects a forged selection bundled with a heading boundary %s', action => {
+  const raw = action === 'join' ? '上文\n\n# 地方\n\n后文' : '# 地方\n\n后文';
+  const { runtime, view, press, startHeading, evidence } = setup(raw);
+  startHeading();
+  if (action === 'empty-line') press('Enter');
+  const before = runtime.getText(), beforeDoc = view.state.doc;
+  const tr = action === 'format' ? view.state.tr.setNodeMarkup(0, view.state.schema.nodes.paragraph)
+    : action === 'join' ? view.state.tr.join(4) : view.state.tr.delete(0, 2);
+  tr.setSelection(TextSelection.create(tr.doc, action === 'join' ? 8 : 6));
+  view.dispatch(tr);
+  expect(runtime.getText(), evidence()).toBe(before);
+  expect(view.state.doc.eq(beforeDoc), evidence()).toBe(true);
+  expect(runtime.status.unresolved, evidence()).toBe(true);
+});

@@ -60,3 +60,11 @@ Native最终固定RED/GREEN与构建随后追加。无物理搜狗键盘、可�
 固定源码09af68a827f7eca1be9568c2abcaa43efe0b8dcb的`make build-release`退出0；源entitlements重签后strict/deep、精确权限、离线bundle smoke、正式ID/macOS14/x86_64+arm64全部通过。
 实际build14候选App资源再跑Native33/33、0失败；包内editor逐文件SHA与构建产物相等。无可见窗口，不把Native接口与合成keydown冒称物理键盘/paint。
 原始编译日志保留既有隔离/Any转换警告；构建及Native/raw fixture均按SHA存证。等待独立审查和精确HEAD默认CI，尚未安装。
+
+## 独立Spec发现的选区守卫补正
+
+201在固定09af以公共runtime dispatch混合join+setSelection证明新增P1：PM caret移至后文而sourceCaret仍绑定旧接合位置，下一次X写入前段，snapshot还会成功。属于可调用公共编辑接口边界，不声称物理键盘路径可复现。原始固定首稿保留，候选09af不得安装。
+作者补三个真正RED负例：去格式/接合/删除上空段分别混入偏离目标位置的Selection，均被接受而不该接受。
+补正只在完整目标doc等于该已知命令时，再校验完整Selection.eq(expected.selection)，不符即原子拒绝；保留现有source-authority/全局拒绝语义，不把caret借给别处。
+定向最终17/17通过（原14项+新3负控），真实RED/GREEN存SHA。作者未把审查者probe当本人测试；旧候选JSON/原始源码与日志保留。
+新固定源码随后重新构建、全量及Native33，再交201限定复验；不沿用09af候选作为已修版本。
