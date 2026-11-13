@@ -84,3 +84,23 @@ Standards0项；Spec新增实现0项，物理旅程仍是已披露交付门槛�
 
 当前补正make lint test-editor test-ci及make build-release退出0，57文件1077项；源entitlements签名结构/精确权限/离线资源通过。补正的App资源Native、限定双轴复审、精确HEAD CI与物理验收随后独立结算。旧bdbd隔离候选的用户结果只算基线；正式build14未改。
 摘要见[blank-publication.json](../evidence/INK-STAB-203/blank-publication.json)，全部原始红绿/冻结资源保留ignored artifacts。
+
+## 修订候选软件验证结算（产品固定4cad6f1）
+
+本节替代前述首个bdbd候选的待验范围，保留全部历史记录。补正源码4cad6f10ec8520afd25f3139c046764ea82b89cb，之后仅报告/证据更改，app/editor/project产品树未变。
+make lint test-editor test-ci退出0（57文件1077项）；make build-release退出0；实际修正formal App包内资源跑34项Native/WK全部通过，包括新增聚焦两个空段输入X/Y、Undo/Redo及prepareForClose。原33项全部保留。
+正式与UITesting修订候选均0.1.0 build15、x86_64+arm64，strict/deep签名结构、源entitlements逐项相等和离线bundle检查通过；两包editor逐文件相同。ad-hoc预览没有正式Developer ID/公证声明。两包已私有ZIP逐文件核对原包字节，原始包及日志保留。
+
+### Standards限定追加
+
+固定4cad：hard0/possible0；审查者本人冻结157份editor文件核Git blob，并跑公开4项通过；只审新hunk，不冒称全量、Native或GUI。追加1576648已整合，原首稿逐字保留。
+
+### Spec限定追加
+
+固定4cad：新增finding0。审查者同一公开测试在build14与bdbd均因空段位置映射失败，在修正版4项通过；本人192/192有界检查包括172既有对照、14外围/旧标量affinity和2源码边界。未发现旧affinity/完整Selection绑定/原子拒绝被放宽。追加92cbc5c已整合，原首稿逐字保留。旧172一致包含继承拒绝，与新补正不矛盾。
+
+### 当前门槛
+
+旧隔离bdbd候选已按精确路径普通退出，未强退；其样稿仍原始字节，没有用户物理通过记录。修订隔离候选在AcceptanceDerivedData-v2，独立样稿STAB203-acceptance-v2、defaults/recovery UUID与短清单已准备；此时未启动。最终精确HEAD CI结果另存ignored ci-result-v2.json与draft PR101，不能用早先27b518 CI替代。
+当前系统物理中文输入、可见光标、点击新空行输入、实际保存/退出/重开待确认。只在这条旅程通过后才考虑合并/安装；不能完成则保持draft候选、不扩功能。当前正式/Applications/Inkora.app仍build14，其运行文档未触碰。无公开Release/tag/feed、Keychain操作、权限放宽或新增依赖。
+所有原始红绿/冻结资源、候选/样稿及worktree保留待最终两层备份。摘要见[publication-candidate.json](../evidence/INK-STAB-203/publication-candidate.json)。
