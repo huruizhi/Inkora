@@ -68,3 +68,19 @@ Native最终固定RED/GREEN与构建随后追加。无物理搜狗键盘、可�
 补正只在完整目标doc等于该已知命令时，再校验完整Selection.eq(expected.selection)，不符即原子拒绝；保留现有source-authority/全局拒绝语义，不把caret借给别处。
 定向最终17/17通过（原14项+新3负控），真实RED/GREEN存SHA。作者未把审查者probe当本人测试；旧候选JSON/原始源码与日志保留。
 新固定源码随后重新构建、全量及Native33，再交201限定复验；不沿用09af候选作为已修版本。
+
+## Standards
+
+独立200首稿固定09af，hard0/possible0；本人两份相关DOM文件25/25通过，不把作者全量或Native当作自跑。7eb补正新增hunk静态复核仍hard0/possible0，未重复测试，原稿逐字保留。报告见[200](../reviews/INK-REV-200-heading-backspace-standards.md)。
+
+## Spec
+
+独立201首稿固定09af发现1项P1，公开runtime/会话错误插入证据保留，未混同物理输入。固定7eb限定复验会话2+runtime6全部8/8：三个异常选区入口均原子拒绝，三种正常退格和UndoRedo通过，P1关闭，无新增阻断。首稿和任务前缀bytes核对不变，仅追加复验；报告见[201](../reviews/INK-REV-201-heading-backspace-spec.md)。
+
+Standards：0项；Spec：1项已关闭、0项待修，不跨轴重排。审查者未运行完整Native/CI。
+
+## 最终本地补正候选
+
+`make lint test-editor test-ci`再次退出0：56文件1073测试。固定7eb源码重新make build-release并源权限签名，strict/deep、精确权限和离线bundle通过；新build14包资源Native33/33、0失败（含实际prepareForClose）。
+最终candidate.json绑定7eb源码及新editor SHA；旧09af包元数据另存candidate-initial.json，不冒充修复后结果。原始日志、夹具试错和冻结基线保留，摘要post-review-*记录本次命令与SHA。
+仅文档/审查记录随后提交，不改产品；精确HEAD默认CI与用户退出后安装为后续收据，不提前宣告。

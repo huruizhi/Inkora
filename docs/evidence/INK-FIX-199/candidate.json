@@ -1,5 +1,5 @@
 {
-  "buildSourceCommit": "09af68a827f7eca1be9568c2abcaa43efe0b8dcb",
+  "buildSourceCommit": "7eb1eb0c4261f13ec25e8f02e81fe86a994c0b2d",
   "bundleIdentifier": "com.huruizhi.Inkora",
   "build": "14",
   "marketingVersion": "0.1.0",
@@ -17,8 +17,8 @@
   "editorFiles": {
     "RENDERER_NOTICES.txt": "e3172016448d716c712ba40170958abc9a87b3975862e3d81b4ccb47cf187dc4",
     "THIRD_PARTY_NOTICES.txt": "2b66e6ad0a7a5e64110ddacdbb2c31bdff0475eeafafe610b8bcbd26dc04bbfc",
-    "assets/index-Bp0maC9r.js": "6ff44c631cc5847c2d26db6eb63b3d10775374b7f66f60650e8f56d360560ea4",
-    "index.html": "eaeeec8fb0cf18f085d61f5cc41533b19400bf1979ef4fb08338d6b74ef1be2d",
+    "assets/index-Cq1mpSAa.js": "5c0b8c9e77a06a7e038528f46be9b9c3d2382f4a77f03cfdfab078b80fdfe5f4",
+    "index.html": "8cfdf2f3f643459276b912ba9b9b41643155062d941761d6465000d425fb6799",
     "vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
   },
   "baselineEditorFiles": {
@@ -29,5 +29,6 @@
     "vendor/mermaid-11.17.2.min.js": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
   },
   "installed": false,
-  "published": false
+  "published": false,
+  "selectionFixIncluded": true
 }
