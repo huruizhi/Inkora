@@ -1,0 +1,59 @@
+{
+  "baseline": "6b392fc6a2a50a3335b3c548390ee1c8774c1c29",
+  "previousCandidate": "bdbd5827b29fb92a214fc3bdfce0b5cb32f5f967",
+  "scope": "new heading-before insertion boundary supersedes former caret aliases only there",
+  "oldPublicProbe": "both baseline and first candidate reject typing into a clicked inserted blank",
+  "fixedPublicProbe": "frozen baseline fails, fixed current passes; exit 1 intentionally retains baseline failure",
+  "contractTests": 4,
+  "originalJourneyCheckpointsIdentical": 20,
+  "nativeRed": "34 tests, 3 assertions fail in the one new test; old 33 pass",
+  "physicalAcceptance": false,
+  "installed": false,
+  "logs": [
+    {
+      "path": "artifacts/INK-STAB-203/blank-caret.txt",
+      "bytes": 2235,
+      "sha256": "d3c91d27050434202d9c2d6e2aa6afb9734e989aaa3c4a5ccf50794562abf509"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/blank-caret-fixed.txt",
+      "bytes": 2288,
+      "sha256": "c8130e414e26d8cd7d0351b2b14ca2696b8594649ff3ea4fb1b228dd2d1f2e3a"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/blank-publication-red.txt",
+      "bytes": 1752,
+      "sha256": "2bf252bfa0bdccf37dbf71e5f8f9329697ccd2d414537d4139459a9ea5cd462a"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/blank-publication-green.txt",
+      "bytes": 14291,
+      "sha256": "48ffe71d670e0d84a18aa8893b165872b13b5fdb08f19a4fecb84f95d1eb5bc2"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-full-checks.txt",
+      "bytes": 3256,
+      "sha256": "0c09b09a21ff393fdf5061fc971d466923e37e9a8c96cb8ea4ae1c2a746a49be"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-build.txt",
+      "bytes": 2210,
+      "sha256": "532285c737e584717de974a606be62c588d4d950b9ed0d81adb297a51ce78a83"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-sign.txt",
+      "bytes": 133,
+      "sha256": "d7654abd12745661b44a48aca157f3710e56491b5992e721608c25b461639dd6"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-bundle.txt",
+      "bytes": 211,
+      "sha256": "39b333fb1ec8b40f86ad6bef14f96c29bf5bca5f37e9f238082dd62f51f40930"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/native-publication-red/native-tests.log",
+      "bytes": 9659,
+      "sha256": "3688bce6c568af01bb0b272a2aec8879386a8282c8b5ffce4b863ad79035784d"
+    }
+  ]
+}

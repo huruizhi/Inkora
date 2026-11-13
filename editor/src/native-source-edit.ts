@@ -1,6 +1,10 @@
 import type { EditorState } from 'prosemirror-state';
 
-export type NativePlacement = { readonly sourceCaret: number; readonly sourceBoundary?: NativeAnchor };
+export type NativePlacement = {
+  readonly sourceCaret: number;
+  /** A new insertion point owned by this edit, replacing former aliases there. */
+  readonly sourceBoundary?: NativeAnchor;
+};
 
 export type NativeRange = { start: number; end: number; pos: number; size: number; kind: string };
 export type NativePatch = { from: number; to: number; insert: string };

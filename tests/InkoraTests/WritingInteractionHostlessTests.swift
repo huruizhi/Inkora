@@ -413,6 +413,29 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testInsertedParagraphsBeforeHeadingAcceptFocusedInputAndHistory() throws {
+    try withEditor("# **地方** ##\r\n\r\n后文\r\n") { controller, web in
+      try focus("#editor h1", atStart: true, in: web)
+      try pressEnter(in: web)
+      try pressEnter(in: web)
+      let before = try snapshot(controller)
+      try focus("#editor > p:nth-child(1)", atStart: true, in: web)
+      try keys(["X"], in: web)
+      XCTAssertEqual(try snapshot(controller), "X\r\n\r\n\r\n\r\n# **地方** ##\r\n\r\n后文\r\n")
+      try focus("#editor > p:nth-child(2)", atStart: true, in: web)
+      try keys(["Y"], in: web)
+      let expected = "X\r\n\r\nY\r\n\r\n# **地方** ##\r\n\r\n后文\r\n"
+      XCTAssertEqual(try snapshot(controller), expected)
+      try history(redo: false, controller: controller)
+      try history(redo: false, controller: controller)
+      XCTAssertEqual(try snapshot(controller), before)
+      try history(redo: true, controller: controller)
+      try history(redo: true, controller: controller)
+      XCTAssertEqual(try snapshot(controller), expected)
+    }
+  }
+
+  @MainActor
   func testConsecutiveSpacesRetainEveryTypedByte() throws {
     try withEditor("a") { controller, web in
       try focus("#editor p", in: web)

@@ -11,6 +11,7 @@ import {
   type SourceRange,
 } from "./source-ledger";
 import { applyNativePatches, planNativeTransaction, type NativePatch, type NativePlan, type NativeAnchor } from "./source-transaction";
+import type { NativePlacement } from './native-source-edit';
 import { createInkoraProjectionState, type EditorStateOptions } from "./editor-session";
 import { listGapProjection, sameListContent } from "./list-gap-projection";
 import { isWellFormed } from "./source-replacement";
@@ -1406,7 +1407,7 @@ export class SourceAuthoritySession {
     return true;
   }
 
-  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner, sourceBoundary?: NativeAnchor, consumedPrefix = false): void {
+  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner, sourceBoundary?: NativeAnchor, consumedPrefix = false, placement?: NativePlacement): void {
     const parsed = this.parseSource(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
@@ -1437,7 +1438,15 @@ export class SourceAuthoritySession {
           visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
       };
     });
-    if (sourceBoundary) mappedAnchors.push({ visual: sourceBoundary.pmPos, raw: sourceBoundary.sourceOffset, reason: sourceBoundary.reason ?? '已接受inline关闭语法后的空白起点' });
+    const published = placement?.sourceBoundary;
+    if (published) {
+      // A contract's newly created insertion point replaces former caret aliases
+      // at that visual position. Legacy syntax-affinity anchors remain unchanged.
+      for (let index = mappedAnchors.length - 1; index >= 0; index--) {
+        if (mappedAnchors[index].visual === published.pmPos && mappedAnchors[index].raw !== published.sourceOffset) mappedAnchors.splice(index, 1);
+      }
+      mappedAnchors.push({ visual: published.pmPos, raw: published.sourceOffset, reason: published.reason ?? reason });
+    } else if (sourceBoundary) mappedAnchors.push({ visual: sourceBoundary.pmPos, raw: sourceBoundary.sourceOffset, reason: sourceBoundary.reason ?? '已接受inline关闭语法后的空白起点' });
     // A consumed list marker has no remaining visual character boundary.
     // The same parse's empty-item insertion span proves the new label caret.
     if (parsed.doc.eq(target.doc) && consumedPrefix && sourceCaret !== undefined && target.selection.empty) {
@@ -1641,7 +1650,7 @@ export class SourceAuthoritySession {
         return true;
       }
       this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner,
-        placement?.sourceBoundary ?? plan.sourceBoundary, plan.kind === 'projection-sync');
+        plan.sourceBoundary, plan.kind === 'projection-sync', placement);
       if (compositionId !== undefined) this.compactComposition();
       return true;
     } catch (error) {

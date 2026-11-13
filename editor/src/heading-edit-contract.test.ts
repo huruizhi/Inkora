@@ -107,3 +107,30 @@ it('accepts the native Enter destination before the heading without borrowing it
   expect(session.redo()).toBe(true);
   expect(session.currentRaw).toBe('正文\n\n# **地方**\n\n后文');
 });
+
+it('keeps both inserted blank paragraphs editable after a visual selection', () => {
+  const source = '\uFEFF# **地方** ##\r\n\r\n后文\r\n';
+  const session = new SourceAuthoritySession(source);
+  expect(session.setRawSelection(5)).toBe(true);
+  for (let count = 0; count < 2; count++) {
+    expect(blockKeyBindings.Enter(session.state, tr => expect(session.dispatch(tr)).toBe(true))).toBe(true);
+  }
+  const before = session.currentRaw;
+  expect(session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, 1)))).toBe(true);
+  const inserted = session.dispatch(session.state.tr.insertText('X'));
+  expect(inserted, session.diagnostic).toBe(true);
+  expect(session.currentRaw).toBe('\uFEFFX\r\n\r\n\r\n\r\n# **地方** ##\r\n\r\n后文\r\n');
+  expect(session.dispatch(session.state.tr.setSelection(TextSelection.create(session.state.doc, 4)))).toBe(true);
+  expect(session.dispatch(session.state.tr.insertText('Y')), session.diagnostic).toBe(true);
+  const expected = '\uFEFFX\r\n\r\nY\r\n\r\n# **地方** ##\r\n\r\n后文\r\n';
+  expect(session.currentRaw).toBe(expected);
+  expect(session.saveEligible).toBe(true);
+  expect(session.undo()).toBe(true);
+  expect(session.undo()).toBe(true);
+  expect(session.currentRaw).toBe(before);
+  expect(session.rawSelection).toEqual({ anchor: 1, head: 1, affinity: 'right' });
+  expect(session.redo()).toBe(true);
+  expect(session.redo()).toBe(true);
+  expect(session.currentRaw).toBe(expected);
+  expect(session.saveMemory()).toBe(true);
+});

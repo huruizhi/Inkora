@@ -73,3 +73,14 @@ Standards0项；Spec新增实现0项，物理旅程仍是已披露交付门槛�
 固定源bdbd5827b29fb92a214fc3bdfce0b5cb32f5f967重新make lint test-editor test-ci退出0：57文件1076测试；make build-release成功。源entitlements重签后strict/deep、精确权限、离线资源校验通过；实际formal build15包内资源Native33/33通过。
 另外构建同源码UITesting隔离候选build15，签名及离线资源通过，两包editor逐文件相等；独立defaults/recovery UUID及自有BOM/CRLF样稿已准备，未启动。机器屏幕工具复查仍为native pipe失败、browser host不可用，不能宣称物理验收完成。
 后续精确HEAD CI及当前系统用户配合的真实输入结果另记私有artifacts/INK-STAB-203/acceptance。当前正式安装仍build14，不替换、不扩功能、不创建公开Release/tag/feed。
+
+## 新空段输入的继承缺口补正
+
+等待物理验收期间，新增公开路径复现：标题起点Enter后，点击前方新空段再输入X，build14及首个bdbd候选均拒绝，提示“选区边界无法唯一映射到原文”。此前172组差分包含继承拒绝，不能据此认为新空段可用。
+原因是PM split按左偏置映射原标题caret，旧标题的raw位置与新空段位置同时落在同一visual点。模块已返回新插入点的完整落点凭据，会话现在消费它时只撤销该点的旧raw别名；其他位置和旧标量语法affinity anchor保持原规则。不是全局清anchor或放宽无法证明的编辑。
+
+新增第4项公开会话测试：BOM/CRLF及带strong/关闭hash标题，连续Enter2后分别选择两个新空段输入X/Y，Undo2/Redo2及保存资格全部验证。原20个旅程检查点与冻结build14仍逐项相等；新增的“点击空段输入”有意修正继承拒绝。
+真实Native/WK也先跑冻结首个App资源：34项中原33项通过，仅新增聚焦空段输入用例失败（3个失败断言）；原日志完整保留。新用例同时要求Undo/Redo及实际prepareForClose。harness精确项数33改34，没有删除旧用例。
+
+当前补正make lint test-editor test-ci及make build-release退出0，57文件1077项；源entitlements签名结构/精确权限/离线资源通过。补正的App资源Native、限定双轴复审、精确HEAD CI与物理验收随后独立结算。旧bdbd隔离候选的用户结果只算基线；正式build14未改。
+摘要见[blank-publication.json](../evidence/INK-STAB-203/blank-publication.json)，全部原始红绿/冻结资源保留ignored artifacts。
