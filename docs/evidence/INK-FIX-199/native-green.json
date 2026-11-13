@@ -1,0 +1,10 @@
+{
+  "rawPath": "artifacts/INK-FIX-199/native-green/native-tests.log",
+  "rawSHA256": "3f046d8ef68dc88f1cb6a44842e680c0483454a664fab7ca73124add40047631",
+  "rawBytes": 8289,
+  "exitCode": 0,
+  "tests": 33,
+  "failedTests": 0,
+  "physicalInput": false,
+  "visibleWindows": false
+}

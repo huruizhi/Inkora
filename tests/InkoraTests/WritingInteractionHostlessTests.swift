@@ -359,6 +359,60 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testNonemptyHeadingBoundaryBackspacePreservesTextAndHistory() throws {
+    for row in [
+      (raw: "# 地方", expected: "地方"),
+      (raw: "###### **地方** ###\r\n", expected: "**地方**\r\n"),
+      (raw: "地方\r\n===\r\n", expected: "地方\r\n"),
+      (raw: "上一行\r\n\r\n# 地方\r\n", expected: "上一行地方\r\n"),
+    ] {
+      try withEditor(row.raw) { controller, web in
+        try focus("#editor h1,#editor h6", atStart: true, in: web)
+        try keys(["<Backspace>"], in: web)
+        XCTAssertEqual(try snapshot(controller), row.expected)
+        XCTAssertEqual(
+          try js("document.querySelectorAll('#editor h1,#editor h6').length", in: web) as? Int, 0)
+        try history(redo: false, controller: controller)
+        XCTAssertEqual(try snapshot(controller), row.raw)
+        try history(redo: true, controller: controller)
+        XCTAssertEqual(try snapshot(controller), row.expected)
+      }
+    }
+  }
+
+  @MainActor
+  func testHeadingBoundaryBackspaceMovesUpEachInsertedBlankLineAndCanClose() throws {
+    let raw = "# 地方\r\n\r\n- 后文\r\n"
+    try withEditor(raw) { controller, web in
+      web.window?.setContentSize(NSSize(width: 900, height: 700))
+      try focus("#editor h1", atStart: true, in: web)
+      for _ in 0..<3 { try pressEnter(in: web) }
+      let before = try snapshot(controller)
+      var top = try XCTUnwrap(
+        try js("document.querySelector('#editor h1').getBoundingClientRect().top", in: web)
+          as? Double)
+      for remaining in (0...2).reversed() {
+        try keys(["<Backspace>"], in: web)
+        XCTAssertEqual(
+          try snapshot(controller),
+          String(repeating: "\r\n\r\n", count: remaining) + raw)
+        let nextTop = try XCTUnwrap(
+          try js("document.querySelector('#editor h1').getBoundingClientRect().top", in: web)
+            as? Double)
+        XCTAssertLessThan(nextTop, top, "Each Backspace must move the heading upward")
+        top = nextTop
+      }
+      try keys(["<Backspace>", "新"], in: web)
+      XCTAssertEqual(try snapshot(controller), "新地方\r\n\r\n- 后文\r\n")
+      for _ in 0..<5 { try history(redo: false, controller: controller) }
+      XCTAssertEqual(try snapshot(controller), before)
+      for _ in 0..<5 { try history(redo: true, controller: controller) }
+      XCTAssertEqual(try snapshot(controller), "新地方\r\n\r\n- 后文\r\n")
+      // withEditor also runs the real document prepareForClose barrier.
+    }
+  }
+
+  @MainActor
   func testConsecutiveSpacesRetainEveryTypedByte() throws {
     try withEditor("a") { controller, web in
       try focus("#editor p", in: web)

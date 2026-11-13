@@ -130,6 +130,21 @@ export const clearEmptyHeading: Command = (state, dispatch, view) => {
   return setParagraph(state, dispatch, view);
 };
 
+export const headingBoundaryBackspace: Command = (state, dispatch, view) => {
+  const { empty, $from } = state.selection;
+  if (view?.composing || !empty || $from.depth !== 1 ||
+      $from.parent.type !== inkoraSchema.nodes.heading || $from.parentOffset !== 0) return false;
+  if ($from.index(0) === 0) return setParagraph(state, dispatch, view);
+  const previous = state.doc.child($from.index(0) - 1);
+  if (previous.type !== inkoraSchema.nodes.paragraph || previous.content.size !== 0) return false;
+  if (dispatch) {
+    const tr = state.tr.delete($from.before() - previous.nodeSize, $from.before());
+    tr.setSelection(TextSelection.create(tr.doc, $from.pos - previous.nodeSize));
+    dispatch(tr.scrollIntoView());
+  }
+  return true;
+};
+
 // The generic joinBackward first joins list-item wrappers into a tight item
 // with two paragraphs, which has no exact Markdown representation. At the
 // first paragraph boundary, lift one level before continuing backward.
@@ -198,7 +213,7 @@ export const blockKeyBindings: Record<string, Command> = {
     splitBlockKeepMarks,
   ),
   "Mod-Enter": exitCode,
-  Backspace: chainCommands(deleteSelection, clearEmptyHeading, listBoundaryBackspace, joinBackward, selectNodeBackward),
+  Backspace: chainCommands(deleteSelection, headingBoundaryBackspace, clearEmptyHeading, listBoundaryBackspace, joinBackward, selectNodeBackward),
   Tab: chainCommands(
     insertTabInCode,
     sinkListItem(inkoraSchema.nodes.list_item),

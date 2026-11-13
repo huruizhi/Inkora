@@ -1,0 +1,10 @@
+{
+  "rawPath": "artifacts/INK-FIX-199/runtime-local-marker-green.txt",
+  "rawSHA256": "9d4788f2d8e84dcee69dbb273c51d5d31294ae4f95ecc0bd2987891e45c7155c",
+  "rawBytes": 2181,
+  "exitCode": 0,
+  "tests": 14,
+  "failedTests": 0,
+  "physicalInput": false,
+  "visibleWindows": false
+}
