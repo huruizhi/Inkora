@@ -53,3 +53,10 @@ Native最终固定RED/GREEN与构建随后追加。无物理搜狗键盘、可�
 新增14项runtime/DOM回归全部通过；全量56文件1070通过。原生夹具最终不带BOM，Bridge层BOM期望与dropFirst错误均已纠正，原始日志不删除。
 基线build/editor已冻结为独立baseline.bundle，独立原生探针复跑待结算；不把并发资源重建时的早期结果冒称固定RED。
 固定源码提交后使用Matt code-review的独立Standards/Spec两轴检查；审查者证据与作者1070/33明确分开。
+
+## 固定基线与候选包结果
+
+同一最终Native33二进制、相同最终新夹具，显式指向独立冻结baseline.bundle真实RED：原31项通过；新增2方法失败、23个失败断言（含6个旧unsupported错误抛出），prepareForClose也拒绝。冻结资源和当前候选资源SHA不同，详candidate.json；不采用资源重建并发时的试跑作RED证据。
+固定源码09af68a827f7eca1be9568c2abcaa43efe0b8dcb的`make build-release`退出0；源entitlements重签后strict/deep、精确权限、离线bundle smoke、正式ID/macOS14/x86_64+arm64全部通过。
+实际build14候选App资源再跑Native33/33、0失败；包内editor逐文件SHA与构建产物相等。无可见窗口，不把Native接口与合成keydown冒称物理键盘/paint。
+原始编译日志保留既有隔离/Any转换警告；构建及Native/raw fixture均按SHA存证。等待独立审查和精确HEAD默认CI，尚未安装。

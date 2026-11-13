@@ -1,0 +1,11 @@
+{
+  "command": "INKORA_WRITING_RESOURCE_BUNDLE=<fixed bundle> native-green/writing-tests",
+  "exitCode": 0,
+  "tests": 33,
+  "failedTests": 0,
+  "rawPath": "artifacts/INK-FIX-199/candidate-native.txt",
+  "rawBytes": 8289,
+  "rawSHA256": "cfb501172c9d495ae1fbf140c87b0e4e1b9b7dd46ba391c89384d963efc242f3",
+  "physicalInput": false,
+  "visibleWindows": false
+}
