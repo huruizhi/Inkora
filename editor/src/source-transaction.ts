@@ -662,13 +662,14 @@ function listJoinPlan(source: string, state: EditorState, tr: Transaction, posit
     .every(depth => targetCaret.node(depth).type.name === 'blockquote' &&
       targetCaret.index(depth - 1) === targetCaret.node(depth - 1).childCount - 1);
   if (state.selection.$from.parent.content.size === 0 &&
-      /^(?:\r\n|\n)?$/.test(source.slice(contentStart)) && last.type.name === 'paragraph' &&
+      /^[\t \r\n]*$/.test(source.slice(contentStart)) && last.type.name === 'paragraph' &&
       last.content.size === 0 && tr.selection.empty &&
       targetCaret.index(-1) === targetCaret.node(-1).childCount - 1 &&
       (targetCaret.depth === 1 || quotedEof)) {
     const withoutEmpty = tr.doc.replace(targetCaret.before(), targetCaret.after(), tr.doc.slice(0, 0));
     const lifted = matchingStructuralPlan(source, withoutEmpty, [candidates[0]], true);
-    if (lifted) return { ...lifted, kind: 'list-join', sourceCaret: lifted.candidate.length };
+    if (lifted) return { ...lifted, kind: 'list-join',
+      sourceCaret: lifted.patches[0].from + lifted.patches[0].insert.length };
   }
   return null;
 }

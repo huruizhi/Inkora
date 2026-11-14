@@ -23,3 +23,9 @@
 因此模块范围收敛为文末paragraph的创建与删除：创建时原文插入点取已证明owner的完整语法末尾，保留加粗等关闭标记与原有EOL；删除仍只移除锚点间对应的一对EOL。键盘与Native规划共用operation，完整doc与Selection绑定。仅支持前一节点为paragraph/heading/普通或有序列表，不泛化到表格/代码块/保护原子或任意中部跨块编辑。补充原文强样式、空白、普通段落、标题和外部篡改目标选区对照，后者先RED后加严格拒绝，阻止projection-sync回落绕开绑定。
 
 Native旧资源校准后，新增用例在snapshot、真实Save As completion和prepareForClose均输出用户同条PM6错误；同一冻结执行文件切新资源时36项通过。但旧资源运行另有既有标题焦点断言失败，明确区分并保留，不称纯净35绿+新1红。随后将同类普通段落/标题/加粗EOF旅程加入同一新增Native用例，需按最终测试源重新结算差分。
+
+
+## Spec P1：原有空白行内容的限定补正
+
+211在固定9fa528c发现P1 missing/partial：普通正文或BOM空白文档已有含space的空白行，3 Enter+Backspace仍阻断保存；基线也RED，但属于本轮EOF契约未覆盖，保留为P1而非以继承为由删掉。root新增5项正文/空白/BOM/列表/strong/标题及space-tab对照，全5项真实RED。
+新模块对未修改尾部允许原有space/tab/换行；实际删除补丁仍严格只含两个EOL，原有空格/tab逐字保留。列表EOF lift的原先单EOL尾部闸门也改为明确空白尾部，并把新空段落插入点绑定在局部lift补丁末尾、原有尾部空白之前，不能继续用整个candidate.length把旧尾部吞进新插入点。此两处责任已由同一组原文+Undo/保存回归覆盖，不任意trim或重建全文。定向4文件144项通过；该P1须211基于追加固定SHA独立复验关闭。

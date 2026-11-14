@@ -485,16 +485,23 @@ final class WritingInteractionHostlessTests: XCTestCase {
 
   @MainActor
   func testEmptyLinesAfterListBackspaceCanSaveAndClose() throws {
-    let cases = [("- ", 3), ("- \r\n", 3), ("", 2), ("正文", 2), ("**正文**", 2), ("# 标题", 2)]
+    let cases = [
+      ("- ", 3), ("- \r\n", 3), ("", 2), ("正文", 2), ("**正文**", 2), ("# 标题", 2),
+      ("- \n   \n", 3), ("正文\n   \n", 2), ("**正文**\r\n \t\r\n", 2), ("# 标题\r\n \t\r\n", 2),
+    ]
     for (raw, enters) in cases {
       try withEditor(raw) { controller, web in
         try focus(
           raw.hasPrefix("- ") ? "#editor li:last-child p" : "#editor > :last-child", in: web)
         for _ in 0..<enters { try pressEnter(in: web) }
         let eol = raw.contains("\r\n") ? "\r\n" : "\n"
+        let boundary = raw.range(of: eol)?.lowerBound ?? raw.endIndex
+        let body = String(raw[..<boundary])
+        let suffix = String(raw[boundary...])
         for count in [2, 0] {
           try keys(["<Backspace>"], in: web)
-          XCTAssertEqual(try? snapshot(controller), raw + String(repeating: eol, count: count))
+          XCTAssertEqual(
+            try? snapshot(controller), body + String(repeating: eol, count: count) + suffix)
         }
         let expected = raw
         let document = try XCTUnwrap(controller.document)

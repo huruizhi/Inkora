@@ -144,3 +144,22 @@ it.each(['', '正文', '**正文**', '# 标题'])('deletes newly-created EOF bla
   press('Backspace');
   expect(runtime.snapshotText()).toEqual({ ok: true, value: source });
 });
+
+it.each([
+  ['正文\n   \n', 3, 3],
+  ['\uFEFF\r\n   \r\n', 3, 3],
+  ['- \n   \n', 3, 2],
+  ['**正文**\r\n \t\r\n', 3, 3],
+  ['# 标题\r\n \t\r\n', 3, 3],
+] as const)('retains original blank-line whitespace through EOF edits: %j', (source, enters, backs) => {
+  const { runtime, press, currentView } = setup(source);
+  const view = currentView();
+  view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc)));
+  for (let count = 0; count < enters; count++) press('Enter');
+  for (let count = 0; count < backs; count++) {
+    press('Backspace');
+    expect(runtime.snapshotText()).toEqual({ ok: true, value: runtime.getText() });
+  }
+  expect(runtime.getText()).toBe(source);
+  expect(runtime.status.saveEligible).toBe(true);
+});

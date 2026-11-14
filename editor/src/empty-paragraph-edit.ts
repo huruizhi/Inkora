@@ -57,13 +57,13 @@ export function planEmptyParagraphEdit(source: string, state: EditorState,
       const owner = ranges.find(range => range.pos === $from.before() && range.kind === 'paragraph');
       if ($from.parent.content.size && !owner) return null;
       from = to = $from.parent.content.size ? contentEnd(source, owner!) : position($from.pos, 'from');
-      if (!/^[\r\n]*$/.test(source.slice(from))) return null;
+      if (!/^[\t \r\n]*$/.test(source.slice(from))) return null;
       insert = eolForLine(source, from, fallbackEol).repeat(2);
       sourceCaret = from + insert.length;
     } else {
       to = position($from.pos, 'from');
       const separator = /(?:\r\n|\n){2}$/.exec(source.slice(0, to));
-      if (!separator || !/^[\r\n]*$/.test(source.slice(to))) return null;
+      if (!separator || !/^[\t \r\n]*$/.test(source.slice(to))) return null;
       from = to - separator[0].length;
       insert = '';
       const adjacent = state.doc.child($from.index(0) - 1);
@@ -75,7 +75,7 @@ export function planEmptyParagraphEdit(source: string, state: EditorState,
         const owner = ranges.find(range => range.pos + range.size === $from.before() &&
           range.kind === adjacent.type.name);
         if (!owner || sourceCaret < owner.start || sourceCaret > owner.end || from < contentEnd(source, owner) ||
-            !/^[\r\n]*$/.test(source.slice(contentEnd(source, owner), from))) return null;
+            !/^[\t \r\n]*$/.test(source.slice(contentEnd(source, owner), from))) return null;
       }
     }
     const patches = [{ from, to, insert }];
