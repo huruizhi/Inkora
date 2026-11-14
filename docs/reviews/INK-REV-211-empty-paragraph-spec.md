@@ -36,3 +36,25 @@
 ## 交付边界
 
 只新增本报告和 `docs/tasks/INK-REV-211.md`，不修改产品、有效测试或他人报告。P1待实现者修复并提供新固定 SHA 后另行追加复验；不覆盖本次9fa首稿结论。本分支 `task/INK-REV-211-empty-paragraph-spec`，提交由任务回报记录。未创建PR、合并、打tag、发布或安装。
+
+
+## 追加：固定03715e9的限定修复复验
+
+本节仅追加，不修改上文9fa首稿及P1原始结论。受检产品固定为 `03715e9cad05ed90a0f541b45826915676bf4135`，父提交已核实为 `9fa528cd534e2a8c8319d4eb3091e5013f62cd54`，提交为 `fix(editor): retain original whitespace after EOF edits`。审阅差分：`git diff 9fa528cd534e2a8c8319d4eb3091e5013f62cd54..03715e9cad05ed90a0f541b45826915676bf4135`。本分支产品仍停留9fa，未checkout或审查实现者浮动工作树。
+
+**复验结论：原P1在上述两个反例及本次有界保真矩阵内关闭；未发现新的范围内 Spec finding。** 固定产品把未编辑 suffix/gap 证明从仅EOL扩展到space/tab/EOL，实际删除补丁仍仅删除一对EOL；listJoinPlan支持既有空白尾部，落点绑定lift补丁结束处而非整篇candidate末尾。独立运行原 `正文\n   \n` 和 `\uFEFF\r\n   \r\n` 最小反例，Enter×3、Backspace×1后均 `unresolved=false`、`saveEligible=true`、snapshot成功，原2红确为2绿。只在此范围有界关闭，不把旧reference/protected/tab边界写成通过。
+
+受检来源：`git archive 03715e9cad05ed90a0f541b45826915676bf4135 editor` 导出到本任务 ignored `artifacts/INK-REV-211/postfix`，再创建该树专用 `editor/node_modules` 依赖软链及生成renderer资源。`postfix/source-proof.json`记录固定commit、父提交、四个关键文件git blob与SHA256；已逐字比较导出内容与固定 `git show <SHA>:<path>`。例如 empty-paragraph-edit blob `512c989b79651a65fb3d577f89c7f1869a5d78c8`，SHA256 `f1eb07a49804131bc0a0aaddbe7fb1f232ce81d49d67ab63a459ce80121fff69`。未运行或修改主repo产品。
+
+本人再次执行（命令前缀 `/Users/rayhu/Documents/projects/Inkora/.tools/node_modules/.bin/pnpm --dir artifacts/INK-REV-211/postfix/editor exec`）：
+
+| 参数 | 独立结果 | 证据 |
+| --- | --- | --- |
+| `vitest run src/list-empty-backspace-runtime.test.ts artifacts/INK-REV-211/whitespace.test.ts artifacts/INK-REV-211/probe.test.ts artifacts/INK-REV-211/extended.test.ts artifacts/INK-REV-211/reopen.test.ts` | 55项：51 PASS / 4 FAIL；正式目标20绿、原最小反例2绿、原重开对照6绿、原14矩阵11绿3红、原13扩展12绿1红 | `postfix/matrix.log` |
+| `vitest run artifacts/INK-REV-211/retention.test.ts` | 9/9 PASS | `postfix/retention.log` |
+
+新9项具体检查：4项普通/strong/heading/BOM空白文档旅程经3 Enter+3 Backspace恢复精确原文，space/tab/LF/CRLF/mixed后缀不变，Undo/Redo恢复扩展文本及原文，markSaved为clean，新runtime重开snapshot逐字相同；3项列表末尾空item直接Backspace lift保留LF/CRLF/mixed后缀，caret精确在保留后缀之前，插入X落在该点，Undo/Redo、保存点与新会话snapshot完整保留；2项分别篡改目标anchor/head，确认完整有向Selection错误时原文及选区原子保留、未解决意图阻断snapshot，随后正确Backspace恢复资格。原目标20项也继续覆盖混入文字和错误选区拒绝。
+
+保留失败的4项不是本次修复回归：`正文\t`初始化inline词法、尾unused reference definition、尾protected comment，以及reference link加尾definition；均属首稿已披露范围，未删除或改写其oracle以获得全绿。本人初建lift独立oracle曾将CRLF所在行的新增局部EOL误写为LF，导致2项原文比较失败；按照已有局部EOL契约明确写成对应CRLF预期后9绿，原错误oracle和失败日志保留在 `postfix/retention-initial-oracle.test.ts` / `postfix/retention-initial-oracle.log`，未修改任何正式测试。另有2项无断言的逐步lift轨迹仅作探索，保存于 `postfix/lift-trace.log`，不计验证通过项。
+
+本次依然仅为本人synthetic公开runtime证据，不等同真实磁盘保存/关闭重开、WK、Native、App/UI或物理IME；未运行全量或构建。实现者报告1100项通过是外部证据，未计入本人运行。只追加原两份报告/task，受检archive依赖软链结束后解除，不push，由root统一备份和集成。
