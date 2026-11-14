@@ -436,15 +436,33 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
-  func testHeadingUnformatAfterTaskSpaceCanSaveAndClose() throws {
+  func testHeadingUnformatViaOutlineAfterTaskSpaceCanSaveAndClose() throws {
     try withEditor("# 稳定化验收\r\n\r\n- [ ] sdf") { controller, web in
+      _ = try js("document.querySelector('.analysis-panel-toggle').click()", in: web)
+      try waitForJavaScriptCondition(
+        """
+        document.querySelector('.analysis-panel-toggle')?.getAttribute('aria-expanded')==='true' &&
+        document.querySelector('.analysis-panel-heading')?.textContent==='稳定化验收'
+        """, in: web)
+      _ = try js(
+        "window.headingBeforeTaskInput=document.querySelector('.analysis-panel-heading'); true",
+        in: web)
       try focus("#editor li p", in: web)
       try keys([" "], in: web)
       XCTAssertEqual(try snapshot(controller), "# 稳定化验收\r\n\r\n- [ ] sdf ")
-      // Let WebKit finish the preceding input's selection publication before refocusing.
-      RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-      try focus("#editor h1", atStart: true, in: web)
-      RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+      // Use the public outline's selection transaction. A bare DOM Range at document
+      // start can be restored to the old PM selection by its 200ms focus guard.
+      // Wait for the panel's new revision, then activate exactly once (no retry).
+      try waitForJavaScriptCondition(
+        """
+        (() => {const button=document.querySelector('.analysis-panel-heading');
+        return button && button!==window.headingBeforeTaskInput &&
+          button.textContent==='稳定化验收';})()
+        """, in: web)
+      let beforeNavigation = try snapshot(controller)
+      _ = try js("document.querySelector('.analysis-panel-heading').click()", in: web)
+      XCTAssertEqual(
+        try snapshot(controller), beforeNavigation, "Navigation must preserve raw bytes")
       XCTAssertEqual(
         try js(
           """
@@ -480,6 +498,54 @@ final class WritingInteractionHostlessTests: XCTestCase {
       XCTAssertNil(saveError)
       XCTAssertEqual(try? Data(contentsOf: url), Data(expected.utf8))
       // withEditor also checks the real prepareForClose barrier.
+    }
+  }
+
+  @MainActor
+  func testEmptyLinesAfterListBackspaceCanSaveAndClose() throws {
+    let cases = [
+      ("- ", 3), ("- \r\n", 3), ("", 2), ("正文", 2), ("**正文**", 2), ("# 标题", 2),
+      ("- \n   \n", 3), ("正文\n   \n", 2), ("**正文**\r\n \t\r\n", 2), ("# 标题\r\n \t\r\n", 2),
+    ]
+    for (raw, enters) in cases {
+      try withEditor(raw) { controller, web in
+        try focus(
+          raw.hasPrefix("- ") ? "#editor li:last-child p" : "#editor > :last-child", in: web)
+        for _ in 0..<enters { try pressEnter(in: web) }
+        let eol = raw.contains("\r\n") ? "\r\n" : "\n"
+        let boundary = raw.range(of: eol)?.lowerBound ?? raw.endIndex
+        let body = String(raw[..<boundary])
+        let suffix = String(raw[boundary...])
+        for count in [2, 0] {
+          try keys(["<Backspace>"], in: web)
+          XCTAssertEqual(
+            try? snapshot(controller), body + String(repeating: eol, count: count) + suffix)
+        }
+        let expected = raw
+        let document = try XCTUnwrap(controller.document)
+        let output =
+          ProcessInfo.processInfo.environment["INKORA_WRITING_ARTIFACTS_DIR"]
+          .map { URL(fileURLWithPath: $0, isDirectory: true) }
+          ?? FileManager.default.temporaryDirectory
+        let directory = output.appendingPathComponent("list-gap-save-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("saved.md")
+        var finished = false
+        var saveError: Error?
+        document.save(to: url, ofType: "net.daringfireball.markdown", for: .saveAsOperation) {
+          error in
+          saveError = error
+          finished = true
+        }
+        let deadline = Date().addingTimeInterval(5)
+        while !finished && Date() < deadline {
+          RunLoop.current.run(until: Date().addingTimeInterval(0.005))
+        }
+        XCTAssertTrue(finished)
+        XCTAssertNil(saveError)
+        XCTAssertEqual(try? Data(contentsOf: url), Data(expected.utf8))
+        // withEditor also runs actual NSDocument prepareForClose.
+      }
     }
   }
 
@@ -970,6 +1036,17 @@ final class WritingInteractionHostlessTests: XCTestCase {
         try js("window.writingSequenceEvents.map(e=>e.head)", in: web) as? [Int],
         expectedTexts.map { $0.utf16.count })
     }
+  }
+
+  @MainActor
+  private func waitForJavaScriptCondition(_ condition: String, in web: WKWebView) throws {
+    let deadline = Date().addingTimeInterval(5)
+    while Date() < deadline {
+      if try js(condition, in: web) as? Bool == true { return }
+      RunLoop.current.run(until: Date().addingTimeInterval(0.005))
+    }
+    XCTFail("Timed out waiting for the outline's current document state")
+    throw EditorBridgeError.requestTimedOut
   }
 
   @MainActor

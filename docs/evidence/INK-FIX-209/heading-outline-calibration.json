@@ -1,0 +1,179 @@
+{
+  "productSource": "03715e9cad05ed90a0f541b45826915676bf4135",
+  "previousCIHead": "fcf16c405a7f3965ed8fa63add6de675f5220b6f",
+  "previousCIRun": "https://github.com/huruizhi/Inkora/actions/runs/43575120355",
+  "previousCI": "failed in synthetic heading Range setup; 1100 editor pass; Native 279 pass,1 failed,9 skipped",
+  "cause": {
+    "sourceHead": "fcf16c405a7f3965ed8fa63add6de675f5220b6f",
+    "vendorTrials": 60,
+    "failingCases": 9,
+    "assertionFailures": 36,
+    "everyFailingSampleHasCausalFocusGuardRewrite": true,
+    "events": [
+      {
+        "branch": "focus-guard",
+        "from": -1,
+        "focusAge": 198,
+        "beforeOffset": 0,
+        "pmAnchor": 14,
+        "pmHead": 14,
+        "readHead": 1,
+        "afterOffset": 4,
+        "beforeNode": "H1",
+        "afterNode": "#text"
+      },
+      {
+        "branch": "focus-guard",
+        "from": -1,
+        "focusAge": 197,
+        "beforeOffset": 0,
+        "pmAnchor": 14,
+        "pmHead": 14,
+        "readHead": 1,
+        "afterOffset": 4,
+        "beforeNode": "H1",
+        "afterNode": "#text"
+      },
+      {
+        "branch": "focus-guard",
+        "from": -1,
+        "focusAge": 199,
+        "beforeOffset": 0,
+        "pmAnchor": 14,
+        "pmHead": 14,
+        "readHead": 1,
+        "afterOffset": 4,
+        "beforeNode": "H1",
+        "afterNode": "#text"
+      },
+      {
+        "branch": "focus-guard",
+        "from": -1,
+        "focusAge": 199,
+        "beforeOffset": 0,
+        "pmAnchor": 14,
+        "pmHead": 14,
+        "readHead": 1,
+        "afterOffset": 4,
+        "beforeNode": "H1",
+        "afterNode": "#text"
+      },
+      {
+        "branch": "focus-guard",
+        "from": -1,
+        "focusAge": 198,
+        "beforeOffset": 0,
+        "pmAnchor": 14,
+        "pmHead": 14,
+        "readHead": 1,
+        "afterOffset": 4,
+        "beforeNode": "H1",
+        "afterNode": "#text"
+      },
+      {
+        "branch": "focus-guard",
+        "from": -1,
+        "focusAge": 199,
+        "beforeOffset": 0,
+        "pmAnchor": 14,
+        "pmHead": 14,
+        "readHead": 1,
+        "afterOffset": 4,
+        "beforeNode": "H1",
+        "afterNode": "#text"
+      },
+      {
+        "branch": "focus-guard",
+        "from": -1,
+        "focusAge": 198,
+        "beforeOffset": 0,
+        "pmAnchor": 14,
+        "pmHead": 14,
+        "readHead": 1,
+        "afterOffset": 4,
+        "beforeNode": "H1",
+        "afterNode": "#text"
+      },
+      {
+        "branch": "focus-guard",
+        "from": -1,
+        "focusAge": 194,
+        "beforeOffset": 0,
+        "pmAnchor": 14,
+        "pmHead": 14,
+        "readHead": 1,
+        "afterOffset": 4,
+        "beforeNode": "H1",
+        "afterNode": "#text"
+      },
+      {
+        "branch": "focus-guard",
+        "from": -1,
+        "focusAge": 194,
+        "beforeOffset": 0,
+        "pmAnchor": 14,
+        "pmHead": 14,
+        "readHead": 1,
+        "afterOffset": 4,
+        "beforeNode": "H1",
+        "afterNode": "#text"
+      }
+    ],
+    "sharedDependencyUnchanged": true,
+    "installedAppModified": false,
+    "rawLogSHA256": "4b8b717152548849049507b5791d7fb6662a9ed8ad97cb6c11a38d863c1cf0e5",
+    "evidence": "heading-focus-runtime/vendor-run60.log",
+    "parseNote": "XCTest stderr interleaves three buffered JSON lines; extracted nine ordered focus-guard field sequences without modifying raw log",
+    "boundary": "Synthetic Range conflicts with PM 1.42.9 focus guard; real rapid pointer journey unverified"
+  },
+  "calibration": {
+    "entry": "public outline UI, current button replaced after task edit, one activation",
+    "preservedAssertions": [
+      "heading DOM collapsed offset0",
+      "exact unformatted raw",
+      "no heading DOM",
+      "real NSDocument Save As completion and bytes",
+      "real prepareForClose"
+    ],
+    "additionalAssertion": "navigation preserves raw bytes",
+    "fixedSleepAdded": false,
+    "productOrDependencyModified": false,
+    "installedAppModified": false
+  },
+  "positive": {
+    "resource": "/Applications/Inkora.app",
+    "build": 17,
+    "runs": 40,
+    "failures": 0
+  },
+  "negative": {
+    "resource": "INK-STAB-203/build/AcceptanceDerivedData-v2/Build/Products/Release/Inkora.app",
+    "build": 15,
+    "runs": 40,
+    "assertionFailures": 200,
+    "headingStartGuardFailures": 0,
+    "outlinePreparationFailures": 0,
+    "targetError": "replaceAround unsupported in snapshot, Save As, prepareForClose"
+  },
+  "setupFailure": "first calibration copy returned a DOM node through WK evaluateJavaScript; unsupported result type. Fixed only test script result; original log retained; not product RED",
+  "nativeFull": {
+    "tests": 36,
+    "failures": 0,
+    "command": "INKORA_WRITING_ARTIFACTS_DIR=artifacts/INK-FIX-209/native-outline-final INKORA_WRITING_RESOURCE_BUNDLE=/Applications/Inkora.app tests/InkoraTests/WritingInteractionHostless.sh",
+    "logSHA256": "a66f0da8aa6a78201e603faf1aabd5f16f6388308bcdb4afafde770953ea4ac6"
+  },
+  "boundaries": [
+    "Does not cover bare programmatic DOM Range acceptance",
+    "Real rapid pointer and keyboard focus journey remains unverified",
+    "No changed App sources/resources/version; accepted installed build17 unchanged"
+  ],
+  "rawSHA256": {
+    "heading-focus-cause.json": "e7a59a0994b88a3f380272565f61e8c88d02dca1e3b04daddfcb0116321810f6",
+    "heading-outline-calibration/WritingInteractionHostlessTests.swift": "2ba665b29015fb564209b66933a59867987616960507bc40a910fce3e8a7673d",
+    "heading-outline-calibration/Runner.swift": "149d6a6a17fffd1d6f4fb360af9e4e8d2a4f38e2a7e29dc15a0c88994aa76907",
+    "heading-outline-calibration/tests": "15ae46c512e5d122cf1bf41296704fd9c5b2bf49b38a02095252858704b10d6a",
+    "heading-outline-calibration/positive40.log": "e77213216017afcfae5b2a94a878cb0334468ce2c803add72a00e76db4763ddf",
+    "heading-outline-calibration/negative-build15-40.log": "1c5d748b14f6fdc0366aca89d53cace71bd2e0fed38b43b9bd65e1e2bc5726a2",
+    "heading-focus-original.swift": "0c4974fb75f1a262bf6e98b3d6c56af796b675c270f1414125836ba6e74ee783"
+  }
+}

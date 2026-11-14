@@ -1,0 +1,39 @@
+{
+  "at": "2026-11-14T08:17:19.656670+00:00",
+  "productSource": "03715e9cad05ed90a0f541b45826915676bf4135",
+  "softwareCIHead": "5c70dcadd874063db5f2f185a0abca8b8b389032",
+  "softwareCIURL": "https://github.com/huruizhi/Inkora/actions/runs/43571945870",
+  "physicalJourney": {
+    "userReported": "全部正常",
+    "scope": "FIX209 empty own sample: type bullet+space, Enter x3, Backspace x3, input 验收, Undo/Redo, Save and normal Quit",
+    "savedText": "验收",
+    "savedSHA256": "7acb62b7d92970b0167d47c972b6a94dbcc343decd66bd64b4d5cea212856a53",
+    "savedBytesMatchExpected": true,
+    "candidateExitedBeforeReopen": true,
+    "samePathReopenAndOrdinaryQuit": true,
+    "reopenBytesUnchanged": true,
+    "managerVisuallyInspectedReopen": false,
+    "sampleEditedByAgent": false
+  },
+  "localInstallation": {
+    "build": "17",
+    "version": "0.1.0",
+    "path": "/Applications/Inkora.app",
+    "previousBuild": "16",
+    "allFileHashesMatchAcceptedFormalPackage": true,
+    "strictDeepSignatureVerified": true,
+    "entitlementsExactlyMatchExpandedSource": true,
+    "offlineBundleSmokePassed": true,
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "oldAndNewZIPsByteVerified": true,
+    "privateRecoveryBackedUp": true,
+    "oldAppRetainedOutsideApplications": true,
+    "forceClose": "User explicitly authorized only old build16 PID20836; identity checked and exited before candidate acceptance. No force during installation or acceptance",
+    "signature": "ad-hoc/runtime; not Developer ID signed or notarized",
+    "publicReleaseCreated": false
+  },
+  "knownInherited": "Tail reference definitions, protected comments and initialization-tab lexical refusal boundaries remain outside this bounded completion. No general stability or unrelated acceptance claim."
+}
