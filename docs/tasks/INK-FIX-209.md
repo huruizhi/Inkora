@@ -65,3 +65,7 @@ Paseo committee 两位只读顾问 Sol/GLM三轮讨论后同意：不改上游�
 同一冻结Native执行文件只换资源：正式已安装17连续40/40绿；真实旧15连续40例均越过大纲及标题起点守卫，再在目标replaceAround对应snapshot、Save As及prepareForClose失败，200个断言（40个snapshot抛错），证明校准未掩盖原回归。首次校准的JS赋值返回DOM节点导致WK不支持返回类型，单独保存为setup-unsupported-return.log；修正为返回Bool后才计算上述结果，不将其混作产品RED。完整36项Native、静态限定复审与精确HEAD默认CI另结算。产品app/editor/project.yml仍逐文件等于03715e9；本机17无需重装。
 
 校准后完整 WritingInteractionHostlessTests.sh 实跑36/36退出0（正式17资源）；Swift6编译、swift-format strict、git diff --check均通过。原1100项未因仅Native测试准备变化而本地重跑，精确HEAD CI将重新执行默认全套。软件产品树对037差异为空；未启动/替换/修改用户已验收App。限定复审只审此次Native测试与证据追加，不复算产品功能通过范围。
+
+限定两轴静态复审已追加并整合：210固定13a3fa7新增hard0/judgement0；211新增Spec finding0，核对正负原始日志SHA与tracked JSON一致、负例无大纲准备或标题起点失败。两者只静态读取、不重跑测试/GUI，首稿字节prefix保留；210原commit100307a、211原commit12ebbc6。两轴分支另行push并实核远端，不将作者40+40/36变成审查者本人测试。完整历史、原失败、私有vendor/debug与顾问回复已临时双层备份（source bundle + raw tar逐文件验证），最终CI/合并后追加结算原始收据，不提前清理worktree。正式安装全部12文件再核哈希仍等于已验收build17，strict/deep再次退出0。
+
+最终交付代码文件仍是前述EOF共享模块、三处调用/锚点接线、runtime回归、Native回归和project build17；本次收口新增Native大纲准备校准、脱敏因果JSON及任务/两轴审查追加。未完成项只剩精确最终HEAD默认CI与PR102合并，以及明确不在本次通过范围的快速真实指针/裸DOM路径及继承保护内容边界。不得把新入口40绿写为原Range故障已不存在；本轮安装/实际列表验收结论不变，无新的公开Release、公证或生产信任结论。
