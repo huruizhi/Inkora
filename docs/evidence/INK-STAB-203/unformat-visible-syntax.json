@@ -1,0 +1,32 @@
+{
+  "reviewedSource": "6d373122a245bee219fb7523fef2e9fd31e357b2",
+  "specFinding": "INK-REV-207 P1: ATX closing delimiter consumed a previously accepted visible space while allowing save",
+  "fix": "Subtract proven visible source whitespace spans from heading syntax deletion ranges; refuse ambiguous visible syntax or noncanonical states without a ledger; keep canonical frame proof and exact target binding.",
+  "publicContractTests": 7,
+  "specClosure": "pending independent post-fix review",
+  "nativeFullSuite": "pending fixture calibration and final resources",
+  "physicalAcceptance": false,
+  "installed": false,
+  "logs": [
+    {
+      "path": "artifacts/INK-STAB-203/unformat-p1-red.txt",
+      "bytes": 1988,
+      "sha256": "debebed29e8791381ade481606a1d2d7c7de5201ec10f6221bbdad21046c36da"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-p1-green.txt",
+      "bytes": 1988,
+      "sha256": "428b49b2704c3a0b88da459435255330194754aaa0cc93ae82285ae3d9d4f81f"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/prefix-space-oracle.txt",
+      "bytes": 1048,
+      "sha256": "4dc4b5e7dc4f7b93cacee8080b224bc1e81e30df998956a4d03b88eb9d7139db"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-p1-green-final.txt",
+      "bytes": 1149,
+      "sha256": "d5d47e2746102eccfef6f9409da20dcb124fcc83cacdc16b6b44c08ffdd5476b"
+    }
+  ]
+}

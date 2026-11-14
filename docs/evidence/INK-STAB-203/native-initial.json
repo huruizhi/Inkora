@@ -1,0 +1,8 @@
+{
+  "rawPath": "artifacts/INK-STAB-203/native/native-tests.log",
+  "rawSHA256": "3d14142cb3a09f873faef001a6f7e15e4c0693b24ca0da3133415afcf3dd9815",
+  "tests": 33,
+  "failures": 0,
+  "physicalInput": false,
+  "visibleWindows": false
+}

@@ -1,0 +1,41 @@
+{
+  "recordedAt": "2026-11-14T05:28:51.829993+00:00",
+  "productSource": "afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe",
+  "softwareCIHead": "ec8bd6740483d65b24c76589e8f4056f57738df9",
+  "softwareCI": "https://github.com/huruizhi/Inkora/actions/runs/43499742784",
+  "scopedPhysicalAcceptance": {
+    "passed": true,
+    "userReportedActualEditing": true,
+    "userReportedNoError": true,
+    "userReportedNormalQuit": true,
+    "saveShortcutDiskUpdateWhileAppOpen": true,
+    "headingUnformattedOnDisk": true,
+    "taskTrailingSpacePreserved": true,
+    "bomAndCRLFPreserved": true,
+    "retainedS": "User forgot to delete the save-probe S and explicitly approved retaining it; original expected file remains unchanged",
+    "originalExpectedSHA256": "f11956b15674c564da4b834eb90030573c43c2a71fee13a21a98996b307a8fb6",
+    "userApprovedSavedSHA256": "85e1bd599ac6bd51067ffc2e5473ec6a2b3b0c346eb07ebfc93b6bf246b9b752",
+    "samePathReopenAndOrdinaryQuit": true,
+    "reopenFileUnchanged": true,
+    "managerVisuallyInspectedReopen": false,
+    "scope": "Current-system heading-start journey only; no general stability or other accessibility/performance acceptance claim"
+  },
+  "localDeployment": {
+    "installedBuild": "16",
+    "previousBuild": "14",
+    "app": "/Applications/Inkora.app",
+    "allInstalledFileHashesEqualAcceptedFormalApp": true,
+    "strictDeepSignatureVerified": true,
+    "offlineBundleSmokePassed": true,
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "oldAndNewZIPsByteVerified": true,
+    "previousAppRetainedOutsideApplications": true,
+    "forceTerminationUsed": false,
+    "signature": "ad-hoc; not Developer ID signed or notarized",
+    "publicReleaseCreated": false
+  },
+  "rawEvidence": "Private ignored artifacts/INK-STAB-203/acceptance-v3 and deployment backup; recovery/bookmark payloads excluded"
+}

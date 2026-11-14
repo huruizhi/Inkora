@@ -1,0 +1,17 @@
+{
+  "baseline": "6b392fc6a2a50a3335b3c548390ee1c8774c1c29",
+  "checkpoints": 20,
+  "compared": [
+    "raw bytes",
+    "PM doc",
+    "full PM selection",
+    "raw directed selection",
+    "stored marks",
+    "revision/dirty/history status",
+    "save eligibility",
+    "unresolved intent"
+  ],
+  "identical": true,
+  "traceSHA256": "e5cf2096b2139f629b782281f2dd8a57f5c4f3c8aa84d3cbfafa7102696cfde5",
+  "publicTestsPerVersion": 3
+}

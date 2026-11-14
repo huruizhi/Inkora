@@ -1,0 +1,57 @@
+{
+  "productSource": "afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe",
+  "editorTests": {
+    "files": 57,
+    "passed": 1080
+  },
+  "publicContractTests": 7,
+  "nativeTests": {
+    "passed": 35,
+    "sameBinaryRedGreen": true,
+    "oldResourceSource": "4cad6f10ec8520afd25f3139c046764ea82b89cb",
+    "newResourceSource": "afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe",
+    "red": "35 tests; old34 pass, new1 returns the user replaceAround error at snapshot/save/close",
+    "green": "35 tests, zero failures; actual Save As disk bytes and prepareForClose"
+  },
+  "nativeBinarySHA256": "26b51d9e354156359e58baee810f8e63568eef1a94290b59a5ad6aab237adafd",
+  "originalJourneyIdenticalCheckpoints": 20,
+  "physicalAcceptance": false,
+  "installed": false,
+  "logs": [
+    {
+      "path": "artifacts/INK-STAB-203/unformat-final-full-checks.txt",
+      "bytes": 3256,
+      "sha256": "b1dcfa723daa10d8847109b5aaec07ebb0d810522d0ca97761a559d95f3b0c69"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-final-build.txt",
+      "bytes": 2210,
+      "sha256": "3241bcad6c661cc64883996b3f4701211c2c7c181da3f5d51468b64efbe426af"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-final-sign.txt",
+      "bytes": 133,
+      "sha256": "d7654abd12745661b44a48aca157f3710e56491b5992e721608c25b461639dd6"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-final-bundle.txt",
+      "bytes": 211,
+      "sha256": "5489a5973568590d328cfaa2b91a420bf3361dfc04a6deff1bc5903b733dfebe"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/native-unformat-final-red/native-tests.log",
+      "bytes": 10687,
+      "sha256": "6ba1f7fe3cbc9eaea4e8f1e7d5ef62d06f60f9ab3e6ff29d77bd2ccdab0d2880"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/native-unformat-final-green.txt",
+      "bytes": 8789,
+      "sha256": "90dbdeb701f39cd34561b3c9188d94e40f96ee96827d38b4ff5af5fa244a748a"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-final-journey.txt",
+      "bytes": 14676,
+      "sha256": "0e55e979670c606a3c075795e7902d8780fe2a5179ac6eb8327e0332e8239cec"
+    }
+  ]
+}

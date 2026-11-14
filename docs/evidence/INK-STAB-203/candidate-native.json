@@ -1,0 +1,10 @@
+{
+  "buildSourceCommit": "bdbd5827b29fb92a214fc3bdfce0b5cb32f5f967",
+  "rawPath": "artifacts/INK-STAB-203/candidate-native.txt",
+  "rawBytes": 8289,
+  "rawSHA256": "6412f664b0b5be087cf83ad7bd00edc6cf950be997cec49f6a45d6dc52270d22",
+  "exitCode": 0,
+  "tests": 33,
+  "physicalInput": false,
+  "visibleWindows": false
+}

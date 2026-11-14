@@ -1,0 +1,63 @@
+{
+  "sourceCommit": "4cad6f10ec8520afd25f3139c046764ea82b89cb",
+  "editorTests": {
+    "files": 57,
+    "passed": 1077
+  },
+  "nativeTests": {
+    "passed": 34,
+    "resource": "actual formal build15 App resources",
+    "physicalInput": false
+  },
+  "formalAndIsolatedEditorIdentical": true,
+  "exactHeadCI": "Recorded separately in ignored artifacts/INK-STAB-203/ci-result-v2.json; software checks do not imply CI success",
+  "physicalAcceptance": false,
+  "installed": false,
+  "logs": [
+    {
+      "path": "artifacts/INK-STAB-203/publication-full-checks.txt",
+      "bytes": 3256,
+      "sha256": "0c09b09a21ff393fdf5061fc971d466923e37e9a8c96cb8ea4ae1c2a746a49be"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-build.txt",
+      "bytes": 2210,
+      "sha256": "532285c737e584717de974a606be62c588d4d950b9ed0d81adb297a51ce78a83"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-sign.txt",
+      "bytes": 133,
+      "sha256": "d7654abd12745661b44a48aca157f3710e56491b5992e721608c25b461639dd6"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-bundle.txt",
+      "bytes": 211,
+      "sha256": "39b333fb1ec8b40f86ad6bef14f96c29bf5bca5f37e9f238082dd62f51f40930"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/native-publication-green/native-tests.log",
+      "bytes": 8554,
+      "sha256": "d491d346c886f32717e7910ff67b264a2b3b6eed22b46a3541fd9d6e3bb1b8cc"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-isolated-build.txt",
+      "bytes": 10592,
+      "sha256": "2c52b71c4be031d9e2016c2b0d4a24aa4906457bef7b0fa50e94e6d457fcc576"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-isolated-sign.txt",
+      "bytes": 95,
+      "sha256": "847f6e6d190a98452797a9352a42e5e154a60395c1b009498fed5f9435afc892"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-isolated-bundle.txt",
+      "bytes": 224,
+      "sha256": "4cbab17fb3e40ea02aa5fdc0a3a01e58e3b8e286c37714c2fde39f75377d7dcb"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/publication-exact-apps.json",
+      "bytes": 191,
+      "sha256": "87a08c0fce0442183b5ae6fda130097a2d70bf077cea9d9537a3088a437786db"
+    }
+  ]
+}

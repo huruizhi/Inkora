@@ -1,0 +1,69 @@
+{
+  "baselineHead": "b7cdd790a702dc38c0709035098c986a7252360f",
+  "failedCandidateSource": "4cad6f10ec8520afd25f3139c046764ea82b89cb",
+  "error": "replaceAround",
+  "rootCause": "The unformat source proof compared the canonical parse with an editable projection containing already accepted whitespace. Identical source bytes behaved differently after reopening.",
+  "fixScope": "Replay the shared unformat operation on the source parse to prove source syntax; retain the exact editable target/Selection binding, anchors and atomic publication.",
+  "editorTests": {
+    "files": 57,
+    "passed": 1079
+  },
+  "publicContractTests": 6,
+  "originalJourneyIdenticalCheckpoints": 20,
+  "nativeRed": "one targeted test; same replaceAround error from snapshot, real NSDocument save callback and prepareForClose",
+  "nativeGreen": "pending rebuilt resources",
+  "physicalAcceptance": false,
+  "installed": false,
+  "logs": [
+    {
+      "path": "artifacts/INK-STAB-203/unformat-projection-feedback.txt",
+      "bytes": 2616,
+      "sha256": "dfc43e5145b98a8181c183d6241c2f2df003e5146cf3483d27461d8de1c2d133"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-projection-minimal-red.txt",
+      "bytes": 4601,
+      "sha256": "253e5ed572d7d832d58a277d0aa485f587c57dde09bc337b3c48e29415b04cc9"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-hypotheses.txt",
+      "bytes": 1750,
+      "sha256": "d99b53d23c9f5a0727bf04da4382270f5aa79bff75ba50c20ab5e04bc854735d"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-regression-red.txt",
+      "bytes": 2216,
+      "sha256": "c6151a926360b989b62cf56e31c023e36700e576aacab7369e6e8a455e1b3a96"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-regression-green.txt",
+      "bytes": 895,
+      "sha256": "f1ecf2a2a387fdb10d978881d269d0dda1a72515fcdd5fd31d4437a97dd983ab"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-guard-green.txt",
+      "bytes": 1028,
+      "sha256": "33769760eb5d909f234dc2dee08797feff330fa6661c384ebfa62aa4d8131f14"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-journey-green.txt",
+      "bytes": 14555,
+      "sha256": "3b3c1a0c76d53685130db494d29ed1dc2be89b450d3ad765b4c2b528906c4de6"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/unformat-full-checks.txt",
+      "bytes": 2896,
+      "sha256": "5d953428352ee4c937d2fe569b0153d2e539612d04b8450a7d3dff01096a0b0c"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/native-unformat-feedback/exact-red.log",
+      "bytes": 2502,
+      "sha256": "fe877e382d667768bbd77f8eeaf667822cfea3c162da62fba9b29f76229f3541"
+    },
+    {
+      "path": "artifacts/INK-STAB-203/native-unformat-feedback/red-resources.json",
+      "bytes": 623,
+      "sha256": "035a03f3719013a7c6e81d5d93f05b5ef47af132102069e06fcca3156c4112d4"
+    }
+  ]
+}

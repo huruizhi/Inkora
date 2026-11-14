@@ -11,6 +11,7 @@ import {
   type SourceRange,
 } from "./source-ledger";
 import { applyNativePatches, planNativeTransaction, type NativePatch, type NativePlan, type NativeAnchor } from "./source-transaction";
+import type { NativePlacement } from './native-source-edit';
 import { createInkoraProjectionState, type EditorStateOptions } from "./editor-session";
 import { listGapProjection, sameListContent } from "./list-gap-projection";
 import { isWellFormed } from "./source-replacement";
@@ -1406,7 +1407,7 @@ export class SourceAuthoritySession {
     return true;
   }
 
-  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner, sourceBoundary?: NativeAnchor, consumedPrefix = false): void {
+  private accept(raw: string, target: EditorState, patches: NativePatch[], before: Snapshot, reason: string, sourceCaret?: number, mapping?: Transaction['mapping'], compositionOwner?: CompositionHeadingOwner, sourceBoundary?: NativeAnchor, consumedPrefix = false, placement?: NativePlacement): void {
     const parsed = this.parseSource(raw);
     const needsAnchorReproof = mapping && this.projection.anchors.some(anchor =>
       patches.some(patch => patch.from < anchor.raw && anchor.raw < patch.to));
@@ -1437,7 +1438,15 @@ export class SourceAuthoritySession {
           visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
       };
     });
-    if (sourceBoundary) mappedAnchors.push({ visual: sourceBoundary.pmPos, raw: sourceBoundary.sourceOffset, reason: sourceBoundary.reason ?? '已接受inline关闭语法后的空白起点' });
+    const published = placement?.sourceBoundary;
+    if (published) {
+      // A contract's newly created insertion point replaces former caret aliases
+      // at that visual position. Legacy syntax-affinity anchors remain unchanged.
+      for (let index = mappedAnchors.length - 1; index >= 0; index--) {
+        if (mappedAnchors[index].visual === published.pmPos && mappedAnchors[index].raw !== published.sourceOffset) mappedAnchors.splice(index, 1);
+      }
+      mappedAnchors.push({ visual: published.pmPos, raw: published.sourceOffset, reason: published.reason ?? reason });
+    } else if (sourceBoundary) mappedAnchors.push({ visual: sourceBoundary.pmPos, raw: sourceBoundary.sourceOffset, reason: sourceBoundary.reason ?? '已接受inline关闭语法后的空白起点' });
     // A consumed list marker has no remaining visual character boundary.
     // The same parse's empty-item insertion span proves the new label caret.
     if (parsed.doc.eq(target.doc) && consumedPrefix && sourceCaret !== undefined && target.selection.empty) {
@@ -1582,17 +1591,18 @@ export class SourceAuthoritySession {
         }, this.preferredEol, context.ledger);
       attemptedRaw = plan.candidate;
       const target = this.state.apply(tr);
-      let sourceCaret = plan.sourceCaret;
+      const placement = plan.resolvePlacement?.(target);
+      let sourceCaret = placement?.sourceCaret ?? plan.sourceCaret;
       // Only a text replacement proves that the resulting caret belongs at
       // the end of inserted source. Attribute/format patches can be far from
       // the unchanged selection (for example a task marker before its label).
       const textReplacement = step?.stepType === 'replace' &&
         !(step.slice?.content ?? []).some(node => node.text === undefined);
-      if (sourceCaret === undefined && plan.patches.length === 1 && textReplacement) {
+      if (!placement && sourceCaret === undefined && plan.patches.length === 1 && textReplacement) {
         sourceCaret = plan.patches[0].from + plan.patches[0].insert.length;
       }
       const parsed = this.parseSource(plan.candidate);
-      if (!this.composing) sourceCaret = completedTaskMarkerCaret(before.raw, before.state.doc,
+      if (!placement && !this.composing) sourceCaret = completedTaskMarkerCaret(before.raw, before.state.doc,
         context.ledger, plan, parsed, target.doc) ?? sourceCaret;
       const compositionOwner = this.planCompositionOwner(plan, target);
       if (this.projection.compositionOwner && !compositionOwner && !parsed.doc.eq(target.doc)) throw Error('组合输入事务超出已证明 owner');
@@ -1639,7 +1649,8 @@ export class SourceAuthoritySession {
         if (compositionId !== undefined) this.compactComposition();
         return true;
       }
-      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner, plan.sourceBoundary, plan.kind === 'projection-sync');
+      this.accept(plan.candidate, target, plan.patches, before, `PM ${plan.kind}`, sourceCaret, tr.mapping, compositionOwner,
+        plan.sourceBoundary, plan.kind === 'projection-sync', placement);
       if (compositionId !== undefined) this.compactComposition();
       return true;
     } catch (error) {

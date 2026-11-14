@@ -413,6 +413,77 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testInsertedParagraphsBeforeHeadingAcceptFocusedInputAndHistory() throws {
+    try withEditor("# **地方** ##\r\n\r\n后文\r\n") { controller, web in
+      try focus("#editor h1", atStart: true, in: web)
+      try pressEnter(in: web)
+      try pressEnter(in: web)
+      let before = try snapshot(controller)
+      try focus("#editor > p:nth-child(1)", atStart: true, in: web)
+      try keys(["X"], in: web)
+      XCTAssertEqual(try snapshot(controller), "X\r\n\r\n\r\n\r\n# **地方** ##\r\n\r\n后文\r\n")
+      try focus("#editor > p:nth-child(2)", atStart: true, in: web)
+      try keys(["Y"], in: web)
+      let expected = "X\r\n\r\nY\r\n\r\n# **地方** ##\r\n\r\n后文\r\n"
+      XCTAssertEqual(try snapshot(controller), expected)
+      try history(redo: false, controller: controller)
+      try history(redo: false, controller: controller)
+      XCTAssertEqual(try snapshot(controller), before)
+      try history(redo: true, controller: controller)
+      try history(redo: true, controller: controller)
+      XCTAssertEqual(try snapshot(controller), expected)
+    }
+  }
+
+  @MainActor
+  func testHeadingUnformatAfterTaskSpaceCanSaveAndClose() throws {
+    try withEditor("# 稳定化验收\r\n\r\n- [ ] sdf") { controller, web in
+      try focus("#editor li p", in: web)
+      try keys([" "], in: web)
+      XCTAssertEqual(try snapshot(controller), "# 稳定化验收\r\n\r\n- [ ] sdf ")
+      // Let WebKit finish the preceding input's selection publication before refocusing.
+      RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+      try focus("#editor h1", atStart: true, in: web)
+      RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+      XCTAssertEqual(
+        try js(
+          """
+          (() => {const s=getSelection(),h=document.querySelector('#editor h1');
+          return s.isCollapsed && s.focusOffset===0 &&
+            (s.focusNode===h || s.focusNode?.parentElement===h);})()
+          """, in: web) as? Bool, true, "The structural key must target the heading start")
+      try keys(["<Backspace>"], in: web)
+      let expected = "稳定化验收\r\n\r\n- [ ] sdf "
+      XCTAssertEqual(try snapshot(controller), expected)
+      XCTAssertEqual(try js("document.querySelectorAll('#editor h1').length", in: web) as? Int, 0)
+
+      let document = try XCTUnwrap(controller.document)
+      let output =
+        ProcessInfo.processInfo.environment["INKORA_WRITING_ARTIFACTS_DIR"]
+        .map { URL(fileURLWithPath: $0, isDirectory: true) }
+        ?? FileManager.default.temporaryDirectory
+      let directory = output.appendingPathComponent("heading-save-\(UUID().uuidString)")
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+      let url = directory.appendingPathComponent("saved.md")
+      var finished = false
+      var saveError: Error?
+      document.save(to: url, ofType: "net.daringfireball.markdown", for: .saveAsOperation) {
+        error in
+        saveError = error
+        finished = true
+      }
+      let deadline = Date().addingTimeInterval(5)
+      while !finished && Date() < deadline {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.005))
+      }
+      XCTAssertTrue(finished)
+      XCTAssertNil(saveError)
+      XCTAssertEqual(try? Data(contentsOf: url), Data(expected.utf8))
+      // withEditor also checks the real prepareForClose barrier.
+    }
+  }
+
+  @MainActor
   func testConsecutiveSpacesRetainEveryTypedByte() throws {
     try withEditor("a") { controller, web in
       try focus("#editor p", in: web)
