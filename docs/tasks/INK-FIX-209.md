@@ -29,3 +29,14 @@ Native旧资源校准后，新增用例在snapshot、真实Save As completion和
 
 211在固定9fa528c发现P1 missing/partial：普通正文或BOM空白文档已有含space的空白行，3 Enter+Backspace仍阻断保存；基线也RED，但属于本轮EOF契约未覆盖，保留为P1而非以继承为由删掉。root新增5项正文/空白/BOM/列表/strong/标题及space-tab对照，全5项真实RED。
 新模块对未修改尾部允许原有space/tab/换行；实际删除补丁仍严格只含两个EOL，原有空格/tab逐字保留。列表EOF lift的原先单EOL尾部闸门也改为明确空白尾部，并把新空段落插入点绑定在局部lift补丁末尾、原有尾部空白之前，不能继续用整个candidate.length把旧尾部吞进新插入点。此两处责任已由同一组原文+Undo/保存回归覆盖，不任意trim或重建全文。定向4文件144项通过；该P1须211基于追加固定SHA独立复验关闭。
+
+
+## 最终软件验证与剩余边界（产品03715e9）
+
+make lint test-editor test-ci最终退出0，58文件1100项；make build-release退出0。固定同一36项Native执行文件，只换资源来源：旧已安装build16仍在新增用例的snapshot、NSDocument Save As completion及prepareForClose输出同条PM6错误，且旧资源有独立披露的标题焦点夹具失败；新资源36/36通过。新用例含10组列表/空白/正文/strong/标题及原有space-tab-LF/CRLF尾部，逐步退格、精确真实磁盘字节和关闭准备不删断言。Native键盘/DOM为合成输入，不冒充物理中文输入法。
+
+210 Standards首稿hard0/judgement0，独立15项通过；037追加仅静态核对，hard0/judgement0。211保留首稿P1 missing/partial，原两个最小反例与追加9组保真/历史/重开/lift落点/完整Selection拒绝在固定037独立转绿，限定关闭；55项检查51绿4红，余下尾部reference definition、protected comment、初始化tab词法继承拒绝明确未修，不宣告所有写作已稳定。两轴首稿prefix均保留，审查报告/本人原始命令见各自task，不把root1100/36当审查者自跑。
+
+正式/隔离build17均同源037、双架构，editor逐文件等于已测build/editor；按展开源entitlements ad-hoc/runtime重签，精确权限相等、strict/deep及离线bundle通过。去掉Xcode自动添加的get-task-allow，未改源权限。两包ZIP逐文件验证并保留SHA。审查拒绝的9fa build17包另存私有ZIP，未启动或安装。最终候选仍未启动，当前/Applications是build16，不覆盖正在运行的用户现场；需要先确认未保存内容，再安排隔离候选真实删除/保存/退出验收。桌面控制重试仍native pipe不可用，未谎称可自动验收。精确最终HEAD默认CI和两层备份在提交后结算。
+
+源码改动：empty-paragraph-edit、block-editing、source-transaction、source-authority；新增runtime回归，扩展既有WritingInteractionHostlessTests及计数；project.yml预备17；本任务/两轴文档与脱敏证据。无新依赖、Schema/Bridge或Native产品变更，无公开Release/tag/生产key。架构解释见[文末空段落编辑契约](../design/INK-FIX-209-empty-paragraph-architecture.md)。当前未完：实际App当前系统可见旅程、安装与合并；剩余继承拒绝范围不由本轮关闭。

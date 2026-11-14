@@ -1,0 +1,69 @@
+{
+  "productSource": "03715e9cad05ed90a0f541b45826915676bf4135",
+  "build": "17",
+  "softwareChecks": {
+    "lintTestEditorTestCI": {
+      "files": 58,
+      "tests": 1100,
+      "exitCode": 0
+    },
+    "nativeFrozenBinary": {
+      "executionCount": 36,
+      "newResourcesFailures": 0,
+      "oldResources": "target reproduces exact PM6 in snapshot/save/close; inherited heading focus fixture also failed, not claimed pure 35+1 result",
+      "physicalKeyboard": false
+    },
+    "buildReleaseExitCode": 0,
+    "formalAndIsolatedEditorIdentical": true,
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "exactSourceEntitlements": true,
+    "strictDeepSignature": true,
+    "offlineBundle": true,
+    "adHoc": true,
+    "notarized": false
+  },
+  "review": {
+    "standards": "hard0 judgement0; final addition static only",
+    "spec": "P1 missing/partial in 9fa, original two whitespace counterexamples green in 037; bounded closed",
+    "knownInherited": "Tail reference definitions, protected comments and an initialization-tab lexical case still reject in independent synthetic probes; not declared fixed"
+  },
+  "physicalAcceptance": false,
+  "installed": false,
+  "logs": {
+    "review-full-checks.log": {
+      "sha256": "12a19b5a26cb9e0785b42231204b6cf4af36b44f30944642e84ea5cf65454258",
+      "bytes": 3244
+    },
+    "native-whitespace-old/native-tests.log": {
+      "sha256": "e4ccc3709e225ec1a4fd7820872d9eab2fb2b4e6ace35b71a1609fa25c335836",
+      "bytes": 26394
+    },
+    "native-whitespace-new.log": {
+      "sha256": "bfc234e9be232075305bcadc8ca57f5ae5bcff6103ace75fbd52fce46d8f1c92",
+      "bytes": 9022
+    },
+    "native-whitespace-old/writing-tests": {
+      "sha256": "e2f0c158af953d3616a8052c7146cb9c8309cbe85431cbcac4d04620e0c72097",
+      "bytes": 3422912
+    },
+    "build-release-final.log": {
+      "sha256": "b68237acc0c3f11cb2ad73927f5298bdb7c2ed17e3638f94cf18ee99a38b1563",
+      "bytes": 2200
+    },
+    "isolated-build.log": {
+      "sha256": "35400858c71fd59c60e16ae98528b4a43ffaab987fcf2439a8d81a54091a023d",
+      "bytes": 8609
+    },
+    "review-whitespace-red.log": {
+      "sha256": "b8dec7f871227fda1fb560ec19da2fee58bbc73490a104a39538a21667556f1a",
+      "bytes": 1930
+    },
+    "review-whitespace-green.log": {
+      "sha256": "068daed73e0f5f01bd2d737e81b3ffde70ea132304f123e874fe3a6b64183bd6",
+      "bytes": 221
+    }
+  }
+}
