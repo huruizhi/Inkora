@@ -40,3 +40,14 @@ make lint test-editor test-ci最终退出0，58文件1100项；make build-releas
 正式/隔离build17均同源037、双架构，editor逐文件等于已测build/editor；按展开源entitlements ad-hoc/runtime重签，精确权限相等、strict/deep及离线bundle通过。去掉Xcode自动添加的get-task-allow，未改源权限。两包ZIP逐文件验证并保留SHA。审查拒绝的9fa build17包另存私有ZIP，未启动或安装。最终候选仍未启动，当前/Applications是build16，不覆盖正在运行的用户现场；需要先确认未保存内容，再安排隔离候选真实删除/保存/退出验收。桌面控制重试仍native pipe不可用，未谎称可自动验收。精确最终HEAD默认CI和两层备份在提交后结算。
 
 源码改动：empty-paragraph-edit、block-editing、source-transaction、source-authority；新增runtime回归，扩展既有WritingInteractionHostlessTests及计数；project.yml预备17；本任务/两轴文档与脱敏证据。无新依赖、Schema/Bridge或Native产品变更，无公开Release/tag/生产key。架构解释见[文末空段落编辑契约](../design/INK-FIX-209-empty-paragraph-architecture.md)。当前未完：实际App当前系统可见旅程、安装与合并；剩余继承拒绝范围不由本轮关闭。
+
+
+## 2026-11-14 实际验收与本机替换结算
+
+用户明确确认当前build16没有需要保留的内容，允许强制关闭旧版并继续。代理先将恢复数据私有复制及tar双备份、42文件逐字核对，随后仅对身份核实的旧PID20836（/Applications/Inkora.app、build16、正式Bundle ID）发送forceTerminate并确认退出；该授权不复用于候选或其他新进程。未删除用户恢复记录或正式文档。
+
+隔离build17以独立defaults/recovery UUID、空白自有FIX209-acceptance样稿启动。用户实际操作“- 空格→Enter三次→Backspace三次→输入验收→Undo/Redo→Command-S→Command-Q”并报告“全部正常”。代理随后核磁盘精确UTF8“验收”、无任何Inkora进程；按同一App路径重开同一文件，以NSRunningApplication普通退出，进程消失且文件字节不变。代理没有可用桌面自动控制，未可视检查重开内容；实际交互来自用户报告，文件与进程为代理独立证据，不混为自动物理输入。
+
+产品仍固定03715e9；5c70dca精确默认CI成功后执行install-local-build17.py退出0：停止进程、旧16/新17 ZIP逐文件备份、恢复数据备份、原子替换/Applications/Inkora.app、安装后全部文件哈希等于已验收formal17且strict/deep通过。旧App移至私有部署备份，/Applications只留当前Inkora；未强退候选，安装期间未发送任何强退。make release-bundle-check RELEASE_APP_BUNDLE=/Applications/Inkora.app退出0；安装权限精确等于源entitlements展开值，版本0.1.0 build17、arm64+x86_64，仍为未公证ad-hoc预览，没有新公开Release/tag。
+
+本轮收口仅新增[build17-physical-delivery.json](../evidence/INK-FIX-209/build17-physical-delivery.json)及追加此任务，不改变已验收代码或测试。此前1100项、Native36和build-release为真实软件验证，本轮未重复本地全量。文档收口后再次按仓库规则结算精确HEAD默认CI并合并PR102；产品树必须继续与037相同。尾部引用定义/保护内容/初始化tab继承拒绝不因本轮物理通过而宣告修复，既有首稿和失败包继续保留。源码远端、source bundle与原始证据归档会补充最终交付记录后继续保留，不提前回收worktree。
