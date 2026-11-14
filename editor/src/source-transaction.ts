@@ -1,4 +1,5 @@
 import { planHeadingStartEdit } from './heading-start-edit';
+import { planEmptyParagraphEdit } from './empty-paragraph-edit';
 import { validTableSize, type TableCommandMeta } from "./table-commands";
 import type { Node as PMNode } from 'prosemirror-model';
 import type { EditorState, Transaction } from 'prosemirror-state';
@@ -1067,6 +1068,8 @@ export function planNativeTransaction(
   if (!tr.docChanged) throw Error('原生补丁规划器只接受文档事务');
   const heading = planHeadingStartEdit({ source, state, transaction: tr, ranges, position, fallbackEol, ledger });
   if (heading) return heading;
+  const emptyParagraph = planEmptyParagraphEdit(source, state, tr, ranges, position, fallbackEol);
+  if (emptyParagraph) return emptyParagraph;
   const middleExit = middleListExitPlan(source, state, tr, position);
   if (middleExit) return middleExit;
   if (tr.getMeta('inkoraParagraphAfterListJoin') === true && state.selection.empty &&
@@ -1150,19 +1153,6 @@ export function planNativeTransaction(
   if (mark) return mark;
   const attrs = attrPlan(source, state, tr, ranges);
   if (attrs) return attrs;
-  if (tr.getMeta('inkoraEmptyParagraphAfterList') === true && state.selection.empty &&
-      state.selection.$from.depth === 1 && state.selection.$from.parent.type.name === 'paragraph' &&
-      state.selection.$from.parent.content.size === 0 &&
-      state.selection.$from.after() === state.doc.content.size && tr.steps.length === 1) {
-    const previous = ranges.at(-1);
-    if (previous && ['bullet_list', 'ordered_list'].includes(previous.kind) &&
-        /^[\r\n]+$/.test(source.slice(previous.end)) &&
-        tr.doc.eq(state.doc.copy(state.doc.content.cut(0, state.selection.$from.before())))) {
-      const patches = [{ from: previous.end, to: source.length, insert: '' }];
-      const candidate = applyNativePatches(source, patches);
-      if (parse(candidate).doc.eq(tr.doc)) return { patches, candidate, kind: 'paragraph-join', sourceCaret: previous.end };
-    }
-  }
   const structure = structuralPlan(source, state, tr, ranges, position, fallbackEol);
   if (structure) return structure;
 

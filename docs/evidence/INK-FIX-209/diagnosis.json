@@ -1,0 +1,48 @@
+{
+  "baseline": "ffacfbff386377b317348b572ff3073521a0e67e",
+  "symptom": "事务 PM 6/from 映射失败：PM 6 没有可审计文本锚点",
+  "minimalSequence": "empty list; Enter x3; Backspace",
+  "hypotheses": {
+    "structureBoundaryAsText": "supported",
+    "staleContextCache": "not supported; rebuilt context identical",
+    "crossListDeletion": "not supported; target retains entire list"
+  },
+  "editorSuite": {
+    "files": 58,
+    "tests": 1095,
+    "result": "passed"
+  },
+  "nativeStatus": "final frozen fixture old-resource run recorded; new-resource final run pending",
+  "physicalAcceptance": false,
+  "installed": false,
+  "logs": {
+    "key-matrix.log": {
+      "sha256": "70e9212d439d8f7c0cd3de506a5a80f8f4616f12e947385244ba678f98d6b9f3",
+      "bytes": 7107
+    },
+    "hypothesis-probe.log": {
+      "sha256": "3f71a1441265a7e3ef48699833df708f789af3ced1bf8b17509a87929332e405",
+      "bytes": 2327
+    },
+    "regression-red.log": {
+      "sha256": "b90301433412d264368af6407bf4f3cd69b63a51d7eef9baad17f3712fdf6af1",
+      "bytes": 2423
+    },
+    "foreign-selection-red.log": {
+      "sha256": "1a952bf4e033aa8559b80a1126ef8855326b21f7566844a9bbdf1c82d547cc69",
+      "bytes": 1116
+    },
+    "sibling-blank-red.log": {
+      "sha256": "f8c35bdddf4f5729f26d02eac60feedfb8ccecfac1d9e15ebc1b28ecf9bd6f39",
+      "bytes": 3919
+    },
+    "family-full-checks.log": {
+      "sha256": "b9bb88c5aa08a818b218ccade412969e330975ff9febf9dc58f15f3eec5ae783",
+      "bytes": 3244
+    },
+    "native-final-old/native-tests.log": {
+      "sha256": "bbb1684decb17329d68af486ef454f679ec909ec19818e0f446f7972296626f3",
+      "bytes": 20625
+    }
+  }
+}

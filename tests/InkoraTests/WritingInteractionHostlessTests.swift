@@ -484,6 +484,47 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
+  func testEmptyLinesAfterListBackspaceCanSaveAndClose() throws {
+    let cases = [("- ", 3), ("- \r\n", 3), ("", 2), ("正文", 2), ("**正文**", 2), ("# 标题", 2)]
+    for (raw, enters) in cases {
+      try withEditor(raw) { controller, web in
+        try focus(
+          raw.hasPrefix("- ") ? "#editor li:last-child p" : "#editor > :last-child", in: web)
+        for _ in 0..<enters { try pressEnter(in: web) }
+        let eol = raw.contains("\r\n") ? "\r\n" : "\n"
+        for count in [2, 0] {
+          try keys(["<Backspace>"], in: web)
+          XCTAssertEqual(try? snapshot(controller), raw + String(repeating: eol, count: count))
+        }
+        let expected = raw
+        let document = try XCTUnwrap(controller.document)
+        let output =
+          ProcessInfo.processInfo.environment["INKORA_WRITING_ARTIFACTS_DIR"]
+          .map { URL(fileURLWithPath: $0, isDirectory: true) }
+          ?? FileManager.default.temporaryDirectory
+        let directory = output.appendingPathComponent("list-gap-save-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("saved.md")
+        var finished = false
+        var saveError: Error?
+        document.save(to: url, ofType: "net.daringfireball.markdown", for: .saveAsOperation) {
+          error in
+          saveError = error
+          finished = true
+        }
+        let deadline = Date().addingTimeInterval(5)
+        while !finished && Date() < deadline {
+          RunLoop.current.run(until: Date().addingTimeInterval(0.005))
+        }
+        XCTAssertTrue(finished)
+        XCTAssertNil(saveError)
+        XCTAssertEqual(try? Data(contentsOf: url), Data(expected.utf8))
+        // withEditor also runs actual NSDocument prepareForClose.
+      }
+    }
+  }
+
+  @MainActor
   func testConsecutiveSpacesRetainEveryTypedByte() throws {
     try withEditor("a") { controller, web in
       try focus("#editor p", in: web)

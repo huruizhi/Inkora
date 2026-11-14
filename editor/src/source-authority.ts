@@ -1416,8 +1416,14 @@ export class SourceAuthoritySession {
       : undefined;
     this.currentRaw = raw;
     this.issues = parsed.issues;
-    const mappedAnchors = this.projection.anchors.map(anchor => {
+    const mappedAnchors = this.projection.anchors.flatMap(anchor => {
       const visualResult = mapping?.mapResult(anchor.visual, -1);
+      if (placement?.sourceBoundary && visualResult?.deletedAcross) {
+        const oldCaret = before.state.doc.resolve(anchor.visual);
+        // A bound edit publishes the surviving insertion point. An anchor
+        // inside a removed empty paragraph must not become a wrapper anchor.
+        if (oldCaret.parent.type.name === 'paragraph' && oldCaret.parent.content.size === 0) return [];
+      }
       const visual = visualResult?.pos ?? anchor.visual;
       let mappedRaw = mapRawOffset(anchor.raw, patches, -1);
       let rebound = false;
@@ -1431,12 +1437,12 @@ export class SourceAuthoritySession {
           visual === target.selection.head ? sourceCaret : proven.head;
         rebound = true;
       }
-      return {
+      return [{
         visual,
         raw: mappedRaw,
         reason: rebound ? `${anchor.reason}；owner 改写后按目标 ledger 重证` :
           visualResult?.deletedAcross ? `${anchor.reason}；替换跨越旧 anchor，绑定左边界` : anchor.reason,
-      };
+      }];
     });
     const published = placement?.sourceBoundary;
     if (published) {

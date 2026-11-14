@@ -1,4 +1,5 @@
 import { headingStartCommands } from './heading-start-edit';
+import { emptyParagraphCommands } from './empty-paragraph-edit';
 import {
   chainCommands,
   createParagraphNear,
@@ -158,19 +159,6 @@ export const listBoundaryBackspace: Command = (state, dispatch, view) => {
       return true;
     }
   }
-  if (empty && $from.depth === 1 && $from.parent.type === inkoraSchema.nodes.paragraph &&
-      $from.parent.content.size === 0 && $from.index(0) > 0 &&
-      $from.after() === state.doc.content.size && !view?.composing) {
-    const previous = state.doc.child($from.index(0) - 1);
-    if (previous.type === inkoraSchema.nodes.bullet_list || previous.type === inkoraSchema.nodes.ordered_list) {
-      if (dispatch) {
-        const tr = state.tr.delete($from.before(), $from.after());
-        tr.setSelection(TextSelection.near(tr.doc.resolve(tr.doc.content.size), -1));
-        dispatch(tr.setMeta('inkoraEmptyParagraphAfterList', true));
-      }
-      return true;
-    }
-  }
   if (!empty || $from.parentOffset !== 0 || $from.depth < 2 ||
       $from.parent.type !== inkoraSchema.nodes.paragraph ||
       $from.node(-1).type !== inkoraSchema.nodes.list_item ||
@@ -199,10 +187,11 @@ export const blockKeyBindings: Record<string, Command> = {
     headingStartCommands.Enter,
     createParagraphNear,
     liftEmptyBlock,
+    emptyParagraphCommands.Enter,
     splitBlockKeepMarks,
   ),
   "Mod-Enter": exitCode,
-  Backspace: chainCommands(deleteSelection, headingBoundaryBackspace, clearEmptyHeading, listBoundaryBackspace, joinBackward, selectNodeBackward),
+  Backspace: chainCommands(deleteSelection, headingBoundaryBackspace, clearEmptyHeading, emptyParagraphCommands.Backspace, listBoundaryBackspace, joinBackward, selectNodeBackward),
   Tab: chainCommands(
     insertTabInCode,
     sinkListItem(inkoraSchema.nodes.list_item),
