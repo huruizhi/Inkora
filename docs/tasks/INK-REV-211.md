@@ -23,3 +23,12 @@
 原P1两个最小反例由2红转2绿，可在原反例及本次有界矩阵内关闭。本人重跑原公开矩阵及固定产品目标文件55项，51绿4红；4红为首稿已披露的reference/protected/初始化tab词法既有边界，不写成通过。新增9项精确字节/UndoRedo/保存点/新runtime snapshot/list EOF lift与caret后续X/完整有向Selection拒绝，最终9绿。自建lift oracle最初误写局部EOL导致2红，原oracle与日志保存后按既有局部CRLF契约纠正，不改产品或正式测试。
 
 完整命令、逐项范围、原始日志见[追加报告](../reviews/INK-REV-211-empty-paragraph-spec.md#追加固定03715e9的限定修复复验)及 ignored postfix目录。无新增范围内Spec finding；没有全量/构建/Native/WK/UI证据，root1100通过是外部结果，不计本人运行。仅追加原两文件；结束后解除导出树本人依赖软链，tracked clean由交付消息记录，不push。实际NSDocument磁盘保存关闭重开仍由相应验收负责。
+
+
+## 追加：Native大纲入口夹具限定静态复审
+
+固定base `fcf16c405a7f3965ed8fa63add6de675f5220b6f` → head `13a3fa7a92437eea8064a2ed7f8d9c51d54938aa`，merge-base与三点diff范围已核实，仅3个Native夹具/任务/证据文件。独立核对产品app/editor/project.yml对037差异为空。未改动或重跑产品。
+
+Spec新增finding为0：大纲当前按钮替换后单次激活，保留标题起点collapsed/offset0/H1 guard、任务尾空格raw、Backspace后精确raw/noh1、真实Save As completion和字节、withEditor prepareForClose；新增导航字节不变。公开大纲直接session选区事务建立起点，仍发送相同Backspace，保留原replaceAround回归目标；裸DOM Range覆盖入口确实改变，已明确更名和披露，不把真实快速指针风险记为修复。
+
+只读核对作者positive40/negative-build15-40日志与tracked JSON哈希一致；静态计数40绿/40红（200断言），负例均越过outline及起点guard后在目标snapshot/SaveAs/prepareClose报告replaceAround，支持仍可检出原回归。作者完整Native36绿不记本人运行。本人本次没有执行测试/构建/App/Native/WK/GUI，仅追加原两文件，07c2f53及之前内容逐字prefix保留；原始核对摘要见 ignored `artifacts/INK-REV-211/native-outline-static-proof.json`。不push，真实快速指针及裸DOM Range交互仍待相应独立验收。
