@@ -58,3 +58,22 @@
 保留失败的4项不是本次修复回归：`正文\t`初始化inline词法、尾unused reference definition、尾protected comment，以及reference link加尾definition；均属首稿已披露范围，未删除或改写其oracle以获得全绿。本人初建lift独立oracle曾将CRLF所在行的新增局部EOL误写为LF，导致2项原文比较失败；按照已有局部EOL契约明确写成对应CRLF预期后9绿，原错误oracle和失败日志保留在 `postfix/retention-initial-oracle.test.ts` / `postfix/retention-initial-oracle.log`，未修改任何正式测试。另有2项无断言的逐步lift轨迹仅作探索，保存于 `postfix/lift-trace.log`，不计验证通过项。
 
 本次依然仅为本人synthetic公开runtime证据，不等同真实磁盘保存/关闭重开、WK、Native、App/UI或物理IME；未运行全量或构建。实现者报告1100项通过是外部证据，未计入本人运行。只追加原两份报告/task，受检archive依赖软链结束后解除，不push，由root统一备份和集成。
+
+
+## 追加：Native标题夹具入口校准的限定静态复审
+
+固定差分 `git diff fcf16c405a7f3965ed8fa63add6de675f5220b6f...13a3fa7a92437eea8064a2ed7f8d9c51d54938aa`；merge-base确为前者，非空diff仅3文件：Native夹具、209任务追加、heading-outline-calibration.json。独立核对 `git diff 03715e9cad05ed90a0f541b45826915676bf4135 13a3fa7a92437eea8064a2ed7f8d9c51d54938aa -- app editor project.yml` 为空。本次不重新评价产品功能，原首稿及037限定复验逐字保留。
+
+### Spec核心结论（少于400词）
+
+**missing/partial、scope creep、implemented wrong均未发现新增可证实项。** 固定head `docs/tasks/INK-FIX-209.md:63-65` 明确区分大纲入口与裸DOM Range，要求不削弱标题起点/精确raw/no-h1/真实Save As字节/prepareForClose断言。新夹具 `WritingInteractionHostlessTests.swift:439-501` 保留任务尾空格精确snapshot，待当前大纲按钮替换后只激活一次；原collapsed/offset0/H1归属守卫完整保留，随后仍发送Backspace，不用源码替换模拟去标题。精确去格式原文、h1消失、NSDocument实际saveAs completion/error/磁盘UTF8字节全部保留，`withEditor:974-983` 的真实关闭准备守卫未变；新增导航raw不变断言。5秒条件等待失败会XCTFail并throw，不重试点击，没有放行前置失败或降低oracle。
+
+公开大纲经main的epoch/documentID/revision/raw校验（`main.ts:377-391`），再由runtime设置标题起点TextSelection、session.dispatch及view.updateState/focus（`editor-runtime.ts:634-644`）。这改变选区准备方式，仍让相同任务尾空格状态下的标题Backspace走原结构编辑契约。作者旧15负对照40例全部通过起点准备、随后在snapshot/SaveAs/prepareClose报告replaceAround错误，与其仍能检出原回归一致。它不证明裸DOM Range被接纳，也不证明真实快速指针风险已解决；这些限制已在任务:59、63及JSON boundaries明示。
+
+### 静态核对与外部证据边界
+
+本人只读两份作者私有校准日志，SHA256均与固定head的tracked JSON逐字一致：positive40为 `e77213216017afcfae5b2a94a878cb0334468ce2c803add72a00e76db4763ddf`，negative-build15-40为 `1c5d748b14f6fdc0366aca89d53cace71bd2e0fed38b43b9bd65e1e2bc5726a2`。日志静态计数为正例40 PASS/0 FAIL，负例0 PASS/40 FAIL、200条断言错误；两者均无outline超时或标题起点guard错误。负例错误位于原文snapshot、h1数量、Save As错误/字节、prepareForClose，三处API错误明确为replaceAround unsupported；不是把失败样本误计成setup RED。
+
+这些是**作者运行证据，经本人只读核对，不是本人重跑**；同一冻结执行文件/17与旧15资源映射来自tracked记录，完整Native36绿也仅引用作者记录。原Range失败九例及T1定因仅作已披露背景，不以两个校准日志推导所有真实输入均安全，不复述为本人重现。本次未运行测试、构建、App、Native、WK或GUI，未修改产品、测试、依赖或权限。
+
+静态核对摘要保存于 ignored `artifacts/INK-REV-211/native-outline-static-proof.json`。仅追加原report/task，分支不变，commit与最终clean由交付消息记录；不push。未完成边界仍为真实快速指针/裸DOM Range交互的独立验收，不阻止对本次明确限定的大纲夹具契约作静态通过判断。
