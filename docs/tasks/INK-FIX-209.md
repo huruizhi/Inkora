@@ -51,3 +51,17 @@ make lint test-editor test-ci最终退出0，58文件1100项；make build-releas
 产品仍固定03715e9；5c70dca精确默认CI成功后执行install-local-build17.py退出0：停止进程、旧16/新17 ZIP逐文件备份、恢复数据备份、原子替换/Applications/Inkora.app、安装后全部文件哈希等于已验收formal17且strict/deep通过。旧App移至私有部署备份，/Applications只留当前Inkora；未强退候选，安装期间未发送任何强退。make release-bundle-check RELEASE_APP_BUNDLE=/Applications/Inkora.app退出0；安装权限精确等于源entitlements展开值，版本0.1.0 build17、arm64+x86_64，仍为未公证ad-hoc预览，没有新公开Release/tag。
 
 本轮收口仅新增[build17-physical-delivery.json](../evidence/INK-FIX-209/build17-physical-delivery.json)及追加此任务，不改变已验收代码或测试。此前1100项、Native36和build-release为真实软件验证，本轮未重复本地全量。文档收口后再次按仓库规则结算精确HEAD默认CI并合并PR102；产品树必须继续与037相同。尾部引用定义/保护内容/初始化tab继承拒绝不因本轮物理通过而宣告修复，既有首稿和失败包继续保留。源码远端、source bundle与原始证据归档会补充最终交付记录后继续保留，不提前回收worktree。
+
+## 最终 CI 失败：标题选区准备的定因与校准
+
+fcf16c4 的默认 CI 43575120355 非 UI 失败，保留该失败而非重试掩盖：编辑器1100项通过，Native279通过/1失败/9跳过。唯一失败为继承的标题退格用例，前置“光标必须在标题起点”失败后，退格实际删了任务末尾空格，错误字节被保存。不能据此指称原文会话拒绝或209产品回归。
+
+按 diagnosing-bugs 反馈循环保留 original Range 夹具与各单变量探针：baseline20次2例、text-node40次2例；runtime-only20次全绿后60次5例，说明一次全绿存在采样扰动。私有 vendor-copy 仅对 PM 1.42.9 的 focus-guard 和 focus timer 被动记内存，不改行为；60次9例失败，9例均明确从标题H1 offset0经 T1 `selectionToDOM` 回到任务文本offset4，PM旧位置14、DOM读位置1、focusAge194–199ms。标题选区未进入 runtime dispatch，T2不是本次已证实原因。原始 stdout/stderr 有三处交错，归档提取九组顺序字段时保留原文件和SHA，不声称九条原JSON都能逐行解析。共享 PM dist SHA与插桩前一致，安装App未改；原型仅留ignored debug目录，不进入产品依赖。
+
+Paseo committee 两位只读顾问 Sol/GLM三轮讨论后同意：不改上游保护、不靠延长sleep或合成pointer绕守卫，用已有公开大纲路径建立受支持的选区。GLM接受Sol关于状态权威的意见，撤回250ms作为交付方案；同时纠正大纲直接session.dispatch并不进入view.dispatchTransaction探针、CI四条失败是一次执行多断言。首次Claude顾问因配额403无分析，已换provider；不把它当第三份审查。完整回复在私有committee目录。
+
+原用例明确更名为 `testHeadingUnformatViaOutlineAfterTaskSpaceCanSaveAndClose`：先打开大纲并记录按钮，输入任务尾空格后有界等待按钮被当前分析状态替换，再仅激活一次。保留原严格collapsed/offset0/H1归属、Backspace后精确原文、h1消失、实际NSDocument Save As completion/磁盘字节与prepareForClose全部断言，新增导航原文字节不变。移除原两段固定0.1s，不重试点击、不增加产品或测试后门。原Range源码、所有红样本和因果记录留存；覆盖入口改变，不声称“裸DOM选区被采信”或真实快速指针风险已修复。
+
+同一冻结Native执行文件只换资源：正式已安装17连续40/40绿；真实旧15连续40例均越过大纲及标题起点守卫，再在目标replaceAround对应snapshot、Save As及prepareForClose失败，200个断言（40个snapshot抛错），证明校准未掩盖原回归。首次校准的JS赋值返回DOM节点导致WK不支持返回类型，单独保存为setup-unsupported-return.log；修正为返回Bool后才计算上述结果，不将其混作产品RED。完整36项Native、静态限定复审与精确HEAD默认CI另结算。产品app/editor/project.yml仍逐文件等于03715e9；本机17无需重装。
+
+校准后完整 WritingInteractionHostlessTests.sh 实跑36/36退出0（正式17资源）；Swift6编译、swift-format strict、git diff --check均通过。原1100项未因仅Native测试准备变化而本地重跑，精确HEAD CI将重新执行默认全套。软件产品树对037差异为空；未启动/替换/修改用户已验收App。限定复审只审此次Native测试与证据追加，不复算产品功能通过范围。

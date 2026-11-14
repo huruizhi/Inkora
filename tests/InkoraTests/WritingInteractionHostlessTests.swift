@@ -436,15 +436,33 @@ final class WritingInteractionHostlessTests: XCTestCase {
   }
 
   @MainActor
-  func testHeadingUnformatAfterTaskSpaceCanSaveAndClose() throws {
+  func testHeadingUnformatViaOutlineAfterTaskSpaceCanSaveAndClose() throws {
     try withEditor("# 稳定化验收\r\n\r\n- [ ] sdf") { controller, web in
+      _ = try js("document.querySelector('.analysis-panel-toggle').click()", in: web)
+      try waitForJavaScriptCondition(
+        """
+        document.querySelector('.analysis-panel-toggle')?.getAttribute('aria-expanded')==='true' &&
+        document.querySelector('.analysis-panel-heading')?.textContent==='稳定化验收'
+        """, in: web)
+      _ = try js(
+        "window.headingBeforeTaskInput=document.querySelector('.analysis-panel-heading'); true",
+        in: web)
       try focus("#editor li p", in: web)
       try keys([" "], in: web)
       XCTAssertEqual(try snapshot(controller), "# 稳定化验收\r\n\r\n- [ ] sdf ")
-      // Let WebKit finish the preceding input's selection publication before refocusing.
-      RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-      try focus("#editor h1", atStart: true, in: web)
-      RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+      // Use the public outline's selection transaction. A bare DOM Range at document
+      // start can be restored to the old PM selection by its 200ms focus guard.
+      // Wait for the panel's new revision, then activate exactly once (no retry).
+      try waitForJavaScriptCondition(
+        """
+        (() => {const button=document.querySelector('.analysis-panel-heading');
+        return button && button!==window.headingBeforeTaskInput &&
+          button.textContent==='稳定化验收';})()
+        """, in: web)
+      let beforeNavigation = try snapshot(controller)
+      _ = try js("document.querySelector('.analysis-panel-heading').click()", in: web)
+      XCTAssertEqual(
+        try snapshot(controller), beforeNavigation, "Navigation must preserve raw bytes")
       XCTAssertEqual(
         try js(
           """
@@ -1018,6 +1036,17 @@ final class WritingInteractionHostlessTests: XCTestCase {
         try js("window.writingSequenceEvents.map(e=>e.head)", in: web) as? [Int],
         expectedTexts.map { $0.utf16.count })
     }
+  }
+
+  @MainActor
+  private func waitForJavaScriptCondition(_ condition: String, in web: WKWebView) throws {
+    let deadline = Date().addingTimeInterval(5)
+    while Date() < deadline {
+      if try js(condition, in: web) as? Bool == true { return }
+      RunLoop.current.run(until: Date().addingTimeInterval(0.005))
+    }
+    XCTFail("Timed out waiting for the outline's current document state")
+    throw EditorBridgeError.requestTimedOut
   }
 
   @MainActor
