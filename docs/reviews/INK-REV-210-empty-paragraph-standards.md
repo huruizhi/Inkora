@@ -31,3 +31,15 @@
 - runtime 追加 5 项含 space/tab、BOM/CRLF 的原文字节 oracle，Native 扩展 fixture 并将原有尾部放在新增 EOL 之后；旧测试和最终 Save As 字节 oracle 保留。任务追加说明独立验收边界，未见 AGENTS.md:6/7 的书面冲突。Fowler 12 项未发现足够依据提出 possible smell；书面契约优先，忽略工具强制项。
 
 本人本次仅实跑固定 `git show`、`git diff`、`git log`、`git status` 及首稿前缀断言/文档 diff-check；没有重跑 runtime、lint、build、全套、Native/WK、GUI 或物理 IME。root 1100 项通过不属于本人证据。首稿 15 项仅适用于原受检 SHA，不转移为新提交测试结果。此节不裁定 Spec P1 是否关闭，也不改变首稿的历史结论与验证边界。
+
+## 追加限定静态复核：13a3fa7 Native 夹具校准
+
+前文逐字保留。本节固定 base `fcf16c405a7f3965ed8fa63add6de675f5220b6f` → head `13a3fa7a92437eea8064a2ed7f8d9c51d54938aa`，使用 `git diff <base>...<head>`；实查 merge-base 等于 base，仅 3 文件（Native 测试及任务/证据追加），227 增/5 删，唯一提交为 `test(editor): navigate via outline before heading unformat`。复核开始时本人 HEAD `20ecf33`、clean。固定 `03715e9..13a3fa7` 的 app/editor/project.yml 差异为空。
+
+**Standards：hard 0，judgement 0。**
+
+- Native `testHeadingUnformatViaOutlineAfterTaskSpaceCanSaveAndClose` hunk：原严格 collapsed/offset0/H1 起点断言、任务空格与退格后精确原文字节、h1 消失、实际 Save As completion/磁盘字节及 withEditor 的 prepareForClose 均保留；新增导航不改原文断言。替换的是选区准备入口，未将标题起点或保存 oracle 放宽。原两段固定 0.1s 改为公开大纲按钮状态等待与单次 click；未见违反 AGENTS.md:7 或 V1:35 的删除/绕过有效断言行为。
+- 新 `waitForJavaScriptCondition` hunk：有界 5 秒，失败既记录 XCTFail 又抛错，未重试 click、跳过失败或改产品保护。与既有 WK 回调等待的轮询形状相似，但职责明确，未形成值得提出的 possible Duplicated Code。其余 Fowler smell 亦无足够发现；工具强制项不重复审查。
+- 任务“最终 CI 失败”及 calibration JSON：明确记录原 Range 60 次中 9 例 focus-guard 重写、覆盖入口改变及真实快速指针未验；没有将新入口结果写成原入口修复。未见 AGENTS.md:6 的证据归属冲突。校准限于公开生产路径的测试准备，未引入依赖/调试产品后门；本文不作 Spec 范围或完成裁定。
+
+本人仅执行固定 SHA 的 git status/rev-parse/merge-base/diff/show/log、文档前缀断言及 diff-check，未运行任何测试、App、GUI、WK/Native、build 或 lint。证据文件报告同一冻结 exe：17 资源 40/40 绿，15 资源 40 例全部通过起点守卫后在 replaceAround snapshot/save/close 红，以及完整 36/36 绿；这些是管理者提供的既有执行记录，本文未复跑或核验原始日志。原始限定 diff 保留 `artifacts/INK-REV-210/standards-heading-outline-13a3fa7.diff`。新入口不能证明裸 DOM Range 或真实快速指针风险消除。
