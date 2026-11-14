@@ -150,3 +150,16 @@ Spec207固定6d37312：发现1项P1 implemented wrong，最小为“# a #→在c
 Formal与隔离v3均0.1.0 build16、x86_64+arm64；ad-hoc strict/deep结构、源entitlements逐项相等及离线bundle检查通过，editor逐文件相同；不是正式Developer ID/公证。最终两包私有ZIP逐文件与原App核对并记录SHA。产品源固定afa00cab84a5fd184cc63b0ba65e7a8ec862ffbe，其后只有Native测试夹具/报告/证据改变，app/editor/project树身份保持。
 自有STAB203-acceptance-v3样稿、独立defaults/recovery UUID已准备，带BOM/CRLF、不可改的第二段及任务项末尾空格复验。此时尚未启动；最后精确HEAD默认CI结果另记ignored ci-result-v3.json与draft PR101。旧v2/build15记录为用户验收失败，未覆盖现场，正式build14未替换。
 最终当前系统真实中文/可见光标/退格取消格式/保存退出/同路径重开待v3完成，不能用旧CI、作者测试或审查0finding替代。用户暂缓或有异常时继续保留候选，不合并、不安装、不扩功能；不追加macOS14专门硬件验收。两层备份前不回收worktree、原始日志、失败包或样稿。
+
+
+## 2026-11-14 v3真实验收及本机交付
+
+本节为前述“待验”的后续结算，保留v2失败、早期仅授权未操作、v3初次保存疑问及全部原始记录。用户后续实际完成标题起点回车/退格、中文输入与UndoRedo，报告其余正常；最终明确确认取消标题格式后为普通正文、无报错并已退出。
+
+为隔离Command-S，用户在第二段末尾实际输入S并保存、保持窗口打开；代理在进程仍存活时核到磁盘已更新，确认快捷键实际写盘。最后磁盘为普通正文“中文稳定化验收”、第二段“后文保持不变S”、未勾选任务项末尾一个半角空格，BOM/CRLF及其余字节保留。S与原expected不一致曾继续阻断结算；用户明确说明忘记删除并允许保留后，另存user-approved expected，原expected与差异不改写，不将其冒称删除失败或原清单逐字相同。
+
+用户保存退出后，实查无Inkora进程；随后按隔离App精确路径重开同一已保存文件，以NSRunningApplication普通退出，实际进程消失且文件字节不变。代理未能可视检查重开内容，该部分证据为精确路径启动、进程与文件核对；实际中文输入及可见交互来自用户报告，非合成按键替代。此结算仅覆盖标题切片旅程，不宣告所有体验验收完成。
+
+产品树仍固定afa00ca，ec8bd67精确默认CI通过。本轮执行准备好的install-local-v3.py退出0：停止进程后备份旧build14和已验收build16 ZIP并逐文件核对，备份私有recovery，原子替换/Applications/Inkora.app，安装后全部文件哈希等于已验收formal包，strict/deep签名通过。旧App移至私有部署备份，/Applications只留当前版本；未强制终止任何当前进程，未删除旧包或失败样稿。make release-bundle-check RELEASE_APP_BUNDLE=/Applications/Inkora.app退出0。当前安装0.1.0 build16、arm64+x86_64；ad-hoc预览仍无Developer ID/公证，不等于新公开Release。
+
+本轮修改仅此任务记录和[build16-physical-delivery.json](../evidence/INK-STAB-203/build16-physical-delivery.json)，没有再次修改产品或测试。原有make lint test-editor test-ci的1080项、Native35及build-release为本任务此前真实执行；本轮未重复全量。文档收口commit后再次结算精确HEAD默认CI及PR101合并；安装原始收据和两层备份留在ignored artifacts，不提交私有恢复内容。物理验收范围外的性能、VoiceOver、系统授权等没有因此宣告通过。
