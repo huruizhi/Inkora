@@ -21,3 +21,13 @@
 本次实跑固定提交/上下文 `git show`、`git diff <old>..<new>`、`git log <old>..<new> --oneline`、`git status --short`、前缀断言及 `git diff --check`；没有新 runtime/Native/GUI/全量执行。未访问 root 浮动产品树、用户正文或恢复数据。原始追加 diff 保留 `artifacts/INK-REV-210/standards-followup-03715e9.diff`，原日志继续保留；未新建依赖链接。
 
 未完成项：无 Standards 增量复核工作；Spec P1 关闭由独立 Spec 轴裁定，本文不下结论。风险：静态判断不证明新增 fixture 实跑结果，root 的 1100 项结果未归为本人证据。分支仍为 `task/INK-REV-210-empty-paragraph-standards`，追加独立 Conventional Commit，SHA 与 clean 状态见完成回报；不 push。
+
+## 追加限定静态复核：13a3fa7
+
+完成固定 `fcf16c405a7f3965ed8fa63add6de675f5220b6f...13a3fa7a92437eea8064a2ed7f8d9c51d54938aa` 的 Standards 复核；hard 0、judgement 0，不作 Spec 裁定。变更仅 Native 夹具及任务/证据，app/editor/project.yml 对 03715e9 无差异。原有字节、起点及保存关闭断言保持；公开 outline 准备替换原 Range 入口，覆盖边界已明确。
+
+本人命令：`git status --short`、`git rev-parse HEAD <base> <head>`、`git merge-base <base> <head>`、`git diff --stat <base>...<head>`、`git diff <base>...<head>`、`git log <base>..<head> --oneline`、固定 `git show <head>:<path>`、`git diff --stat 03715e9 <head> -- app editor project.yml`、Python 字节前缀断言、`git diff --check`。仅静态读取固定提交，不读浮动产品树。
+
+本次没有重跑任何测试、Native/WK、App/GUI、lint 或 build；40 绿/40 红及36全绿只按既有管理者证据标注，不作为本人实跑。真实快速指针与裸 Range 采信未验，限定静态结论不消除此风险。未访问用户正文/恢复数据，未修改产品或测试，未新建依赖链接。
+
+仅追加原 report/task；两文件均与 `20ecf33:<path>` 的既有完整字节作 startswith 断言。原始 diff 存 `artifacts/INK-REV-210/standards-heading-outline-13a3fa7.diff`；旧日志继续保留待备份。无剩余限定 Standards 工作。分支仍为 `task/INK-REV-210-empty-paragraph-standards`；独立 Conventional Commit、clean 状态由完成回报给出，不 push。
